@@ -1,0 +1,40 @@
+{
+  "title": "Administrators",
+  "subtitle": "Create admins and link Telegram for sign-in",
+  "add": "Add admin",
+  "edit": "Edit",
+  "bindTelegram": "Link Telegram",
+  "unbindTelegram": "Unlink Telegram",
+  "unbindConfirm": "Unlink Telegram from this admin?",
+  "empty": "No admins yet",
+  "bindTitle": "Link Telegram",
+  "bindHint": "Sign in with Telegram using the account that should be linked to {{login}}.",
+  "telegramNotConfigured": "Telegram bot is not configured. Set Telegram:BotToken and BotUsername in appsettings.",
+  "account": {
+    "enabled": "Enabled",
+    "disabled": "Disabled"
+  },
+  "presence": {
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "columns": {
+    "login": "Login",
+    "displayName": "Name",
+    "role": "Role",
+    "telegram": "Telegram",
+    "account": "Account",
+    "presence": "Presence",
+    "created": "Created",
+    "actions": "Actions"
+  },
+  "form": {
+    "createTitle": "New admin",
+    "editTitle": "Edit admin",
+    "login": "Login",
+    "password": "Password",
+    "displayName": "Display name",
+    "isActive": "Account enabled",
+    "createHint": "After creating an admin, link Telegram so they can sign in via the login page button."
+  }
+}

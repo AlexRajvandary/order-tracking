@@ -1,0 +1,53 @@
+{
+  "appName": "Order Tracking",
+  "loading": "Загрузка...",
+  "error": "Произошла ошибка",
+  "retry": "Повторить",
+  "save": "Сохранить",
+  "cancel": "Отмена",
+  "back": "Назад",
+  "language": "Язык",
+  "nav": {
+    "dashboard": "Панель",
+    "orders": "Заказы",
+    "customers": "Клиенты",
+    "statuses": "Статусы",
+    "admins": "Админы",
+    "logout": "Выйти",
+    "menu": "Меню"
+  },
+  "home": {
+    "title": "Система отслеживания заказов",
+    "subtitle": "Внутренняя CRM для управления заказами и публичное отслеживание по QR-коду.",
+    "adminLogin": "Вход для администратора",
+    "trackOrder": "Отслеживание заказа"
+  },
+  "notFound": {
+    "title": "Страница не найдена",
+    "description": "Запрашиваемая страница не существует.",
+    "goHome": "На главную"
+  },
+  "table": {
+    "columns": "Колонки",
+    "toggleColumns": "Показать колонки",
+    "filter": "Фильтр",
+    "clearFilter": "Сбросить фильтр",
+    "emptyValue": "пусто",
+    "noFilterValues": "Нет значений",
+    "page": "Страница {{page}} из {{total}}",
+    "empty": "Нет данных",
+    "dateFilter": "Период",
+    "dateFrom": "С",
+    "dateTo": "По",
+    "dateHint": "Один день — укажите одинаковые даты, либо диапазон «с — по».",
+    "pickDate": "Выберите дату",
+    "pickDateTime": "Выберите дату и время",
+    "clearDate": "Очистить",
+    "hours": "Часы",
+    "minutes": "Минуты",
+    "totalRows": "Всего: {{count}}",
+    "rowsPerPage": "На странице",
+    "prevPage": "Предыдущая страница",
+    "nextPage": "Следующая страница"
+  }
+}

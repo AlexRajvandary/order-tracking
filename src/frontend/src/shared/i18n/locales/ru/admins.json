@@ -1,0 +1,40 @@
+{
+  "title": "Администраторы",
+  "subtitle": "Создание админов и привязка Telegram для входа",
+  "add": "Добавить админа",
+  "edit": "Изменить",
+  "bindTelegram": "Привязать Telegram",
+  "unbindTelegram": "Отвязать Telegram",
+  "unbindConfirm": "Отвязать Telegram от этого админа?",
+  "empty": "Админов пока нет",
+  "bindTitle": "Привязка Telegram",
+  "bindHint": "Войдите через Telegram под аккаунтом, который нужно привязать к {{login}}.",
+  "telegramNotConfigured": "Telegram-бот не настроен. Укажите Telegram:BotToken и BotUsername в appsettings.",
+  "account": {
+    "enabled": "Включён",
+    "disabled": "Выключен"
+  },
+  "presence": {
+    "online": "Онлайн",
+    "offline": "Оффлайн"
+  },
+  "columns": {
+    "login": "Логин",
+    "displayName": "Имя",
+    "role": "Роль",
+    "telegram": "Telegram",
+    "account": "Аккаунт",
+    "presence": "Присутствие",
+    "created": "Создан",
+    "actions": "Действия"
+  },
+  "form": {
+    "createTitle": "Новый админ",
+    "editTitle": "Редактирование админа",
+    "login": "Логин",
+    "password": "Пароль",
+    "displayName": "Отображаемое имя",
+    "isActive": "Аккаунт включён",
+    "createHint": "После создания можно привязать Telegram — тогда админ сможет войти через кнопку на экране входа."
+  }
+}

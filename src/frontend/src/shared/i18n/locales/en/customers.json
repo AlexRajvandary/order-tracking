@@ -1,0 +1,37 @@
+{
+  "title": "Customers",
+  "subtitle": "Manage your customer database",
+  "add": "Add customer",
+  "edit": "Edit",
+  "orders": "Orders",
+  "searchPlaceholder": "Search by name, phone or telegram...",
+  "search": "Search",
+  "clearSearch": "Clear",
+  "empty": "No customers yet",
+  "emptySearch": "No results found",
+  "columns": {
+    "name": "Name",
+    "telegram": "Telegram",
+    "phone": "Phone",
+    "email": "Email",
+    "orders": "Orders",
+    "created": "Created",
+    "actions": "Actions"
+  },
+  "form": {
+    "createTitle": "New customer",
+    "editTitle": "Edit customer",
+    "fullName": "Full name",
+    "telegram": "Telegram",
+    "phone": "Phone",
+    "email": "Email",
+    "notes": "Notes",
+    "validation": "All fields are optional"
+  },
+  "ordersTitle": "Customer orders",
+  "ordersEmpty": "This customer has no orders yet",
+  "orderTrackingCode": "Code",
+  "orderCreated": "Created",
+  "orderUpdated": "Updated",
+  "page": "Page {{page}} of {{total}}"
+}

@@ -1,0 +1,22 @@
+{
+  "title": "Order tracking",
+  "placeholder": "Enter tracking code (e.g. AB4K9)",
+  "search": "Search",
+  "orderNumber": "Order number",
+  "lastUpdated": "Last updated",
+  "createdAt": "Order created",
+  "customer": "Customer",
+  "overallInProgress": "In progress",
+  "overallDelivered": "Delivered",
+  "services": "Services",
+  "status": "Status",
+  "noComment": "No comment",
+  "noStatus": "Status not set yet",
+  "history": "Status history",
+  "historyEmpty": "No history yet",
+  "openPhoto": "Open photo",
+  "noItems": "This order has no items yet",
+  "notFound": "Order not found",
+  "invalidCode": "Code must be 5 characters",
+  "quantity": "Qty"
+}

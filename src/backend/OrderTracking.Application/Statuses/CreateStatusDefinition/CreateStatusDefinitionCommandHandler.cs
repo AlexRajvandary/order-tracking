@@ -1,0 +1,49 @@
+using MediatR;
+using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Statuses.Models;
+using OrderTracking.Domain.Entities;
+
+namespace OrderTracking.Application.Statuses.CreateStatusDefinition;
+
+public sealed class CreateStatusDefinitionCommandHandler
+    : IRequestHandler<CreateStatusDefinitionCommand, StatusDefinitionDto>
+{
+    private readonly IApplicationDbContext _context;
+
+    public CreateStatusDefinitionCommandHandler(IApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<StatusDefinitionDto> Handle(
+        CreateStatusDefinitionCommand request,
+        CancellationToken cancellationToken)
+    {
+        var status = new StatusDefinition
+        {
+            Id = Guid.NewGuid(),
+            Name = request.Name.Trim(),
+            ItemType = request.ItemType,
+            Color = string.IsNullOrWhiteSpace(request.Color) ? null : request.Color.Trim(),
+            SortOrder = request.SortOrder,
+            IsActive = true,
+            IsFinal = request.IsFinal,
+        };
+
+        _context.StatusDefinitions.Add(status);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return Map(status);
+    }
+
+    internal static StatusDefinitionDto Map(StatusDefinition s) =>
+        new(
+            s.Id,
+            s.Name,
+            s.ItemType?.ToString(),
+            s.Color,
+            s.SortOrder,
+            s.IsActive,
+            s.IsFinal,
+            s.CreatedAt);
+}

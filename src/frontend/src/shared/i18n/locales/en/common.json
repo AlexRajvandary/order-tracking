@@ -1,0 +1,53 @@
+{
+  "appName": "Order Tracking",
+  "loading": "Loading...",
+  "error": "An error occurred",
+  "retry": "Retry",
+  "save": "Save",
+  "cancel": "Cancel",
+  "back": "Back",
+  "language": "Language",
+  "nav": {
+    "dashboard": "Dashboard",
+    "orders": "Orders",
+    "customers": "Customers",
+    "statuses": "Statuses",
+    "admins": "Admins",
+    "logout": "Log out",
+    "menu": "Menu"
+  },
+  "home": {
+    "title": "Order Tracking System",
+    "subtitle": "Internal CRM for order management and public QR-based tracking.",
+    "adminLogin": "Administrator login",
+    "trackOrder": "Track order"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you requested does not exist.",
+    "goHome": "Go home"
+  },
+  "table": {
+    "columns": "Columns",
+    "toggleColumns": "Toggle columns",
+    "filter": "Filter",
+    "clearFilter": "Clear filter",
+    "emptyValue": "empty",
+    "noFilterValues": "No values",
+    "page": "Page {{page}} of {{total}}",
+    "empty": "No data",
+    "dateFilter": "Date range",
+    "dateFrom": "From",
+    "dateTo": "To",
+    "dateHint": "For a single day set the same date twice, or choose a from–to range.",
+    "pickDate": "Pick a date",
+    "pickDateTime": "Pick date and time",
+    "clearDate": "Clear",
+    "hours": "Hours",
+    "minutes": "Minutes",
+    "totalRows": "Total: {{count}}",
+    "rowsPerPage": "Rows per page",
+    "prevPage": "Previous page",
+    "nextPage": "Next page"
+  }
+}

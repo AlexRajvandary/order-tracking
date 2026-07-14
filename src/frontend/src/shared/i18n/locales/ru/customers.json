@@ -1,0 +1,37 @@
+{
+  "title": "Клиенты",
+  "subtitle": "Управление базой клиентов",
+  "add": "Добавить клиента",
+  "edit": "Редактировать",
+  "orders": "Заказы",
+  "searchPlaceholder": "Поиск по имени, телефону или Telegram...",
+  "search": "Найти",
+  "clearSearch": "Сбросить",
+  "empty": "Клиентов пока нет",
+  "emptySearch": "Ничего не найдено",
+  "columns": {
+    "name": "Имя",
+    "telegram": "Telegram",
+    "phone": "Телефон",
+    "email": "Email",
+    "orders": "Заказов",
+    "created": "Создан",
+    "actions": "Действия"
+  },
+  "form": {
+    "createTitle": "Новый клиент",
+    "editTitle": "Редактирование клиента",
+    "fullName": "ФИО",
+    "telegram": "Telegram",
+    "phone": "Телефон",
+    "email": "Email",
+    "notes": "Заметки",
+    "validation": "Все поля необязательны"
+  },
+  "ordersTitle": "Заказы клиента",
+  "ordersEmpty": "У клиента пока нет заказов",
+  "orderTrackingCode": "Код",
+  "orderCreated": "Создан",
+  "orderUpdated": "Обновлён",
+  "page": "Страница {{page}} из {{total}}"
+}

@@ -1,0 +1,22 @@
+{
+  "title": "Отслеживание заказа",
+  "placeholder": "Введите код отслеживания (например, AB4K9)",
+  "search": "Найти",
+  "orderNumber": "Номер заказа",
+  "lastUpdated": "Последнее обновление",
+  "createdAt": "Заказ создан",
+  "customer": "Клиент",
+  "overallInProgress": "В работе",
+  "overallDelivered": "Доставлен",
+  "services": "Услуги",
+  "status": "Статус",
+  "noComment": "Без комментария",
+  "noStatus": "Статус ещё не установлен",
+  "history": "История статусов",
+  "historyEmpty": "Истории пока нет",
+  "openPhoto": "Открыть фото",
+  "noItems": "В заказе пока нет позиций",
+  "notFound": "Заказ не найден",
+  "invalidCode": "Код должен состоять из 5 символов",
+  "quantity": "Кол-во"
+}
