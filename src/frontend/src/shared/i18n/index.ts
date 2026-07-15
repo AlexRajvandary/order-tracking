@@ -16,6 +16,8 @@ import ruAdmins from './locales/ru/admins.json'
 import enAdmins from './locales/en/admins.json'
 import ruDashboard from './locales/ru/dashboard.json'
 import enDashboard from './locales/en/dashboard.json'
+import ruHelp from './locales/ru/help.json'
+import enHelp from './locales/en/help.json'
 
 const savedLocale = localStorage.getItem('locale')
 const browserLocale = navigator.language.startsWith('ru') ? 'ru' : 'en'
@@ -33,6 +35,7 @@ void i18n.use(initReactI18next).init({
       statuses: ruStatuses,
       dashboard: ruDashboard,
       admins: ruAdmins,
+      help: ruHelp,
     },
     en: {
       common: enCommon,
@@ -43,6 +46,7 @@ void i18n.use(initReactI18next).init({
       statuses: enStatuses,
       dashboard: enDashboard,
       admins: enAdmins,
+      help: enHelp,
     },
   },
   lng: defaultLocale,

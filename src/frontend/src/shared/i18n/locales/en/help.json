@@ -1,0 +1,45 @@
+{
+  "title": "Help",
+  "subtitle": "User roles and access permission matrix",
+  "rolesTitle": "Roles",
+  "roles": {
+    "SuperAdmin": {
+      "name": "Super Admin",
+      "description": "Full access. Manages all users, assigns roles and configures the system."
+    },
+    "Admin": {
+      "name": "Admin",
+      "description": "Manages orders and creates moderators. Cannot change roles or manage other admins."
+    },
+    "Moderator": {
+      "name": "Moderator",
+      "description": "Works with orders, customers and statuses. The Administrators section is not available."
+    }
+  },
+  "matrixTitle": "Permission matrix",
+  "capabilityColumn": "Capability",
+  "capabilities": {
+    "manageOrders": "Manage orders",
+    "manageCustomers": "Manage customers",
+    "manageStatuses": "Manage statuses",
+    "viewAudit": "View audit log",
+    "accessAdmins": "Access the Administrators section",
+    "createModerator": "Create moderators",
+    "createAdmin": "Create admins and super admins",
+    "manageModerators": "Name, activity and Telegram of moderators",
+    "manageAllAdmins": "Name, activity and Telegram of all users",
+    "changeRoles": "Change roles",
+    "changeOwnPassword": "Change own password"
+  },
+  "legend": {
+    "title": "Legend",
+    "yes": "Allowed",
+    "no": "Not available"
+  },
+  "notesTitle": "Important rules",
+  "notes": {
+    "ownRole": "A super admin cannot change their own role.",
+    "adminModerators": "An admin manages moderators only and cannot change roles.",
+    "moderator": "A moderator has no access to admin management."
+  }
+}

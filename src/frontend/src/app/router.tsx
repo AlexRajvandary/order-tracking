@@ -9,6 +9,7 @@ import { StatusManagementPage } from '@/pages/admin/StatusManagementPage'
 import { CustomersPage } from '@/pages/admin/CustomersPage'
 import { CustomerDetailsPage } from '@/pages/admin/CustomerDetailsPage'
 import { AdminsPage } from '@/pages/admin/AdminsPage'
+import { HelpPage } from '@/pages/admin/HelpPage'
 import { OrdersListPage } from '@/pages/admin/OrdersListPage'
 import { CreateOrderPage } from '@/pages/admin/CreateOrderPage'
 import { OrderDetailsPage } from '@/pages/admin/OrderDetailsPage'
@@ -40,6 +41,7 @@ export function AppRouter() {
               <Route path="customers/:id" element={<CustomerDetailsPage />} />
               <Route path="admins" element={<AdminsPage />} />
               <Route path="statuses" element={<StatusManagementPage />} />
+              <Route path="help" element={<HelpPage />} />
             </Route>
           </Route>
 

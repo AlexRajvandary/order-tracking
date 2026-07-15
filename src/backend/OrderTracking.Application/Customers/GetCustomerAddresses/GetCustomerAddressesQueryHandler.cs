@@ -27,6 +27,8 @@ public sealed class GetCustomerAddressesQueryHandler
         return await _context.CustomerAddresses
             .AsNoTracking()
             .Where(a => a.CustomerId == request.CustomerId)
+            .OrderByDescending(a => a.Orders.Max(order => (DateTimeOffset?)order.CreatedAt))
+            .ThenByDescending(a => a.CreatedAt)
             .Select(a => new CustomerAddressDto(
                 a.Id,
                 a.CustomerId,
@@ -39,8 +41,6 @@ public sealed class GetCustomerAddressesQueryHandler
                 a.CreatedAt,
                 a.UpdatedAt ?? a.CreatedAt,
                 a.Orders.Max(order => (DateTimeOffset?)order.CreatedAt)))
-            .OrderByDescending(a => a.LastUsedAt)
-            .ThenByDescending(a => a.CreatedAt)
             .ToListAsync(cancellationToken);
     }
 }

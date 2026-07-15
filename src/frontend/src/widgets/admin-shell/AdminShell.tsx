@@ -1,8 +1,19 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Outlet, NavLink } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, KeyRound, Languages, LogOut, Menu, Package, User } from 'lucide-react'
+import {
+  ChevronDown,
+  CircleHelp,
+  ClipboardList,
+  KeyRound,
+  Languages,
+  ListChecks,
+  LogOut,
+  Menu,
+  Package,
+  User,
+} from 'lucide-react'
 import * as authApi from '@/features/auth/api/authApi'
 import { useAuth } from '@/features/auth/model/AuthContext'
 import { ApiError } from '@/shared/api/client'
@@ -45,8 +56,6 @@ const navItems: Array<{
   { to: '/admin/orders', labelKey: 'nav.orders' },
   { to: '/admin/customers', labelKey: 'nav.customers' },
   { to: '/admin/admins', labelKey: 'nav.admins', roles: ['Admin', 'SuperAdmin'] },
-  { to: '/admin/statuses', labelKey: 'nav.statuses' },
-  { to: '/admin/audit', labelKey: 'nav.audit' },
 ]
 
 function NavLinks({
@@ -91,6 +100,7 @@ function NavLinks({
 
 export function AdminShell() {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const { user, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
@@ -170,6 +180,19 @@ export function AdminShell() {
                 <DropdownMenuRadioItem value="ru">Русский</DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/admin/statuses')}>
+                <ListChecks />
+                {t('nav.statuses')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/admin/audit')}>
+                <ClipboardList />
+                {t('nav.audit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/admin/help')}>
+                <CircleHelp />
+                {t('nav.help')}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => {
