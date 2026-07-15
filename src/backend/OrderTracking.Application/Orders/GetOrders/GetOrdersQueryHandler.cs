@@ -34,8 +34,12 @@ public sealed class GetOrdersQueryHandler : IRequestHandler<GetOrdersQuery, Pagi
                 o.Id,
                 o.TrackingCode,
                 o.CustomerId,
-                o.Customer != null ? o.Customer.FullName : null,
+                o.Customer != null
+                    ? ((o.Customer.LastName ?? "") + " " + (o.Customer.FirstName ?? "") + " " + (o.Customer.Patronymic ?? "")).Trim()
+                    : null,
                 o.Customer != null ? o.Customer.Phone : null,
+                o.Customer != null ? o.Customer.Email : null,
+                o.Customer != null ? o.Customer.Telegram : null,
                 o.AdminNotes,
                 o.Status.ToString(),
                 o.Items.Count,

@@ -6,7 +6,9 @@ namespace OrderTracking.Application.Customers.UpdateCustomer;
 
 public sealed record UpdateCustomerCommand(
     Guid Id,
-    string? FullName,
+    string? LastName,
+    string? FirstName,
+    string? Patronymic,
     string? Telegram,
     string? Phone,
     string? Email,

@@ -165,15 +165,23 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<string>("FullName")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
+                    b.Property<string>("FirstName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("LastName")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<string>("Notes")
                         .HasColumnType("text");
+
+                    b.Property<string>("Patronymic")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Phone")
                         .HasMaxLength(30)
@@ -188,7 +196,10 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("FullName")
+                    b.HasIndex("FirstName")
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.HasIndex("LastName")
                         .HasFilter("\"IsDeleted\" = false");
 
                     b.HasIndex("Phone")
@@ -198,6 +209,58 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
                         .HasFilter("\"IsDeleted\" = false");
 
                     b.ToTable("customers", (string)null);
+                });
+
+            modelBuilder.Entity("OrderTracking.Domain.Entities.CustomerAddress", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Apartment")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Building")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PostalCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Street")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId")
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.ToTable("customer_addresses", (string)null);
                 });
 
             modelBuilder.Entity("OrderTracking.Domain.Entities.Order", b =>
@@ -220,6 +283,32 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTimeOffset?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeliveryAddressId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DeliveryApartment")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("DeliveryBuilding")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("DeliveryCity")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("DeliveryNote")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DeliveryPostalCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("DeliveryStreet")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.Property<DateTimeOffset?>("ExpectedDeliveryAt")
                         .HasColumnType("timestamp with time zone");
@@ -251,6 +340,9 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
                     b.HasIndex("CustomerId")
                         .HasFilter("\"IsDeleted\" = false");
 
+                    b.HasIndex("DeliveryAddressId")
+                        .HasFilter("\"IsDeleted\" = false");
+
                     b.HasIndex("TrackingCode")
                         .IsUnique()
                         .HasFilter("\"IsDeleted\" = false");
@@ -269,6 +361,11 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CurrencyCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("character(3)")
+                        .IsFixedLength();
 
                     b.Property<Guid?>("CurrentStatusId")
                         .HasColumnType("uuid");
@@ -308,6 +405,10 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
+                    b.Property<decimal?>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -318,7 +419,10 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
                     b.HasIndex("OrderId")
                         .HasFilter("\"IsDeleted\" = false");
 
-                    b.ToTable("order_items", (string)null);
+                    b.ToTable("order_items", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_order_items_price_currency", "(\"UnitPrice\" IS NULL AND \"CurrencyCode\" IS NULL)\r\nOR (\r\n    \"UnitPrice\" IS NOT NULL\r\n    AND \"UnitPrice\" >= 0\r\n    AND \"CurrencyCode\" IN ('RUB', 'USD', 'EUR', 'GBP', 'JPY')\r\n)");
+                        });
                 });
 
             modelBuilder.Entity("OrderTracking.Domain.Entities.OrderItemStatusAttachment", b =>
@@ -512,6 +616,16 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
                     b.Navigation("AdminUser");
                 });
 
+            modelBuilder.Entity("OrderTracking.Domain.Entities.CustomerAddress", b =>
+                {
+                    b.HasOne("OrderTracking.Domain.Entities.Customer", "Customer")
+                        .WithMany("Addresses")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Customer");
+                });
+
             modelBuilder.Entity("OrderTracking.Domain.Entities.Order", b =>
                 {
                     b.HasOne("OrderTracking.Domain.Entities.AdminUser", "CreatedByAdmin")
@@ -525,9 +639,16 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("OrderTracking.Domain.Entities.CustomerAddress", "DeliveryAddress")
+                        .WithMany("Orders")
+                        .HasForeignKey("DeliveryAddressId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("CreatedByAdmin");
 
                     b.Navigation("Customer");
+
+                    b.Navigation("DeliveryAddress");
                 });
 
             modelBuilder.Entity("OrderTracking.Domain.Entities.OrderItem", b =>
@@ -623,6 +744,13 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("OrderTracking.Domain.Entities.Customer", b =>
+                {
+                    b.Navigation("Addresses");
+
+                    b.Navigation("Orders");
+                });
+
+            modelBuilder.Entity("OrderTracking.Domain.Entities.CustomerAddress", b =>
                 {
                     b.Navigation("Orders");
                 });

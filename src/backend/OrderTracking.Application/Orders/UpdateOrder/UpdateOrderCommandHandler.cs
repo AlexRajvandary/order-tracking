@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Customers;
 using OrderTracking.Application.Orders.Models;
 
 namespace OrderTracking.Application.Orders.UpdateOrder;
@@ -60,7 +61,10 @@ public sealed class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderComma
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Id == cid, cancellationToken);
 
-            customerName = customer?.FullName;
+            customerName = CustomerNameFormatting.Format(
+                customer?.LastName,
+                customer?.FirstName,
+                customer?.Patronymic);
             customerPhone = customer?.Phone;
             customerTelegram = customer?.Telegram;
             customerEmail = customer?.Email;
@@ -85,12 +89,21 @@ public sealed class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderComma
             order.CreatedAt,
             order.UpdatedAt ?? order.CreatedAt,
             order.ExpectedDeliveryAt,
+            order.DeliveryAddressId,
+            order.DeliveryCity,
+            order.DeliveryStreet,
+            order.DeliveryBuilding,
+            order.DeliveryApartment,
+            order.DeliveryPostalCode,
+            order.DeliveryNote,
             items.Select(i => new OrderItemDto(
                 i.Id,
                 i.ItemType.ToString(),
                 i.Name,
                 i.Description,
                 i.Quantity,
+                i.UnitPrice,
+                i.CurrencyCode,
                 i.SortOrder,
                 i.CurrentStatusId,
                 i.CurrentStatusText,

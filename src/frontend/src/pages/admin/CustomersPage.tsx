@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { ColumnDef } from '@tanstack/react-table'
 import * as customersApi from '@/features/customers/api/customersApi'
@@ -18,18 +19,32 @@ import {
 } from '@/shared/ui/dialog'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
+import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
+import { capitalizeNamePart } from '@/shared/lib/capitalizeNamePart'
+import { formatTelegram, telegramHref } from '@/shared/lib/telegram'
+import { SearchInput } from '@/shared/ui/search-input'
 import { Textarea } from '@/shared/ui/textarea'
 import { DataTable, DataTableColumnHeader, dateRangeFilterFn } from '@/shared/ui/data-table'
 
 type FormState = {
-  fullName: string
+  lastName: string
+  firstName: string
+  patronymic: string
   telegram: string
   phone: string
   email: string
   notes: string
 }
 
-const emptyForm: FormState = { fullName: '', telegram: '', phone: '', email: '', notes: '' }
+const emptyForm: FormState = {
+  lastName: '',
+  firstName: '',
+  patronymic: '',
+  telegram: '',
+  phone: '',
+  email: '',
+  notes: '',
+}
 
 function formatDate(value: string) {
   const d = new Date(value)
@@ -74,7 +89,9 @@ function CustomerFormDialog({
           onSubmit={(e) => {
             e.preventDefault()
             onSubmit({
-              fullName: form.fullName || null,
+              lastName: form.lastName || null,
+              firstName: form.firstName || null,
+              patronymic: form.patronymic || null,
               telegram: form.telegram || null,
               phone: form.phone || null,
               email: form.email || null,
@@ -82,19 +99,41 @@ function CustomerFormDialog({
             })
           }}
         >
-          <div className="space-y-1.5">
-            <Label>{t('form.fullName')}</Label>
-            <Input
-              value={form.fullName}
-              onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
-            />
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label>{t('form.lastName')}</Label>
+              <Input
+                value={form.lastName}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, lastName: capitalizeNamePart(e.target.value) }))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t('form.firstName')}</Label>
+              <Input
+                value={form.firstName}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, firstName: capitalizeNamePart(e.target.value) }))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t('form.patronymic')}</Label>
+              <Input
+                value={form.patronymic}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, patronymic: capitalizeNamePart(e.target.value) }))
+                }
+              />
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>{t('form.telegram')}</Label>
             <Input
               value={form.telegram}
               onChange={(e) => setForm((f) => ({ ...f, telegram: e.target.value }))}
-              placeholder="@username"
+              placeholder={t('form.telegramPlaceholder')}
             />
           </div>
           <div className="space-y-1.5">
@@ -141,19 +180,22 @@ function CustomerFormDialog({
 
 export function CustomersPage() {
   const { t } = useTranslation('customers')
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const [toolbarSlot, setToolbarSlot] = useState<HTMLDivElement | null>(null)
   const [search, setSearch] = useState('')
-  const [activeSearch, setActiveSearch] = useState<string | null>(null)
-  const [modal, setModal] = useState<'create' | 'edit' | null>(null)
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
+  const debouncedSearch = useDebouncedValue(search)
+  const normalizedSearch = debouncedSearch.trim()
+  const activeSearch = normalizedSearch.length >= 2 ? normalizedSearch : null
+  const [modal, setModal] = useState<'create' | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['customers', activeSearch],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       activeSearch
-        ? customersApi.searchCustomers({ q: activeSearch, page: 1, pageSize: 500 })
-        : customersApi.getCustomers(1, 500),
+        ? customersApi.searchCustomers({ q: activeSearch, page: 1, pageSize: 500 }, signal)
+        : customersApi.getCustomers(1, 500, signal),
   })
 
   const createMutation = useMutation({
@@ -168,26 +210,6 @@ export function CustomersPage() {
     },
   })
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpsertCustomerRequest }) =>
-      customersApi.updateCustomer(id, data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['customers'] })
-      setModal(null)
-      setEditingCustomer(null)
-      setFormError(null)
-    },
-    onError: (err: unknown) => {
-      setFormError(err instanceof ApiError ? err.message : t('error', { ns: 'common' }))
-    },
-  })
-
-  const openEdit = (customer: Customer) => {
-    setEditingCustomer(customer)
-    setFormError(null)
-    setModal('edit')
-  }
-
   const columns = useMemo<ColumnDef<Customer>[]>(
     () => [
       {
@@ -196,9 +218,7 @@ export function CustomersPage() {
         enableColumnFilter: false,
         meta: { label: t('columns.name') },
         header: () => t('columns.name'),
-        cell: ({ row }) => (
-          <span className="font-medium">{row.original.fullName ?? '—'}</span>
-        ),
+        cell: ({ row }) => row.original.fullName ?? '—',
       },
       {
         id: 'telegram',
@@ -206,7 +226,22 @@ export function CustomersPage() {
         enableColumnFilter: false,
         meta: { label: t('columns.telegram') },
         header: () => t('columns.telegram'),
-        cell: ({ row }) => row.original.telegram ?? '—',
+        cell: ({ row }) => {
+          const href = telegramHref(row.original.telegram)
+          return href ? (
+            <a
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary hover:underline"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {formatTelegram(row.original.telegram)}
+            </a>
+          ) : (
+            ''
+          )
+        },
       },
       {
         id: 'phone',
@@ -247,20 +282,13 @@ export function CustomersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
         <h1 className="text-2xl font-bold">{t('title')}</h1>
-        <Button
-          onClick={() => {
-            setFormError(null)
-            setModal('create')
-          }}
-        >
-          <Plus />
-          {t('add')}
-        </Button>
       </div>
 
-      <Card>
+      <div ref={setToolbarSlot} />
+
+      <Card size="sm">
         <CardHeader className="sr-only">
           <span>{t('title')}</span>
         </CardHeader>
@@ -283,46 +311,33 @@ export function CustomersPage() {
               data={data?.items ?? []}
               pageSize={10}
               emptyMessage={activeSearch ? t('emptySearch') : t('empty')}
-              onRowClick={(row) => openEdit(row.original)}
+              onRowClick={(row) => navigate(`/admin/customers/${row.original.id}`)}
               getRowClassName={() => 'cursor-pointer'}
+              toolbarContainer={toolbarSlot}
               toolbar={
-                <form
-                  className="flex flex-col gap-2 sm:flex-row"
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    const value = search.trim()
-                    if (value.length >= 2) {
-                      setActiveSearch(value)
-                    }
-                  }}
-                >
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={t('searchPlaceholder')}
-                  />
-                  <Button type="submit" variant="outline">
-                    <Search />
-                    {t('search')}
-                  </Button>
-                  {activeSearch ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        setSearch('')
-                        setActiveSearch(null)
-                      }}
-                    >
-                      {t('clearSearch')}
-                    </Button>
-                  ) : null}
-                </form>
+                <SearchInput
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  aria-label={t('searchPlaceholder')}
+                />
               }
             />
           )}
         </CardContent>
       </Card>
+
+      <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/80 lg:static lg:mx-0 lg:flex lg:justify-end lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+        <Button
+          className="w-full lg:w-auto"
+          onClick={() => {
+            setFormError(null)
+            setModal('create')
+          }}
+        >
+          <Plus />
+          {t('add')}
+        </Button>
+      </div>
 
       <CustomerFormDialog
         open={modal === 'create'}
@@ -334,31 +349,6 @@ export function CustomersPage() {
           if (!open) setModal(null)
         }}
         onSubmit={(payload) => createMutation.mutate(payload)}
-      />
-
-      <CustomerFormDialog
-        key={editingCustomer?.id ?? 'edit'}
-        open={modal === 'edit' && Boolean(editingCustomer)}
-        title={t('form.editTitle')}
-        initial={{
-          fullName: editingCustomer?.fullName ?? '',
-          telegram: editingCustomer?.telegram ?? '',
-          phone: editingCustomer?.phone ?? '',
-          email: editingCustomer?.email ?? '',
-          notes: editingCustomer?.notes ?? '',
-        }}
-        error={formError}
-        submitting={updateMutation.isPending}
-        onOpenChange={(open) => {
-          if (!open) {
-            setModal(null)
-            setEditingCustomer(null)
-          }
-        }}
-        onSubmit={(payload) => {
-          if (!editingCustomer) return
-          updateMutation.mutate({ id: editingCustomer.id, data: payload })
-        }}
       />
     </div>
   )

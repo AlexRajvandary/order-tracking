@@ -6,6 +6,7 @@ import { DashboardPage } from '@/pages/admin/DashboardPage'
 import { AuditDetailsPage } from '@/pages/admin/AuditDetailsPage'
 import { StatusManagementPage } from '@/pages/admin/StatusManagementPage'
 import { CustomersPage } from '@/pages/admin/CustomersPage'
+import { CustomerDetailsPage } from '@/pages/admin/CustomerDetailsPage'
 import { AdminsPage } from '@/pages/admin/AdminsPage'
 import { OrdersListPage } from '@/pages/admin/OrdersListPage'
 import { CreateOrderPage } from '@/pages/admin/CreateOrderPage'
@@ -34,6 +35,7 @@ export function AppRouter() {
               <Route path="orders/new" element={<CreateOrderPage />} />
               <Route path="orders/:id" element={<OrderDetailsPage />} />
               <Route path="customers" element={<CustomersPage />} />
+              <Route path="customers/:id" element={<CustomerDetailsPage />} />
               <Route path="admins" element={<AdminsPage />} />
               <Route path="statuses" element={<StatusManagementPage />} />
             </Route>

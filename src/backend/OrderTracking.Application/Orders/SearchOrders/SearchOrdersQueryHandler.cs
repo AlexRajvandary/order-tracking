@@ -35,8 +35,13 @@ public sealed class SearchOrdersQueryHandler : IRequestHandler<SearchOrdersQuery
             var name = request.CustomerName.Trim().ToLower();
             query = query.Where(o =>
                 o.Customer != null
-                && o.Customer.FullName != null
-                && o.Customer.FullName.ToLower().Contains(name));
+                && (
+                    (o.Customer.LastName != null && o.Customer.LastName.ToLower().Contains(name))
+                    || (o.Customer.FirstName != null && o.Customer.FirstName.ToLower().Contains(name))
+                    || (o.Customer.Patronymic != null && o.Customer.Patronymic.ToLower().Contains(name))
+                    || ((o.Customer.LastName ?? "") + " " + (o.Customer.FirstName ?? "") + " " + (o.Customer.Patronymic ?? ""))
+                        .ToLower()
+                        .Contains(name)));
         }
 
         if (!string.IsNullOrWhiteSpace(request.Phone))
@@ -56,7 +61,14 @@ public sealed class SearchOrdersQueryHandler : IRequestHandler<SearchOrdersQuery
 
             query = query.Where(o =>
                 o.TrackingCode.Contains(termUpper)
-                || (o.Customer != null && o.Customer.FullName != null && o.Customer.FullName.ToLower().Contains(termLower))
+                || (o.Customer != null
+                    && (
+                        (o.Customer.LastName != null && o.Customer.LastName.ToLower().Contains(termLower))
+                        || (o.Customer.FirstName != null && o.Customer.FirstName.ToLower().Contains(termLower))
+                        || (o.Customer.Patronymic != null && o.Customer.Patronymic.ToLower().Contains(termLower))
+                        || ((o.Customer.LastName ?? "") + " " + (o.Customer.FirstName ?? "") + " " + (o.Customer.Patronymic ?? ""))
+                            .ToLower()
+                            .Contains(termLower)))
                 || (o.Customer != null && o.Customer.Phone != null && o.Customer.Phone.Contains(term)));
         }
 
@@ -71,8 +83,12 @@ public sealed class SearchOrdersQueryHandler : IRequestHandler<SearchOrdersQuery
                 o.Id,
                 o.TrackingCode,
                 o.CustomerId,
-                o.Customer != null ? o.Customer.FullName : null,
+                o.Customer != null
+                    ? ((o.Customer.LastName ?? "") + " " + (o.Customer.FirstName ?? "") + " " + (o.Customer.Patronymic ?? "")).Trim()
+                    : null,
                 o.Customer != null ? o.Customer.Phone : null,
+                o.Customer != null ? o.Customer.Email : null,
+                o.Customer != null ? o.Customer.Telegram : null,
                 o.AdminNotes,
                 o.Status.ToString(),
                 o.Items.Count,

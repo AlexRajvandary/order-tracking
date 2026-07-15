@@ -20,8 +20,10 @@ public sealed class UpdateCustomerCommandHandler : IRequestHandler<UpdateCustome
             .FirstOrDefaultAsync(c => c.Id == request.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Customer '{request.Id}' was not found");
 
-        customer.FullName = Normalize(request.FullName);
-        customer.Telegram = NormalizeTelegram(request.Telegram);
+        customer.LastName = CustomerNameFormatting.NormalizePart(request.LastName);
+        customer.FirstName = CustomerNameFormatting.NormalizePart(request.FirstName);
+        customer.Patronymic = CustomerNameFormatting.NormalizePart(request.Patronymic);
+        customer.Telegram = TelegramFormatting.Normalize(request.Telegram);
         customer.Phone = Normalize(request.Phone);
         customer.Email = Normalize(request.Email);
         customer.Notes = Normalize(request.Notes);
@@ -33,7 +35,10 @@ public sealed class UpdateCustomerCommandHandler : IRequestHandler<UpdateCustome
 
         return new CustomerDto(
             customer.Id,
-            customer.FullName,
+            customer.LastName,
+            customer.FirstName,
+            customer.Patronymic,
+            CustomerNameFormatting.Format(customer.LastName, customer.FirstName, customer.Patronymic),
             customer.Telegram,
             customer.Phone,
             customer.Email,
@@ -45,14 +50,4 @@ public sealed class UpdateCustomerCommandHandler : IRequestHandler<UpdateCustome
     private static string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static string? NormalizeTelegram(string? value)
-    {
-        var normalized = Normalize(value);
-        if (normalized is null)
-        {
-            return null;
-        }
-
-        return normalized.StartsWith('@') ? normalized : $"@{normalized}";
-    }
 }

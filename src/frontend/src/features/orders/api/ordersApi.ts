@@ -11,9 +11,10 @@ import type {
   UpsertOrderItemRequest,
 } from '../types'
 
-export function getOrders(page = 1, pageSize = 20) {
+export function getOrders(page = 1, pageSize = 20, signal?: AbortSignal) {
   return authorizedJson<PaginatedResponse<OrderListItem>>(
     `/orders?page=${page}&pageSize=${pageSize}`,
+    { signal },
   )
 }
 
@@ -24,7 +25,7 @@ export function searchOrders(params: {
   phone?: string
   page?: number
   pageSize?: number
-}) {
+}, signal?: AbortSignal) {
   const search = new URLSearchParams()
   if (params.q) search.set('q', params.q)
   if (params.trackingCode) search.set('trackingCode', params.trackingCode)
@@ -32,7 +33,7 @@ export function searchOrders(params: {
   if (params.phone) search.set('phone', params.phone)
   search.set('page', String(params.page ?? 1))
   search.set('pageSize', String(params.pageSize ?? 20))
-  return authorizedJson<PaginatedResponse<OrderListItem>>(`/orders/search?${search}`)
+  return authorizedJson<PaginatedResponse<OrderListItem>>(`/orders/search?${search}`, { signal })
 }
 
 export function getOrder(id: string) {

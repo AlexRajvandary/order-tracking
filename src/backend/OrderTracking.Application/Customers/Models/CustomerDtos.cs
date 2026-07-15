@@ -2,6 +2,9 @@ namespace OrderTracking.Application.Customers.Models;
 
 public sealed record CustomerDto(
     Guid Id,
+    string? LastName,
+    string? FirstName,
+    string? Patronymic,
     string? FullName,
     string? Telegram,
     string? Phone,

@@ -30,7 +30,9 @@ public sealed class GetOrderByTrackingCodeQueryHandler
                 o.TrackingCode,
                 o.CreatedAt,
                 LastUpdatedAt = o.UpdatedAt ?? o.CreatedAt,
-                CustomerName = o.Customer != null ? o.Customer.FullName : null,
+                CustomerName = o.Customer != null
+                    ? ((o.Customer.LastName ?? "") + " " + (o.Customer.FirstName ?? "") + " " + (o.Customer.Patronymic ?? "")).Trim()
+                    : null,
                 CustomerEmail = o.Customer != null ? o.Customer.Email : null,
                 CustomerTelegram = o.Customer != null ? o.Customer.Telegram : null,
                 Items = o.Items

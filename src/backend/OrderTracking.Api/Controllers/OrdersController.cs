@@ -75,6 +75,8 @@ public sealed class OrdersController : ControllerBase
                 request.CustomerId,
                 request.NewCustomer,
                 request.AdminNotes,
+                request.DeliveryAddressId,
+                request.DeliveryAddress,
                 request.Items),
             cancellationToken);
 
@@ -156,7 +158,9 @@ public sealed class OrdersController : ControllerBase
                 request.ItemType,
                 request.Name,
                 request.Description,
-                request.Quantity),
+                request.Quantity,
+                request.UnitPrice,
+                request.CurrencyCode),
             cancellationToken);
 
         return CreatedAtAction(nameof(GetOrderById), new { id = orderId }, result);
@@ -176,7 +180,9 @@ public sealed class OrdersController : ControllerBase
                 request.ItemType,
                 request.Name,
                 request.Description,
-                request.Quantity),
+                request.Quantity,
+                request.UnitPrice,
+                request.CurrencyCode),
             cancellationToken);
 
         return Ok(result);
@@ -315,6 +321,8 @@ public sealed record CreateOrderRequest(
     Guid? CustomerId,
     CreateOrderNewCustomerDto? NewCustomer,
     string? AdminNotes,
+    Guid? DeliveryAddressId,
+    CreateOrderDeliveryAddressDto? DeliveryAddress,
     IReadOnlyList<CreateOrderItemDto>? Items);
 
 public sealed record UpdateOrderRequest(
@@ -328,7 +336,9 @@ public sealed record UpsertOrderItemRequest(
     OrderItemType ItemType,
     string Name,
     string? Description,
-    int Quantity = 1);
+    int Quantity = 1,
+    decimal? UnitPrice = null,
+    string? CurrencyCode = null);
 
 public sealed record UpdateOrderItemStatusRequest(
     Guid? StatusDefinitionId,

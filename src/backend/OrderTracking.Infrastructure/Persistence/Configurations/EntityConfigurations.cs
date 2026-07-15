@@ -74,7 +74,9 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 
         builder.HasKey(e => e.Id);
 
-        builder.Property(e => e.FullName).HasMaxLength(300);
+        builder.Property(e => e.LastName).HasMaxLength(300);
+        builder.Property(e => e.FirstName).HasMaxLength(100);
+        builder.Property(e => e.Patronymic).HasMaxLength(100);
         builder.Property(e => e.Telegram).HasMaxLength(100);
         builder.Property(e => e.Phone).HasMaxLength(30);
         builder.Property(e => e.Email).HasMaxLength(256);
@@ -86,8 +88,38 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.HasIndex(e => e.Telegram)
             .HasFilter("\"IsDeleted\" = false");
 
-        builder.HasIndex(e => e.FullName)
+        builder.HasIndex(e => e.LastName)
             .HasFilter("\"IsDeleted\" = false");
+
+        builder.HasIndex(e => e.FirstName)
+            .HasFilter("\"IsDeleted\" = false");
+
+        builder.HasQueryFilter(e => !e.IsDeleted);
+    }
+}
+
+public class CustomerAddressConfiguration : IEntityTypeConfiguration<CustomerAddress>
+{
+    public void Configure(EntityTypeBuilder<CustomerAddress> builder)
+    {
+        builder.ToTable("customer_addresses");
+
+        builder.HasKey(e => e.Id);
+
+        builder.Property(e => e.City).HasMaxLength(200);
+        builder.Property(e => e.Street).HasMaxLength(300);
+        builder.Property(e => e.Building).HasMaxLength(50);
+        builder.Property(e => e.Apartment).HasMaxLength(50);
+        builder.Property(e => e.PostalCode).HasMaxLength(20);
+        builder.Property(e => e.Note).HasColumnType("text");
+
+        builder.HasIndex(e => e.CustomerId)
+            .HasFilter("\"IsDeleted\" = false");
+
+        builder.HasOne(e => e.Customer)
+            .WithMany(c => c.Addresses)
+            .HasForeignKey(e => e.CustomerId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasQueryFilter(e => !e.IsDeleted);
     }
@@ -107,6 +139,12 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
             .IsRequired();
 
         builder.Property(e => e.AdminNotes).HasColumnType("text");
+        builder.Property(e => e.DeliveryCity).HasMaxLength(200);
+        builder.Property(e => e.DeliveryStreet).HasMaxLength(300);
+        builder.Property(e => e.DeliveryBuilding).HasMaxLength(50);
+        builder.Property(e => e.DeliveryApartment).HasMaxLength(50);
+        builder.Property(e => e.DeliveryPostalCode).HasMaxLength(20);
+        builder.Property(e => e.DeliveryNote).HasColumnType("text");
 
         builder.Property(e => e.Status)
             .HasConversion<string>()
@@ -119,6 +157,9 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.HasIndex(e => e.CustomerId)
             .HasFilter("\"IsDeleted\" = false");
 
+        builder.HasIndex(e => e.DeliveryAddressId)
+            .HasFilter("\"IsDeleted\" = false");
+
         builder.HasIndex(e => e.UpdatedAt)
             .HasFilter("\"IsDeleted\" = false");
 
@@ -128,6 +169,11 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.HasOne(e => e.Customer)
             .WithMany(c => c.Orders)
             .HasForeignKey(e => e.CustomerId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(e => e.DeliveryAddress)
+            .WithMany(a => a.Orders)
+            .HasForeignKey(e => e.DeliveryAddressId)
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasOne(e => e.CreatedByAdmin)
@@ -143,13 +189,25 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
 {
     public void Configure(EntityTypeBuilder<OrderItem> builder)
     {
-        builder.ToTable("order_items");
+        builder.ToTable("order_items", table =>
+            table.HasCheckConstraint(
+                "CK_order_items_price_currency",
+                """
+                ("UnitPrice" IS NULL AND "CurrencyCode" IS NULL)
+                OR (
+                    "UnitPrice" IS NOT NULL
+                    AND "UnitPrice" >= 0
+                    AND "CurrencyCode" IN ('RUB', 'USD', 'EUR', 'GBP', 'JPY')
+                )
+                """));
 
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.ItemType).HasConversion<string>().HasMaxLength(20);
         builder.Property(e => e.Name).HasMaxLength(500).IsRequired();
         builder.Property(e => e.Description).HasColumnType("text");
+        builder.Property(e => e.UnitPrice).HasPrecision(18, 2);
+        builder.Property(e => e.CurrencyCode).HasMaxLength(3).IsFixedLength();
         builder.Property(e => e.CurrentStatusText).HasMaxLength(200);
 
         builder.HasIndex(e => e.OrderId)

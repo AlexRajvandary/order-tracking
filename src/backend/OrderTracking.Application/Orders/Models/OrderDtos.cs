@@ -8,6 +8,8 @@ public sealed record OrderListItemDto(
     Guid? CustomerId,
     string? CustomerName,
     string? CustomerPhone,
+    string? CustomerEmail,
+    string? CustomerTelegram,
     string? AdminNotes,
     string Status,
     int ItemsCount,
@@ -20,6 +22,8 @@ public sealed record OrderItemDto(
     string Name,
     string? Description,
     int Quantity,
+    decimal? UnitPrice,
+    string? CurrencyCode,
     int SortOrder,
     Guid? CurrentStatusId,
     string? CurrentStatusText,
@@ -39,13 +43,30 @@ public sealed record OrderDetailsDto(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     DateTimeOffset? ExpectedDeliveryAt,
+    Guid? DeliveryAddressId,
+    string? DeliveryCity,
+    string? DeliveryStreet,
+    string? DeliveryBuilding,
+    string? DeliveryApartment,
+    string? DeliveryPostalCode,
+    string? DeliveryNote,
     IReadOnlyList<OrderItemDto> Items);
 
 public sealed record CreateOrderItemDto(
     OrderItemType ItemType,
     string Name,
     string? Description,
-    int Quantity = 1);
+    int Quantity = 1,
+    decimal? UnitPrice = null,
+    string? CurrencyCode = null);
+
+public sealed record CreateOrderDeliveryAddressDto(
+    string? City,
+    string? Street,
+    string? Building,
+    string? Apartment,
+    string? PostalCode,
+    string? Note);
 
 public sealed record TrackingLinkDto(
     string TrackingCode,

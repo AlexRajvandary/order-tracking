@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Customers;
 
 namespace OrderTracking.Application.Common.Audit;
 
@@ -82,6 +83,13 @@ public sealed class AuditSnapshotService : IAuditSnapshotService
                 o.AdminNotes,
                 Status = o.Status.ToString(),
                 o.ExpectedDeliveryAt,
+                o.DeliveryAddressId,
+                o.DeliveryCity,
+                o.DeliveryStreet,
+                o.DeliveryBuilding,
+                o.DeliveryApartment,
+                o.DeliveryPostalCode,
+                o.DeliveryNote,
                 o.IsDeleted,
             })
             .FirstOrDefaultAsync(cancellationToken);
@@ -98,6 +106,13 @@ public sealed class AuditSnapshotService : IAuditSnapshotService
             ["adminNotes"] = order.AdminNotes,
             ["status"] = order.Status,
             ["expectedDeliveryAt"] = order.ExpectedDeliveryAt?.ToString("O"),
+            ["deliveryAddressId"] = order.DeliveryAddressId?.ToString(),
+            ["deliveryCity"] = order.DeliveryCity,
+            ["deliveryStreet"] = order.DeliveryStreet,
+            ["deliveryBuilding"] = order.DeliveryBuilding,
+            ["deliveryApartment"] = order.DeliveryApartment,
+            ["deliveryPostalCode"] = order.DeliveryPostalCode,
+            ["deliveryNote"] = order.DeliveryNote,
             ["isDeleted"] = order.IsDeleted ? "true" : "false",
         };
     }
@@ -121,6 +136,8 @@ public sealed class AuditSnapshotService : IAuditSnapshotService
                 ItemType = i.ItemType.ToString(),
                 i.Description,
                 i.Quantity,
+                i.UnitPrice,
+                i.CurrencyCode,
                 i.CurrentStatusText,
                 i.IsDeleted,
             })
@@ -137,6 +154,8 @@ public sealed class AuditSnapshotService : IAuditSnapshotService
             ["itemType"] = item.ItemType,
             ["description"] = item.Description,
             ["quantity"] = item.Quantity.ToString(),
+            ["unitPrice"] = item.UnitPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["currencyCode"] = item.CurrencyCode,
             ["currentStatusText"] = item.CurrentStatusText,
             ["isDeleted"] = item.IsDeleted ? "true" : "false",
         };
@@ -157,7 +176,9 @@ public sealed class AuditSnapshotService : IAuditSnapshotService
             .Where(c => c.Id == id)
             .Select(c => new
             {
-                c.FullName,
+                c.LastName,
+                c.FirstName,
+                c.Patronymic,
                 c.Telegram,
                 c.Phone,
                 c.Email,
@@ -173,7 +194,13 @@ public sealed class AuditSnapshotService : IAuditSnapshotService
 
         return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
         {
-            ["fullName"] = customer.FullName,
+            ["lastName"] = customer.LastName,
+            ["firstName"] = customer.FirstName,
+            ["patronymic"] = customer.Patronymic,
+            ["fullName"] = CustomerNameFormatting.Format(
+                customer.LastName,
+                customer.FirstName,
+                customer.Patronymic),
             ["telegram"] = customer.Telegram,
             ["phone"] = customer.Phone,
             ["email"] = customer.Email,

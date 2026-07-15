@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Orders.Models;
+using OrderTracking.Domain.Common;
 using OrderTracking.Domain.Entities;
 
 namespace OrderTracking.Application.Orders.AddOrderItem;
@@ -39,6 +40,10 @@ public sealed class AddOrderItemCommandHandler : IRequestHandler<AddOrderItemCom
             Name = request.Name.Trim(),
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             Quantity = request.Quantity <= 0 ? 1 : request.Quantity,
+            UnitPrice = request.UnitPrice,
+            CurrencyCode = request.UnitPrice.HasValue
+                ? CurrencyCodes.Normalize(request.CurrencyCode)
+                : null,
             SortOrder = maxSort + 1,
             CreatedAt = now,
         };
@@ -57,6 +62,8 @@ public sealed class AddOrderItemCommandHandler : IRequestHandler<AddOrderItemCom
             item.Name,
             item.Description,
             item.Quantity,
+            item.UnitPrice,
+            item.CurrencyCode,
             item.SortOrder,
             item.CurrentStatusId,
             item.CurrentStatusText,

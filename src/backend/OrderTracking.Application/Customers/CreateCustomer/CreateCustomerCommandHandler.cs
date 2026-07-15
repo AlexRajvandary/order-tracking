@@ -22,8 +22,10 @@ public sealed class CreateCustomerCommandHandler : IRequestHandler<CreateCustome
         var customer = new Customer
         {
             Id = Guid.NewGuid(),
-            FullName = Normalize(request.FullName),
-            Telegram = NormalizeTelegram(request.Telegram),
+            LastName = CustomerNameFormatting.NormalizePart(request.LastName),
+            FirstName = CustomerNameFormatting.NormalizePart(request.FirstName),
+            Patronymic = CustomerNameFormatting.NormalizePart(request.Patronymic),
+            Telegram = TelegramFormatting.Normalize(request.Telegram),
             Phone = Normalize(request.Phone),
             Email = Normalize(request.Email),
             Notes = Normalize(request.Notes),
@@ -34,28 +36,24 @@ public sealed class CreateCustomerCommandHandler : IRequestHandler<CreateCustome
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return new CustomerDto(
+        return ToDto(customer, 0);
+    }
+
+    private static CustomerDto ToDto(Customer customer, int ordersCount) =>
+        new(
             customer.Id,
-            customer.FullName,
+            customer.LastName,
+            customer.FirstName,
+            customer.Patronymic,
+            CustomerNameFormatting.Format(customer.LastName, customer.FirstName, customer.Patronymic),
             customer.Telegram,
             customer.Phone,
             customer.Email,
             customer.Notes,
             customer.CreatedAt,
-            0);
-    }
+            ordersCount);
 
     private static string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static string? NormalizeTelegram(string? value)
-    {
-        var normalized = Normalize(value);
-        if (normalized is null)
-        {
-            return null;
-        }
-
-        return normalized.StartsWith('@') ? normalized : $"@{normalized}";
-    }
 }

@@ -5,7 +5,9 @@ using OrderTracking.Application.Customers.Models;
 namespace OrderTracking.Application.Customers.CreateCustomer;
 
 public sealed record CreateCustomerCommand(
-    string? FullName,
+    string? LastName,
+    string? FirstName,
+    string? Patronymic,
     string? Telegram,
     string? Phone,
     string? Email,

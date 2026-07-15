@@ -1,17 +1,28 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Search } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ColumnDef } from '@tanstack/react-table'
 import * as ordersApi from '@/features/orders/api/ordersApi'
 import type { OrderListItem, OrderStatus } from '@/features/orders/types'
-import { OrderStatusBadge } from '@/features/orders/ui/OrderStatusBadge'
+import { orderStatusStyles } from '@/features/orders/ui/OrderStatusBadge'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
+import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader } from '@/shared/ui/card'
-import { Input } from '@/shared/ui/input'
 import { DataTable, DataTableColumnHeader, dateRangeFilterFn } from '@/shared/ui/data-table'
+import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
+import { formatTelegram, telegramHref } from '@/shared/lib/telegram'
+import { SearchInput } from '@/shared/ui/search-input'
+import { cn } from '@/shared/lib/utils'
+
+const orderStatusBadgeClass: Record<OrderStatus, string> = {
+  AwaitingPayment: 'bg-neutral-500/15 text-neutral-700 dark:text-neutral-300',
+  InProgress: 'bg-blue-600/15 text-blue-700 dark:text-blue-400',
+  Completed: 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-400',
+  Cancelled: 'bg-red-600/15 text-red-700 dark:text-red-400',
+}
 
 function formatDate(value: string) {
   const d = new Date(value)
@@ -31,15 +42,18 @@ function isOrderStatus(value: string): value is OrderStatus {
 export function OrdersListPage() {
   const { t } = useTranslation('orders')
   const navigate = useNavigate()
+  const [toolbarSlot, setToolbarSlot] = useState<HTMLDivElement | null>(null)
   const [search, setSearch] = useState('')
-  const [activeSearch, setActiveSearch] = useState<string | null>(null)
+  const debouncedSearch = useDebouncedValue(search)
+  const normalizedSearch = debouncedSearch.trim()
+  const activeSearch = normalizedSearch.length >= 2 ? normalizedSearch : null
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['orders', activeSearch],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       activeSearch
-        ? ordersApi.searchOrders({ q: activeSearch, page: 1, pageSize: 500 })
-        : ordersApi.getOrders(1, 500),
+        ? ordersApi.searchOrders({ q: activeSearch, page: 1, pageSize: 500 }, signal)
+        : ordersApi.getOrders(1, 500, signal),
   })
 
   const columns = useMemo<ColumnDef<OrderListItem>[]>(
@@ -57,20 +71,55 @@ export function OrdersListPage() {
         ),
       },
       {
-        id: 'customer',
-        accessorFn: (row) => row.customerName ?? t('noCustomer'),
-        meta: { label: t('columns.customer') },
+        id: 'customerName',
+        accessorFn: (row) => row.customerName ?? '',
+        meta: { label: t('columns.name') },
         header: ({ column, table }) => (
-          <DataTableColumnHeader column={column} table={table} title={t('columns.customer')} />
+          <DataTableColumnHeader column={column} table={table} title={t('columns.name')} />
         ),
-        cell: ({ row }) => (
-          <div>
-            <div className="font-medium">{row.original.customerName ?? t('noCustomer')}</div>
-            {row.original.customerPhone ? (
-              <div className="text-xs text-muted-foreground">{row.original.customerPhone}</div>
-            ) : null}
-          </div>
+        cell: ({ row }) => row.original.customerName ?? t('noCustomer'),
+      },
+      {
+        id: 'customerPhone',
+        accessorFn: (row) => row.customerPhone ?? '',
+        meta: { label: t('columns.phone') },
+        header: ({ column, table }) => (
+          <DataTableColumnHeader column={column} table={table} title={t('columns.phone')} />
         ),
+        cell: ({ row }) => row.original.customerPhone ?? '',
+      },
+      {
+        id: 'customerEmail',
+        accessorFn: (row) => row.customerEmail ?? '',
+        meta: { label: t('columns.email') },
+        header: ({ column, table }) => (
+          <DataTableColumnHeader column={column} table={table} title={t('columns.email')} />
+        ),
+        cell: ({ row }) => row.original.customerEmail ?? '',
+      },
+      {
+        id: 'customerTelegram',
+        accessorFn: (row) => row.customerTelegram ?? '',
+        meta: { label: t('columns.telegram') },
+        header: ({ column, table }) => (
+          <DataTableColumnHeader column={column} table={table} title={t('columns.telegram')} />
+        ),
+        cell: ({ row }) => {
+          const href = telegramHref(row.original.customerTelegram)
+          return href ? (
+            <a
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary hover:underline"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {formatTelegram(row.original.customerTelegram)}
+            </a>
+          ) : (
+            ''
+          )
+        },
       },
       {
         id: 'status',
@@ -87,10 +136,10 @@ export function OrdersListPage() {
             ? row.original.status
             : 'AwaitingPayment'
           return (
-            <OrderStatusBadge
-              status={status}
-              label={t(`details.orderStatus.${status}`)}
-            />
+            <Badge className={cn('gap-1.5', orderStatusBadgeClass[status])}>
+              <span className={cn('size-1.5 shrink-0 rounded-full', orderStatusStyles[status].dot)} />
+              {t(`details.orderStatus.${status}`)}
+            </Badge>
           )
         },
       },
@@ -127,19 +176,13 @@ export function OrdersListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{t('title')}</h1>
-        </div>
-        <Button asChild>
-          <Link to="/admin/orders/new">
-            <Plus />
-            {t('create')}
-          </Link>
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
       </div>
 
-      <Card>
+      <div ref={setToolbarSlot} />
+
+      <Card size="sm">
         <CardHeader className="sr-only">
           <span>{t('title')}</span>
         </CardHeader>
@@ -164,44 +207,27 @@ export function OrdersListPage() {
               emptyMessage={activeSearch ? t('emptySearch') : t('empty')}
               onRowClick={(row) => navigate(`/admin/orders/${row.original.id}`)}
               getRowClassName={() => 'cursor-pointer'}
+              toolbarContainer={toolbarSlot}
               toolbar={
-                <form
-                  className="flex flex-col gap-2 sm:flex-row"
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    const value = search.trim()
-                    if (value.length >= 2) {
-                      setActiveSearch(value)
-                    }
-                  }}
-                >
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={t('searchPlaceholder')}
-                  />
-                  <Button type="submit" variant="outline">
-                    <Search />
-                    {t('search')}
-                  </Button>
-                  {activeSearch ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        setSearch('')
-                        setActiveSearch(null)
-                      }}
-                    >
-                      {t('clearSearch')}
-                    </Button>
-                  ) : null}
-                </form>
+                <SearchInput
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  aria-label={t('searchPlaceholder')}
+                />
               }
             />
           )}
         </CardContent>
       </Card>
+
+      <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/80 lg:static lg:mx-0 lg:flex lg:justify-end lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+        <Button asChild className="w-full lg:w-auto">
+          <Link to="/admin/orders/new">
+            <Plus />
+            {t('create')}
+          </Link>
+        </Button>
+      </div>
     </div>
   )
 }

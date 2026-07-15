@@ -16,21 +16,36 @@ public sealed class GetCustomerByIdQueryHandler : IRequestHandler<GetCustomerByI
 
     public async Task<CustomerDto> Handle(GetCustomerByIdQuery request, CancellationToken cancellationToken)
     {
-        var customer = await _context.Customers
+        var row = await _context.Customers
             .AsNoTracking()
             .Where(c => c.Id == request.Id)
-            .Select(c => new CustomerDto(
+            .Select(c => new
+            {
                 c.Id,
-                c.FullName,
+                c.LastName,
+                c.FirstName,
+                c.Patronymic,
                 c.Telegram,
                 c.Phone,
                 c.Email,
                 c.Notes,
                 c.CreatedAt,
-                c.Orders.Count))
+                OrdersCount = c.Orders.Count,
+            })
             .FirstOrDefaultAsync(cancellationToken)
             ?? throw new KeyNotFoundException($"Customer '{request.Id}' was not found");
 
-        return customer;
+        return new CustomerDto(
+            row.Id,
+            row.LastName,
+            row.FirstName,
+            row.Patronymic,
+            CustomerNameFormatting.Format(row.LastName, row.FirstName, row.Patronymic),
+            row.Telegram,
+            row.Phone,
+            row.Email,
+            row.Notes,
+            row.CreatedAt,
+            row.OrdersCount);
     }
 }

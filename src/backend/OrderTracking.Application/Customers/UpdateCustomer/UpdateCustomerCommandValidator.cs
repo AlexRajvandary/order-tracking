@@ -7,7 +7,9 @@ public sealed class UpdateCustomerCommandValidator : AbstractValidator<UpdateCus
     public UpdateCustomerCommandValidator()
     {
         RuleFor(x => x.Id).NotEmpty();
-        RuleFor(x => x.FullName).MaximumLength(300);
+        RuleFor(x => x.LastName).MaximumLength(300);
+        RuleFor(x => x.FirstName).MaximumLength(100);
+        RuleFor(x => x.Patronymic).MaximumLength(100);
         RuleFor(x => x.Telegram).MaximumLength(100);
         RuleFor(x => x.Phone).MaximumLength(30);
         RuleFor(x => x.Email).MaximumLength(256).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.Email));

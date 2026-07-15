@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Orders.AddOrderItem;
 using OrderTracking.Application.Orders.Models;
+using OrderTracking.Domain.Common;
 
 namespace OrderTracking.Application.Orders.UpdateOrderItem;
 
@@ -35,6 +36,10 @@ public sealed class UpdateOrderItemCommandHandler : IRequestHandler<UpdateOrderI
         item.Name = request.Name.Trim();
         item.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
         item.Quantity = request.Quantity <= 0 ? 1 : request.Quantity;
+        item.UnitPrice = request.UnitPrice;
+        item.CurrencyCode = request.UnitPrice.HasValue
+            ? CurrencyCodes.Normalize(request.CurrencyCode)
+            : null;
         order.UpdatedAt = _dateTimeProvider.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);

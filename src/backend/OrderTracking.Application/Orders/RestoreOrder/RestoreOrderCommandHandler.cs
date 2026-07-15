@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Customers;
 using OrderTracking.Application.Orders.Models;
 using OrderTracking.Domain.Common;
 
@@ -54,7 +55,10 @@ public sealed class RestoreOrderCommandHandler : IRequestHandler<RestoreOrderCom
             order.Id,
             order.TrackingCode,
             order.CustomerId,
-            order.Customer?.FullName,
+            CustomerNameFormatting.Format(
+                order.Customer?.LastName,
+                order.Customer?.FirstName,
+                order.Customer?.Patronymic),
             order.Customer?.Phone,
             order.Customer?.Telegram,
             order.Customer?.Email,
@@ -64,12 +68,21 @@ public sealed class RestoreOrderCommandHandler : IRequestHandler<RestoreOrderCom
             order.CreatedAt,
             order.UpdatedAt ?? order.CreatedAt,
             order.ExpectedDeliveryAt,
+            order.DeliveryAddressId,
+            order.DeliveryCity,
+            order.DeliveryStreet,
+            order.DeliveryBuilding,
+            order.DeliveryApartment,
+            order.DeliveryPostalCode,
+            order.DeliveryNote,
             items.Select(i => new OrderItemDto(
                 i.Id,
                 i.ItemType.ToString(),
                 i.Name,
                 i.Description,
                 i.Quantity,
+                i.UnitPrice,
+                i.CurrencyCode,
                 i.SortOrder,
                 i.CurrentStatusId,
                 i.CurrentStatusText,

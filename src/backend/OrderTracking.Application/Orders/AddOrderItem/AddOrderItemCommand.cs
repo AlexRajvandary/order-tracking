@@ -10,4 +10,6 @@ public sealed record AddOrderItemCommand(
     OrderItemType ItemType,
     string Name,
     string? Description,
-    int Quantity = 1) : IRequest<OrderItemDto>, IAuditableCommand;
+    int Quantity = 1,
+    decimal? UnitPrice = null,
+    string? CurrencyCode = null) : IRequest<OrderItemDto>, IAuditableCommand;

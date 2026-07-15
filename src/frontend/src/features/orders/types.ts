@@ -4,12 +4,16 @@ export type OrderStatus =
   | 'Completed'
   | 'Cancelled'
 
+export type CurrencyCode = 'RUB' | 'USD' | 'EUR' | 'GBP' | 'JPY'
+
 export type OrderListItem = {
   id: string
   trackingCode: string
   customerId: string | null
   customerName: string | null
   customerPhone: string | null
+  customerEmail: string | null
+  customerTelegram: string | null
   adminNotes: string | null
   status: OrderStatus
   itemsCount: number
@@ -23,6 +27,8 @@ export type OrderItem = {
   name: string
   description: string | null
   quantity: number
+  unitPrice: number | null
+  currencyCode: CurrencyCode | null
   sortOrder: number
   currentStatusId: string | null
   currentStatusText: string | null
@@ -43,6 +49,13 @@ export type OrderDetails = {
   createdAt: string
   updatedAt: string
   expectedDeliveryAt: string | null
+  deliveryAddressId: string | null
+  deliveryCity: string | null
+  deliveryStreet: string | null
+  deliveryBuilding: string | null
+  deliveryApartment: string | null
+  deliveryPostalCode: string | null
+  deliveryNote: string | null
   items: OrderItem[]
 }
 
@@ -51,6 +64,8 @@ export type CreateOrderItemInput = {
   name: string
   description?: string | null
   quantity?: number
+  unitPrice?: number | null
+  currencyCode?: CurrencyCode | null
 }
 
 export type UpsertOrderItemRequest = {
@@ -58,19 +73,34 @@ export type UpsertOrderItemRequest = {
   name: string
   description?: string | null
   quantity?: number
+  unitPrice?: number | null
+  currencyCode?: CurrencyCode | null
 }
 
 export type CreateOrderNewCustomer = {
-  fullName?: string | null
+  lastName?: string | null
+  firstName?: string | null
+  patronymic?: string | null
   telegram?: string | null
   phone?: string | null
   email?: string | null
+}
+
+export type CreateOrderDeliveryAddress = {
+  city?: string | null
+  street?: string | null
+  building?: string | null
+  apartment?: string | null
+  postalCode?: string | null
+  note?: string | null
 }
 
 export type CreateOrderRequest = {
   customerId?: string | null
   newCustomer?: CreateOrderNewCustomer | null
   adminNotes?: string | null
+  deliveryAddressId?: string | null
+  deliveryAddress?: CreateOrderDeliveryAddress | null
   items?: CreateOrderItemInput[]
 }
 

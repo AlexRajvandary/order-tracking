@@ -8,6 +8,7 @@ public interface IApplicationDbContext
     DbSet<AdminUser> AdminUsers { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<Customer> Customers { get; }
+    DbSet<CustomerAddress> CustomerAddresses { get; }
     DbSet<Order> Orders { get; }
     DbSet<OrderItem> OrderItems { get; }
     DbSet<StatusDefinition> StatusDefinitions { get; }

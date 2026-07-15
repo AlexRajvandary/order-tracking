@@ -233,23 +233,11 @@ export function AdminsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{t('title')}</h1>
-        </div>
-        <Button
-          type="button"
-          onClick={() => {
-            setFormError(null)
-            setCreateOpen(true)
-          }}
-        >
-          <Plus />
-          {t('add')}
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
       </div>
 
-      <Card>
+      <Card size="sm">
         <CardHeader className="sr-only">
           <span>{t('title')}</span>
         </CardHeader>
@@ -276,6 +264,20 @@ export function AdminsPage() {
           )}
         </CardContent>
       </Card>
+
+      <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/80 lg:static lg:mx-0 lg:flex lg:justify-end lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+        <Button
+          type="button"
+          className="w-full lg:w-auto"
+          onClick={() => {
+            setFormError(null)
+            setCreateOpen(true)
+          }}
+        >
+          <Plus />
+          {t('add')}
+        </Button>
+      </div>
 
       <Dialog
         open={createOpen}

@@ -22,7 +22,11 @@
     "createTitle": "Новый клиент",
     "editTitle": "Редактирование клиента",
     "fullName": "ФИО",
+    "lastName": "Фамилия",
+    "firstName": "Имя",
+    "patronymic": "Отчество",
     "telegram": "Telegram",
+    "telegramPlaceholder": "@username или ссылка Telegram",
     "phone": "Телефон",
     "email": "Email",
     "notes": "Заметки",
@@ -33,5 +37,22 @@
   "orderTrackingCode": "Код",
   "orderCreated": "Создан",
   "orderUpdated": "Обновлён",
-  "page": "Страница {{page}} из {{total}}"
+  "page": "Страница {{page}} из {{total}}",
+  "details": {
+    "back": "К списку клиентов",
+    "untitled": "Клиент без имени",
+    "summary": "Данные клиента"
+  },
+  "addresses": {
+    "title": "Адреса",
+    "empty": "Адресов пока нет",
+    "columns": {
+      "city": "Город",
+      "street": "Улица",
+      "building": "Дом",
+      "apartment": "Квартира",
+      "postalCode": "Индекс",
+      "note": "Заметка"
+    }
+  }
 }

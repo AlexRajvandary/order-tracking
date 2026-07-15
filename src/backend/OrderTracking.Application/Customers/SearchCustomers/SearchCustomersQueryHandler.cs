@@ -20,7 +20,7 @@ public sealed class SearchCustomersQueryHandler : IRequestHandler<SearchCustomer
         CancellationToken cancellationToken)
     {
         var page = Math.Max(1, request.Page);
-        var pageSize = Math.Clamp(request.PageSize, 1, 100);
+        var pageSize = Math.Clamp(request.PageSize, 1, 500);
 
         var query = _context.Customers.AsNoTracking();
 
@@ -28,7 +28,10 @@ public sealed class SearchCustomersQueryHandler : IRequestHandler<SearchCustomer
         {
             var term = request.Q.Trim().ToLower();
             query = query.Where(c =>
-                (c.FullName != null && c.FullName.ToLower().Contains(term)) ||
+                (c.LastName != null && c.LastName.ToLower().Contains(term)) ||
+                (c.FirstName != null && c.FirstName.ToLower().Contains(term)) ||
+                (c.Patronymic != null && c.Patronymic.ToLower().Contains(term)) ||
+                (((c.LastName ?? "") + " " + (c.FirstName ?? "") + " " + (c.Patronymic ?? "")).ToLower().Contains(term)) ||
                 (c.Telegram != null && c.Telegram.ToLower().Contains(term)) ||
                 (c.Email != null && c.Email.ToLower().Contains(term)) ||
                 (c.Phone != null && c.Phone.Contains(request.Q.Trim())));
@@ -42,20 +45,39 @@ public sealed class SearchCustomersQueryHandler : IRequestHandler<SearchCustomer
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var items = await query
+        var rows = await query
             .OrderByDescending(c => c.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(c => new CustomerDto(
+            .Select(c => new
+            {
                 c.Id,
-                c.FullName,
+                c.LastName,
+                c.FirstName,
+                c.Patronymic,
                 c.Telegram,
                 c.Phone,
                 c.Email,
                 c.Notes,
                 c.CreatedAt,
-                c.Orders.Count))
+                OrdersCount = c.Orders.Count,
+            })
             .ToListAsync(cancellationToken);
+
+        var items = rows
+            .Select(c => new CustomerDto(
+                c.Id,
+                c.LastName,
+                c.FirstName,
+                c.Patronymic,
+                CustomerNameFormatting.Format(c.LastName, c.FirstName, c.Patronymic),
+                c.Telegram,
+                c.Phone,
+                c.Email,
+                c.Notes,
+                c.CreatedAt,
+                c.OrdersCount))
+            .ToList();
 
         return new PaginatedList<CustomerDto>(items, totalCount, page, pageSize);
     }

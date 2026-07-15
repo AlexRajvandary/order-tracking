@@ -5,6 +5,7 @@ import { getPublicOrder } from '@/features/tracking/api/trackingApi'
 import { StatusDot, TrackingItemCard } from '@/features/tracking/ui/TrackingItemCard'
 import { ApiError } from '@/shared/api/client'
 import { LanguageSwitcher } from '@/shared/i18n/LanguageSwitcher'
+import { formatTelegram } from '@/shared/lib/telegram'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
@@ -25,7 +26,7 @@ function resolveCustomerLabel(order: {
   return (
     order.customerName?.trim() ||
     order.customerEmail?.trim() ||
-    order.customerTelegram?.trim() ||
+    formatTelegram(order.customerTelegram) ||
     null
   )
 }

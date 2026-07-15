@@ -13,6 +13,7 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table'
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/features/auth/model/AuthContext'
 import { cn } from '@/shared/lib/utils'
@@ -38,6 +39,8 @@ type DataTableProps<TData> = {
   toolbar?: React.ReactNode
   /** Replace the default toolbar row (search + columns). Receives the columns menu. */
   renderToolbar?: (nodes: { viewOptions: React.ReactNode }) => React.ReactNode
+  /** Render the toolbar row into this element (e.g. above the card) instead of inline. */
+  toolbarContainer?: HTMLElement | null
   className?: string
   paginationClassName?: string
   onRowClick?: (row: Row<TData>) => void
@@ -56,6 +59,7 @@ export function DataTable<TData>({
   emptyMessage,
   toolbar,
   renderToolbar,
+  toolbarContainer,
   className,
   paginationClassName,
   onRowClick,
@@ -114,16 +118,18 @@ export function DataTable<TData>({
 
   const viewOptions = <DataTableViewOptions table={table} />
 
+  const toolbarContent = renderToolbar ? (
+    renderToolbar({ viewOptions })
+  ) : (
+    <div className="flex items-center justify-between gap-2">
+      <div className="min-w-0 flex-1 sm:max-w-xs">{toolbar}</div>
+      {viewOptions}
+    </div>
+  )
+
   return (
     <div className={cn('space-y-4', className)}>
-      {renderToolbar ? (
-        renderToolbar({ viewOptions })
-      ) : (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">{toolbar}</div>
-          {viewOptions}
-        </div>
-      )}
+      {toolbarContainer ? createPortal(toolbarContent, toolbarContainer) : toolbarContent}
 
       <Table>
         <TableHeader>

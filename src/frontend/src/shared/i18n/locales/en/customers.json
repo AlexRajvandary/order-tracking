@@ -22,7 +22,11 @@
     "createTitle": "New customer",
     "editTitle": "Edit customer",
     "fullName": "Full name",
+    "lastName": "Last name",
+    "firstName": "First name",
+    "patronymic": "Patronymic",
     "telegram": "Telegram",
+    "telegramPlaceholder": "@username or Telegram link",
     "phone": "Phone",
     "email": "Email",
     "notes": "Notes",
@@ -33,5 +37,22 @@
   "orderTrackingCode": "Code",
   "orderCreated": "Created",
   "orderUpdated": "Updated",
-  "page": "Page {{page}} of {{total}}"
+  "page": "Page {{page}} of {{total}}",
+  "details": {
+    "back": "Back to customers",
+    "untitled": "Unnamed customer",
+    "summary": "Customer details"
+  },
+  "addresses": {
+    "title": "Addresses",
+    "empty": "No addresses yet",
+    "columns": {
+      "city": "City",
+      "street": "Street",
+      "building": "Building",
+      "apartment": "Apartment",
+      "postalCode": "Postal code",
+      "note": "Note"
+    }
+  }
 }

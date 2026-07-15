@@ -46,7 +46,9 @@ public sealed class GetDashboardSummaryQueryHandler
             .Select(o => new DashboardRecentOrderDto(
                 o.Id,
                 o.TrackingCode,
-                o.Customer != null ? o.Customer.FullName : null,
+                o.Customer != null
+                    ? ((o.Customer.LastName ?? "") + " " + (o.Customer.FirstName ?? "") + " " + (o.Customer.Patronymic ?? "")).Trim()
+                    : null,
                 o.CreatedAt,
                 o.UpdatedAt ?? o.CreatedAt))
             .ToListAsync(cancellationToken);

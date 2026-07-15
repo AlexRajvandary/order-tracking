@@ -17,12 +17,20 @@ import { useTranslation } from 'react-i18next'
 import * as ordersApi from '@/features/orders/api/ordersApi'
 import * as customersApi from '@/features/customers/api/customersApi'
 import * as statusesApi from '@/features/statuses/api/statusesApi'
-import type { OrderItem, OrderStatus, UpsertOrderItemRequest } from '@/features/orders/types'
+import type {
+  CurrencyCode,
+  OrderItem,
+  OrderStatus,
+  UpsertOrderItemRequest,
+} from '@/features/orders/types'
 import type { UpsertCustomerRequest } from '@/features/customers/types'
 import type { UpdateOrderItemStatusRequest } from '@/features/statuses/types'
 import { orderStatusStyles } from '@/features/orders/ui/OrderStatusBadge'
 import { ItemStatusTimeline } from '@/features/orders/ui/order-timeline'
 import { ApiError } from '@/shared/api/client'
+import { capitalizeNamePart } from '@/shared/lib/capitalizeNamePart'
+import { currencies, formatMoney } from '@/shared/lib/currency'
+import { formatTelegram, telegramHref } from '@/shared/lib/telegram'
 import { compressImagesToWebp } from '@/shared/lib/compressImageToWebp'
 import { cn } from '@/shared/lib/utils'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
@@ -85,16 +93,10 @@ function formatOrderDate(value: string) {
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-function telegramHref(telegram: string) {
-  if (/^https?:\/\//i.test(telegram)) {
-    return telegram
-  }
-  const handle = telegram.replace(/^@/, '')
-  return `https://t.me/${handle}`
-}
-
 type CustomerEditFormState = {
-  fullName: string
+  lastName: string
+  firstName: string
+  patronymic: string
   telegram: string
   phone: string
   email: string
@@ -142,7 +144,9 @@ function OrderCustomerEditDialog({
             onSubmit={(e) => {
               e.preventDefault()
               onSubmit({
-                fullName: form.fullName || null,
+                lastName: form.lastName || null,
+                firstName: form.firstName || null,
+                patronymic: form.patronymic || null,
                 telegram: form.telegram || null,
                 phone: form.phone || null,
                 email: form.email || null,
@@ -150,20 +154,44 @@ function OrderCustomerEditDialog({
               })
             }}
           >
-            <div className="space-y-1.5">
-              <Label htmlFor="order-customer-fullName">{tc('form.fullName')}</Label>
-              <Input
-                id="order-customer-fullName"
-                value={form.fullName}
-                onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
-              />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="order-customer-lastName">{tc('form.lastName')}</Label>
+                <Input
+                  id="order-customer-lastName"
+                  value={form.lastName}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, lastName: capitalizeNamePart(e.target.value) }))
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="order-customer-firstName">{tc('form.firstName')}</Label>
+                <Input
+                  id="order-customer-firstName"
+                  value={form.firstName}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, firstName: capitalizeNamePart(e.target.value) }))
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="order-customer-patronymic">{tc('form.patronymic')}</Label>
+                <Input
+                  id="order-customer-patronymic"
+                  value={form.patronymic}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, patronymic: capitalizeNamePart(e.target.value) }))
+                  }
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="order-customer-telegram">{tc('form.telegram')}</Label>
               <Input
                 id="order-customer-telegram"
                 value={form.telegram}
-                placeholder="@username"
+                  placeholder={tc('form.telegramPlaceholder')}
                 onChange={(e) => setForm((f) => ({ ...f, telegram: e.target.value }))}
               />
             </div>
@@ -256,6 +284,8 @@ type ItemFormState = {
   name: string
   description: string
   quantity: number
+  unitPrice: string
+  currencyCode: CurrencyCode
 }
 
 function ItemFormDialog({
@@ -275,7 +305,7 @@ function ItemFormDialog({
   onOpenChange: (open: boolean) => void
   onSubmit: (data: UpsertOrderItemRequest) => void
 }) {
-  const { t } = useTranslation('orders')
+  const { t, i18n } = useTranslation('orders')
   const [form, setForm] = useState<ItemFormState>(initial)
 
   return (
@@ -300,6 +330,9 @@ function ItemFormDialog({
               name: form.name.trim(),
               description: form.description.trim() || null,
               quantity: form.quantity || 1,
+              unitPrice:
+                form.unitPrice.trim() === '' ? null : Number(form.unitPrice),
+              currencyCode: form.unitPrice.trim() === '' ? null : form.currencyCode,
             })
           }}
         >
@@ -339,6 +372,36 @@ function ItemFormDialog({
             />
           </div>
 
+          <div className="space-y-1.5">
+            <Label>{t('form.unitPrice')}</Label>
+            <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-2">
+              <Input
+                type="number"
+                min={0}
+                step={form.currencyCode === 'JPY' ? 1 : 0.01}
+                value={form.unitPrice}
+                onChange={(e) => setForm((f) => ({ ...f, unitPrice: e.target.value }))}
+              />
+              <Select
+                value={form.currencyCode}
+                onValueChange={(value) =>
+                  setForm((form) => ({ ...form, currencyCode: value as CurrencyCode }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {currencies.map((currency) => (
+                    <SelectItem key={currency.code} value={currency.code}>
+                      {currency.symbol} {currency.code}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           {form.itemType === 'Product' ? (
             <div className="space-y-1.5">
               <Label>{t('form.quantity')}</Label>
@@ -351,6 +414,18 @@ function ItemFormDialog({
                 }
               />
             </div>
+          ) : null}
+
+          {form.unitPrice.trim() !== '' ? (
+            <p className="text-sm text-muted-foreground">
+              {t('form.totalPrice')}:{' '}
+              {formatMoney(
+                Number(form.unitPrice) *
+                  (form.itemType === 'Product' ? form.quantity || 1 : 1),
+                form.currencyCode,
+                i18n.language === 'ru' ? 'ru-RU' : 'en-US',
+              )}
+            </p>
           ) : null}
 
           {error ? (
@@ -612,7 +687,7 @@ function StatusUpdateDialog({
 
 export function OrderDetailsPage() {
   const { id = '' } = useParams()
-  const { t } = useTranslation('orders')
+  const { t, i18n } = useTranslation('orders')
   const { t: ts } = useTranslation('statuses')
   const queryClient = useQueryClient()
   const [copied, setCopied] = useState(false)
@@ -846,13 +921,9 @@ export function OrderDetailsPage() {
               />
               <CustomerField
                 label={t('details.customerTelegram')}
-                value={order.customerTelegram}
+                value={formatTelegram(order.customerTelegram)}
                 emptyLabel={t('details.emptyValue')}
-                href={
-                  order.customerTelegram?.trim()
-                    ? telegramHref(order.customerTelegram.trim())
-                    : null
-                }
+                href={telegramHref(order.customerTelegram)}
               />
               <CustomerField
                 label={t('details.customerEmail')}
@@ -955,6 +1026,25 @@ export function OrderDetailsPage() {
                     {item.itemType === 'Product' ? (
                       <span className="text-muted-foreground"> · ×{item.quantity}</span>
                     ) : null}
+                    {item.unitPrice !== null ? (
+                      <span className="text-muted-foreground">
+                        {' '}
+                        · {t('form.unitPrice')}:{' '}
+                        {formatMoney(
+                          item.unitPrice,
+                          item.currencyCode ?? 'RUB',
+                          i18n.language === 'ru' ? 'ru-RU' : 'en-US',
+                        )}
+                        {' · '}
+                        {t('form.totalPrice')}:{' '}
+                        {formatMoney(
+                          item.unitPrice *
+                            (item.itemType === 'Product' ? item.quantity : 1),
+                          item.currencyCode ?? 'RUB',
+                          i18n.language === 'ru' ? 'ru-RU' : 'en-US',
+                        )}
+                      </span>
+                    ) : null}
                     {item.currentStatusText ? (
                       <span className="text-muted-foreground"> · {item.currentStatusText}</span>
                     ) : null}
@@ -1047,6 +1137,25 @@ export function OrderDetailsPage() {
                             <span className="font-normal text-muted-foreground">
                               {' '}
                               · ×{item.quantity}
+                            </span>
+                          ) : null}
+                          {item.unitPrice !== null ? (
+                            <span className="font-normal text-muted-foreground">
+                              {' '}
+                              · {t('form.unitPrice')}:{' '}
+                              {formatMoney(
+                                item.unitPrice,
+                                item.currencyCode ?? 'RUB',
+                                i18n.language === 'ru' ? 'ru-RU' : 'en-US',
+                              )}
+                              {' · '}
+                              {t('form.totalPrice')}:{' '}
+                              {formatMoney(
+                                item.unitPrice *
+                                  (item.itemType === 'Product' ? item.quantity : 1),
+                                item.currencyCode ?? 'RUB',
+                                i18n.language === 'ru' ? 'ru-RU' : 'en-US',
+                              )}
                             </span>
                           ) : null}
                         </p>
@@ -1142,7 +1251,14 @@ export function OrderDetailsPage() {
       <ItemFormDialog
         open={itemModal === 'create'}
         title={t('details.addItemTitle')}
-        initial={{ itemType: 'Product', name: '', description: '', quantity: 1 }}
+        initial={{
+          itemType: 'Product',
+          name: '',
+          description: '',
+          quantity: 1,
+          unitPrice: '',
+          currencyCode: 'RUB',
+        }}
         error={itemError}
         submitting={addItemMutation.isPending}
         onOpenChange={(open) => {
@@ -1160,7 +1276,9 @@ export function OrderDetailsPage() {
         open={customerEditOpen}
         loading={Boolean(order.customerId) && customerDetailsLoading}
         initial={{
-          fullName: customerDetails?.fullName ?? order.customerName ?? '',
+          lastName: customerDetails?.lastName ?? (!customerDetails ? (order.customerName ?? '') : ''),
+          firstName: customerDetails?.firstName ?? '',
+          patronymic: customerDetails?.patronymic ?? '',
           telegram: customerDetails?.telegram ?? order.customerTelegram ?? '',
           phone: customerDetails?.phone ?? order.customerPhone ?? '',
           email: customerDetails?.email ?? order.customerEmail ?? '',
@@ -1188,6 +1306,8 @@ export function OrderDetailsPage() {
           name: editingItem?.name ?? '',
           description: editingItem?.description ?? '',
           quantity: editingItem?.quantity ?? 1,
+          unitPrice: editingItem?.unitPrice?.toString() ?? '',
+          currencyCode: editingItem?.currencyCode ?? 'RUB',
         }}
         error={itemError}
         submitting={updateItemMutation.isPending}

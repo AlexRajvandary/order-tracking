@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OrderTracking.Application.Common.Models;
 using OrderTracking.Application.Customers.CreateCustomer;
+using OrderTracking.Application.Customers.GetCustomerAddresses;
 using OrderTracking.Application.Customers.GetCustomerById;
 using OrderTracking.Application.Customers.GetCustomerOrders;
 using OrderTracking.Application.Customers.GetCustomers;
@@ -56,7 +57,9 @@ public sealed class CustomersController : ControllerBase
     {
         var result = await _mediator.Send(
             new CreateCustomerCommand(
-                request.FullName,
+                request.LastName,
+                request.FirstName,
+                request.Patronymic,
                 request.Telegram,
                 request.Phone,
                 request.Email,
@@ -64,6 +67,16 @@ public sealed class CustomersController : ControllerBase
             cancellationToken);
 
         return CreatedAtAction(nameof(GetCustomerById), new { id = result.Id }, result);
+    }
+
+    [HttpGet("addresses")]
+    public async Task<ActionResult<IReadOnlyList<CustomerAddressDto>>> GetUnassignedAddresses(
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(
+            new GetCustomerAddressesQuery(null),
+            cancellationToken);
+        return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
@@ -82,7 +95,9 @@ public sealed class CustomersController : ControllerBase
         var result = await _mediator.Send(
             new UpdateCustomerCommand(
                 id,
-                request.FullName,
+                request.LastName,
+                request.FirstName,
+                request.Patronymic,
                 request.Telegram,
                 request.Phone,
                 request.Email,
@@ -105,10 +120,21 @@ public sealed class CustomersController : ControllerBase
 
         return Ok(result);
     }
+
+    [HttpGet("{id:guid}/addresses")]
+    public async Task<ActionResult<IReadOnlyList<CustomerAddressDto>>> GetCustomerAddresses(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new GetCustomerAddressesQuery(id), cancellationToken);
+        return Ok(result);
+    }
 }
 
 public sealed record UpsertCustomerRequest(
-    string? FullName,
+    string? LastName,
+    string? FirstName,
+    string? Patronymic,
     string? Telegram,
     string? Phone,
     string? Email,

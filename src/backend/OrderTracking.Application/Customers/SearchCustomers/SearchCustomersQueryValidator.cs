@@ -7,11 +7,11 @@ public sealed class SearchCustomersQueryValidator : AbstractValidator<SearchCust
     public SearchCustomersQueryValidator()
     {
         RuleFor(x => x.Page).GreaterThanOrEqualTo(1);
-        RuleFor(x => x.PageSize).InclusiveBetween(1, 100);
+        RuleFor(x => x.PageSize).InclusiveBetween(1, 500);
 
         When(x => !string.IsNullOrWhiteSpace(x.Q), () =>
         {
-            RuleFor(x => x.Q).MinimumLength(2).MaximumLength(300);
+            RuleFor(x => x.Q).MinimumLength(1).MaximumLength(300);
         });
 
         When(x => !string.IsNullOrWhiteSpace(x.Phone), () =>

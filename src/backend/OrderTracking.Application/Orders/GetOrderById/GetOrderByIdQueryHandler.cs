@@ -23,7 +23,9 @@ public sealed class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery
                 o.Id,
                 o.TrackingCode,
                 o.CustomerId,
-                o.Customer != null ? o.Customer.FullName : null,
+                o.Customer != null
+                    ? ((o.Customer.LastName ?? "") + " " + (o.Customer.FirstName ?? "") + " " + (o.Customer.Patronymic ?? "")).Trim()
+                    : null,
                 o.Customer != null ? o.Customer.Phone : null,
                 o.Customer != null ? o.Customer.Telegram : null,
                 o.Customer != null ? o.Customer.Email : null,
@@ -33,6 +35,13 @@ public sealed class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery
                 o.CreatedAt,
                 o.UpdatedAt ?? o.CreatedAt,
                 o.ExpectedDeliveryAt,
+                o.DeliveryAddressId,
+                o.DeliveryCity,
+                o.DeliveryStreet,
+                o.DeliveryBuilding,
+                o.DeliveryApartment,
+                o.DeliveryPostalCode,
+                o.DeliveryNote,
                 o.Items
                     .OrderBy(i => i.SortOrder)
                     .Select(i => new OrderItemDto(
@@ -41,6 +50,8 @@ public sealed class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery
                         i.Name,
                         i.Description,
                         i.Quantity,
+                        i.UnitPrice,
+                        i.CurrencyCode,
                         i.SortOrder,
                         i.CurrentStatusId,
                         i.CurrentStatusText,
