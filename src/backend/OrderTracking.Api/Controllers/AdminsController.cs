@@ -13,7 +13,7 @@ namespace OrderTracking.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/admins")]
-[Authorize]
+[Authorize(Roles = "Admin,SuperAdmin")]
 public sealed class AdminsController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -35,7 +35,7 @@ public sealed class AdminsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(
-            new CreateAdminCommand(request.Login, request.Password, request.DisplayName),
+            new CreateAdminCommand(request.Login, request.Password, request.DisplayName, request.Role),
             cancellationToken);
 
         return CreatedAtAction(nameof(GetAdmins), new { id = result.Id }, result);
@@ -48,7 +48,7 @@ public sealed class AdminsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(
-            new UpdateAdminCommand(id, request.DisplayName, request.IsActive),
+            new UpdateAdminCommand(id, request.DisplayName, request.IsActive, request.Role),
             cancellationToken);
 
         return Ok(result);

@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Domain.Common;
 
 namespace OrderTracking.Application.Identity.ChangePassword;
 
@@ -36,7 +37,7 @@ public sealed class ChangePasswordCommandHandler : IRequestHandler<ChangePasswor
 
         if (!_passwordHasher.Verify(user, request.CurrentPassword, user.PasswordHash))
         {
-            throw new UnauthorizedAccessException("Current password is incorrect");
+            throw new DomainException("Current password is incorrect");
         }
 
         user.PasswordHash = _passwordHasher.Hash(user, request.NewPassword);

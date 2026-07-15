@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Domain.Enums;
 
 namespace OrderTracking.Api.Services;
 
@@ -32,6 +33,15 @@ public sealed class CurrentUserService : ICurrentUserService
 
     public string? Login =>
         _httpContextAccessor.HttpContext?.User.FindFirstValue("unique_name");
+
+    public AdminRole? Role
+    {
+        get
+        {
+            var value = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Role);
+            return Enum.TryParse<AdminRole>(value, ignoreCase: true, out var role) ? role : null;
+        }
+    }
 
     public bool IsAuthenticated =>
         _httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated ?? false;

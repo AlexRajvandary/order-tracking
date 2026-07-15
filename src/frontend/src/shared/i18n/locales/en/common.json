@@ -13,6 +13,7 @@
     "customers": "Customers",
     "statuses": "Statuses",
     "admins": "Admins",
+    "audit": "Audit",
     "logout": "Log out",
     "menu": "Menu"
   },

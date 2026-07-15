@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import * as dashboardApi from '@/features/dashboard/api/dashboardApi'
+import { translateAuditName } from '@/features/dashboard/lib/auditI18n'
 import * as ordersApi from '@/features/orders/api/ordersApi'
 import { ApiError } from '@/shared/api/client'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
@@ -67,7 +68,7 @@ export function AuditDetailsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to="/admin" className="text-sm text-primary hover:underline">
+        <Link to="/admin/audit" className="text-sm text-primary hover:underline">
           ← {t('details.back')}
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
@@ -100,8 +101,14 @@ export function AuditDetailsPage() {
           <CardTitle>{t('details.summary')}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
-          <ReadonlyField label={t('details.action')} value={data.action} />
-          <ReadonlyField label={t('details.entityType')} value={data.entityType} />
+          <ReadonlyField
+            label={t('details.action')}
+            value={translateAuditName(t, 'actions', data.action)}
+          />
+          <ReadonlyField
+            label={t('details.entityType')}
+            value={translateAuditName(t, 'entities', data.entityType)}
+          />
           <ReadonlyField label={t('details.entityId')} value={data.entityId} />
           <ReadonlyField
             label={t('details.admin')}
@@ -145,7 +152,10 @@ export function AuditDetailsPage() {
                   key={change.field}
                   className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)]"
                 >
-                  <ReadonlyField label={t('details.field')} value={change.field} />
+                  <ReadonlyField
+                    label={t('details.field')}
+                    value={translateAuditName(t, 'fields', change.field)}
+                  />
                   <ReadonlyField
                     label={t('details.oldValue')}
                     value={change.oldValue ?? t('changeEmpty')}

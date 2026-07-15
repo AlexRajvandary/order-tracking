@@ -28,6 +28,10 @@ public sealed class UpdateAdminCommandHandler : IRequestHandler<UpdateAdminComma
             .FirstOrDefaultAsync(u => u.Id == request.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Admin '{request.Id}' was not found");
 
+        var actorRole = AdminPermissionGuard.RequireActorRole(_currentUser);
+        AdminPermissionGuard.EnsureCanManageTarget(actorRole, user);
+        AdminPermissionGuard.EnsureCanChangeRole(actorRole, _currentUser.UserId, user, request.Role);
+
         if (_currentUser.UserId == user.Id && !request.IsActive)
         {
             throw new InvalidOperationException("You cannot deactivate your own account");
@@ -35,6 +39,11 @@ public sealed class UpdateAdminCommandHandler : IRequestHandler<UpdateAdminComma
 
         user.DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? null : request.DisplayName.Trim();
         user.IsActive = request.IsActive;
+
+        if (request.Role.HasValue && request.Role.Value != user.Role)
+        {
+            user.Role = request.Role.Value;
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
 

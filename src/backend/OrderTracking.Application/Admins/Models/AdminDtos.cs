@@ -1,3 +1,5 @@
+using OrderTracking.Domain.Enums;
+
 namespace OrderTracking.Application.Admins.Models;
 
 public sealed record AdminUserDto(
@@ -15,11 +17,13 @@ public sealed record AdminUserDto(
 public sealed record CreateAdminRequest(
     string Login,
     string Password,
-    string? DisplayName);
+    string? DisplayName,
+    AdminRole Role);
 
 public sealed record UpdateAdminRequest(
     string? DisplayName,
-    bool IsActive);
+    bool IsActive,
+    AdminRole? Role);
 
 public sealed record BindTelegramRequest(
     long Id,

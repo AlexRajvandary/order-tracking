@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Monitoring.Models;
 
 namespace OrderTracking.Api.Controllers;
 
@@ -15,5 +18,14 @@ public sealed class SystemController : ControllerBase
             service = "order-tracking-api",
             timestamp = DateTimeOffset.UtcNow
         });
+    }
+
+    [HttpGet("system/storage")]
+    [Authorize]
+    public async Task<ActionResult<StorageMetricsDto>> GetStorageMetrics(
+        [FromServices] IStorageMetricsService storageMetricsService,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await storageMetricsService.GetMetricsAsync(cancellationToken));
     }
 }

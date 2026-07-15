@@ -18,6 +18,11 @@
     "online": "Online",
     "offline": "Offline"
   },
+  "roles": {
+    "Moderator": "Moderator",
+    "Admin": "Admin",
+    "SuperAdmin": "Super admin"
+  },
   "columns": {
     "login": "Login",
     "displayName": "Name",
@@ -34,6 +39,7 @@
     "login": "Login",
     "password": "Password",
     "displayName": "Display name",
+    "role": "Role",
     "isActive": "Account enabled",
     "createHint": "After creating an admin, link Telegram so they can sign in via the login page button."
   }

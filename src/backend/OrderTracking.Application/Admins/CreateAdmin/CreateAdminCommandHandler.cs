@@ -4,7 +4,6 @@ using OrderTracking.Application.Admins;
 using OrderTracking.Application.Admins.Models;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Domain.Entities;
-using OrderTracking.Domain.Enums;
 
 namespace OrderTracking.Application.Admins.CreateAdmin;
 
@@ -13,19 +12,25 @@ public sealed class CreateAdminCommandHandler : IRequestHandler<CreateAdminComma
     private readonly IApplicationDbContext _context;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IDateTimeProvider _clock;
+    private readonly ICurrentUserService _currentUser;
 
     public CreateAdminCommandHandler(
         IApplicationDbContext context,
         IPasswordHasher passwordHasher,
-        IDateTimeProvider clock)
+        IDateTimeProvider clock,
+        ICurrentUserService currentUser)
     {
         _context = context;
         _passwordHasher = passwordHasher;
         _clock = clock;
+        _currentUser = currentUser;
     }
 
     public async Task<AdminUserDto> Handle(CreateAdminCommand request, CancellationToken cancellationToken)
     {
+        var actorRole = AdminPermissionGuard.RequireActorRole(_currentUser);
+        AdminPermissionGuard.EnsureCanCreate(actorRole, request.Role);
+
         var login = request.Login.Trim();
         var exists = await _context.AdminUsers
             .AnyAsync(u => u.Login == login, cancellationToken);
@@ -41,7 +46,7 @@ public sealed class CreateAdminCommandHandler : IRequestHandler<CreateAdminComma
             Id = Guid.NewGuid(),
             Login = login,
             DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? null : request.DisplayName.Trim(),
-            Role = AdminRole.Admin,
+            Role = request.Role,
             IsActive = true,
             SettingsJson = "{}",
             CreatedAt = now,

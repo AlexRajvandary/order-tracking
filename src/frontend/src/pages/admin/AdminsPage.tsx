@@ -4,7 +4,14 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ColumnDef } from '@tanstack/react-table'
 import * as adminsApi from '@/features/admins/api/adminsApi'
-import type { AdminUser, CreateAdminRequest, UpdateAdminRequest } from '@/features/admins/types'
+import type {
+  AdminRole,
+  AdminUser,
+  CreateAdminRequest,
+  UpdateAdminRequest,
+} from '@/features/admins/types'
+import { isAdminRole } from '@/features/admins/types'
+import { useAuth } from '@/features/auth/model/AuthContext'
 import { getTelegramConfig } from '@/features/auth/api/telegramAuth'
 import { TelegramLoginButton } from '@/features/auth/ui/TelegramLoginButton'
 import { ApiError } from '@/shared/api/client'
@@ -21,8 +28,17 @@ import {
 } from '@/shared/ui/dialog'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/ui/select'
 import { DataTable } from '@/shared/ui/data-table'
 import { cn } from '@/shared/lib/utils'
+
+const ALL_ROLES: AdminRole[] = ['Moderator', 'Admin', 'SuperAdmin']
 
 function formatDate(value: string) {
   const d = new Date(value)
@@ -30,8 +46,26 @@ function formatDate(value: string) {
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`
 }
 
+function canManageAdmins(role: string | null | undefined) {
+  return role === 'Admin' || role === 'SuperAdmin'
+}
+
+function canManageTarget(actorRole: string | null | undefined, target: AdminUser) {
+  if (actorRole === 'SuperAdmin') return true
+  if (actorRole === 'Admin' && target.role === 'Moderator') return true
+  return false
+}
+
+function creatableRoles(actorRole: string | null | undefined): AdminRole[] {
+  if (actorRole === 'SuperAdmin') return ALL_ROLES
+  if (actorRole === 'Admin') return ['Moderator']
+  return []
+}
+
 export function AdminsPage() {
   const { t } = useTranslation('admins')
+  const { user } = useAuth()
+  const actorRole = user?.role
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [editAdmin, setEditAdmin] = useState<AdminUser | null>(null)
@@ -40,18 +74,27 @@ export function AdminsPage() {
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [createRole, setCreateRole] = useState<AdminRole>('Moderator')
   const [editDisplayName, setEditDisplayName] = useState('')
   const [editActive, setEditActive] = useState(true)
+  const [editRole, setEditRole] = useState<AdminRole>('Moderator')
+
+  const createRoleOptions = useMemo(() => creatableRoles(actorRole), [actorRole])
+  const canCreate = createRoleOptions.length > 0
+  const canEditRole = actorRole === 'SuperAdmin'
+  const editingSelf = Boolean(editAdmin && user?.id === editAdmin.id)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['admins'],
     queryFn: adminsApi.getAdmins,
     refetchInterval: 30_000,
+    enabled: canManageAdmins(actorRole),
   })
 
   const { data: telegramConfig } = useQuery({
     queryKey: ['telegram-config'],
     queryFn: getTelegramConfig,
+    enabled: canManageAdmins(actorRole),
   })
 
   const createMutation = useMutation({
@@ -63,6 +106,7 @@ export function AdminsPage() {
       setLogin('')
       setPassword('')
       setDisplayName('')
+      setCreateRole(createRoleOptions[0] ?? 'Moderator')
     },
     onError: (err: unknown) => {
       setFormError(err instanceof ApiError ? err.message : t('error', { ns: 'common' }))
@@ -123,10 +167,15 @@ export function AdminsPage() {
       },
       {
         id: 'role',
-        accessorKey: 'role',
+        accessorFn: (row) =>
+          isAdminRole(row.role) ? t(`roles.${row.role}`) : row.role,
         enableColumnFilter: false,
         meta: { label: t('columns.role') },
         header: () => t('columns.role'),
+        cell: ({ row }) =>
+          isAdminRole(row.original.role)
+            ? t(`roles.${row.original.role}`)
+            : row.original.role,
       },
       {
         id: 'telegram',
@@ -193,6 +242,14 @@ export function AdminsPage() {
     [t],
   )
 
+  if (!canManageAdmins(actorRole)) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{t('error', { ns: 'common' })}</AlertDescription>
+      </Alert>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -222,31 +279,38 @@ export function AdminsPage() {
               data={data ?? []}
               pageSize={20}
               emptyMessage={t('empty')}
-              getRowClassName={() => 'cursor-pointer'}
+              getRowClassName={(row) =>
+                canManageTarget(actorRole, row.original) ? 'cursor-pointer' : undefined
+              }
               onRowClick={(row) => {
+                if (!canManageTarget(actorRole, row.original)) return
                 setFormError(null)
                 setEditAdmin(row.original)
                 setEditDisplayName(row.original.displayName ?? '')
                 setEditActive(row.original.isActive)
+                setEditRole(isAdminRole(row.original.role) ? row.original.role : 'Moderator')
               }}
             />
           )}
         </CardContent>
       </Card>
 
-      <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/80 lg:static lg:mx-0 lg:flex lg:justify-end lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
-        <Button
-          type="button"
-          className="w-full lg:w-auto"
-          onClick={() => {
-            setFormError(null)
-            setCreateOpen(true)
-          }}
-        >
-          <Plus />
-          {t('add')}
-        </Button>
-      </div>
+      {canCreate ? (
+        <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/80 lg:static lg:mx-0 lg:flex lg:justify-end lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+          <Button
+            type="button"
+            className="w-full lg:w-auto"
+            onClick={() => {
+              setFormError(null)
+              setCreateRole(createRoleOptions[0] ?? 'Moderator')
+              setCreateOpen(true)
+            }}
+          >
+            <Plus />
+            {t('add')}
+          </Button>
+        </div>
+      ) : null}
 
       <Dialog
         open={createOpen}
@@ -266,6 +330,7 @@ export function AdminsPage() {
                 login,
                 password,
                 displayName: displayName || null,
+                role: createRole,
               })
             }}
           >
@@ -298,6 +363,30 @@ export function AdminsPage() {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t('form.role')}</Label>
+              {createRoleOptions.length === 1 ? (
+                <Input value={t(`roles.${createRoleOptions[0]}`)} readOnly className="bg-muted/40" />
+              ) : (
+                <Select
+                  value={createRole}
+                  onValueChange={(value) => {
+                    if (isAdminRole(value)) setCreateRole(value)
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {createRoleOptions.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {t(`roles.${role}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">{t('form.createHint')}</p>
             {formError ? (
@@ -337,6 +426,7 @@ export function AdminsPage() {
                 request: {
                   displayName: editDisplayName || null,
                   isActive: editActive,
+                  role: canEditRole && !editingSelf ? editRole : null,
                 },
               })
             }}
@@ -352,10 +442,47 @@ export function AdminsPage() {
                 onChange={(e) => setEditDisplayName(e.target.value)}
               />
             </div>
+            {canEditRole ? (
+              <div className="space-y-1.5">
+                <Label>{t('form.role')}</Label>
+                <Select
+                  value={editRole}
+                  disabled={editingSelf}
+                  onValueChange={(value) => {
+                    if (isAdminRole(value)) setEditRole(value)
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALL_ROLES.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {t(`roles.${role}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label>{t('form.role')}</Label>
+                <Input
+                  value={
+                    editAdmin && isAdminRole(editAdmin.role)
+                      ? t(`roles.${editAdmin.role}`)
+                      : (editAdmin?.role ?? '')
+                  }
+                  readOnly
+                  className="bg-muted/40"
+                />
+              </div>
+            )}
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={editActive}
+                disabled={editingSelf}
                 onChange={(e) => setEditActive(e.target.checked)}
               />
               {t('form.isActive')}

@@ -3,6 +3,7 @@ import { HomePage } from '@/pages/HomePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { LoginPage } from '@/pages/admin/LoginPage'
 import { DashboardPage } from '@/pages/admin/DashboardPage'
+import { AuditPage } from '@/pages/admin/AuditPage'
 import { AuditDetailsPage } from '@/pages/admin/AuditDetailsPage'
 import { StatusManagementPage } from '@/pages/admin/StatusManagementPage'
 import { CustomersPage } from '@/pages/admin/CustomersPage'
@@ -30,6 +31,7 @@ export function AppRouter() {
           <Route element={<RequireAuth />}>
             <Route path="/admin" element={<AdminShell />}>
               <Route index element={<DashboardPage />} />
+              <Route path="audit" element={<AuditPage />} />
               <Route path="audit/:id" element={<AuditDetailsPage />} />
               <Route path="orders" element={<OrdersListPage />} />
               <Route path="orders/new" element={<CreateOrderPage />} />

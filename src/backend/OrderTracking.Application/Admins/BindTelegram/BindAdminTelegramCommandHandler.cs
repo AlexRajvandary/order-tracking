@@ -12,15 +12,18 @@ public sealed class BindAdminTelegramCommandHandler
     private readonly IApplicationDbContext _context;
     private readonly ITelegramAuthValidator _telegramAuth;
     private readonly IDateTimeProvider _clock;
+    private readonly ICurrentUserService _currentUser;
 
     public BindAdminTelegramCommandHandler(
         IApplicationDbContext context,
         ITelegramAuthValidator telegramAuth,
-        IDateTimeProvider clock)
+        IDateTimeProvider clock,
+        ICurrentUserService currentUser)
     {
         _context = context;
         _telegramAuth = telegramAuth;
         _clock = clock;
+        _currentUser = currentUser;
     }
 
     public async Task<AdminUserDto> Handle(
@@ -36,6 +39,9 @@ public sealed class BindAdminTelegramCommandHandler
         var user = await _context.AdminUsers
             .FirstOrDefaultAsync(u => u.Id == request.AdminId, cancellationToken)
             ?? throw new KeyNotFoundException($"Admin '{request.AdminId}' was not found");
+
+        var actorRole = AdminPermissionGuard.RequireActorRole(_currentUser);
+        AdminPermissionGuard.EnsureCanManageTarget(actorRole, user);
 
         var taken = await _context.AdminUsers
             .AnyAsync(

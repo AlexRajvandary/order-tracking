@@ -11,11 +11,16 @@ public sealed class UnbindAdminTelegramCommandHandler
 {
     private readonly IApplicationDbContext _context;
     private readonly IDateTimeProvider _clock;
+    private readonly ICurrentUserService _currentUser;
 
-    public UnbindAdminTelegramCommandHandler(IApplicationDbContext context, IDateTimeProvider clock)
+    public UnbindAdminTelegramCommandHandler(
+        IApplicationDbContext context,
+        IDateTimeProvider clock,
+        ICurrentUserService currentUser)
     {
         _context = context;
         _clock = clock;
+        _currentUser = currentUser;
     }
 
     public async Task<AdminUserDto> Handle(
@@ -25,6 +30,9 @@ public sealed class UnbindAdminTelegramCommandHandler
         var user = await _context.AdminUsers
             .FirstOrDefaultAsync(u => u.Id == request.AdminId, cancellationToken)
             ?? throw new KeyNotFoundException($"Admin '{request.AdminId}' was not found");
+
+        var actorRole = AdminPermissionGuard.RequireActorRole(_currentUser);
+        AdminPermissionGuard.EnsureCanManageTarget(actorRole, user);
 
         user.TelegramId = null;
         user.TelegramUsername = null;

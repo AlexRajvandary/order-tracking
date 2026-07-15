@@ -64,6 +64,9 @@ services:
       Minio__SecretKey: ${MINIO_ROOT_PASSWORD:-minioadmin}
       Minio__Bucket: ${MINIO_BUCKET:-order-tracking}
       Minio__UseSsl: "false"
+      Monitoring__HostDiskPath: /host
+    volumes:
+      - /:/host:ro
     ports:
       - "${API_PORT:-8080}:8080"
     healthcheck:

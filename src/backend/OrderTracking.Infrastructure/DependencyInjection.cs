@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Minio;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Infrastructure.Identity;
+using OrderTracking.Infrastructure.Monitoring;
 using OrderTracking.Infrastructure.Persistence;
 using OrderTracking.Infrastructure.Persistence.Interceptors;
 using OrderTracking.Infrastructure.Services;
@@ -23,6 +24,7 @@ public static class DependencyInjection
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.Configure<TelegramSettings>(configuration.GetSection(TelegramSettings.SectionName));
         services.Configure<MinioSettings>(configuration.GetSection(MinioSettings.SectionName));
+        services.Configure<MonitoringSettings>(configuration.GetSection(MonitoringSettings.SectionName));
 
         var minio = configuration.GetSection(MinioSettings.SectionName).Get<MinioSettings>()
             ?? new MinioSettings();
@@ -47,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditService, AuditService>();
         services.AddSingleton<IObjectStorage, MinioObjectStorage>();
         services.AddSingleton<IImageCompressor, ImageSharpCompressor>();
+        services.AddScoped<IStorageMetricsService, StorageMetricsService>();
 
         services.AddDbContext<ApplicationDbContext>((sp, options) =>
         {

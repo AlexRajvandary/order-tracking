@@ -60,3 +60,29 @@ export type DashboardSummary = {
   recentStatusChanges: DashboardRecentStatus[]
   recentAudit: DashboardAudit[]
 }
+
+export type DiskMetrics = {
+  totalBytes: number
+  freeBytes: number
+  usedBytes: number
+  usedPercentage: number
+  error?: string | null
+}
+
+export type DatabaseMetrics = {
+  sizeBytes: number
+  error?: string | null
+}
+
+export type MinioMetrics = {
+  bucketName: string
+  objectsCount: number
+  sizeBytes: number
+  error?: string | null
+}
+
+export type StorageMetrics = {
+  disk: DiskMetrics
+  database: DatabaseMetrics
+  minio: MinioMetrics
+}

@@ -55,6 +55,10 @@ public sealed class ExceptionHandlingMiddleware
                 HttpStatusCode.Unauthorized,
                 "Unauthorized",
                 exception.Message),
+            ForbiddenException => (
+                HttpStatusCode.Forbidden,
+                "Forbidden",
+                exception.Message),
             _ => (
                 HttpStatusCode.InternalServerError,
                 "Internal server error",
