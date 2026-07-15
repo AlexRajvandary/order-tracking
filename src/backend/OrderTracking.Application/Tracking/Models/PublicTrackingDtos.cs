@@ -3,11 +3,8 @@ namespace OrderTracking.Application.Tracking.Models;
 public sealed record PublicTrackingDto(
     string TrackingCode,
     DateTimeOffset CreatedAt,
-    DateTimeOffset LastUpdatedAt,
-    string? CustomerName,
-    string? CustomerEmail,
-    string? CustomerTelegram,
-    bool OverallIsFinal,
+    DateTimeOffset? ExpectedDeliveryAt,
+    string Status,
     IReadOnlyList<PublicTrackingItemDto> Items);
 
 public sealed record PublicTrackingItemDto(

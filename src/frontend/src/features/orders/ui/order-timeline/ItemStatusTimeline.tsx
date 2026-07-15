@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import type { StatusHistoryEntry } from '@/features/statuses/types'
 import { buildItemTimelineEvents } from './buildOrderTimelineEvents'
 import { OrderTimeline } from './OrderTimeline'
-import { OrderTimelineEventCard } from './OrderTimelineEventCard'
 import { StatusHistoryAttachments } from './StatusHistoryAttachments'
 import { isItemStatusChangedEvent, type OrderTimelineEvent } from './types'
 
@@ -45,16 +44,33 @@ export function ItemStatusTimeline({
       : null
 
     return (
-      <OrderTimelineEventCard event={event} formattedDate={formattedDate}>
-        {isItemStatusChangedEvent(event) ? (
-          <StatusHistoryAttachments
-            orderId={orderId}
-            historyId={event.meta.historyEntry.id}
-            attachments={event.meta.historyEntry.attachments ?? []}
-            onPhotosUploaded={onPhotosUploaded}
-          />
+      <div className="text-sm">
+        <div className="min-w-0 space-y-0.5">
+          <p className="font-semibold leading-snug">{event.title}</p>
+          {formattedDate ? (
+            <p className="text-xs text-muted-foreground">{formattedDate}</p>
+          ) : null}
+        </div>
+
+        {event.description ? (
+          <p className="mt-1.5 text-muted-foreground">{event.description}</p>
         ) : null}
-      </OrderTimelineEventCard>
+
+        {event.authorName ? (
+          <p className="mt-1 text-xs text-muted-foreground">{event.authorName}</p>
+        ) : null}
+
+        {isItemStatusChangedEvent(event) ? (
+          <div className="mt-2">
+            <StatusHistoryAttachments
+              orderId={orderId}
+              historyId={event.meta.historyEntry.id}
+              attachments={event.meta.historyEntry.attachments ?? []}
+              onPhotosUploaded={onPhotosUploaded}
+            />
+          </div>
+        ) : null}
+      </div>
     )
   }
 

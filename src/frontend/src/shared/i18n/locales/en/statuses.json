@@ -37,7 +37,6 @@
     "comment": "Comment",
     "commentPlaceholder": "Customer-facing comment (optional)",
     "photos": "Photos",
-    "photosHint": "Up to 5 photos. Large images are compressed",
     "photosSelected": "Selected photos: {{count}}",
     "addPhotos": "Add photos",
     "addStatus": "Add status",

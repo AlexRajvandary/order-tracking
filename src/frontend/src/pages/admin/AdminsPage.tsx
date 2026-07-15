@@ -22,6 +22,7 @@ import {
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { DataTable } from '@/shared/ui/data-table'
+import { cn } from '@/shared/lib/utils'
 
 function formatDate(value: string) {
   const d = new Date(value)
@@ -98,6 +99,7 @@ export function AdminsPage() {
     mutationFn: (id: string) => adminsApi.unbindTelegram(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admins'] })
+      setEditAdmin(null)
     },
   })
 
@@ -150,7 +152,13 @@ export function AdminsPage() {
         meta: { label: t('columns.account') },
         header: () => t('columns.account'),
         cell: ({ row }) => (
-          <Badge variant={row.original.isActive ? 'default' : 'secondary'}>
+          <Badge variant="secondary">
+            <span
+              className={cn(
+                'size-1.5 shrink-0 rounded-full',
+                row.original.isActive ? 'bg-emerald-500' : 'bg-muted-foreground/50',
+              )}
+            />
             {row.original.isActive ? t('account.enabled') : t('account.disabled')}
           </Badge>
         ),
@@ -162,7 +170,13 @@ export function AdminsPage() {
         meta: { label: t('columns.presence') },
         header: () => t('columns.presence'),
         cell: ({ row }) => (
-          <Badge variant={row.original.isOnline ? 'default' : 'outline'}>
+          <Badge variant="secondary">
+            <span
+              className={cn(
+                'size-1.5 shrink-0 rounded-full',
+                row.original.isOnline ? 'bg-emerald-500' : 'bg-muted-foreground/50',
+              )}
+            />
             {row.original.isOnline ? t('presence.online') : t('presence.offline')}
           </Badge>
         ),
@@ -175,60 +189,8 @@ export function AdminsPage() {
         header: () => t('columns.created'),
         cell: ({ row }) => formatDate(row.original.createdAt),
       },
-      {
-        id: 'actions',
-        enableColumnFilter: false,
-        enableHiding: false,
-        meta: { label: t('columns.actions') },
-        header: () => t('columns.actions'),
-        cell: ({ row }) => (
-          <div className="flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setFormError(null)
-                setEditAdmin(row.original)
-                setEditDisplayName(row.original.displayName ?? '')
-                setEditActive(row.original.isActive)
-              }}
-            >
-              {t('edit')}
-            </Button>
-            {row.original.telegramId ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  if (window.confirm(t('unbindConfirm'))) {
-                    unbindMutation.mutate(row.original.id)
-                  }
-                }}
-              >
-                <Link2Off />
-                {t('unbindTelegram')}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setFormError(null)
-                  setBindAdmin(row.original)
-                }}
-              >
-                <Link2 />
-                {t('bindTelegram')}
-              </Button>
-            )}
-          </div>
-        ),
-      },
     ],
-    [t, unbindMutation],
+    [t],
   )
 
   return (
@@ -260,6 +222,13 @@ export function AdminsPage() {
               data={data ?? []}
               pageSize={20}
               emptyMessage={t('empty')}
+              getRowClassName={() => 'cursor-pointer'}
+              onRowClick={(row) => {
+                setFormError(null)
+                setEditAdmin(row.original)
+                setEditDisplayName(row.original.displayName ?? '')
+                setEditActive(row.original.isActive)
+              }}
             />
           )}
         </CardContent>
@@ -391,6 +360,35 @@ export function AdminsPage() {
               />
               {t('form.isActive')}
             </label>
+            {editAdmin?.telegramId ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (window.confirm(t('unbindConfirm'))) {
+                    unbindMutation.mutate(editAdmin.id)
+                  }
+                }}
+                disabled={unbindMutation.isPending}
+              >
+                <Link2Off />
+                {t('unbindTelegram')}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (!editAdmin) return
+                  setFormError(null)
+                  setBindAdmin(editAdmin)
+                  setEditAdmin(null)
+                }}
+              >
+                <Link2 />
+                {t('bindTelegram')}
+              </Button>
+            )}
             {formError ? (
               <Alert variant="destructive">
                 <AlertDescription>{formError}</AlertDescription>

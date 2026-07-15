@@ -2,14 +2,26 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getPublicOrder } from '@/features/tracking/api/trackingApi'
-import { StatusDot, TrackingItemCard } from '@/features/tracking/ui/TrackingItemCard'
+import { TrackingItemCard } from '@/features/tracking/ui/TrackingItemCard'
+import type { OrderStatus } from '@/features/orders/types'
+import { OrderStatusBadge } from '@/features/orders/ui/OrderStatusBadge'
 import { ApiError } from '@/shared/api/client'
 import { LanguageSwitcher } from '@/shared/i18n/LanguageSwitcher'
-import { formatTelegram } from '@/shared/lib/telegram'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
+
+const ORDER_STATUSES: OrderStatus[] = [
+  'AwaitingPayment',
+  'InProgress',
+  'Completed',
+  'Cancelled',
+]
+
+function isOrderStatus(value: unknown): value is OrderStatus {
+  return typeof value === 'string' && ORDER_STATUSES.includes(value as OrderStatus)
+}
 
 function formatDate(value: string, locale: string) {
   return new Intl.DateTimeFormat(locale === 'ru' ? 'ru-RU' : 'en-US', {
@@ -18,17 +30,10 @@ function formatDate(value: string, locale: string) {
   }).format(new Date(value))
 }
 
-function resolveCustomerLabel(order: {
-  customerName: string | null
-  customerEmail: string | null
-  customerTelegram: string | null
-}) {
-  return (
-    order.customerName?.trim() ||
-    order.customerEmail?.trim() ||
-    formatTelegram(order.customerTelegram) ||
-    null
-  )
+function formatDateOnly(value: string, locale: string) {
+  return new Intl.DateTimeFormat(locale === 'ru' ? 'ru-RU' : 'en-US', {
+    dateStyle: 'medium',
+  }).format(new Date(value))
 }
 
 export function TrackingPage() {
@@ -46,7 +51,6 @@ export function TrackingPage() {
 
   const products = data?.items.filter((i) => i.type === 'Product') ?? []
   const services = data?.items.filter((i) => i.type === 'Service') ?? []
-  const customerLabel = data ? resolveCustomerLabel(data) : null
 
   return (
     <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-8">
@@ -84,30 +88,34 @@ export function TrackingPage() {
             </form>
           ) : (
             <div className="space-y-1">
-              <p className="text-lg">
-                <span className="text-muted-foreground">{t('orderNumber')}: </span>
+              <p className="text-sm text-muted-foreground">
+                {t('orderNumber')}:{' '}
                 <span className="font-mono font-semibold text-primary">{trackingCode}</span>
               </p>
-              {customerLabel ? (
-                <p className="text-sm text-muted-foreground">
-                  {t('customer')}:{' '}
-                  <span className="font-medium text-foreground">{customerLabel}</span>
-                </p>
-              ) : null}
               {data ? (
                 <>
-                  <p className="text-sm text-muted-foreground">
-                    {t('lastUpdated')}:{' '}
-                    <span className="font-medium text-foreground">
-                      {formatDate(data.lastUpdatedAt, i18n.language)}
-                    </span>
-                  </p>
                   <p className="text-sm text-muted-foreground">
                     {t('createdAt')}:{' '}
                     <span className="font-medium text-foreground">
                       {formatDate(data.createdAt, i18n.language)}
                     </span>
                   </p>
+                  <p className="text-sm text-muted-foreground">
+                    {t('expectedDeliveryAt')}:{' '}
+                    <span className="font-medium text-foreground">
+                      {data.expectedDeliveryAt
+                        ? formatDateOnly(data.expectedDeliveryAt, i18n.language)
+                        : t('notSpecified')}
+                    </span>
+                  </p>
+                  {isOrderStatus(data.status) ? (
+                    <div className="pt-2">
+                      <OrderStatusBadge
+                        status={data.status}
+                        label={t(`orderStatus.${data.status}`)}
+                      />
+                    </div>
+                  ) : null}
                 </>
               ) : null}
             </div>
@@ -158,10 +166,6 @@ export function TrackingPage() {
 
           {products.length > 0 ? (
             <section className="space-y-3">
-              <h2 className="flex items-center gap-2 text-lg font-semibold">
-                <StatusDot className="h-3 w-3" />
-                {data.overallIsFinal ? t('overallDelivered') : t('overallInProgress')}
-              </h2>
               {products.map((item, index) => (
                 <TrackingItemCard
                   key={`${item.name}-${index}`}

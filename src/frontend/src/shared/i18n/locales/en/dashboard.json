@@ -4,6 +4,7 @@
   "metrics": {
     "orders": "Orders",
     "customers": "Customers",
+    "admins": "Admins",
     "createdToday": "Created today",
     "updatedWeek": "Updated in 7 days",
     "statusWeek": "Status changes in 7 days"

@@ -11,11 +11,17 @@ export const currencies: ReadonlyArray<{
   { code: 'JPY', symbol: '¥' },
 ]
 
+export function isFiniteMoney(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
 export function formatMoney(
   amount: number,
   currencyCode: CurrencyCode,
   locale = 'ru-RU',
 ): string {
+  if (!isFiniteMoney(amount)) return ''
+
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: currencyCode,

@@ -5,7 +5,6 @@ import type { PublicStatusAttachment, PublicTrackingItem } from '@/features/trac
 import { attachmentUrl } from '@/features/tracking/api/trackingApi'
 import {
   OrderTimeline,
-  OrderTimelineEventCard,
   type OrderTimelineEvent,
 } from '@/features/orders/ui/order-timeline'
 import {
@@ -14,11 +13,8 @@ import {
   AttachmentMedia,
   AttachmentTrigger,
 } from '@/shared/ui/attachment'
-import { Badge } from '@/shared/ui/badge'
 import { Card, CardContent } from '@/shared/ui/card'
 import { cn } from '@/shared/lib/utils'
-
-const STATUS_DOT_GREEN = '#22C55E'
 
 const photoAttachmentClassName =
   'w-24 gap-0 overflow-hidden p-0 has-data-[slot=attachment-media]:p-0'
@@ -33,15 +29,6 @@ function formatTimelineDate(value: string, locale: string) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value))
-}
-
-function StatusDot({ className }: { className?: string }) {
-  return (
-    <span
-      className={cn('inline-block h-2.5 w-2.5 shrink-0 rounded-full', className)}
-      style={{ backgroundColor: STATUS_DOT_GREEN }}
-    />
-  )
 }
 
 function PublicTimelinePhotos({ attachments }: { attachments: PublicStatusAttachment[] }) {
@@ -111,14 +98,26 @@ function PublicItemStatusTimeline({
           (event.meta?.attachments as PublicStatusAttachment[] | undefined) ?? []
 
         return (
-          <OrderTimelineEventCard
-            event={event}
-            formattedDate={
-              event.occurredAt ? formatTimelineDate(event.occurredAt, locale) : null
-            }
-          >
-            <PublicTimelinePhotos attachments={attachments} />
-          </OrderTimelineEventCard>
+          <div className="text-sm">
+            <div className="min-w-0 space-y-0.5">
+              <p className="font-semibold leading-snug">{event.title}</p>
+              {event.occurredAt ? (
+                <p className="text-xs text-muted-foreground">
+                  {formatTimelineDate(event.occurredAt, locale)}
+                </p>
+              ) : null}
+            </div>
+
+            {event.description ? (
+              <p className="mt-1.5 text-muted-foreground">{event.description}</p>
+            ) : null}
+
+            {attachments.length > 0 ? (
+              <div className="mt-2">
+                <PublicTimelinePhotos attachments={attachments} />
+              </div>
+            ) : null}
+          </div>
         )
       }}
     />
@@ -133,24 +132,18 @@ export function TrackingItemCard({
   locale: string
 }) {
   const { t } = useTranslation('tracking')
-  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(true)
 
   return (
     <Card>
       <CardContent className="space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <h3 className="font-semibold">{item.name}</h3>
-            {item.type === 'Product' ? (
-              <p className="text-xs text-muted-foreground">
-                {t('quantity')}: {item.quantity}
-              </p>
-            ) : null}
-          </div>
-          <div className="flex items-center gap-2">
-            <StatusDot />
-            <Badge variant="secondary">{item.currentStatus ?? t('noStatus')}</Badge>
-          </div>
+        <div>
+          <h3 className="font-semibold">{item.name}</h3>
+          {item.type === 'Product' ? (
+            <p className="text-xs text-muted-foreground">
+              {t('quantity')}: {item.quantity}
+            </p>
+          ) : null}
         </div>
 
         <div>
@@ -163,9 +156,6 @@ export function TrackingItemCard({
               className={cn('size-4 transition-transform', historyOpen && 'rotate-180')}
             />
             {t('history')}
-            {item.history.length > 0 ? (
-              <span className="tabular-nums">({item.history.length})</span>
-            ) : null}
           </button>
 
           {historyOpen ? (
@@ -178,5 +168,3 @@ export function TrackingItemCard({
     </Card>
   )
 }
-
-export { StatusDot }

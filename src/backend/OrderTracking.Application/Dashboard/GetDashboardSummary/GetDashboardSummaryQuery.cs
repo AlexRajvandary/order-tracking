@@ -18,6 +18,7 @@ public sealed record DashboardRecentOrderDto(
     Guid Id,
     string TrackingCode,
     string? CustomerName,
+    string Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 

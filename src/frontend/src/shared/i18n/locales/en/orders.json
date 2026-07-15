@@ -80,7 +80,6 @@
     "itemDescription": "Description",
     "quantity": "Qty",
     "unitPrice": "Unit price",
-    "totalPrice": "Total",
     "product": "Product",
     "service": "Service",
     "removeItem": "Remove",

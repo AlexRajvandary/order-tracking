@@ -49,15 +49,11 @@ function TimelineMarker({ state }: { state: TimelineMarkerState }) {
       className={cn(
         'relative z-10 mt-1 flex size-6 shrink-0 items-center justify-center rounded-full border-2 bg-card',
         state === 'completed' && 'border-black bg-black text-white',
-        state === 'current' && 'border-black ring-4 ring-black/15',
-        state === 'pending' && 'border-muted-foreground/30 bg-muted',
+        state === 'current' && 'border-black bg-black text-white ring-4 ring-black/15',
+        state === 'pending' && 'border-muted-foreground/30 bg-muted text-muted-foreground',
       )}
     >
-      {state === 'completed' ? <Check className="size-3.5" strokeWidth={3} /> : null}
-      {state === 'current' ? <span className="size-2 rounded-full bg-black" /> : null}
-      {state === 'pending' ? (
-        <span className="size-1.5 rounded-full bg-muted-foreground/40" />
-      ) : null}
+      <Check className="size-3.5" strokeWidth={3} />
     </span>
   )
 }

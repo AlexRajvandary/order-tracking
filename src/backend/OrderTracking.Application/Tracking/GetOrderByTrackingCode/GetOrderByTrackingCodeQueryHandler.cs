@@ -2,7 +2,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Tracking.Models;
-using OrderTracking.Domain.Enums;
 
 namespace OrderTracking.Application.Tracking.GetOrderByTrackingCode;
 
@@ -29,23 +28,17 @@ public sealed class GetOrderByTrackingCodeQueryHandler
             {
                 o.TrackingCode,
                 o.CreatedAt,
-                LastUpdatedAt = o.UpdatedAt ?? o.CreatedAt,
-                CustomerName = o.Customer != null
-                    ? ((o.Customer.LastName ?? "") + " " + (o.Customer.FirstName ?? "") + " " + (o.Customer.Patronymic ?? "")).Trim()
-                    : null,
-                CustomerEmail = o.Customer != null ? o.Customer.Email : null,
-                CustomerTelegram = o.Customer != null ? o.Customer.Telegram : null,
+                o.ExpectedDeliveryAt,
+                Status = o.Status.ToString(),
                 Items = o.Items
                     .OrderBy(i => i.SortOrder)
                     .Select(i => new
                     {
                         i.Name,
                         Type = i.ItemType.ToString(),
-                        ItemType = i.ItemType,
                         i.Quantity,
                         CurrentStatus = i.CurrentStatusText,
                         StatusColor = i.CurrentStatus != null ? i.CurrentStatus.Color : null,
-                        IsFinal = i.CurrentStatus != null && i.CurrentStatus.IsFinal,
                         History = i.StatusHistory
                             .OrderByDescending(h => h.ChangedAt)
                             .Select(h => new
@@ -72,17 +65,11 @@ public sealed class GetOrderByTrackingCodeQueryHandler
             .FirstOrDefaultAsync(cancellationToken)
             ?? throw new KeyNotFoundException("Order not found");
 
-        var productItems = order.Items.Where(i => i.ItemType == OrderItemType.Product).ToList();
-        var overallIsFinal = productItems.Count > 0 && productItems.All(i => i.IsFinal);
-
         return new PublicTrackingDto(
             order.TrackingCode,
             order.CreatedAt,
-            order.LastUpdatedAt,
-            order.CustomerName,
-            order.CustomerEmail,
-            order.CustomerTelegram,
-            overallIsFinal,
+            order.ExpectedDeliveryAt,
+            order.Status,
             order.Items.Select(i => new PublicTrackingItemDto(
                 i.Name,
                 i.Type,

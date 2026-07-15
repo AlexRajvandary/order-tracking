@@ -8,7 +8,6 @@ namespace OrderTracking.Infrastructure.Storage;
 public sealed class ImageSharpCompressor : IImageCompressor
 {
     private const int MaxDimension = 1600;
-    private const long CompressAboveBytes = 400 * 1024;
     private const int WebpQuality = 80;
 
     public async Task<(Stream Content, string ContentType, string Extension)?> CompressAsync(
@@ -29,7 +28,6 @@ public sealed class ImageSharpCompressor : IImageCompressor
         {
             using var image = await Image.LoadAsync(buffer, cancellationToken);
             var needsResize = image.Width > MaxDimension || image.Height > MaxDimension;
-            var needsCompress = needsResize || buffer.Length > CompressAboveBytes || !IsWebp(contentType);
 
             if (needsResize)
             {
@@ -41,18 +39,10 @@ public sealed class ImageSharpCompressor : IImageCompressor
             }
 
             var output = new MemoryStream();
-            if (needsCompress)
-            {
-                await image.SaveAsWebpAsync(
-                    output,
-                    new WebpEncoder { Quality = WebpQuality },
-                    cancellationToken);
-                output.Position = 0;
-                return (output, "image/webp", ".webp");
-            }
-
-            buffer.Position = 0;
-            await buffer.CopyToAsync(output, cancellationToken);
+            await image.SaveAsWebpAsync(
+                output,
+                new WebpEncoder { Quality = WebpQuality },
+                cancellationToken);
             output.Position = 0;
             return (output, "image/webp", ".webp");
         }
@@ -61,8 +51,4 @@ public sealed class ImageSharpCompressor : IImageCompressor
             return null;
         }
     }
-
-    private static bool IsWebp(string? contentType) =>
-        contentType is not null
-        && contentType.Contains("webp", StringComparison.OrdinalIgnoreCase);
 }

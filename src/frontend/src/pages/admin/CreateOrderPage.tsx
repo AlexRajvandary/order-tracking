@@ -30,9 +30,13 @@ import { Textarea } from '@/shared/ui/textarea'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
 import { capitalizeNamePart } from '@/shared/lib/capitalizeNamePart'
 import { formatTelegram } from '@/shared/lib/telegram'
-import { currencies, formatMoney } from '@/shared/lib/currency'
+import { currencies, formatMoney, isFiniteMoney } from '@/shared/lib/currency'
 
-type DraftItem = CreateOrderItemInput & { key: string }
+type DraftItem = Omit<CreateOrderItemInput, 'quantity' | 'unitPrice'> & {
+  key: string
+  quantity: string
+  unitPrice: number | null
+}
 
 type NewCustomerForm = {
   lastName: string
@@ -232,7 +236,7 @@ export function CreateOrderPage() {
         itemType,
         name: '',
         description: '',
-        quantity: 1,
+        quantity: '1',
         unitPrice: null,
         currencyCode: 'RUB',
       },
@@ -532,23 +536,23 @@ export function CreateOrderPage() {
                     type="number"
                     min={1}
                     placeholder={t('form.quantity')}
-                    value={item.quantity ?? 1}
+                    value={item.quantity}
                     onChange={(e) =>
                       setItems((prev) =>
                         prev.map((it, i) =>
-                          i === index
-                            ? { ...it, quantity: Number(e.target.value) || 1 }
-                            : it,
+                          i === index ? { ...it, quantity: e.target.value } : it,
                         ),
                       )
                     }
                   />
                 ) : null}
-                {item.unitPrice != null ? (
+                {isFiniteMoney(item.unitPrice) ? (
                   <p className="text-sm text-muted-foreground">
-                    {t('form.totalPrice')}:{' '}
                     {formatMoney(
-                      item.unitPrice * (item.itemType === 'Product' ? (item.quantity ?? 1) : 1),
+                      item.unitPrice *
+                        (item.itemType === 'Product'
+                          ? Math.max(1, Number(item.quantity) || 1)
+                          : 1),
                       item.currencyCode ?? 'RUB',
                       i18n.language === 'ru' ? 'ru-RU' : 'en-US',
                     )}
@@ -571,14 +575,20 @@ export function CreateOrderPage() {
               setError(null)
               const validItems = items
                 .filter((i) => i.name.trim())
-                .map(({ itemType, name, description, quantity, unitPrice, currencyCode }) => ({
-                  itemType,
-                  name: name.trim(),
-                  description: description?.trim() || null,
-                  quantity: quantity ?? 1,
-                  unitPrice: unitPrice ?? null,
-                  currencyCode: unitPrice == null ? null : (currencyCode ?? 'RUB'),
-                }))
+                .map(({ itemType, name, description, quantity, unitPrice, currencyCode }) => {
+                  const parsedQuantity = Number(quantity)
+                  return {
+                    itemType,
+                    name: name.trim(),
+                    description: description?.trim() || null,
+                    quantity:
+                      Number.isFinite(parsedQuantity) && parsedQuantity >= 1
+                        ? parsedQuantity
+                        : 1,
+                    unitPrice: unitPrice ?? null,
+                    currencyCode: unitPrice == null ? null : (currencyCode ?? 'RUB'),
+                  }
+                })
 
               const creatingNew =
                 customerMode === 'new' && hasNewCustomerData(newCustomer)

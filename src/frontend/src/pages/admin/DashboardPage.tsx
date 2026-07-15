@@ -1,14 +1,60 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ColumnDef } from '@tanstack/react-table'
+import { ClipboardList, ShieldCheck, Users } from 'lucide-react'
 import * as dashboardApi from '@/features/dashboard/api/dashboardApi'
+import * as adminsApi from '@/features/admins/api/adminsApi'
 import type { AuditFieldChange, DashboardAudit } from '@/features/dashboard/types'
+import type { OrderStatus } from '@/features/orders/types'
+import { orderStatusStyles } from '@/features/orders/ui/OrderStatusBadge'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
+import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { DataTable, DataTableColumnHeader, dateRangeFilterFn } from '@/shared/ui/data-table'
+import { cn } from '@/shared/lib/utils'
+
+function isOrderStatus(value: string): value is OrderStatus {
+  return (
+    value === 'AwaitingPayment' ||
+    value === 'InProgress' ||
+    value === 'Completed' ||
+    value === 'Cancelled'
+  )
+}
+
+function StatCard({
+  icon,
+  value,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode
+  value: number
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex aspect-square flex-col justify-between rounded-xl border bg-card p-2.5 text-left shadow-xs transition-colors sm:p-4',
+        'hover:border-primary/40 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+      )}
+    >
+      <span className="flex size-7 items-center justify-center rounded-lg bg-muted text-muted-foreground sm:size-9 [&>svg]:size-4 sm:[&>svg]:size-5">
+        {icon}
+      </span>
+      <span className="space-y-0.5">
+        <span className="block text-lg font-bold tabular-nums sm:text-2xl">{value}</span>
+        <span className="block text-xs text-muted-foreground sm:text-sm">{label}</span>
+      </span>
+    </button>
+  )
+}
 
 function formatDate(value: string) {
   const d = new Date(value)
@@ -64,6 +110,11 @@ export function DashboardPage() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: dashboardApi.getDashboardSummary,
+  })
+
+  const { data: admins } = useQuery({
+    queryKey: ['admins'],
+    queryFn: adminsApi.getAdmins,
   })
 
   const columns = useMemo<ColumnDef<DashboardAudit>[]>(
@@ -162,6 +213,27 @@ export function DashboardPage() {
         <h1 className="text-2xl font-bold">{t('title')}</h1>
       </div>
 
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 sm:max-w-md">
+        <StatCard
+          icon={<ClipboardList />}
+          value={data.totalOrders}
+          label={t('metrics.orders')}
+          onClick={() => navigate('/admin/orders')}
+        />
+        <StatCard
+          icon={<Users />}
+          value={data.totalCustomers}
+          label={t('metrics.customers')}
+          onClick={() => navigate('/admin/customers')}
+        />
+        <StatCard
+          icon={<ShieldCheck />}
+          value={admins?.length ?? 0}
+          label={t('metrics.admins')}
+          onClick={() => navigate('/admin/admins')}
+        />
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>{t('recentOrders')}</CardTitle>
@@ -171,24 +243,36 @@ export function DashboardPage() {
             <p className="text-sm text-muted-foreground">{t('emptyOrders')}</p>
           ) : (
             <ul className="divide-y">
-              {data.recentOrders.map((order) => (
-                <li key={order.id} className="flex items-start justify-between gap-3 py-2">
-                  <div>
-                    <Link
-                      to={`/admin/orders/${order.id}`}
-                      className="font-mono font-medium text-primary hover:underline"
-                    >
-                      {order.trackingCode}
-                    </Link>
-                    <p className="text-sm text-muted-foreground">
-                      {order.customerName ?? t('noCustomer')}
+              {data.recentOrders.map((order) => {
+                const status = isOrderStatus(order.status)
+                  ? order.status
+                  : 'AwaitingPayment'
+                return (
+                  <li
+                    key={order.id}
+                    className="flex cursor-pointer items-start justify-between gap-3 py-2 -mx-2 px-2 rounded-md hover:bg-muted/50"
+                    onClick={() => navigate(`/admin/orders/${order.id}`)}
+                  >
+                    <div className="space-y-1">
+                      <span className="block font-mono font-medium text-primary">
+                        {order.trackingCode}
+                      </span>
+                      <Badge variant="secondary" className="gap-1.5">
+                        <span
+                          className={cn(
+                            'size-1.5 shrink-0 rounded-full',
+                            orderStatusStyles[status].dot,
+                          )}
+                        />
+                        {t(`details.orderStatus.${status}`, { ns: 'orders' })}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(order.createdAt)}
                     </p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(order.createdAt)}
-                  </p>
-                </li>
-              ))}
+                  </li>
+                )
+              })}
             </ul>
           )}
         </CardContent>

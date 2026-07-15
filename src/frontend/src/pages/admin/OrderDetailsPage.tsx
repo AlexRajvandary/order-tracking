@@ -29,17 +29,11 @@ import { orderStatusStyles } from '@/features/orders/ui/OrderStatusBadge'
 import { ItemStatusTimeline } from '@/features/orders/ui/order-timeline'
 import { ApiError } from '@/shared/api/client'
 import { capitalizeNamePart } from '@/shared/lib/capitalizeNamePart'
-import { currencies, formatMoney } from '@/shared/lib/currency'
+import { currencies, formatMoney, isFiniteMoney } from '@/shared/lib/currency'
 import { formatTelegram, telegramHref } from '@/shared/lib/telegram'
 import { compressImagesToWebp } from '@/shared/lib/compressImageToWebp'
 import { cn } from '@/shared/lib/utils'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
-import {
-  Attachment,
-  AttachmentAction,
-  AttachmentActions,
-  AttachmentMedia,
-} from '@/shared/ui/attachment'
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
@@ -283,7 +277,7 @@ type ItemFormState = {
   itemType: 'Product' | 'Service'
   name: string
   description: string
-  quantity: number
+  quantity: string
   unitPrice: string
   currencyCode: CurrencyCode
 }
@@ -292,6 +286,7 @@ function ItemFormDialog({
   open,
   title,
   initial,
+  showItemType = true,
   error,
   submitting,
   onOpenChange,
@@ -300,6 +295,7 @@ function ItemFormDialog({
   open: boolean
   title: string
   initial: ItemFormState
+  showItemType?: boolean
   error: string | null
   submitting: boolean
   onOpenChange: (open: boolean) => void
@@ -325,34 +321,37 @@ function ItemFormDialog({
           onSubmit={(e) => {
             e.preventDefault()
             if (!form.name.trim()) return
+            const quantity = Number(form.quantity)
             onSubmit({
               itemType: form.itemType,
               name: form.name.trim(),
               description: form.description.trim() || null,
-              quantity: form.quantity || 1,
+              quantity: Number.isFinite(quantity) && quantity >= 1 ? quantity : 1,
               unitPrice:
                 form.unitPrice.trim() === '' ? null : Number(form.unitPrice),
               currencyCode: form.unitPrice.trim() === '' ? null : form.currencyCode,
             })
           }}
         >
-          <div className="space-y-1.5">
-            <Label>{t('details.itemType')}</Label>
-            <Select
-              value={form.itemType}
-              onValueChange={(value) =>
-                setForm((f) => ({ ...f, itemType: value as 'Product' | 'Service' }))
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Product">{t('form.product')}</SelectItem>
-                <SelectItem value="Service">{t('form.service')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {showItemType ? (
+            <div className="space-y-1.5">
+              <Label>{t('details.itemType')}</Label>
+              <Select
+                value={form.itemType}
+                onValueChange={(value) =>
+                  setForm((f) => ({ ...f, itemType: value as 'Product' | 'Service' }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Product">{t('form.product')}</SelectItem>
+                  <SelectItem value="Service">{t('form.service')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
 
           <div className="space-y-1.5">
             <Label>{t('form.itemName')}</Label>
@@ -409,24 +408,28 @@ function ItemFormDialog({
                 type="number"
                 min={1}
                 value={form.quantity}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, quantity: Number(e.target.value) || 1 }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
               />
             </div>
           ) : null}
 
-          {form.unitPrice.trim() !== '' ? (
-            <p className="text-sm text-muted-foreground">
-              {t('form.totalPrice')}:{' '}
-              {formatMoney(
-                Number(form.unitPrice) *
-                  (form.itemType === 'Product' ? form.quantity || 1 : 1),
-                form.currencyCode,
-                i18n.language === 'ru' ? 'ru-RU' : 'en-US',
-              )}
-            </p>
-          ) : null}
+          {(() => {
+            const unit = Number(form.unitPrice)
+            const quantity = Number(form.quantity)
+            if (!isFiniteMoney(unit) || form.unitPrice.trim() === '') return null
+            return (
+              <p className="text-sm text-muted-foreground">
+                {formatMoney(
+                  unit *
+                    (form.itemType === 'Product' && Number.isFinite(quantity) && quantity >= 1
+                      ? quantity
+                      : 1),
+                  form.currencyCode,
+                  i18n.language === 'ru' ? 'ru-RU' : 'en-US',
+                )}
+              </p>
+            )
+          })()}
 
           {error ? (
             <Alert variant="destructive">
@@ -510,7 +513,6 @@ function StatusUpdateDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('update.title')}</DialogTitle>
-          <p className="text-sm text-muted-foreground">{item.name}</p>
         </DialogHeader>
 
         <Tabs
@@ -581,7 +583,7 @@ function StatusUpdateDialog({
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="min-w-0 w-full space-y-1.5">
             <Label>{t('update.photos')}</Label>
             <label className="inline-flex cursor-pointer">
               <input
@@ -614,41 +616,38 @@ function StatusUpdateDialog({
                 </span>
               </Button>
             </label>
-            <p className="text-xs text-muted-foreground">{t('update.photosHint')}</p>
             {photos.length > 0 ? (
               <Carousel
                 opts={{ align: 'start', containScroll: 'trimSnaps' }}
                 setApi={setPhotosCarouselApi}
                 className="w-full min-w-0"
               >
-                <CarouselContent className="-ml-2">
+                <CarouselContent className="-ml-0">
                   {photos.map((photo) => (
-                    <CarouselItem key={photo.id} className="basis-[72%] pl-2 sm:basis-1/2">
-                      <Attachment
-                        state="idle"
-                        size="sm"
-                        orientation="vertical"
-                        className="w-full"
-                      >
-                        <AttachmentMedia variant="image" className="aspect-[4/3] w-full">
-                          <img src={photo.previewUrl} alt="" />
-                        </AttachmentMedia>
-                        <AttachmentActions>
-                          <AttachmentAction
-                            type="button"
-                            aria-label={t('update.removePhoto')}
-                            onClick={() =>
-                              setPhotos((prev) => {
-                                const target = prev.find((p) => p.id === photo.id)
-                                if (target) URL.revokeObjectURL(target.previewUrl)
-                                return prev.filter((p) => p.id !== photo.id)
-                              })
-                            }
-                          >
-                            <X />
-                          </AttachmentAction>
-                        </AttachmentActions>
-                      </Attachment>
+                    <CarouselItem key={photo.id} className="basis-full pl-0">
+                      <div className="relative w-full overflow-hidden rounded-xl border border-dashed bg-muted">
+                        <img
+                          src={photo.previewUrl}
+                          alt=""
+                          className="h-96 w-full object-cover"
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon-sm"
+                          className="absolute top-2 right-2 size-7 shadow-sm"
+                          aria-label={t('update.removePhoto')}
+                          onClick={() =>
+                            setPhotos((prev) => {
+                              const target = prev.find((p) => p.id === photo.id)
+                              if (target) URL.revokeObjectURL(target.previewUrl)
+                              return prev.filter((p) => p.id !== photo.id)
+                            })
+                          }
+                        >
+                          <X />
+                        </Button>
+                      </div>
                     </CarouselItem>
                   ))}
                 </CarouselContent>
@@ -890,8 +889,8 @@ export function OrderDetailsPage() {
       </div>
 
       <Card>
-        <CardContent className="flex flex-col gap-8 sm:flex-row sm:items-stretch sm:justify-between sm:gap-12 lg:gap-16">
-          <div className="flex min-w-0 w-full max-w-xs shrink-0 flex-col">
+        <CardContent className="flex flex-col gap-8 min-[600px]:flex-row min-[600px]:items-stretch min-[600px]:justify-between min-[600px]:gap-8 lg:gap-16">
+          <div className="flex min-w-0 w-full max-w-xs shrink-0 flex-col self-center min-[600px]:self-start">
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <p className="text-sm font-medium text-muted-foreground">{t('details.customer')}</p>
               <Button
@@ -1014,48 +1013,8 @@ export function OrderDetailsPage() {
             </div>
           </div>
 
-          <div className="min-w-0 flex-1 space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">{t('details.items')}</p>
-            {!order.items.length ? (
-              <p className="text-sm text-muted-foreground">{t('details.noItems')}</p>
-            ) : (
-              <ul className="space-y-1.5">
-                {order.items.map((item) => (
-                  <li key={item.id} className="text-sm">
-                    <span className="font-medium">{item.name}</span>
-                    {item.itemType === 'Product' ? (
-                      <span className="text-muted-foreground"> · ×{item.quantity}</span>
-                    ) : null}
-                    {item.unitPrice !== null ? (
-                      <span className="text-muted-foreground">
-                        {' '}
-                        · {t('form.unitPrice')}:{' '}
-                        {formatMoney(
-                          item.unitPrice,
-                          item.currencyCode ?? 'RUB',
-                          i18n.language === 'ru' ? 'ru-RU' : 'en-US',
-                        )}
-                        {' · '}
-                        {t('form.totalPrice')}:{' '}
-                        {formatMoney(
-                          item.unitPrice *
-                            (item.itemType === 'Product' ? item.quantity : 1),
-                          item.currencyCode ?? 'RUB',
-                          i18n.language === 'ru' ? 'ru-RU' : 'en-US',
-                        )}
-                      </span>
-                    ) : null}
-                    {item.currentStatusText ? (
-                      <span className="text-muted-foreground"> · {item.currentStatusText}</span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
           {trackingLink ? (
-            <div className="flex w-44 shrink-0 flex-col gap-2 self-center sm:self-start">
+            <div className="flex w-44 shrink-0 flex-col gap-2 self-center min-[600px]:self-start">
               {qrLoading ? (
                 <p className="text-xs text-muted-foreground">{t('details.qrLoading')}</p>
               ) : qrObjectUrl ? (
@@ -1139,17 +1098,10 @@ export function OrderDetailsPage() {
                               · ×{item.quantity}
                             </span>
                           ) : null}
-                          {item.unitPrice !== null ? (
+                          {isFiniteMoney(item.unitPrice) ? (
                             <span className="font-normal text-muted-foreground">
                               {' '}
-                              · {t('form.unitPrice')}:{' '}
-                              {formatMoney(
-                                item.unitPrice,
-                                item.currencyCode ?? 'RUB',
-                                i18n.language === 'ru' ? 'ru-RU' : 'en-US',
-                              )}
-                              {' · '}
-                              {t('form.totalPrice')}:{' '}
+                              ·{' '}
                               {formatMoney(
                                 item.unitPrice *
                                   (item.itemType === 'Product' ? item.quantity : 1),
@@ -1251,11 +1203,12 @@ export function OrderDetailsPage() {
       <ItemFormDialog
         open={itemModal === 'create'}
         title={t('details.addItemTitle')}
+        showItemType={false}
         initial={{
           itemType: 'Product',
           name: '',
           description: '',
-          quantity: 1,
+          quantity: '1',
           unitPrice: '',
           currencyCode: 'RUB',
         }}
@@ -1305,7 +1258,7 @@ export function OrderDetailsPage() {
           itemType: editingItem?.itemType === 'Service' ? 'Service' : 'Product',
           name: editingItem?.name ?? '',
           description: editingItem?.description ?? '',
-          quantity: editingItem?.quantity ?? 1,
+          quantity: String(editingItem?.quantity ?? 1),
           unitPrice: editingItem?.unitPrice?.toString() ?? '',
           currencyCode: editingItem?.currencyCode ?? 'RUB',
         }}

@@ -2,6 +2,7 @@ export type DashboardRecentOrder = {
   id: string
   trackingCode: string
   customerName: string | null
+  status: string
   createdAt: string
   updatedAt: string
 }

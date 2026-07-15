@@ -80,7 +80,6 @@
     "itemDescription": "Описание",
     "quantity": "Кол-во",
     "unitPrice": "Цена за единицу",
-    "totalPrice": "Стоимость",
     "product": "Продукт",
     "service": "Услуга",
     "removeItem": "Удалить",

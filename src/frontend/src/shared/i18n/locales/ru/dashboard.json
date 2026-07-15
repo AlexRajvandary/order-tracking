@@ -4,6 +4,7 @@
   "metrics": {
     "orders": "Заказов",
     "customers": "Клиентов",
+    "admins": "Админов",
     "createdToday": "Создано сегодня",
     "updatedWeek": "Обновлено за 7 дней",
     "statusWeek": "Смен статуса за 7 дней"

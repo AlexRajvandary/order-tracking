@@ -1,5 +1,6 @@
 import { apiFetch } from '@/shared/api/client'
 import { API_BASE_URL } from '@/shared/api/config'
+import type { OrderStatus } from '@/features/orders/types'
 
 export type PublicStatusAttachment = {
   id: string
@@ -28,11 +29,8 @@ export type PublicTrackingItem = {
 export type PublicTrackingOrder = {
   trackingCode: string
   createdAt: string
-  lastUpdatedAt: string
-  customerName: string | null
-  customerEmail: string | null
-  customerTelegram: string | null
-  overallIsFinal: boolean
+  expectedDeliveryAt: string | null
+  status: OrderStatus
   items: PublicTrackingItem[]
 }
 

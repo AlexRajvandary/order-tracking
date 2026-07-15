@@ -49,6 +49,7 @@ public sealed class GetDashboardSummaryQueryHandler
                 o.Customer != null
                     ? ((o.Customer.LastName ?? "") + " " + (o.Customer.FirstName ?? "") + " " + (o.Customer.Patronymic ?? "")).Trim()
                     : null,
+                o.Status.ToString(),
                 o.CreatedAt,
                 o.UpdatedAt ?? o.CreatedAt))
             .ToListAsync(cancellationToken);
