@@ -11,7 +11,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend-build
 WORKDIR /src
 COPY src/backend/ ./backend/
 WORKDIR /src/backend
-RUN dotnet restore OrderTracking.sln
+RUN dotnet restore OrderTracking.slnx
 RUN dotnet publish OrderTracking.Api/OrderTracking.Api.csproj -c Release -o /app/publish --no-restore
 
 # Copy frontend into wwwroot

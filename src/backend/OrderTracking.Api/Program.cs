@@ -84,7 +84,8 @@ try
 
     app.UseCors("Default");
 
-    if (!app.Environment.IsDevelopment())
+    var enableHttpsRedirect = app.Configuration.GetValue("App:UseHttpsRedirect", false);
+    if (enableHttpsRedirect)
     {
         app.UseHttpsRedirection();
     }
