@@ -15,6 +15,15 @@
     "statusWeek": "Смен статуса за 7 дней"
   },
   "recentOrders": "Последние заказы",
+  "statusFilter": {
+    "label": "Статусы заказов",
+    "all": "Все статусы",
+    "selected_one": "Выбран {{count}}",
+    "selected_few": "Выбрано {{count}}",
+    "selected_many": "Выбрано {{count}}",
+    "selected_other": "Выбрано {{count}}",
+    "empty": "Нет заказов с выбранными статусами"
+  },
   "recentStatuses": "Последние статусы",
   "recentAudit": "Аудит",
   "columns": {

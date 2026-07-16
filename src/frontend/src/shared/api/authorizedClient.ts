@@ -14,6 +14,10 @@ export function registerAuthHolder(next: AccessTokenHolder) {
   holder = next
 }
 
+export function getStoredAccessToken(): string | null {
+  return holder?.getAccessToken() ?? null
+}
+
 async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {

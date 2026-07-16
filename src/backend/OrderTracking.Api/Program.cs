@@ -3,7 +3,9 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OrderTracking.Api.Extensions;
 using OrderTracking.Api.Middleware;
+using OrderTracking.Api.Realtime;
 using OrderTracking.Application;
+using OrderTracking.Application.Common.Realtime;
 using OrderTracking.Infrastructure;
 using OrderTracking.Infrastructure.Persistence;
 using Serilog;
@@ -36,6 +38,10 @@ try
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
         });
+
+    builder.Services.AddSignalR();
+    builder.Services.AddSingleton<IPresenceRegistry, PresenceRegistry>();
+    builder.Services.AddScoped<IRealtimeNotifier, SignalRRealtimeNotifier>();
 
     builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
     {
@@ -98,6 +104,9 @@ try
     app.UseStaticFiles();
 
     app.MapControllers();
+
+    app.MapHub<AdminHub>("/hubs/admin");
+    app.MapHub<TrackingHub>("/hubs/tracking");
 
     app.MapHealthChecks("/health", new HealthCheckOptions
     {

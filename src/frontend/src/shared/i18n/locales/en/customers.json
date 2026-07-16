@@ -15,8 +15,13 @@
     "phone": "Phone",
     "email": "Email",
     "orders": "Orders",
+    "presence": "Presence",
     "created": "Created",
     "actions": "Actions"
+  },
+  "presence": {
+    "online": "On tracking page",
+    "offline": "Offline"
   },
   "form": {
     "createTitle": "New customer",

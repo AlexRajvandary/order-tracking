@@ -46,6 +46,23 @@ public static class ServiceCollectionExtensions
                     NameClaimType = JwtRegisteredClaimNames.Sub,
                     RoleClaimType = ClaimTypes.Role,
                 };
+
+                // SignalR cannot set Authorization headers for the WebSocket handshake, so it passes
+                // the JWT via the access_token query string on hub requests.
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                        {
+                            context.Token = accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    },
+                };
             });
 
         services.AddAuthorization();

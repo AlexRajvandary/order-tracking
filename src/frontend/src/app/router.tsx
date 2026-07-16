@@ -17,11 +17,13 @@ import { TrackingPage } from '@/pages/public/TrackingPage'
 import { AdminShell } from '@/widgets/admin-shell/AdminShell'
 import { AuthProvider } from '@/features/auth/model/AuthContext'
 import { RequireAuth } from '@/features/auth/ui/RequireAuth'
+import { AdminRealtime } from '@/shared/realtime/AdminRealtime'
 
 export function AppRouter() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <AdminRealtime />
         <Routes>
           <Route path="/" element={<HomePage />} />
 

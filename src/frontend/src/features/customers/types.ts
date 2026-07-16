@@ -10,6 +10,7 @@ export type Customer = {
   notes: string | null
   createdAt: string
   ordersCount: number
+  isOnline: boolean
 }
 
 export type CustomerOrderSummary = {

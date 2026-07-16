@@ -11,7 +11,8 @@ public sealed record CustomerDto(
     string? Email,
     string? Notes,
     DateTimeOffset CreatedAt,
-    int OrdersCount);
+    int OrdersCount,
+    bool IsOnline = false);
 
 public sealed record CustomerOrderSummaryDto(
     Guid Id,

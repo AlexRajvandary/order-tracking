@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Common.Models;
+using OrderTracking.Application.Common.Realtime;
 using OrderTracking.Application.Customers.Models;
 
 namespace OrderTracking.Application.Customers.GetCustomers;
@@ -9,10 +10,12 @@ namespace OrderTracking.Application.Customers.GetCustomers;
 public sealed class GetCustomersQueryHandler : IRequestHandler<GetCustomersQuery, PaginatedList<CustomerDto>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IPresenceRegistry _presence;
 
-    public GetCustomersQueryHandler(IApplicationDbContext context)
+    public GetCustomersQueryHandler(IApplicationDbContext context, IPresenceRegistry presence)
     {
         _context = context;
+        _presence = presence;
     }
 
     public async Task<PaginatedList<CustomerDto>> Handle(
@@ -45,6 +48,8 @@ public sealed class GetCustomersQueryHandler : IRequestHandler<GetCustomersQuery
             })
             .ToListAsync(cancellationToken);
 
+        var online = _presence.GetOnlineCustomerIds();
+
         var items = rows
             .Select(c => new CustomerDto(
                 c.Id,
@@ -57,7 +62,8 @@ public sealed class GetCustomersQueryHandler : IRequestHandler<GetCustomersQuery
                 c.Email,
                 c.Notes,
                 c.CreatedAt,
-                c.OrdersCount))
+                c.OrdersCount,
+                online.Contains(c.Id)))
             .ToList();
 
         return new PaginatedList<CustomerDto>(items, totalCount, page, pageSize);

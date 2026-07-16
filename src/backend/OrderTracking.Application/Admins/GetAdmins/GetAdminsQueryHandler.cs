@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Admins;
 using OrderTracking.Application.Admins.Models;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Realtime;
 
 namespace OrderTracking.Application.Admins.GetAdmins;
 
@@ -10,11 +11,13 @@ public sealed class GetAdminsQueryHandler : IRequestHandler<GetAdminsQuery, IRea
 {
     private readonly IApplicationDbContext _context;
     private readonly IDateTimeProvider _clock;
+    private readonly IPresenceRegistry _presence;
 
-    public GetAdminsQueryHandler(IApplicationDbContext context, IDateTimeProvider clock)
+    public GetAdminsQueryHandler(IApplicationDbContext context, IDateTimeProvider clock, IPresenceRegistry presence)
     {
         _context = context;
         _clock = clock;
+        _presence = presence;
     }
 
     public async Task<IReadOnlyList<AdminUserDto>> Handle(
@@ -27,6 +30,10 @@ public sealed class GetAdminsQueryHandler : IRequestHandler<GetAdminsQuery, IRea
             .OrderBy(u => u.Login)
             .ToListAsync(cancellationToken);
 
-        return users.Select(u => AdminUserMapping.ToDto(u, now)).ToList();
+        var online = _presence.GetOnlineAdminIds();
+
+        return users
+            .Select(u => AdminUserMapping.ToDto(u, now) with { IsOnline = online.Contains(u.Id) })
+            .ToList();
     }
 }

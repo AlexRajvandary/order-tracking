@@ -6,6 +6,7 @@ import { TrackingItemCard } from '@/features/tracking/ui/TrackingItemCard'
 import type { OrderStatus } from '@/features/orders/types'
 import { OrderStatusBadge } from '@/features/orders/ui/OrderStatusBadge'
 import { ApiError } from '@/shared/api/client'
+import { useTrackingRealtime } from '@/shared/realtime/useTrackingRealtime'
 import { LanguageSwitcher } from '@/shared/i18n/LanguageSwitcher'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
@@ -48,6 +49,8 @@ export function TrackingPage() {
     enabled: trackingCode.length === 5,
     retry: false,
   })
+
+  useTrackingRealtime(trackingCode)
 
   const products = data?.items.filter((i) => i.type === 'Product') ?? []
   const services = data?.items.filter((i) => i.type === 'Service') ?? []

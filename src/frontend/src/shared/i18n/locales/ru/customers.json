@@ -15,8 +15,13 @@
     "phone": "Телефон",
     "email": "Email",
     "orders": "Заказов",
+    "presence": "Присутствие",
     "created": "Создан",
     "actions": "Действия"
+  },
+  "presence": {
+    "online": "На странице заказа",
+    "offline": "Не в сети"
   },
   "form": {
     "createTitle": "Новый клиент",

@@ -15,6 +15,13 @@
     "statusWeek": "Status changes in 7 days"
   },
   "recentOrders": "Recent orders",
+  "statusFilter": {
+    "label": "Order statuses",
+    "all": "All statuses",
+    "selected_one": "{{count}} selected",
+    "selected_other": "{{count}} selected",
+    "empty": "No orders with the selected statuses"
+  },
   "recentStatuses": "Recent status updates",
   "recentAudit": "Audit",
   "columns": {

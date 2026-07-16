@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Realtime;
 using OrderTracking.Application.Customers.Models;
 
 namespace OrderTracking.Application.Customers.GetCustomerById;
@@ -8,10 +9,12 @@ namespace OrderTracking.Application.Customers.GetCustomerById;
 public sealed class GetCustomerByIdQueryHandler : IRequestHandler<GetCustomerByIdQuery, CustomerDto>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IPresenceRegistry _presence;
 
-    public GetCustomerByIdQueryHandler(IApplicationDbContext context)
+    public GetCustomerByIdQueryHandler(IApplicationDbContext context, IPresenceRegistry presence)
     {
         _context = context;
+        _presence = presence;
     }
 
     public async Task<CustomerDto> Handle(GetCustomerByIdQuery request, CancellationToken cancellationToken)
@@ -46,6 +49,7 @@ public sealed class GetCustomerByIdQueryHandler : IRequestHandler<GetCustomerByI
             row.Email,
             row.Notes,
             row.CreatedAt,
-            row.OrdersCount);
+            row.OrdersCount,
+            _presence.IsCustomerOnline(row.Id));
     }
 }

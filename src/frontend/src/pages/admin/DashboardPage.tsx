@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ClipboardList, HardDrive, ShieldCheck, Users } from 'lucide-react'
+import { ClipboardList, HardDrive, ListFilter, ShieldCheck, Users } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import * as dashboardApi from '@/features/dashboard/api/dashboardApi'
 import { useStorageMetrics } from '@/features/dashboard/api/useStorageMetrics'
 import * as adminsApi from '@/features/admins/api/adminsApi'
@@ -17,15 +18,25 @@ import {
   CarouselContent,
   CarouselItem,
 } from '@/shared/ui/carousel'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu'
 import { cn } from '@/shared/lib/utils'
 
+const ORDER_STATUSES: OrderStatus[] = [
+  'AwaitingPayment',
+  'InProgress',
+  'Completed',
+  'Cancelled',
+]
+
 function isOrderStatus(value: string): value is OrderStatus {
-  return (
-    value === 'AwaitingPayment' ||
-    value === 'InProgress' ||
-    value === 'Completed' ||
-    value === 'Cancelled'
-  )
+  return ORDER_STATUSES.includes(value as OrderStatus)
 }
 
 function StatCard({
@@ -169,6 +180,9 @@ export function DashboardPage() {
   const { t } = useTranslation('dashboard')
   const navigate = useNavigate()
   const { user } = useAuth()
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<OrderStatus>>(
+    () => new Set(ORDER_STATUSES),
+  )
   const canManageAdmins = user?.role === 'Admin' || user?.role === 'SuperAdmin'
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['dashboard-summary'],
@@ -180,6 +194,26 @@ export function DashboardPage() {
     queryFn: adminsApi.getAdmins,
     enabled: canManageAdmins,
   })
+
+  const filteredRecentOrders = useMemo(
+    () =>
+      data?.recentOrders.filter(
+        (order) => isOrderStatus(order.status) && selectedStatuses.has(order.status),
+      ) ?? [],
+    [data?.recentOrders, selectedStatuses],
+  )
+
+  const toggleStatus = (status: OrderStatus, checked: boolean) => {
+    setSelectedStatuses((current) => {
+      const next = new Set(current)
+      if (checked) {
+        next.add(status)
+      } else {
+        next.delete(status)
+      }
+      return next
+    })
+  }
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">{t('loading', { ns: 'common' })}</p>
@@ -238,16 +272,48 @@ export function DashboardPage() {
         </CarouselContent>
       </Carousel>
 
-      <Card>
+      <Card className="relative">
         <CardHeader>
           <CardTitle>{t('recentOrders')}</CardTitle>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="absolute right-4 top-4"
+              >
+                <ListFilter />
+                {selectedStatuses.size === ORDER_STATUSES.length
+                  ? t('statusFilter.all')
+                  : t('statusFilter.selected', { count: selectedStatuses.size })}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>{t('statusFilter.label')}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {ORDER_STATUSES.map((status) => (
+                <DropdownMenuCheckboxItem
+                  key={status}
+                  checked={selectedStatuses.has(status)}
+                  onCheckedChange={(checked) => toggleStatus(status, Boolean(checked))}
+                  onSelect={(event) => event.preventDefault()}
+                >
+                  <span className={cn('size-1.5 rounded-full', orderStatusStyles[status].dot)} />
+                  {t(`details.orderStatus.${status}`, { ns: 'orders' })}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </CardHeader>
         <CardContent>
           {!data.recentOrders.length ? (
             <p className="text-sm text-muted-foreground">{t('emptyOrders')}</p>
+          ) : !filteredRecentOrders.length ? (
+            <p className="text-sm text-muted-foreground">{t('statusFilter.empty')}</p>
           ) : (
             <ul className="divide-y">
-              {data.recentOrders.map((order) => {
+              {filteredRecentOrders.map((order) => {
                 const status = isOrderStatus(order.status)
                   ? order.status
                   : 'AwaitingPayment'
