@@ -46,6 +46,12 @@ function formatDate(value: string) {
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`
 }
 
+function formatDateTime(value: string) {
+  const d = new Date(value)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 function canManageAdmins(role: string | null | undefined) {
   return role === 'Admin' || role === 'SuperAdmin'
 }
@@ -229,6 +235,15 @@ export function AdminsPage() {
             {row.original.isOnline ? t('presence.online') : t('presence.offline')}
           </Badge>
         ),
+      },
+      {
+        id: 'lastSeenAt',
+        accessorKey: 'lastSeenAt',
+        enableColumnFilter: false,
+        meta: { label: t('columns.lastSeen') },
+        header: () => t('columns.lastSeen'),
+        cell: ({ row }) =>
+          row.original.lastSeenAt ? formatDateTime(row.original.lastSeenAt) : '—',
       },
       {
         id: 'createdAt',

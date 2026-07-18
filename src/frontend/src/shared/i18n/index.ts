@@ -19,10 +19,19 @@ import enDashboard from './locales/en/dashboard.json'
 import ruHelp from './locales/ru/help.json'
 import enHelp from './locales/en/help.json'
 
+function detectSystemLocale(): 'ru' | 'en' {
+  const candidates = [...(navigator.languages ?? []), navigator.language]
+  for (const lang of candidates) {
+    if (lang?.toLowerCase().startsWith('ru')) {
+      return 'ru'
+    }
+  }
+  return 'en'
+}
+
 const savedLocale = localStorage.getItem('locale')
-const browserLocale = navigator.language.startsWith('ru') ? 'ru' : 'en'
 const defaultLocale =
-  savedLocale ?? import.meta.env.VITE_DEFAULT_LOCALE ?? browserLocale
+  savedLocale === 'ru' || savedLocale === 'en' ? savedLocale : detectSystemLocale()
 
 void i18n.use(initReactI18next).init({
   resources: {
@@ -50,11 +59,13 @@ void i18n.use(initReactI18next).init({
     },
   },
   lng: defaultLocale,
-  fallbackLng: 'ru',
+  fallbackLng: 'en',
   defaultNS: 'common',
   interpolation: {
     escapeValue: false,
   },
 })
+
+document.documentElement.lang = defaultLocale
 
 export default i18n

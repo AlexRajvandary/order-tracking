@@ -30,6 +30,7 @@
     "telegram": "Telegram",
     "account": "Account",
     "presence": "Presence",
+    "lastSeen": "Last seen",
     "created": "Created",
     "actions": "Actions"
   },

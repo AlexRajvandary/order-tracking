@@ -30,6 +30,7 @@
     "telegram": "Telegram",
     "account": "Аккаунт",
     "presence": "Присутствие",
+    "lastSeen": "Был в сети",
     "created": "Создан",
     "actions": "Действия"
   },
