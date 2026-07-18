@@ -25,6 +25,13 @@ public sealed class CreateStatusDefinitionCommandHandler
             Name = request.Name.Trim(),
             ItemType = request.ItemType,
             Color = string.IsNullOrWhiteSpace(request.Color) ? null : request.Color.Trim(),
+            DefaultCountry = string.IsNullOrWhiteSpace(request.DefaultCountry)
+                ? null
+                : request.DefaultCountry.Trim(),
+            DefaultLocation = string.IsNullOrWhiteSpace(request.DefaultLocation)
+                ? null
+                : request.DefaultLocation.Trim(),
+            PublishAfterDays = request.PublishAfterDays is > 0 ? request.PublishAfterDays : null,
             SortOrder = request.SortOrder,
             IsActive = true,
             IsFinal = request.IsFinal,
@@ -42,6 +49,9 @@ public sealed class CreateStatusDefinitionCommandHandler
             s.Name,
             s.ItemType?.ToString(),
             s.Color,
+            s.DefaultCountry,
+            s.DefaultLocation,
+            s.PublishAfterDays,
             s.SortOrder,
             s.IsActive,
             s.IsFinal,

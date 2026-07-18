@@ -3,6 +3,9 @@ export type StatusDefinition = {
   name: string
   itemType: string | null
   color: string | null
+  defaultCountry: string | null
+  defaultLocation: string | null
+  publishAfterDays: number | null
   sortOrder: number
   isActive: boolean
   isFinal: boolean
@@ -27,6 +30,10 @@ export type StatusHistoryEntry = {
   statusText: string
   statusColor: string | null
   comment: string | null
+  country: string | null
+  location: string | null
+  publishAt: string | null
+  isPublished: boolean
   changedByAdminId: string
   changedByAdminName: string | null
   changedAt: string
@@ -37,6 +44,9 @@ export type UpsertStatusRequest = {
   name: string
   itemType?: 'Product' | 'Service' | null
   color?: string | null
+  defaultCountry?: string | null
+  defaultLocation?: string | null
+  publishAfterDays?: number | null
   sortOrder?: number
   isFinal?: boolean
 }
@@ -50,5 +60,16 @@ export type UpdateOrderItemStatusRequest = {
   statusDefinitionId?: string | null
   customStatusText?: string | null
   comment?: string | null
+  country?: string | null
+  location?: string | null
+  publishAt?: string | null
   photos?: File[]
+}
+
+export type UpdateOrderItemStatusHistoryRequest = {
+  statusText?: string | null
+  comment?: string | null
+  country?: string | null
+  location?: string | null
+  publishAt?: string | null
 }

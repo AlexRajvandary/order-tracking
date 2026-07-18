@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Customers;
 using OrderTracking.Application.Orders.Models;
+using OrderTracking.Application.Orders.StatusHistory;
 using OrderTracking.Domain.Common;
 using OrderTracking.Domain.Entities;
 using OrderTracking.Domain.Enums;
@@ -132,6 +133,13 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
         {
             _context.OrderItems.Add(item);
         }
+
+        await ScheduledStatusHistorySeeder.SeedForItemsAsync(
+            _context,
+            order,
+            items,
+            adminId,
+            cancellationToken);
 
         try
         {

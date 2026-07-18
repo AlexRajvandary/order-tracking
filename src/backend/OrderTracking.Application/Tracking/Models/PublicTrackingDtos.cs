@@ -18,6 +18,8 @@ public sealed record PublicTrackingItemDto(
 public sealed record PublicStatusHistoryDto(
     string Status,
     string? Comment,
+    string? Country,
+    string? Location,
     DateTimeOffset ChangedAt,
     IReadOnlyList<PublicStatusAttachmentDto> Attachments);
 

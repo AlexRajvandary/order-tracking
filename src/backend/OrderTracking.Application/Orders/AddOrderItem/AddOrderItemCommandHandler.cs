@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Orders.Models;
+using OrderTracking.Application.Orders.StatusHistory;
 using OrderTracking.Domain.Common;
 using OrderTracking.Domain.Entities;
 
@@ -11,17 +12,25 @@ public sealed class AddOrderItemCommandHandler : IRequestHandler<AddOrderItemCom
 {
     private readonly IApplicationDbContext _context;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly ICurrentUserService _currentUserService;
 
     public AddOrderItemCommandHandler(
         IApplicationDbContext context,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        ICurrentUserService currentUserService)
     {
         _context = context;
         _dateTimeProvider = dateTimeProvider;
+        _currentUserService = currentUserService;
     }
 
     public async Task<OrderItemDto> Handle(AddOrderItemCommand request, CancellationToken cancellationToken)
     {
+        if (_currentUserService.UserId is not { } adminId)
+        {
+            throw new UnauthorizedAccessException();
+        }
+
         var order = await _context.Orders
             .FirstOrDefaultAsync(o => o.Id == request.OrderId, cancellationToken)
             ?? throw new KeyNotFoundException($"Order '{request.OrderId}' was not found");
@@ -50,6 +59,14 @@ public sealed class AddOrderItemCommandHandler : IRequestHandler<AddOrderItemCom
 
         order.UpdatedAt = now;
         _context.OrderItems.Add(item);
+
+        await ScheduledStatusHistorySeeder.SeedForItemsAsync(
+            _context,
+            order,
+            [item],
+            adminId,
+            cancellationToken);
+
         await _context.SaveChangesAsync(cancellationToken);
 
         return Map(item);

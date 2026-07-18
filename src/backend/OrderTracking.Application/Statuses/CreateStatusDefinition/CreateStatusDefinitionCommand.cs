@@ -8,5 +8,8 @@ public sealed record CreateStatusDefinitionCommand(
     string Name,
     OrderItemType? ItemType,
     string? Color,
+    string? DefaultCountry,
+    string? DefaultLocation,
+    int? PublishAfterDays,
     int SortOrder,
     bool IsFinal) : IRequest<StatusDefinitionDto>;

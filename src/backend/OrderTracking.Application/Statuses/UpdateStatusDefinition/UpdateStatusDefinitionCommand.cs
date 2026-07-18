@@ -9,6 +9,9 @@ public sealed record UpdateStatusDefinitionCommand(
     string Name,
     OrderItemType? ItemType,
     string? Color,
+    string? DefaultCountry,
+    string? DefaultLocation,
+    int? PublishAfterDays,
     int SortOrder,
     bool IsActive,
     bool IsFinal) : IRequest<StatusDefinitionDto>;

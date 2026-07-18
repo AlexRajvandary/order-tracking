@@ -63,6 +63,7 @@ export function SearchableSelect<T>({
 
   return (
     <Popover
+      modal={false}
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen)
@@ -95,9 +96,10 @@ export function SearchableSelect<T>({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-[var(--radix-popover-trigger-width)] gap-0 p-0"
+        className="z-[60] w-[var(--radix-popover-trigger-width)] gap-0 overflow-hidden p-0"
+        onWheel={(event) => event.stopPropagation()}
       >
-        <Command shouldFilter={!onSearchChange}>
+        <Command shouldFilter={!onSearchChange} className="max-h-80">
           <CommandInput
             value={search}
             onValueChange={(nextSearch) => {
@@ -107,12 +109,17 @@ export function SearchableSelect<T>({
             placeholder={searchPlaceholder}
             aria-label={searchPlaceholder}
           />
-          <CommandList id={listId}>
+          <CommandList
+            id={listId}
+            className="max-h-64 overscroll-contain"
+            onWheel={(event) => event.stopPropagation()}
+          >
             <CommandEmpty>{isLoading ? loadingText : emptyText}</CommandEmpty>
             {displayedGroups.map((group, groupIndex) => (
               <CommandGroup
                 key={`${group.label}-${groupIndex}`}
                 heading={group.label || undefined}
+                className="overflow-visible"
               >
                 {group.items.map((item, itemIndex) => {
                   const itemValue = getValue(item)

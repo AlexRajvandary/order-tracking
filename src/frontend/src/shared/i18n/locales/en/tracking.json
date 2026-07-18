@@ -18,6 +18,8 @@
   "noStatus": "Status not set yet",
   "history": "History",
   "historyEmpty": "No history yet",
+  "location": "Location",
+  "country": "Country",
   "openPhoto": "Open photo",
   "noItems": "This order has no items yet",
   "notFound": "Order not found",

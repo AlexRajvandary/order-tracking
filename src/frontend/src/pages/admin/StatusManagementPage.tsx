@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as statusesApi from '@/features/statuses/api/statusesApi'
 import type { StatusDefinition, UpsertStatusRequest } from '@/features/statuses/types'
+import { CountrySelect } from '@/features/statuses/ui/CountrySelect'
 import { ApiError } from '@/shared/api/client'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { Badge } from '@/shared/ui/badge'
@@ -38,6 +39,9 @@ type FormState = {
   name: string
   itemType: '' | 'Product' | 'Service'
   color: string
+  defaultCountry: string
+  defaultLocation: string
+  publishAfterDays: string
   isActive: boolean
   isFinal: boolean
 }
@@ -46,6 +50,9 @@ const emptyForm: FormState = {
   name: '',
   itemType: '',
   color: '#3B82F6',
+  defaultCountry: '',
+  defaultLocation: '',
+  publishAfterDays: '',
   isActive: true,
   isFinal: false,
 }
@@ -91,6 +98,11 @@ export function StatusManagementPage() {
         name: request.name,
         itemType: request.itemType || null,
         color: request.color || null,
+        defaultCountry: request.defaultCountry.trim() || null,
+        defaultLocation: request.defaultLocation.trim() || null,
+        publishAfterDays: request.publishAfterDays.trim()
+          ? Number(request.publishAfterDays)
+          : null,
         sortOrder,
         isActive: request.isActive,
         isFinal: request.isFinal,
@@ -238,6 +250,10 @@ export function StatusManagementPage() {
                     ? editing.itemType
                     : '',
                 color: editing.color ?? '#3B82F6',
+                defaultCountry: editing.defaultCountry ?? '',
+                defaultLocation: editing.defaultLocation ?? '',
+                publishAfterDays:
+                  editing.publishAfterDays != null ? String(editing.publishAfterDays) : '',
                 isActive: editing.isActive,
                 isFinal: editing.isFinal,
               }
@@ -258,6 +274,11 @@ export function StatusManagementPage() {
               name: form.name,
               itemType: form.itemType || null,
               color: form.color || null,
+              defaultCountry: form.defaultCountry.trim() || null,
+              defaultLocation: form.defaultLocation.trim() || null,
+              publishAfterDays: form.publishAfterDays.trim()
+                ? Number(form.publishAfterDays)
+                : null,
               sortOrder: 0,
               isFinal: form.isFinal,
             })
@@ -352,6 +373,32 @@ function StatusFormDialog({
               type="color"
               value={form.color || '#3B82F6'}
               onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t('form.defaultCountry')}</Label>
+            <CountrySelect
+              value={form.defaultCountry}
+              onValueChange={(defaultCountry) => setForm((f) => ({ ...f, defaultCountry }))}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t('form.defaultLocation')}</Label>
+            <Input
+              value={form.defaultLocation}
+              onChange={(e) => setForm((f) => ({ ...f, defaultLocation: e.target.value }))}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t('form.publishAfterDays')}</Label>
+            <Input
+              type="number"
+              min={1}
+              value={form.publishAfterDays}
+              onChange={(e) => setForm((f) => ({ ...f, publishAfterDays: e.target.value }))}
             />
           </div>
 

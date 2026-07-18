@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ChevronDown } from 'lucide-react'
 import type { PublicStatusAttachment, PublicTrackingItem } from '@/features/tracking/api/trackingApi'
 import { attachmentUrl } from '@/features/tracking/api/trackingApi'
+import { formatCountryDisplay } from '@/features/statuses/ui/CountrySelect'
 import {
   OrderTimeline,
   type OrderTimelineEvent,
@@ -82,7 +83,14 @@ function PublicItemStatusTimeline({
       type: 'item.status_changed',
       occurredAt: entry.changedAt,
       title: entry.status,
-      description: entry.comment?.trim() || null,
+      description:
+        [
+          formatCountryDisplay(entry.country, locale),
+          entry.location?.trim(),
+          entry.comment?.trim(),
+        ]
+          .filter(Boolean)
+          .join(' · ') || null,
       markerState: index === 0 ? 'current' : 'completed',
       markerColor: index === 0 ? item.statusColor : null,
       meta: { attachments: entry.attachments ?? [] },

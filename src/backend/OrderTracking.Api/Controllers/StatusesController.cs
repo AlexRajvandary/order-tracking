@@ -45,6 +45,9 @@ public sealed class StatusesController : ControllerBase
                 request.Name,
                 request.ItemType,
                 request.Color,
+                request.DefaultCountry,
+                request.DefaultLocation,
+                request.PublishAfterDays,
                 request.SortOrder,
                 request.IsFinal),
             cancellationToken);
@@ -64,6 +67,9 @@ public sealed class StatusesController : ControllerBase
                 request.Name,
                 request.ItemType,
                 request.Color,
+                request.DefaultCountry,
+                request.DefaultLocation,
+                request.PublishAfterDays,
                 request.SortOrder,
                 request.IsActive,
                 request.IsFinal),
@@ -84,6 +90,9 @@ public sealed record UpsertStatusRequest(
     string Name,
     OrderItemType? ItemType,
     string? Color,
+    string? DefaultCountry = null,
+    string? DefaultLocation = null,
+    int? PublishAfterDays = null,
     int SortOrder = 0,
     bool IsFinal = false);
 
@@ -91,6 +100,9 @@ public sealed record UpdateStatusRequest(
     string Name,
     OrderItemType? ItemType,
     string? Color,
+    string? DefaultCountry,
+    string? DefaultLocation,
+    int? PublishAfterDays,
     int SortOrder,
     bool IsActive,
     bool IsFinal);

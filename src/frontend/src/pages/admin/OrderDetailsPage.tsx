@@ -25,6 +25,7 @@ import type {
 } from '@/features/orders/types'
 import type { UpsertCustomerRequest } from '@/features/customers/types'
 import type { UpdateOrderItemStatusRequest } from '@/features/statuses/types'
+import { CountrySelect } from '@/features/statuses/ui/CountrySelect'
 import { orderStatusStyles } from '@/features/orders/ui/OrderStatusBadge'
 import { ItemStatusTimeline } from '@/features/orders/ui/order-timeline'
 import { ApiError } from '@/shared/api/client'
@@ -61,7 +62,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-import { DatePicker, formatYmd, parseYmdLocal } from '@/shared/ui/date-picker'
+import { DatePicker, DateTimePicker, formatYmd, parseYmdLocal } from '@/shared/ui/date-picker'
 import {
   Select,
   SelectContent,
@@ -454,6 +455,7 @@ function ItemFormDialog({
 function StatusUpdateDialog({
   open,
   item,
+  orderCreatedAt,
   error,
   submitting,
   onOpenChange,
@@ -461,6 +463,7 @@ function StatusUpdateDialog({
 }: {
   open: boolean
   item: OrderItem
+  orderCreatedAt: string
   error: string | null
   submitting: boolean
   onOpenChange: (open: boolean) => void
@@ -471,6 +474,9 @@ function StatusUpdateDialog({
   const [statusId, setStatusId] = useState(NO_STATUS)
   const [customText, setCustomText] = useState('')
   const [comment, setComment] = useState('')
+  const [country, setCountry] = useState('')
+  const [location, setLocation] = useState('')
+  const [publishAt, setPublishAt] = useState('')
   const [photos, setPhotos] = useState<{ id: string; file: File; previewUrl: string }[]>([])
   const [photosCarouselApi, setPhotosCarouselApi] = useState<CarouselApi>()
 
@@ -483,6 +489,14 @@ function StatusUpdateDialog({
     if (!photosCarouselApi || photos.length === 0) return
     photosCarouselApi.scrollTo(photos.length - 1)
   }, [photosCarouselApi, photos.length])
+
+  useEffect(() => {
+    if (mode !== 'preset' || statusId === NO_STATUS) return
+    const selected = statuses?.find((s) => s.id === statusId)
+    if (!selected) return
+    if (selected.defaultCountry) setCountry(selected.defaultCountry)
+    if (selected.defaultLocation) setLocation(selected.defaultLocation)
+  }, [mode, statusId, statuses])
 
   function clearPhotos(list: { previewUrl: string }[]) {
     list.forEach((item) => URL.revokeObjectURL(item.previewUrl))
@@ -502,6 +516,9 @@ function StatusUpdateDialog({
           setStatusId(NO_STATUS)
           setCustomText('')
           setComment('')
+          setCountry('')
+          setLocation('')
+          setPublishAt('')
           setPhotos((prev) => {
             clearPhotos(prev)
             return []
@@ -530,12 +547,16 @@ function StatusUpdateDialog({
             onSubmit={(e) => {
               e.preventDefault()
               const photoFiles = photos.map((p) => p.file)
+              const publishAtIso = publishAt.trim() || null
               if (mode === 'preset') {
                 if (statusId === NO_STATUS) return
                 onSubmit({
                   statusDefinitionId: statusId,
                   customStatusText: null,
                   comment,
+                  country: country.trim() || null,
+                  location: location.trim() || null,
+                  publishAt: publishAtIso,
                   photos: photoFiles,
                 })
               } else {
@@ -544,6 +565,9 @@ function StatusUpdateDialog({
                   statusDefinitionId: null,
                   customStatusText: customText.trim(),
                   comment,
+                  country: country.trim() || null,
+                  location: location.trim() || null,
+                  publishAt: publishAtIso,
                   photos: photoFiles,
                 })
               }
@@ -581,6 +605,32 @@ function StatusUpdateDialog({
               value={comment}
               onChange={(e) => setComment(e.target.value)}
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t('update.country')}</Label>
+            <CountrySelect value={country} onValueChange={setCountry} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t('update.location')}</Label>
+            <Input
+              placeholder={t('update.locationPlaceholder')}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t('update.publishAt')}</Label>
+            <DateTimePicker
+              value={publishAt || null}
+              onChange={(iso) => setPublishAt(iso ?? '')}
+              orderCreatedAt={orderCreatedAt}
+              align="start"
+              className="h-9 w-full justify-start"
+            />
+            <p className="text-xs text-muted-foreground">{t('update.publishAtHint')}</p>
           </div>
 
           <div className="min-w-0 w-full space-y-1.5">
@@ -1186,6 +1236,7 @@ export function OrderDetailsPage() {
                         <div className="mt-3">
                           <ItemStatusTimeline
                             orderId={id}
+                            orderCreatedAt={order.createdAt}
                             history={itemHistory}
                             onPhotosUploaded={invalidateOrder}
                           />
@@ -1280,6 +1331,7 @@ export function OrderDetailsPage() {
         <StatusUpdateDialog
           open={Boolean(statusItem)}
           item={statusItem}
+          orderCreatedAt={order.createdAt}
           error={statusError}
           submitting={statusMutation.isPending}
           onOpenChange={(open) => {

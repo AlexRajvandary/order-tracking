@@ -238,6 +238,9 @@ public class StatusDefinitionConfiguration : IEntityTypeConfiguration<StatusDefi
         builder.Property(e => e.Name).HasMaxLength(200).IsRequired();
         builder.Property(e => e.ItemType).HasConversion<string>().HasMaxLength(20);
         builder.Property(e => e.Color).HasMaxLength(20);
+        builder.Property(e => e.DefaultCountry).HasMaxLength(100);
+        builder.Property(e => e.DefaultLocation).HasMaxLength(500);
+        builder.Property(e => e.PublishAfterDays);
 
         builder.HasQueryFilter(e => !e.IsDeleted);
     }
@@ -253,8 +256,12 @@ public class OrderItemStatusHistoryConfiguration : IEntityTypeConfiguration<Orde
 
         builder.Property(e => e.StatusText).HasMaxLength(200).IsRequired();
         builder.Property(e => e.Comment).HasColumnType("text");
+        builder.Property(e => e.Country).HasMaxLength(100);
+        builder.Property(e => e.Location).HasMaxLength(500);
+        builder.Property(e => e.IsPublished).HasDefaultValue(true);
 
         builder.HasIndex(e => new { e.OrderItemId, e.ChangedAt });
+        builder.HasIndex(e => new { e.IsPublished, e.PublishAt });
 
         builder.HasOne(e => e.OrderItem)
             .WithMany(i => i.StatusHistory)

@@ -4,6 +4,7 @@ import type {
   StatusDefinition,
   StatusHistoryAttachment,
   StatusHistoryEntry,
+  UpdateOrderItemStatusHistoryRequest,
   UpdateOrderItemStatusRequest,
   UpdateStatusRequest,
   UpsertStatusRequest,
@@ -50,6 +51,15 @@ export async function updateOrderItemStatus(
   if (request.comment) {
     form.append('comment', request.comment)
   }
+  if (request.country) {
+    form.append('country', request.country)
+  }
+  if (request.location) {
+    form.append('location', request.location)
+  }
+  if (request.publishAt) {
+    form.append('publishAt', request.publishAt)
+  }
   for (const photo of request.photos ?? []) {
     form.append('photos', photo)
   }
@@ -76,6 +86,26 @@ export async function updateOrderItemStatus(
 
 export function getOrderStatusHistory(orderId: string) {
   return authorizedJson<StatusHistoryEntry[]>(`/orders/${orderId}/status-history`)
+}
+
+export function updateOrderItemStatusHistory(
+  orderId: string,
+  historyId: string,
+  request: UpdateOrderItemStatusHistoryRequest,
+) {
+  return authorizedJson<StatusHistoryEntry>(
+    `/orders/${orderId}/status-history/${historyId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(request),
+    },
+  )
+}
+
+export function cancelScheduledStatusHistory(orderId: string, historyId: string) {
+  return authorizedJson<void>(`/orders/${orderId}/status-history/${historyId}`, {
+    method: 'DELETE',
+  })
 }
 
 export function addStatusHistoryPhoto(

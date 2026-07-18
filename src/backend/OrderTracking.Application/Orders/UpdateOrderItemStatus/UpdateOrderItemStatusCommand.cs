@@ -10,4 +10,7 @@ public sealed record UpdateOrderItemStatusCommand(
     Guid? StatusDefinitionId,
     string? CustomStatusText,
     string? Comment,
+    string? Country,
+    string? Location,
+    DateTimeOffset? PublishAt,
     IReadOnlyList<StatusPhotoUploadFile>? Photos) : IRequest<OrderItemDto>;

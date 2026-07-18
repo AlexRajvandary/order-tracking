@@ -13,6 +13,8 @@ export type PublicStatusAttachment = {
 export type PublicStatusHistory = {
   status: string
   comment: string | null
+  country: string | null
+  location: string | null
   changedAt: string
   attachments: PublicStatusAttachment[]
 }

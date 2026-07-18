@@ -11,6 +11,8 @@ public sealed class UpdateOrderItemStatusCommandValidator : AbstractValidator<Up
         RuleFor(x => x.ItemId).NotEmpty();
         RuleFor(x => x.CustomStatusText).MaximumLength(200);
         RuleFor(x => x.Comment).MaximumLength(4000);
+        RuleFor(x => x.Country).MaximumLength(100);
+        RuleFor(x => x.Location).MaximumLength(500);
 
         RuleFor(x => x)
             .Must(x => x.StatusDefinitionId.HasValue ^ !string.IsNullOrWhiteSpace(x.CustomStatusText))

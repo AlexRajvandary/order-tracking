@@ -17,10 +17,12 @@ using OrderTracking.Application.Orders.UpdateOrder;
 using OrderTracking.Application.Orders.UpdateOrderStatus;
 using OrderTracking.Application.Orders.UpdateOrderItem;
 using OrderTracking.Application.Orders.AddStatusHistoryPhotos;
+using OrderTracking.Application.Orders.CancelScheduledStatusHistory;
 using OrderTracking.Application.Orders.DeleteStatusHistoryPhoto;
 using OrderTracking.Application.Orders.GetOrderStatusHistory;
 using OrderTracking.Application.Orders.StatusPhotos;
 using OrderTracking.Application.Orders.UpdateOrderItemStatus;
+using OrderTracking.Application.Orders.UpdateOrderItemStatusHistory;
 using OrderTracking.Application.Statuses.Models;
 using OrderTracking.Domain.Enums;
 
@@ -209,6 +211,9 @@ public sealed class OrdersController : ControllerBase
         Guid? statusDefinitionId;
         string? customStatusText;
         string? comment;
+        string? country = null;
+        string? location = null;
+        DateTimeOffset? publishAt = null;
         IReadOnlyList<StatusPhotoUploadFile>? photos = null;
 
         if (Request.HasFormContentType)
@@ -217,6 +222,12 @@ public sealed class OrdersController : ControllerBase
             statusDefinitionId = Guid.TryParse(form["statusDefinitionId"], out var sid) ? sid : null;
             customStatusText = form["customStatusText"].FirstOrDefault();
             comment = form["comment"].FirstOrDefault();
+            country = form["country"].FirstOrDefault();
+            location = form["location"].FirstOrDefault();
+            if (DateTimeOffset.TryParse(form["publishAt"].FirstOrDefault(), out var parsedPublishAt))
+            {
+                publishAt = parsedPublishAt;
+            }
 
             var uploads = new List<StatusPhotoUploadFile>();
             foreach (var file in form.Files.Where(f =>
@@ -245,6 +256,9 @@ public sealed class OrdersController : ControllerBase
             statusDefinitionId = request.StatusDefinitionId;
             customStatusText = request.CustomStatusText;
             comment = request.Comment;
+            country = request.Country;
+            location = request.Location;
+            publishAt = request.PublishAt;
         }
 
         var result = await _mediator.Send(
@@ -254,10 +268,47 @@ public sealed class OrdersController : ControllerBase
                 statusDefinitionId,
                 customStatusText,
                 comment,
+                country,
+                location,
+                publishAt,
                 photos),
             cancellationToken);
 
         return Ok(result);
+    }
+
+    [HttpPatch("{orderId:guid}/status-history/{historyId:guid}")]
+    public async Task<ActionResult<StatusHistoryEntryDto>> UpdateStatusHistory(
+        Guid orderId,
+        Guid historyId,
+        [FromBody] UpdateOrderItemStatusHistoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(
+            new UpdateOrderItemStatusHistoryCommand(
+                orderId,
+                historyId,
+                request.StatusText,
+                request.Comment,
+                request.Country,
+                request.Location,
+                request.PublishAt),
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpDelete("{orderId:guid}/status-history/{historyId:guid}")]
+    public async Task<IActionResult> CancelScheduledStatusHistory(
+        Guid orderId,
+        Guid historyId,
+        CancellationToken cancellationToken)
+    {
+        await _mediator.Send(
+            new CancelScheduledStatusHistoryCommand(orderId, historyId),
+            cancellationToken);
+
+        return NoContent();
     }
 
     [HttpPost("{orderId:guid}/status-history/{historyId:guid}/photos")]
@@ -343,4 +394,14 @@ public sealed record UpsertOrderItemRequest(
 public sealed record UpdateOrderItemStatusRequest(
     Guid? StatusDefinitionId,
     string? CustomStatusText,
-    string? Comment);
+    string? Comment,
+    string? Country = null,
+    string? Location = null,
+    DateTimeOffset? PublishAt = null);
+
+public sealed record UpdateOrderItemStatusHistoryRequest(
+    string? StatusText,
+    string? Comment,
+    string? Country,
+    string? Location,
+    DateTimeOffset? PublishAt);

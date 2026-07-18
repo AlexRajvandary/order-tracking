@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Orders.AddOrderItem;
 using OrderTracking.Application.Orders.Models;
+using OrderTracking.Application.Orders.StatusHistory;
 using OrderTracking.Application.Orders.StatusPhotos;
 using OrderTracking.Domain.Entities;
 
@@ -52,6 +53,8 @@ public sealed class UpdateOrderItemStatusCommandHandler
 
         string statusText;
         Guid? statusDefinitionId = null;
+        string? defaultCountry = null;
+        string? defaultLocation = null;
 
         if (request.StatusDefinitionId is { } definitionId)
         {
@@ -61,6 +64,8 @@ public sealed class UpdateOrderItemStatusCommandHandler
 
             statusDefinitionId = definition.Id;
             statusText = definition.Name;
+            defaultCountry = definition.DefaultCountry;
+            defaultLocation = definition.DefaultLocation;
         }
         else
         {
@@ -68,6 +73,17 @@ public sealed class UpdateOrderItemStatusCommandHandler
         }
 
         var now = _dateTimeProvider.UtcNow;
+        var publishAt = request.PublishAt;
+        var isPublished = publishAt is null || publishAt <= now;
+        var effectivePublishAt = publishAt ?? now;
+        var changedAt = isPublished ? effectivePublishAt : effectivePublishAt;
+
+        var country = !string.IsNullOrWhiteSpace(request.Country)
+            ? request.Country.Trim()
+            : defaultCountry;
+        var location = !string.IsNullOrWhiteSpace(request.Location)
+            ? request.Location.Trim()
+            : defaultLocation;
 
         var history = new OrderItemStatusHistory
         {
@@ -76,16 +92,21 @@ public sealed class UpdateOrderItemStatusCommandHandler
             StatusDefinitionId = statusDefinitionId,
             StatusText = statusText,
             Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim(),
+            Country = country,
+            Location = location,
+            PublishAt = effectivePublishAt,
+            IsPublished = isPublished,
             ChangedByAdminId = adminId,
-            ChangedAt = now,
+            ChangedAt = changedAt,
         };
 
-        item.CurrentStatusId = statusDefinitionId;
-        item.CurrentStatusText = statusText;
-        item.CurrentStatusUpdatedAt = now;
         order.UpdatedAt = now;
-
         _context.OrderItemStatusHistories.Add(history);
+
+        if (isPublished)
+        {
+            OrderItemCurrentStatusSync.ApplyPublished(item, history);
+        }
 
         if (request.Photos is { Count: > 0 })
         {

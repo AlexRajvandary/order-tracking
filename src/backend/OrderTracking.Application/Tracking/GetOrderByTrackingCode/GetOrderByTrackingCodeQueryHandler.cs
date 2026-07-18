@@ -40,11 +40,14 @@ public sealed class GetOrderByTrackingCodeQueryHandler
                         CurrentStatus = i.CurrentStatusText,
                         StatusColor = i.CurrentStatus != null ? i.CurrentStatus.Color : null,
                         History = i.StatusHistory
+                            .Where(h => h.IsPublished)
                             .OrderByDescending(h => h.ChangedAt)
                             .Select(h => new
                             {
                                 h.StatusText,
                                 h.Comment,
+                                h.Country,
+                                h.Location,
                                 h.ChangedAt,
                                 Attachments = h.Attachments
                                     .OrderBy(a => a.SortOrder)
@@ -79,6 +82,8 @@ public sealed class GetOrderByTrackingCodeQueryHandler
                 i.History.Select(h => new PublicStatusHistoryDto(
                     h.StatusText,
                     h.Comment,
+                    h.Country,
+                    h.Location,
                     h.ChangedAt,
                     h.Attachments.Select(a => new PublicStatusAttachmentDto(
                         a.Id,

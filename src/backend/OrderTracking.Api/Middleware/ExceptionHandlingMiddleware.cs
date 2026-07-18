@@ -59,6 +59,10 @@ public sealed class ExceptionHandlingMiddleware
                 HttpStatusCode.Forbidden,
                 "Forbidden",
                 exception.Message),
+            InvalidOperationException => (
+                HttpStatusCode.Conflict,
+                "Conflict",
+                exception.Message),
             _ => (
                 HttpStatusCode.InternalServerError,
                 "Internal server error",

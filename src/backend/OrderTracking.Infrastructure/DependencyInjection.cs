@@ -61,6 +61,8 @@ public static class DependencyInjection
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
+        services.AddHostedService<Background.StatusPublishBackgroundService>();
+
         return services;
     }
 }

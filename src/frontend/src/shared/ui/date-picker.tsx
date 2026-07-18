@@ -1,10 +1,18 @@
-import { format } from 'date-fns'
+import { format, isSameDay, startOfDay } from 'date-fns'
 import { enUS, ru } from 'date-fns/locale'
 import { CalendarIcon } from 'lucide-react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 import { Calendar } from '@/shared/ui/calendar'
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/shared/ui/carousel'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
@@ -117,7 +125,16 @@ type DateTimePickerProps = {
   disabled?: boolean
   className?: string
   align?: 'start' | 'center' | 'end'
+  /** Relative day shortcuts. Empty disables them. */
+  dayPresets?: readonly number[]
+  /**
+   * When the order already exists, past calendar days are disabled and the
+   * order creation day is highlighted on the calendar.
+   */
+  orderCreatedAt?: string | null
 }
+
+const DEFAULT_DAY_PRESETS = [1, 3, 7, 14, 30] as const
 
 function toTimeParts(date: Date) {
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -127,6 +144,12 @@ function toTimeParts(date: Date) {
   }
 }
 
+function parseInstant(value: string | null | undefined): Date | undefined {
+  if (!value) return undefined
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? undefined : date
+}
+
 export function DateTimePicker({
   value,
   onChange,
@@ -134,17 +157,48 @@ export function DateTimePicker({
   disabled,
   className,
   align = 'end',
+  dayPresets = DEFAULT_DAY_PRESETS,
+  orderCreatedAt,
 }: DateTimePickerProps) {
   const { t } = useTranslation('common')
   const locale = useDateFnsLocale()
-  const selected = value ? new Date(value) : undefined
-  const valid = selected && !Number.isNaN(selected.getTime()) ? selected : undefined
-  const time = valid ? toTimeParts(valid) : { hours: '12', minutes: '00' }
+  const hoursId = useId()
+  const minutesId = useId()
+  const selected = parseInstant(value)
+  const valid = selected
+  const time = valid ? toTimeParts(valid) : toTimeParts(new Date())
+  const [month, setMonth] = useState<Date>(valid ?? new Date())
+
+  const orderCreatedDay = useMemo(() => {
+    const created = parseInstant(orderCreatedAt)
+    return created ? startOfDay(created) : undefined
+  }, [orderCreatedAt])
+
+  const today = useMemo(() => startOfDay(new Date()), [])
+  const disablePast = Boolean(orderCreatedAt)
+  const minSelectableDay = disablePast ? today : undefined
+
+  useEffect(() => {
+    if (valid) setMonth(valid)
+  }, [value])
 
   function commit(date: Date, hours: string, minutes: string) {
     const next = new Date(date)
     next.setHours(Number(hours) || 0, Number(minutes) || 0, 0, 0)
+    if (minSelectableDay && startOfDay(next) < minSelectableDay) {
+      return
+    }
     onChange(next.toISOString())
+  }
+
+  function applyInDays(days: number) {
+    const base = new Date()
+    base.setDate(base.getDate() + days)
+    if (minSelectableDay && startOfDay(base) < minSelectableDay) {
+      return
+    }
+    setMonth(base)
+    commit(base, time.hours, time.minutes)
   }
 
   return (
@@ -168,26 +222,94 @@ export function DateTimePicker({
           <CalendarIcon className="size-4 shrink-0 opacity-70" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-3" align={align}>
+      <PopoverContent className="w-[17.5rem] p-3" align={align}>
+        {dayPresets.length > 0 ? (
+          <Carousel
+            opts={{ align: 'start', dragFree: true }}
+            className="relative mb-3 w-full px-7"
+          >
+            <CarouselContent className="-ml-1">
+              {dayPresets.map((days) => (
+                <CarouselItem key={days} className="basis-auto pl-1">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-7 shrink-0 px-2 text-xs whitespace-nowrap"
+                    disabled={disabled}
+                    onClick={() => applyInDays(days)}
+                  >
+                    {t('table.inDays', { count: days })}
+                  </Button>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious
+              type="button"
+              className="left-0 size-6 border bg-background shadow-sm disabled:hidden"
+            />
+            <CarouselNext
+              type="button"
+              className="right-0 size-6 border bg-background shadow-sm disabled:hidden"
+            />
+          </Carousel>
+        ) : null}
+
         <Calendar
           mode="single"
           captionLayout="dropdown"
           selected={valid}
-          defaultMonth={valid}
+          month={month}
+          onMonthChange={setMonth}
+          disabled={minSelectableDay ? { before: minSelectableDay } : undefined}
+          modifiers={{
+            orderCreated: orderCreatedDay
+              ? (date) => isSameDay(date, orderCreatedDay)
+              : [],
+          }}
+          modifiersClassNames={{
+            orderCreated:
+              'bg-sky-100 text-sky-950 ring-1 ring-inset ring-sky-400/80 dark:bg-sky-950 dark:text-sky-50 dark:ring-sky-500/70',
+            today:
+              'bg-amber-100 text-amber-950 ring-1 ring-inset ring-amber-400/80 dark:bg-amber-950 dark:text-amber-50 dark:ring-amber-500/70',
+          }}
           onSelect={(date) => {
             if (!date) {
               onChange(null)
               return
             }
+            setMonth(date)
             commit(date, time.hours, time.minutes)
           }}
           locale={locale}
         />
+
+        {disablePast || orderCreatedDay ? (
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="size-2.5 rounded-sm bg-amber-100 ring-1 ring-amber-400/80 dark:bg-amber-950 dark:ring-amber-500/70"
+                aria-hidden
+              />
+              {t('table.calendarToday')}
+            </span>
+            {orderCreatedDay ? (
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  className="size-2.5 rounded-sm bg-sky-100 ring-1 ring-sky-400/80 dark:bg-sky-950 dark:ring-sky-500/70"
+                  aria-hidden
+                />
+                {t('table.calendarOrderCreated')}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="mt-3 flex items-end gap-2 border-t pt-3">
           <div className="space-y-1.5">
-            <Label htmlFor="datetime-hours">{t('table.hours')}</Label>
+            <Label htmlFor={hoursId}>{t('table.hours')}</Label>
             <Input
-              id="datetime-hours"
+              id={hoursId}
               type="number"
               min={0}
               max={23}
@@ -203,9 +325,9 @@ export function DateTimePicker({
           </div>
           <span className="pb-1.5 text-muted-foreground">:</span>
           <div className="space-y-1.5">
-            <Label htmlFor="datetime-minutes">{t('table.minutes')}</Label>
+            <Label htmlFor={minutesId}>{t('table.minutes')}</Label>
             <Input
-              id="datetime-minutes"
+              id={minutesId}
               type="number"
               min={0}
               max={59}
