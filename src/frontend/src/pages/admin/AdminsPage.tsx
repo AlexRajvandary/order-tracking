@@ -73,6 +73,7 @@ export function AdminsPage() {
   const { user } = useAuth()
   const actorRole = user?.role
   const queryClient = useQueryClient()
+  const [toolbarSlot, setToolbarSlot] = useState<HTMLDivElement | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [editAdmin, setEditAdmin] = useState<AdminUser | null>(null)
   const [bindAdmin, setBindAdmin] = useState<AdminUser | null>(null)
@@ -240,6 +241,7 @@ export function AdminsPage() {
         id: 'lastSeenAt',
         accessorKey: 'lastSeenAt',
         enableColumnFilter: false,
+        enableHiding: true,
         meta: { label: t('columns.lastSeen') },
         header: () => t('columns.lastSeen'),
         cell: ({ row }) =>
@@ -271,6 +273,8 @@ export function AdminsPage() {
         <h1 className="text-2xl font-bold">{t('title')}</h1>
       </div>
 
+      <div ref={setToolbarSlot} />
+
       <Card size="sm">
         <CardHeader className="sr-only">
           <span>{t('title')}</span>
@@ -294,6 +298,7 @@ export function AdminsPage() {
               data={data ?? []}
               pageSize={20}
               emptyMessage={t('empty')}
+              toolbarContainer={toolbarSlot}
               getRowClassName={(row) =>
                 canManageTarget(actorRole, row.original) ? 'cursor-pointer' : undefined
               }
