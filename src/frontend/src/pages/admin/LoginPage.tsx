@@ -13,8 +13,8 @@ import { Globe } from '@/shared/ui/globe'
 export function LoginPage() {
   const { t } = useTranslation('auth')
   const { login, loginWithTelegram, isAuthenticated, isLoading } = useAuth()
-  const [loginValue, setLoginValue] = useState('admin')
-  const [password, setPassword] = useState('admin')
+  const [loginValue, setLoginValue] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [telegramHint, setTelegramHint] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)

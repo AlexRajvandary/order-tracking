@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ClipboardList, HardDrive, ListFilter, ShieldCheck, Users } from 'lucide-react'
+import { ClipboardList, HardDrive, ListFilter, Plus, ShieldCheck, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import * as dashboardApi from '@/features/dashboard/api/dashboardApi'
 import { useStorageMetrics } from '@/features/dashboard/api/useStorageMetrics'
@@ -215,25 +215,45 @@ export function DashboardPage() {
     })
   }
 
+  const createOrderFab = (
+    <Button
+      type="button"
+      size="icon"
+      className="fixed bottom-6 left-1/2 z-20 size-14 -translate-x-1/2 rounded-full shadow-lg [&_svg]:size-6"
+      aria-label={t('create', { ns: 'orders' })}
+      onClick={() => navigate('/admin/orders/new')}
+    >
+      <Plus />
+    </Button>
+  )
+
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">{t('loading', { ns: 'common' })}</p>
+    return (
+      <>
+        <p className="text-sm text-muted-foreground">{t('loading', { ns: 'common' })}</p>
+        {createOrderFab}
+      </>
+    )
   }
 
   if (isError || !data) {
     return (
-      <div className="space-y-2">
-        <Alert variant="destructive">
-          <AlertDescription>{t('error', { ns: 'common' })}</AlertDescription>
-        </Alert>
-        <Button variant="outline" onClick={() => void refetch()}>
-          {t('retry', { ns: 'common' })}
-        </Button>
-      </div>
+      <>
+        <div className="space-y-2">
+          <Alert variant="destructive">
+            <AlertDescription>{t('error', { ns: 'common' })}</AlertDescription>
+          </Alert>
+          <Button variant="outline" onClick={() => void refetch()}>
+            {t('retry', { ns: 'common' })}
+          </Button>
+        </div>
+        {createOrderFab}
+      </>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       <div>
         <h1 className="text-2xl font-bold">{t('title')}</h1>
       </div>
@@ -348,6 +368,7 @@ export function DashboardPage() {
         </CardContent>
       </Card>
 
+      {createOrderFab}
     </div>
   )
 }
