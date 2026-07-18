@@ -11,6 +11,7 @@ import { LanguageSwitcher } from '@/shared/i18n/LanguageSwitcher'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { Globe } from '@/shared/ui/globe'
 import { Input } from '@/shared/ui/input'
 
 const ORDER_STATUSES: OrderStatus[] = [
@@ -125,6 +126,22 @@ export function TrackingPage() {
           )}
         </CardContent>
       </Card>
+
+      <div className="flex justify-center py-2">
+        <div className="relative aspect-square w-[min(100%,220px)] sm:w-[240px]">
+          <Globe
+            className="opacity-90"
+            size={240}
+            dark={0}
+            diffuse={1.15}
+            mapBrightness={3.2}
+            baseColor={[0.92, 0.93, 0.95]}
+            markerColor={[0.25, 0.45, 0.85]}
+            glowColor={[0.78, 0.84, 0.94]}
+            scale={1.02}
+          />
+        </div>
+      </div>
 
       {trackingCode && trackingCode.length !== 5 ? (
         <Alert variant="destructive">
