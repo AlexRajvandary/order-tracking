@@ -164,7 +164,7 @@ export function AdminShell() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="ml-auto min-w-0 max-w-48 gap-2">
-                <Avatar size="sm" className="size-4 after:border-0">
+                <Avatar className="after:border-0">
                   {user?.telegramAvatarUrl ? (
                     <AvatarImage
                       src={user.telegramAvatarUrl}
