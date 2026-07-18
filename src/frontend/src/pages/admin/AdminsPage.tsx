@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link2, Link2Off, Plus } from 'lucide-react'
+import { Link2, Link2Off, Plus, User } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -16,6 +16,7 @@ import { getTelegramConfig } from '@/features/auth/api/telegramAuth'
 import { TelegramLoginButton } from '@/features/auth/ui/TelegramLoginButton'
 import { ApiError } from '@/shared/api/client'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/avatar'
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader } from '@/shared/ui/card'
@@ -70,7 +71,7 @@ function creatableRoles(actorRole: string | null | undefined): AdminRole[] {
 
 export function AdminsPage() {
   const { t } = useTranslation('admins')
-  const { user } = useAuth()
+  const { user, refreshCurrentUser } = useAuth()
   const actorRole = user?.role
   const queryClient = useQueryClient()
   const [toolbarSlot, setToolbarSlot] = useState<HTMLDivElement | null>(null)
@@ -136,10 +137,13 @@ export function AdminsPage() {
   const bindMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof adminsApi.bindTelegram>[1] }) =>
       adminsApi.bindTelegram(id, payload),
-    onSuccess: () => {
+    onSuccess: async (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['admins'] })
       setBindAdmin(null)
       setFormError(null)
+      if (user?.id === variables.id) {
+        await refreshCurrentUser().catch(() => {})
+      }
     },
     onError: (err: unknown) => {
       setFormError(err instanceof ApiError ? err.message : t('error', { ns: 'common' }))
@@ -148,9 +152,12 @@ export function AdminsPage() {
 
   const unbindMutation = useMutation({
     mutationFn: (id: string) => adminsApi.unbindTelegram(id),
-    onSuccess: () => {
+    onSuccess: async (_data, id) => {
       void queryClient.invalidateQueries({ queryKey: ['admins'] })
       setEditAdmin(null)
+      if (user?.id === id) {
+        await refreshCurrentUser().catch(() => {})
+      }
     },
   })
 
@@ -508,19 +515,48 @@ export function AdminsPage() {
               {t('form.isActive')}
             </label>
             {editAdmin?.telegramId ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  if (window.confirm(t('unbindConfirm'))) {
-                    unbindMutation.mutate(editAdmin.id)
-                  }
-                }}
-                disabled={unbindMutation.isPending}
-              >
-                <Link2Off />
-                {t('unbindTelegram')}
-              </Button>
+              <div className="space-y-3 rounded-lg border p-3">
+                <div className="flex items-center gap-3">
+                  <Avatar size="sm">
+                    {editAdmin.telegramAvatarUrl ? (
+                      <AvatarImage
+                        src={editAdmin.telegramAvatarUrl}
+                        alt={
+                          editAdmin.telegramUsername
+                            ? `@${editAdmin.telegramUsername}`
+                            : (editAdmin.displayName ?? editAdmin.login)
+                        }
+                        className="object-cover"
+                      />
+                    ) : null}
+                    <AvatarFallback>
+                      <User className="size-3.5" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{t('columns.telegram')}</p>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {editAdmin.telegramUsername
+                        ? `@${editAdmin.telegramUsername}`
+                        : `id:${editAdmin.telegramId}`}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    if (window.confirm(t('unbindConfirm'))) {
+                      unbindMutation.mutate(editAdmin.id)
+                    }
+                  }}
+                  disabled={unbindMutation.isPending}
+                >
+                  <Link2Off />
+                  {t('unbindTelegram')}
+                </Button>
+              </div>
             ) : (
               <Button
                 type="button"

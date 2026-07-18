@@ -18,6 +18,7 @@ import * as authApi from '@/features/auth/api/authApi'
 import { useAuth } from '@/features/auth/model/AuthContext'
 import { ApiError } from '@/shared/api/client'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/avatar'
 import { Button } from '@/shared/ui/button'
 import {
   Dialog,
@@ -163,7 +164,18 @@ export function AdminShell() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="ml-auto min-w-0 max-w-48 gap-2">
-                <User className="shrink-0" />
+                <Avatar size="sm" className="size-4 after:border-0">
+                  {user?.telegramAvatarUrl ? (
+                    <AvatarImage
+                      src={user.telegramAvatarUrl}
+                      alt={user.displayName ?? user.login ?? 'Аватар администратора'}
+                      className="object-cover"
+                    />
+                  ) : null}
+                  <AvatarFallback className="bg-transparent text-foreground">
+                    <User className="size-4" />
+                  </AvatarFallback>
+                </Avatar>
                 <span className="truncate">{user?.displayName || user?.login}</span>
                 <ChevronDown className="shrink-0 opacity-60" />
               </Button>

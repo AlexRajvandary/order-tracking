@@ -19,6 +19,7 @@ public class AdminUserConfiguration : IEntityTypeConfiguration<AdminUser>
         builder.Property(e => e.PasswordHash).HasMaxLength(512).IsRequired();
         builder.Property(e => e.DisplayName).HasMaxLength(200);
         builder.Property(e => e.TelegramUsername).HasMaxLength(100);
+        builder.Property(e => e.TelegramAvatarUrl).HasMaxLength(512);
         builder.Property(e => e.Role).HasConversion<string>().HasMaxLength(50);
         builder.Property(e => e.SettingsJson)
             .HasColumnType("jsonb")

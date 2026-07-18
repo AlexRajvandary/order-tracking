@@ -10,6 +10,7 @@ export type AdminUser = {
   lastSeenAt: string | null
   telegramId: number | null
   telegramUsername: string | null
+  telegramAvatarUrl?: string | null
   createdAt: string
 }
 

@@ -17,6 +17,9 @@ public class AdminUser : AuditableEntity
 
     public string? TelegramUsername { get; set; }
 
+    /// <summary>Telegram profile photo URL from Login Widget (<c>photo_url</c>).</summary>
+    public string? TelegramAvatarUrl { get; set; }
+
     /// <summary>Updated by client heartbeat while the admin session is open.</summary>
     public DateTimeOffset? LastSeenAt { get; set; }
 

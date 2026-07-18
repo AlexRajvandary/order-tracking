@@ -16,6 +16,7 @@ export type CurrentUser = {
   settings: UserSettings
   telegramId?: number | null
   telegramUsername?: string | null
+  telegramAvatarUrl?: string | null
 }
 
 export type AuthTokens = {

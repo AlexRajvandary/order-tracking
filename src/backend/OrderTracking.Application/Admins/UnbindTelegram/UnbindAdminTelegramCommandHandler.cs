@@ -36,6 +36,7 @@ public sealed class UnbindAdminTelegramCommandHandler
 
         user.TelegramId = null;
         user.TelegramUsername = null;
+        user.TelegramAvatarUrl = null;
         await _context.SaveChangesAsync(cancellationToken);
 
         return AdminUserMapping.ToDto(user, _clock.UtcNow);

@@ -36,6 +36,7 @@ type AuthContextValue = AuthState & {
   login: (login: string, password: string) => Promise<void>
   loginWithTelegram: (payload: TelegramAuthPayload) => Promise<void>
   logout: () => Promise<void>
+  refreshCurrentUser: () => Promise<void>
   setTableColumnVisibility: (tableId: string, visibility: VisibilityState) => void
   getTableColumnVisibility: (tableId: string) => VisibilityState
 }
@@ -228,6 +229,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [clearSession, navigate])
 
+  const refreshCurrentUser = useCallback(async () => {
+    const me = await authApi.getCurrentUser()
+    applyUser(me)
+  }, [applyUser])
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -238,10 +244,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       loginWithTelegram,
       logout,
+      refreshCurrentUser,
       setTableColumnVisibility,
       getTableColumnVisibility: getColumnVisibility,
     }),
-    [user, isLoading, settings, login, loginWithTelegram, logout, setTableColumnVisibility, getColumnVisibility],
+    [
+      user,
+      isLoading,
+      settings,
+      login,
+      loginWithTelegram,
+      logout,
+      refreshCurrentUser,
+      setTableColumnVisibility,
+      getColumnVisibility,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

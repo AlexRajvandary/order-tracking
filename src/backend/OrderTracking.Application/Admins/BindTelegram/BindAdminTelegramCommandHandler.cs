@@ -57,6 +57,9 @@ public sealed class BindAdminTelegramCommandHandler
         user.TelegramUsername = string.IsNullOrWhiteSpace(request.Data.Username)
             ? null
             : request.Data.Username.Trim().TrimStart('@');
+        user.TelegramAvatarUrl = string.IsNullOrWhiteSpace(request.Data.PhotoUrl)
+            ? null
+            : request.Data.PhotoUrl.Trim();
 
         await _context.SaveChangesAsync(cancellationToken);
 

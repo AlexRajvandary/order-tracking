@@ -9,7 +9,8 @@ public sealed record CurrentUserDto(
     string Role,
     JsonElement Settings,
     long? TelegramId,
-    string? TelegramUsername);
+    string? TelegramUsername,
+    string? TelegramAvatarUrl);
 
 
 public sealed record AuthTokensDto(

@@ -16,5 +16,6 @@ public static class AdminUserMapping
             user.LastSeenAt,
             user.TelegramId,
             user.TelegramUsername,
+            user.TelegramAvatarUrl,
             user.CreatedAt);
 }

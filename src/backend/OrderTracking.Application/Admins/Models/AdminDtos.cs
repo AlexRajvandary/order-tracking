@@ -12,6 +12,7 @@ public sealed record AdminUserDto(
     DateTimeOffset? LastSeenAt,
     long? TelegramId,
     string? TelegramUsername,
+    string? TelegramAvatarUrl,
     DateTimeOffset CreatedAt);
 
 public sealed record CreateAdminRequest(

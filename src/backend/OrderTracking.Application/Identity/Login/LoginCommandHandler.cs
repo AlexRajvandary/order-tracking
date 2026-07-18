@@ -63,5 +63,6 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResu
             user.Role.ToString(),
             UserSettingsHelper.Parse(user.SettingsJson),
             user.TelegramId,
-            user.TelegramUsername);
+            user.TelegramUsername,
+            user.TelegramAvatarUrl);
 }

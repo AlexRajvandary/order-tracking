@@ -50,6 +50,10 @@ public sealed class TelegramLoginCommandHandler : IRequestHandler<TelegramLoginC
             user.TelegramUsername = request.Data.Username.Trim().TrimStart('@');
         }
 
+        user.TelegramAvatarUrl = string.IsNullOrWhiteSpace(request.Data.PhotoUrl)
+            ? user.TelegramAvatarUrl
+            : request.Data.PhotoUrl.Trim();
+
         user.LastSeenAt = _clock.UtcNow;
         await _context.SaveChangesAsync(cancellationToken);
 

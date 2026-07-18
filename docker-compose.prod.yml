@@ -50,6 +50,8 @@ services:
       Seed__AdminPassword: ${SEED_ADMIN_PASSWORD}
       App__BaseUrl: ${APP_BASE_URL}
       Cors__Origins__0: ${APP_BASE_URL}
+      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
+      Telegram__BotUsername: ${TELEGRAM_BOT_USERNAME:-}
       Minio__Endpoint: minio:9000
       Minio__AccessKey: ${MINIO_ROOT_USER}
       Minio__SecretKey: ${MINIO_ROOT_PASSWORD}
