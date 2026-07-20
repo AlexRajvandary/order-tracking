@@ -66,15 +66,6 @@ docker compose up --build
 
 App: `http://localhost:8080`
 
-## Default admin credentials (seed, Phase 2)
-
-| Field | Value |
-|-------|-------|
-| Login | `admin` |
-| Password | `admin` |
-
-**Change immediately in production.**
-
 ## Auth tokens (planned)
 
 | Token | TTL |
