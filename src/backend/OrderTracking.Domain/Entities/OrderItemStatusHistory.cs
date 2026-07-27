@@ -12,6 +12,8 @@ public class OrderItemStatusHistory : BaseEntity, ISoftDeletable
     public string? Location { get; set; }
     public DateTimeOffset? PublishAt { get; set; }
     public bool IsPublished { get; set; } = true;
+    /// <summary>Set when a Telegram admin notify for this published status was claimed/sent.</summary>
+    public DateTimeOffset? TelegramNotifiedAt { get; set; }
     public Guid ChangedByAdminId { get; set; }
     public DateTimeOffset ChangedAt { get; set; }
     public bool IsDeleted { get; set; }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OrderTracking.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using OrderTracking.Infrastructure.Persistence;
 namespace OrderTracking.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260727160211_AddStatusHistoryTelegramNotifiedAt")]
+    partial class AddStatusHistoryTelegramNotifiedAt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -640,55 +643,6 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("status_definitions", (string)null);
-                });
-
-            modelBuilder.Entity("OrderTracking.Domain.Entities.TelegramOutboxMessage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("AttemptCount")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DedupKey")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("LastError")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<DateTimeOffset?>("LockedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PayloadJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<DateTimeOffset?>("ProcessedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<short>("Status")
-                        .HasColumnType("smallint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DedupKey")
-                        .IsUnique()
-                        .HasFilter("\"DedupKey\" IS NOT NULL AND \"Status\" IN (0, 1)");
-
-                    b.HasIndex("Status", "CreatedAt");
-
-                    b.ToTable("telegram_outbox_messages", (string)null);
                 });
 
             modelBuilder.Entity("OrderTracking.Domain.Entities.AuditLogEntry", b =>

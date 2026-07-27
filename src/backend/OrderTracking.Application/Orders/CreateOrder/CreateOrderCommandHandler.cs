@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Customers;
 using OrderTracking.Application.Orders.Models;
@@ -14,20 +15,26 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
 {
     private const int MaxTrackingCodeAttempts = 5;
     private readonly IApplicationDbContext _context;
-    private readonly ITrackingCodeGenerator _trackingCodeGenerator;
     private readonly ICurrentUserService _currentUserService;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly ILogger<CreateOrderCommandHandler> _logger;
+    private readonly ITelegramAdminNotifier _telegramNotifier;
+    private readonly ITrackingCodeGenerator _trackingCodeGenerator;
 
     public CreateOrderCommandHandler(
         IApplicationDbContext context,
         ITrackingCodeGenerator trackingCodeGenerator,
         ICurrentUserService currentUserService,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        ITelegramAdminNotifier telegramNotifier,
+        ILogger<CreateOrderCommandHandler> logger)
     {
         _context = context;
         _trackingCodeGenerator = trackingCodeGenerator;
         _currentUserService = currentUserService;
         _dateTimeProvider = dateTimeProvider;
+        _telegramNotifier = telegramNotifier;
+        _logger = logger;
     }
 
     public async Task<OrderDetailsDto> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
@@ -151,8 +158,116 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
             await _context.SaveChangesAsync(cancellationToken);
         }
 
+        try
+        {
+            await _telegramNotifier.NotifyOrderCreatedAsync(
+                order.Id,
+                order.TrackingCode,
+                customerName,
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Telegram notify failed for new order {OrderId}", order.Id);
+        }
+
         return MapDetails(order, customerName, customerPhone, customerTelegram, customerEmail, items);
     }
+
+    private async Task<string> GenerateUniqueTrackingCodeAsync(CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; attempt < MaxTrackingCodeAttempts; attempt++)
+        {
+            var code = _trackingCodeGenerator.Generate(5);
+            var exists = await _context.Orders
+                .AnyAsync(o => o.TrackingCode == code, cancellationToken);
+
+            if (!exists)
+            {
+                return code;
+            }
+        }
+
+        throw new InvalidOperationException(
+            "Failed to generate a unique tracking code after multiple attempts.");
+    }
+
+    private static bool HasDeliveryData(CreateOrderDeliveryAddressDto? address) =>
+        address is not null
+        && (
+            !string.IsNullOrWhiteSpace(address.City)
+            || !string.IsNullOrWhiteSpace(address.Street)
+            || !string.IsNullOrWhiteSpace(address.Building)
+            || !string.IsNullOrWhiteSpace(address.Apartment)
+            || !string.IsNullOrWhiteSpace(address.PostalCode)
+            || !string.IsNullOrWhiteSpace(address.Note));
+
+    private static bool HasNewCustomerData(CreateOrderNewCustomerDto? customer) =>
+        customer is not null
+        && (
+            !string.IsNullOrWhiteSpace(customer.LastName)
+            || !string.IsNullOrWhiteSpace(customer.FirstName)
+            || !string.IsNullOrWhiteSpace(customer.Patronymic)
+            || !string.IsNullOrWhiteSpace(customer.Telegram)
+            || !string.IsNullOrWhiteSpace(customer.Phone)
+            || !string.IsNullOrWhiteSpace(customer.Email));
+
+    private static bool IsUniqueViolation(DbUpdateException ex)
+    {
+        var message = ex.InnerException?.Message ?? ex.Message;
+        return message.Contains("23505", StringComparison.Ordinal)
+               || message.Contains("unique", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static OrderDetailsDto MapDetails(
+        Order order,
+        string? customerName,
+        string? customerPhone,
+        string? customerTelegram,
+        string? customerEmail,
+        IReadOnlyList<OrderItem> items)
+    {
+        return new OrderDetailsDto(
+            order.Id,
+            order.TrackingCode,
+            order.CustomerId,
+            customerName,
+            customerPhone,
+            customerTelegram,
+            customerEmail,
+            order.AdminNotes,
+            order.CreatedByAdminId,
+            order.Status.ToString(),
+            order.CreatedAt,
+            order.UpdatedAt ?? order.CreatedAt,
+            order.ExpectedDeliveryAt,
+            order.DeliveryAddressId,
+            order.DeliveryCity,
+            order.DeliveryStreet,
+            order.DeliveryBuilding,
+            order.DeliveryApartment,
+            order.DeliveryPostalCode,
+            order.DeliveryNote,
+            items.Select(MapItem).ToList());
+    }
+
+    private static OrderItemDto MapItem(OrderItem item) =>
+        new(
+            item.Id,
+            item.ItemType.ToString(),
+            item.Name,
+            item.Description,
+            item.Quantity,
+            item.UnitPrice,
+            item.CurrencyCode,
+            item.SortOrder,
+            item.CurrentStatusId,
+            item.CurrentStatusText,
+            item.CurrentStatusUpdatedAt);
+
+    private static string? Normalize(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private async Task<(
         Guid? AddressId,
@@ -243,99 +358,4 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
 
         return (addressId, city, street, building, apartment, postalCode, note);
     }
-
-    private static bool HasNewCustomerData(CreateOrderNewCustomerDto? customer) =>
-        customer is not null
-        && (
-            !string.IsNullOrWhiteSpace(customer.LastName)
-            || !string.IsNullOrWhiteSpace(customer.FirstName)
-            || !string.IsNullOrWhiteSpace(customer.Patronymic)
-            || !string.IsNullOrWhiteSpace(customer.Telegram)
-            || !string.IsNullOrWhiteSpace(customer.Phone)
-            || !string.IsNullOrWhiteSpace(customer.Email));
-
-    private static bool HasDeliveryData(CreateOrderDeliveryAddressDto? address) =>
-        address is not null
-        && (
-            !string.IsNullOrWhiteSpace(address.City)
-            || !string.IsNullOrWhiteSpace(address.Street)
-            || !string.IsNullOrWhiteSpace(address.Building)
-            || !string.IsNullOrWhiteSpace(address.Apartment)
-            || !string.IsNullOrWhiteSpace(address.PostalCode)
-            || !string.IsNullOrWhiteSpace(address.Note));
-
-    private async Task<string> GenerateUniqueTrackingCodeAsync(CancellationToken cancellationToken)
-    {
-        for (var attempt = 0; attempt < MaxTrackingCodeAttempts; attempt++)
-        {
-            var code = _trackingCodeGenerator.Generate(5);
-            var exists = await _context.Orders
-                .AnyAsync(o => o.TrackingCode == code, cancellationToken);
-
-            if (!exists)
-            {
-                return code;
-            }
-        }
-
-        throw new InvalidOperationException(
-            "Failed to generate a unique tracking code after multiple attempts.");
-    }
-
-    private static bool IsUniqueViolation(DbUpdateException ex)
-    {
-        var message = ex.InnerException?.Message ?? ex.Message;
-        return message.Contains("23505", StringComparison.Ordinal)
-               || message.Contains("unique", StringComparison.OrdinalIgnoreCase)
-               || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string? Normalize(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    private static OrderDetailsDto MapDetails(
-        Order order,
-        string? customerName,
-        string? customerPhone,
-        string? customerTelegram,
-        string? customerEmail,
-        IReadOnlyList<OrderItem> items)
-    {
-        return new OrderDetailsDto(
-            order.Id,
-            order.TrackingCode,
-            order.CustomerId,
-            customerName,
-            customerPhone,
-            customerTelegram,
-            customerEmail,
-            order.AdminNotes,
-            order.CreatedByAdminId,
-            order.Status.ToString(),
-            order.CreatedAt,
-            order.UpdatedAt ?? order.CreatedAt,
-            order.ExpectedDeliveryAt,
-            order.DeliveryAddressId,
-            order.DeliveryCity,
-            order.DeliveryStreet,
-            order.DeliveryBuilding,
-            order.DeliveryApartment,
-            order.DeliveryPostalCode,
-            order.DeliveryNote,
-            items.Select(MapItem).ToList());
-    }
-
-    private static OrderItemDto MapItem(OrderItem item) =>
-        new(
-            item.Id,
-            item.ItemType.ToString(),
-            item.Name,
-            item.Description,
-            item.Quantity,
-            item.UnitPrice,
-            item.CurrencyCode,
-            item.SortOrder,
-            item.CurrentStatusId,
-            item.CurrentStatusText,
-            item.CurrentStatusUpdatedAt);
 }

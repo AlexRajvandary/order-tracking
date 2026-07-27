@@ -21,6 +21,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<OrderItemStatusHistory> OrderItemStatusHistories => Set<OrderItemStatusHistory>();
     public DbSet<OrderItemStatusAttachment> OrderItemStatusAttachments => Set<OrderItemStatusAttachment>();
     public DbSet<AuditLogEntry> AuditLogs => Set<AuditLogEntry>();
+    public DbSet<TelegramOutboxMessage> TelegramOutboxMessages => Set<TelegramOutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

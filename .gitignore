@@ -33,3 +33,8 @@ coverage/
 
 # Misc
 *.tsbuildinfo
+
+# Local ops dumps / VPS backups (never commit production data)
+vps-backup*/
+*.dump
+*.sql.bak

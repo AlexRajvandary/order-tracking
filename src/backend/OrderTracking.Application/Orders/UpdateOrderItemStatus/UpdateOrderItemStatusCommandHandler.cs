@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Orders.AddOrderItem;
 using OrderTracking.Application.Orders.Models;
@@ -15,21 +16,27 @@ public sealed class UpdateOrderItemStatusCommandHandler
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly IDateTimeProvider _dateTimeProvider;
-    private readonly IObjectStorage _objectStorage;
     private readonly IImageCompressor _imageCompressor;
+    private readonly ILogger<UpdateOrderItemStatusCommandHandler> _logger;
+    private readonly IObjectStorage _objectStorage;
+    private readonly ITelegramAdminNotifier _telegramNotifier;
 
     public UpdateOrderItemStatusCommandHandler(
         IApplicationDbContext context,
         ICurrentUserService currentUserService,
         IDateTimeProvider dateTimeProvider,
         IObjectStorage objectStorage,
-        IImageCompressor imageCompressor)
+        IImageCompressor imageCompressor,
+        ITelegramAdminNotifier telegramNotifier,
+        ILogger<UpdateOrderItemStatusCommandHandler> logger)
     {
         _context = context;
         _currentUserService = currentUserService;
         _dateTimeProvider = dateTimeProvider;
         _objectStorage = objectStorage;
         _imageCompressor = imageCompressor;
+        _telegramNotifier = telegramNotifier;
+        _logger = logger;
     }
 
     public async Task<OrderItemDto> Handle(
@@ -124,6 +131,26 @@ public sealed class UpdateOrderItemStatusCommandHandler
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        if (isPublished)
+        {
+            try
+            {
+                await _telegramNotifier.NotifyStatusPublishedAsync(
+                    order.Id,
+                    order.TrackingCode,
+                    statusText,
+                    item.Name,
+                    country,
+                    location,
+                    history.Id,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Telegram notify failed for history {HistoryId}", history.Id);
+            }
+        }
 
         return AddOrderItemCommandHandler.Map(item);
     }

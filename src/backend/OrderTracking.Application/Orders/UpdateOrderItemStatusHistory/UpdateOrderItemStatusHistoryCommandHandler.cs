@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Orders.StatusHistory;
 using OrderTracking.Application.Statuses.Models;
@@ -11,13 +12,19 @@ public sealed class UpdateOrderItemStatusHistoryCommandHandler
 {
     private readonly IApplicationDbContext _context;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly ILogger<UpdateOrderItemStatusHistoryCommandHandler> _logger;
+    private readonly ITelegramAdminNotifier _telegramNotifier;
 
     public UpdateOrderItemStatusHistoryCommandHandler(
         IApplicationDbContext context,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        ITelegramAdminNotifier telegramNotifier,
+        ILogger<UpdateOrderItemStatusHistoryCommandHandler> logger)
     {
         _context = context;
         _dateTimeProvider = dateTimeProvider;
+        _telegramNotifier = telegramNotifier;
+        _logger = logger;
     }
 
     public async Task<StatusHistoryEntryDto> Handle(
@@ -34,6 +41,8 @@ public sealed class UpdateOrderItemStatusHistoryCommandHandler
                 h => h.Id == request.HistoryId && h.OrderItem.OrderId == request.OrderId,
                 cancellationToken)
             ?? throw new KeyNotFoundException($"Status history '{request.HistoryId}' was not found");
+
+        var wasPublished = history.IsPublished;
 
         if (request.StatusText is not null)
         {
@@ -76,6 +85,7 @@ public sealed class UpdateOrderItemStatusHistoryCommandHandler
             {
                 history.IsPublished = false;
                 history.ChangedAt = publishAt;
+                history.TelegramNotifiedAt = null;
             }
             else
             {
@@ -94,6 +104,26 @@ public sealed class UpdateOrderItemStatusHistoryCommandHandler
             cancellationToken);
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        if (!wasPublished && history.IsPublished)
+        {
+            try
+            {
+                await _telegramNotifier.NotifyStatusPublishedAsync(
+                    request.OrderId,
+                    order.TrackingCode,
+                    history.StatusText,
+                    history.OrderItem.Name,
+                    history.Country,
+                    history.Location,
+                    history.Id,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Telegram notify failed for history {HistoryId}", history.Id);
+            }
+        }
 
         return Map(history);
     }

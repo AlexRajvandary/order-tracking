@@ -9,6 +9,7 @@ using OrderTracking.Infrastructure.Persistence;
 using OrderTracking.Infrastructure.Persistence.Interceptors;
 using OrderTracking.Infrastructure.Services;
 using OrderTracking.Infrastructure.Storage;
+using OrderTracking.Infrastructure.TelegramBot;
 
 namespace OrderTracking.Infrastructure;
 
@@ -60,6 +61,26 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
+
+        services.AddSingleton<TelegramBot.TelegramWorkQueue>();
+        services.AddSingleton<TelegramBot.TelegramAdminBotService>(sp =>
+        {
+            var token = configuration["Telegram:BotToken"];
+            Telegram.Bot.ITelegramBotClient? client = string.IsNullOrWhiteSpace(token)
+                ? null
+                : new Telegram.Bot.TelegramBotClient(token);
+            return new TelegramBot.TelegramAdminBotService(
+                sp.GetRequiredService<IServiceScopeFactory>(),
+                configuration,
+                sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<TelegramSettings>>(),
+                sp.GetRequiredService<TelegramBot.TelegramWorkQueue>(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<TelegramBot.TelegramAdminBotService>>(),
+                client);
+        });
+        services.AddScoped<ITelegramAdminNotifier, TelegramBot.TelegramOutboxNotifier>();
+        services.AddHostedService<TelegramBot.TelegramBotHostedService>();
+        services.AddHostedService<TelegramBot.TelegramOutboxProcessorHostedService>();
+        services.AddHostedService<TelegramBot.TelegramDailyOrdersCsvBackgroundService>();
 
         services.AddHostedService<Background.StatusPublishBackgroundService>();
 

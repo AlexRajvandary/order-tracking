@@ -13,8 +13,8 @@ public sealed class StatusPublishBackgroundService : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(1);
 
-    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<StatusPublishBackgroundService> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public StatusPublishBackgroundService(
         IServiceScopeFactory scopeFactory,
@@ -58,6 +58,7 @@ public sealed class StatusPublishBackgroundService : BackgroundService
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var dateTime = scope.ServiceProvider.GetRequiredService<IDateTimeProvider>();
         var notifier = scope.ServiceProvider.GetRequiredService<IRealtimeNotifier>();
+        var telegram = scope.ServiceProvider.GetRequiredService<ITelegramAdminNotifier>();
 
         var now = dateTime.UtcNow;
 
@@ -74,11 +75,31 @@ public sealed class StatusPublishBackgroundService : BackgroundService
         }
 
         var affectedOrderIds = new HashSet<Guid>();
+        var telegramEvents = new List<(Guid HistoryId, Guid OrderId, string TrackingCode, string StatusText, string ItemName, string? Country, string? Location)>();
+        var publishedCount = 0;
 
         foreach (var history in due)
         {
+            var changedAt = history.PublishAt ?? now;
+
+            // Atomic claim so a concurrent manual publish does not double-apply / double-notify.
+            var claimed = await context.OrderItemStatusHistories
+                .Where(h => h.Id == history.Id && !h.IsPublished)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(h => h.IsPublished, true)
+                        .SetProperty(h => h.ChangedAt, changedAt),
+                    cancellationToken);
+
+            if (claimed == 0)
+            {
+                continue;
+            }
+
+            publishedCount++;
             history.IsPublished = true;
-            history.ChangedAt = history.PublishAt ?? now;
+            history.ChangedAt = changedAt;
+
             await OrderItemCurrentStatusSync.SyncFromPublishedHistoryAsync(
                 context,
                 history.OrderItem,
@@ -90,12 +111,25 @@ public sealed class StatusPublishBackgroundService : BackgroundService
             if (order is not null)
             {
                 order.UpdatedAt = now;
+                telegramEvents.Add((
+                    history.Id,
+                    order.Id,
+                    order.TrackingCode,
+                    history.StatusText,
+                    history.OrderItem.Name,
+                    history.Country,
+                    history.Location));
             }
+        }
+
+        if (publishedCount == 0)
+        {
+            return;
         }
 
         await context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Published {Count} scheduled status history entries", due.Count);
+        _logger.LogInformation("Published {Count} scheduled status history entries", publishedCount);
 
         await notifier.NotifyAdminTopicsAsync(
             [RealtimeTopics.Orders, RealtimeTopics.Dashboard],
@@ -104,6 +138,26 @@ public sealed class StatusPublishBackgroundService : BackgroundService
         foreach (var orderId in affectedOrderIds)
         {
             await notifier.NotifyTrackingChangedAsync(orderId, cancellationToken);
+        }
+
+        foreach (var evt in telegramEvents)
+        {
+            try
+            {
+                await telegram.NotifyStatusPublishedAsync(
+                    evt.OrderId,
+                    evt.TrackingCode,
+                    evt.StatusText,
+                    evt.ItemName,
+                    evt.Country,
+                    evt.Location,
+                    evt.HistoryId,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Telegram notify failed for history {HistoryId}", evt.HistoryId);
+            }
         }
     }
 }
