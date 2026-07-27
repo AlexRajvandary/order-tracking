@@ -1,6 +1,8 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OrderTracking.Infrastructure.TelegramBot;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 
 namespace OrderTracking.Api.Controllers;
@@ -49,7 +51,12 @@ public sealed class TelegramBotController : ControllerBase
         Update? update;
         try
         {
-            update = await HttpContext.Request.ReadFromJsonAsync<Update>(cancellationToken: cancellationToken);
+            // ASP.NET default camelCase options do not deserialize callback_query reliably;
+            // use Telegram.Bot serializer (snake_case + Bot API converters).
+            update = await JsonSerializer.DeserializeAsync<Update>(
+                Request.Body,
+                JsonBotAPI.Options,
+                cancellationToken);
         }
         catch (Exception ex)
         {

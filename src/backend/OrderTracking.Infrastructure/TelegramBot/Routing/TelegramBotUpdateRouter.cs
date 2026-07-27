@@ -56,7 +56,13 @@ internal sealed class TelegramBotUpdateRouter
             if (update.Message is { Text: not null } message)
             {
                 await HandleMessageAsync(message, cancellationToken);
+                return;
             }
+
+            _logger.LogWarning(
+                "Ignored Telegram update {UpdateId} of type {UpdateType}",
+                update.Id,
+                update.Type);
         }
         catch (Exception ex)
         {
@@ -83,16 +89,40 @@ internal sealed class TelegramBotUpdateRouter
     private async Task HandleCallbackAsync(CallbackQuery callback, CancellationToken cancellationToken)
     {
         var bot = _runtime.RequireClient();
-        var chatId = callback.Message?.Chat.Id;
+
+        // Private chats: From.Id == chat id. Prefer Message.Chat when present.
+        var chatId = callback.Message?.Chat?.Id ?? callback.From?.Id;
         if (chatId is null || callback.From is null)
         {
+            _logger.LogWarning(
+                "Ignoring callback {CallbackId}: missing chat/from (hasMessage={HasMessage})",
+                callback.Id,
+                callback.Message is not null);
+            try
+            {
+                await bot.AnswerCallbackQuery(callback.Id, cancellationToken: cancellationToken);
+            }
+            catch
+            {
+                // ignore
+            }
+
             return;
+        }
+
+        // Answer immediately so Telegram stops the loading spinner even if DB/UI is slow.
+        try
+        {
+            await bot.AnswerCallbackQuery(callback.Id, cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to answer callback {CallbackId}", callback.Id);
         }
 
         var admin = await _adminResolver.ResolveAsync(callback.From.Id, cancellationToken);
         if (admin is null)
         {
-            await bot.AnswerCallbackQuery(callback.Id, "Нет доступа", cancellationToken: cancellationToken);
             await bot.SendMessage(
                 chatId.Value,
                 "Доступ запрещён. Привяжите Telegram в админке.",
@@ -111,14 +141,12 @@ internal sealed class TelegramBotUpdateRouter
                     await _menu.SendMainMenuAsync(chatId.Value, admin, cancellationToken);
                 }
 
-                await bot.AnswerCallbackQuery(callback.Id, cancellationToken: cancellationToken);
                 return;
             }
 
             if (data == TelegramBotCallback.AdminLink)
             {
                 await _menu.SendAdminLinkAsync(chatId.Value, cancellationToken);
-                await bot.AnswerCallbackQuery(callback.Id, cancellationToken: cancellationToken);
                 return;
             }
 
@@ -127,7 +155,6 @@ internal sealed class TelegramBotUpdateRouter
                 or TelegramBotCallback.SettingsCsvOff)
             {
                 await _settings.HandleAsync(chatId.Value, admin, data, cancellationToken);
-                await bot.AnswerCallbackQuery(callback.Id, cancellationToken: cancellationToken);
                 return;
             }
 
@@ -135,7 +162,6 @@ internal sealed class TelegramBotUpdateRouter
             {
                 var page = int.TryParse(data[TelegramBotCallback.OrdersPagePrefix.Length..], out var p) ? p : 1;
                 await _orders.SendPageAsync(chatId.Value, page, cancellationToken);
-                await bot.AnswerCallbackQuery(callback.Id, cancellationToken: cancellationToken);
                 return;
             }
 
@@ -144,12 +170,11 @@ internal sealed class TelegramBotUpdateRouter
                 var id = TelegramBotCallback.DecodeGuid(data[TelegramBotCallback.OrderOpenPrefix.Length..]);
                 if (id is null)
                 {
-                    await bot.AnswerCallbackQuery(callback.Id, "Некорректный заказ", cancellationToken: cancellationToken);
+                    await bot.SendMessage(chatId.Value, "Некорректный заказ", cancellationToken: cancellationToken);
                     return;
                 }
 
                 await _orders.SendCardAsync(chatId.Value, id.Value, cancellationToken);
-                await bot.AnswerCallbackQuery(callback.Id, cancellationToken: cancellationToken);
                 return;
             }
 
@@ -157,7 +182,6 @@ internal sealed class TelegramBotUpdateRouter
             {
                 var page = int.TryParse(data[TelegramBotCallback.CustomersPagePrefix.Length..], out var p) ? p : 1;
                 await _customers.SendPageAsync(chatId.Value, page, cancellationToken);
-                await bot.AnswerCallbackQuery(callback.Id, cancellationToken: cancellationToken);
                 return;
             }
 
@@ -166,12 +190,11 @@ internal sealed class TelegramBotUpdateRouter
                 var id = TelegramBotCallback.DecodeGuid(data[TelegramBotCallback.CustomerOpenPrefix.Length..]);
                 if (id is null)
                 {
-                    await bot.AnswerCallbackQuery(callback.Id, "Некорректный клиент", cancellationToken: cancellationToken);
+                    await bot.SendMessage(chatId.Value, "Некорректный клиент", cancellationToken: cancellationToken);
                     return;
                 }
 
                 await _customers.SendCardAsync(chatId.Value, id.Value, cancellationToken);
-                await bot.AnswerCallbackQuery(callback.Id, cancellationToken: cancellationToken);
                 return;
             }
 
@@ -179,24 +202,26 @@ internal sealed class TelegramBotUpdateRouter
             {
                 if (admin.Role is not (AdminRole.Admin or AdminRole.SuperAdmin))
                 {
-                    await bot.AnswerCallbackQuery(callback.Id, "Недостаточно прав", showAlert: true, cancellationToken: cancellationToken);
+                    await bot.SendMessage(chatId.Value, "Недостаточно прав", cancellationToken: cancellationToken);
                     return;
                 }
 
                 var page = int.TryParse(data[TelegramBotCallback.AdminsPagePrefix.Length..], out var p) ? p : 1;
                 await _admins.SendPageAsync(chatId.Value, page, cancellationToken);
-                await bot.AnswerCallbackQuery(callback.Id, cancellationToken: cancellationToken);
                 return;
             }
 
-            await bot.AnswerCallbackQuery(callback.Id, cancellationToken: cancellationToken);
+            _logger.LogDebug("Unhandled callback data: {Data}", data);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Callback handling failed: {Data}", data);
             try
             {
-                await bot.AnswerCallbackQuery(callback.Id, "Ошибка", showAlert: true, cancellationToken: cancellationToken);
+                await bot.SendMessage(
+                    chatId.Value,
+                    "Ошибка при обработке кнопки. Попробуйте ещё раз или /menu.",
+                    cancellationToken: cancellationToken);
             }
             catch
             {
