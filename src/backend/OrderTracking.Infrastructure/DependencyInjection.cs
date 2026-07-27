@@ -71,20 +71,33 @@ public static class DependencyInjection
         services.AddScoped<ITelegramOutboxRepository, TelegramOutboxRepository>();
 
         services.AddSingleton<TelegramBot.TelegramWorkQueue>();
-        services.AddSingleton<TelegramBot.TelegramAdminBotService>(sp =>
+        services.AddSingleton(sp =>
         {
             var token = configuration["Telegram:BotToken"];
             Telegram.Bot.ITelegramBotClient? client = string.IsNullOrWhiteSpace(token)
                 ? null
                 : new Telegram.Bot.TelegramBotClient(token);
-            return new TelegramBot.TelegramAdminBotService(
-                sp.GetRequiredService<IServiceScopeFactory>(),
-                configuration,
-                sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<TelegramSettings>>(),
-                sp.GetRequiredService<TelegramBot.TelegramWorkQueue>(),
-                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<TelegramBot.TelegramAdminBotService>>(),
-                client);
+            var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<TelegramSettings>>().Value;
+            var enabled = client is not null && !string.IsNullOrWhiteSpace(settings.BotToken);
+            return new TelegramBot.TelegramBotRuntime(
+                client,
+                enabled,
+                sp.GetRequiredService<IServiceScopeFactory>());
         });
+        services.AddSingleton<TelegramBot.Auth.TelegramBotAdminResolver>();
+        services.AddSingleton<TelegramBot.Screens.TelegramBotMenuScreen>();
+        services.AddSingleton<TelegramBot.Screens.TelegramBotOrdersScreen>();
+        services.AddSingleton<TelegramBot.Screens.TelegramBotCustomersScreen>();
+        services.AddSingleton<TelegramBot.Screens.TelegramBotAdminsScreen>();
+        services.AddSingleton<TelegramBot.Screens.TelegramBotSettingsScreen>();
+        services.AddSingleton<TelegramBot.Routing.TelegramBotUpdateRouter>();
+        services.AddSingleton<TelegramBot.Notify.TelegramBotNotifier>();
+        services.AddSingleton<TelegramBot.Reports.TelegramOrdersCsvService>();
+        services.AddSingleton(sp => new TelegramBot.TelegramAdminBotService(
+            sp.GetRequiredService<TelegramBot.TelegramBotRuntime>(),
+            sp.GetRequiredService<TelegramBot.Routing.TelegramBotUpdateRouter>(),
+            sp.GetRequiredService<TelegramBot.Notify.TelegramBotNotifier>(),
+            sp.GetRequiredService<TelegramBot.Reports.TelegramOrdersCsvService>()));
         services.AddScoped<ITelegramAdminNotifier, TelegramBot.TelegramOutboxNotifier>();
         services.AddHostedService<TelegramBot.TelegramBotHostedService>();
         services.AddHostedService<TelegramBot.TelegramOutboxProcessorHostedService>();
