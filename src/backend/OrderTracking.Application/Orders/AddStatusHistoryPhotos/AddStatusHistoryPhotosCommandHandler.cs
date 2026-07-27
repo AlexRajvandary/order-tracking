@@ -1,6 +1,6 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Orders.StatusPhotos;
 using OrderTracking.Application.Statuses.Models;
 
@@ -9,20 +9,26 @@ namespace OrderTracking.Application.Orders.AddStatusHistoryPhotos;
 public sealed class AddStatusHistoryPhotosCommandHandler
     : IRequestHandler<AddStatusHistoryPhotosCommand, IReadOnlyList<StatusHistoryAttachmentDto>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IAdminUserRepository _adminUserRepository;
+    private readonly IOrderRepository _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IObjectStorage _objectStorage;
     private readonly IImageCompressor _imageCompressor;
 
     public AddStatusHistoryPhotosCommandHandler(
-        IApplicationDbContext context,
+        IOrderRepository orderRepository,
+        IAdminUserRepository adminUserRepository,
+        IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
         IDateTimeProvider dateTimeProvider,
         IObjectStorage objectStorage,
         IImageCompressor imageCompressor)
     {
-        _context = context;
+        _orderRepository = orderRepository;
+        _adminUserRepository = adminUserRepository;
+        _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _dateTimeProvider = dateTimeProvider;
         _objectStorage = objectStorage;
@@ -38,12 +44,8 @@ public sealed class AddStatusHistoryPhotosCommandHandler
             throw new UnauthorizedAccessException();
         }
 
-        var history = await _context.OrderItemStatusHistories
-            .Include(h => h.OrderItem)
-            .Include(h => h.Attachments)
-            .FirstOrDefaultAsync(
-                h => h.Id == request.HistoryId && h.OrderItem.OrderId == request.OrderId,
-                cancellationToken)
+        var history = await _orderRepository.GetStatusHistoryWithAttachmentsForUpdateAsync(
+                request.OrderId, request.HistoryId, cancellationToken)
             ?? throw new KeyNotFoundException($"Status history '{request.HistoryId}' was not found");
 
         var now = _dateTimeProvider.UtcNow;
@@ -52,7 +54,7 @@ public sealed class AddStatusHistoryPhotosCommandHandler
             : history.Attachments.Max(a => a.SortOrder) + 1;
 
         var attachments = await StatusPhotoUploadHelper.UploadAsync(
-            _context,
+            _orderRepository,
             _objectStorage,
             _imageCompressor,
             request.OrderId,
@@ -63,15 +65,13 @@ public sealed class AddStatusHistoryPhotosCommandHandler
             request.Photos,
             cancellationToken);
 
-        var order = await _context.Orders
-            .FirstAsync(o => o.Id == request.OrderId, cancellationToken);
+        var order = await _orderRepository.GetByIdTrackedAsync(request.OrderId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Order '{request.OrderId}' was not found");
         order.UpdatedAt = now;
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var admin = await _context.AdminUsers
-            .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Id == adminId, cancellationToken);
+        var admin = await _adminUserRepository.GetByIdUntrackedAsync(adminId, cancellationToken);
 
         var adminName = admin?.DisplayName ?? admin?.Login;
 

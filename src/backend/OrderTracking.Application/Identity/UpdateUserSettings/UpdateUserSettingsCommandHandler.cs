@@ -1,20 +1,23 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Identity;
 
 namespace OrderTracking.Application.Identity.UpdateUserSettings;
 
 public sealed class UpdateUserSettingsCommandHandler : IRequestHandler<UpdateUserSettingsCommand>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IAdminUserRepository _adminUsers;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
 
     public UpdateUserSettingsCommandHandler(
-        IApplicationDbContext context,
+        IAdminUserRepository adminUsers,
+        IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService)
     {
-        _context = context;
+        _adminUsers = adminUsers;
+        _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
     }
 
@@ -25,12 +28,11 @@ public sealed class UpdateUserSettingsCommandHandler : IRequestHandler<UpdateUse
             throw new UnauthorizedAccessException();
         }
 
-        var user = await _context.AdminUsers
-            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive, cancellationToken)
+        var user = await _adminUsers.GetActiveByIdAsync(userId, cancellationToken)
             ?? throw new UnauthorizedAccessException();
 
         user.SettingsJson = UserSettingsHelper.Serialize(request.Settings);
         user.UpdatedAt = DateTimeOffset.UtcNow;
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

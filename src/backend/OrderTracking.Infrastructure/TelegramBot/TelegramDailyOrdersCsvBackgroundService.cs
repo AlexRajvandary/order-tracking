@@ -5,9 +5,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Npgsql;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Domain.Entities;
 using OrderTracking.Domain.Enums;
-using OrderTracking.Infrastructure.Persistence;
 
 namespace OrderTracking.Infrastructure.TelegramBot;
 
@@ -72,7 +72,8 @@ public sealed class TelegramDailyOrdersCsvBackgroundService : BackgroundService
             return;
         }
 
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var outbox = scope.ServiceProvider.GetRequiredService<ITelegramOutboxRepository>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var now = DateTime.UtcNow;
         var today = DateOnly.FromDateTime(now);
         var todayText = today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -81,14 +82,11 @@ public sealed class TelegramDailyOrdersCsvBackgroundService : BackgroundService
         foreach (var (adminId, telegramId, _) in candidates)
         {
             var dedupKey = TelegramOutboxDedupKeys.DailyCsv(adminId, today);
-            var alreadyQueuedOrSent = await db.TelegramOutboxMessages.AsNoTracking()
-                .AnyAsync(
-                    m => m.Kind == TelegramOutboxKinds.DailyOrdersCsv
-                         && m.DedupKey == dedupKey
-                         && (m.Status == TelegramOutboxStatus.Pending
-                             || m.Status == TelegramOutboxStatus.Processing
-                             || m.Status == TelegramOutboxStatus.Sent),
-                    cancellationToken);
+            var alreadyQueuedOrSent = await outbox.ExistsByDedupAsync(
+                TelegramOutboxKinds.DailyOrdersCsv,
+                dedupKey,
+                [TelegramOutboxStatus.Pending, TelegramOutboxStatus.Processing, TelegramOutboxStatus.Sent],
+                cancellationToken);
 
             if (alreadyQueuedOrSent)
             {
@@ -96,7 +94,7 @@ public sealed class TelegramDailyOrdersCsvBackgroundService : BackgroundService
             }
 
             var payload = new TelegramDailyOrdersCsvPayload(adminId, telegramId, todayText);
-            db.TelegramOutboxMessages.Add(new TelegramOutboxMessage
+            outbox.Add(new TelegramOutboxMessage
             {
                 Id = Guid.NewGuid(),
                 Kind = TelegramOutboxKinds.DailyOrdersCsv,
@@ -108,15 +106,13 @@ public sealed class TelegramDailyOrdersCsvBackgroundService : BackgroundService
 
             try
             {
-                await db.SaveChangesAsync(cancellationToken);
+                await unitOfWork.SaveChangesAsync(cancellationToken);
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex))
             {
-                db.ChangeTracker.Clear();
             }
             catch (Exception ex)
             {
-                db.ChangeTracker.Clear();
                 _logger.LogWarning(ex, "Failed to enqueue daily CSV for admin {AdminId}", adminId);
             }
         }

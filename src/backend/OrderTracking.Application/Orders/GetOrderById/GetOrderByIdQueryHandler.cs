@@ -1,65 +1,31 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
-using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Orders.Models;
 
 namespace OrderTracking.Application.Orders.GetOrderById;
 
 public sealed class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, OrderDetailsDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IOrderRepository _orderRepository;
 
-    public GetOrderByIdQueryHandler(IApplicationDbContext context)
+    public GetOrderByIdQueryHandler(IOrderRepository orderRepository)
     {
-        _context = context;
+        _orderRepository = orderRepository;
     }
 
     public async Task<OrderDetailsDto> Handle(GetOrderByIdQuery request, CancellationToken cancellationToken)
     {
-        var order = await _context.Orders
-            .AsNoTracking()
-            .Where(o => o.Id == request.Id)
-            .Select(o => new OrderDetailsDto(
-                o.Id,
-                o.TrackingCode,
-                o.CustomerId,
-                o.Customer != null
-                    ? ((o.Customer.LastName ?? "") + " " + (o.Customer.FirstName ?? "") + " " + (o.Customer.Patronymic ?? "")).Trim()
-                    : null,
-                o.Customer != null ? o.Customer.Phone : null,
-                o.Customer != null ? o.Customer.Telegram : null,
-                o.Customer != null ? o.Customer.Email : null,
-                o.AdminNotes,
-                o.CreatedByAdminId,
-                o.Status.ToString(),
-                o.CreatedAt,
-                o.UpdatedAt ?? o.CreatedAt,
-                o.ExpectedDeliveryAt,
-                o.DeliveryAddressId,
-                o.DeliveryCity,
-                o.DeliveryStreet,
-                o.DeliveryBuilding,
-                o.DeliveryApartment,
-                o.DeliveryPostalCode,
-                o.DeliveryNote,
-                o.Items
-                    .OrderBy(i => i.SortOrder)
-                    .Select(i => new OrderItemDto(
-                        i.Id,
-                        i.ItemType.ToString(),
-                        i.Name,
-                        i.Description,
-                        i.Quantity,
-                        i.UnitPrice,
-                        i.CurrencyCode,
-                        i.SortOrder,
-                        i.CurrentStatusId,
-                        i.CurrentStatusText,
-                        i.CurrentStatusUpdatedAt))
-                    .ToList()))
-            .FirstOrDefaultAsync(cancellationToken)
+        var order = await _orderRepository.GetDetailsByIdAsync(request.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Order '{request.Id}' was not found");
 
-        return order;
+        return new OrderDetailsDto(
+            order.Id, order.TrackingCode, order.CustomerId, order.CustomerName, order.CustomerPhone,
+            order.CustomerTelegram, order.CustomerEmail, order.AdminNotes, order.CreatedByAdminId,
+            order.Status, order.CreatedAt, order.UpdatedAt, order.ExpectedDeliveryAt,
+            order.DeliveryAddressId, order.DeliveryCity, order.DeliveryStreet, order.DeliveryBuilding,
+            order.DeliveryApartment, order.DeliveryPostalCode, order.DeliveryNote,
+            order.Items.Select(i => new OrderItemDto(
+                i.Id, i.ItemType, i.Name, i.Description, i.Quantity, i.UnitPrice, i.CurrencyCode,
+                i.SortOrder, i.CurrentStatusId, i.CurrentStatusText, i.CurrentStatusUpdatedAt)).ToList());
     }
 }

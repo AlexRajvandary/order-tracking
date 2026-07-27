@@ -1,6 +1,5 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
-using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Statuses.CreateStatusDefinition;
 using OrderTracking.Application.Statuses.Models;
 
@@ -9,19 +8,23 @@ namespace OrderTracking.Application.Statuses.UpdateStatusDefinition;
 public sealed class UpdateStatusDefinitionCommandHandler
     : IRequestHandler<UpdateStatusDefinitionCommand, StatusDefinitionDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IStatusDefinitionRepository _statusDefinitionRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateStatusDefinitionCommandHandler(IApplicationDbContext context)
+    public UpdateStatusDefinitionCommandHandler(
+        IStatusDefinitionRepository statusDefinitionRepository,
+        IUnitOfWork unitOfWork)
     {
-        _context = context;
+        _statusDefinitionRepository = statusDefinitionRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<StatusDefinitionDto> Handle(
         UpdateStatusDefinitionCommand request,
         CancellationToken cancellationToken)
     {
-        var status = await _context.StatusDefinitions
-            .FirstOrDefaultAsync(s => s.Id == request.Id, cancellationToken)
+        var status = await _statusDefinitionRepository
+            .GetByIdTrackedAsync(request.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Status '{request.Id}' was not found");
 
         status.Name = request.Name.Trim();
@@ -38,7 +41,7 @@ public sealed class UpdateStatusDefinitionCommandHandler
         status.IsActive = request.IsActive;
         status.IsFinal = request.IsFinal;
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return CreateStatusDefinitionCommandHandler.Map(status);
     }

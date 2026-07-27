@@ -1,11 +1,10 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Common.Realtime;
 using OrderTracking.Application.Orders.StatusHistory;
-using OrderTracking.Infrastructure.Persistence;
 
 namespace OrderTracking.Infrastructure.Background;
 
@@ -55,19 +54,15 @@ public sealed class StatusPublishBackgroundService : BackgroundService
     private async Task PublishDueAsync(CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var dateTime = scope.ServiceProvider.GetRequiredService<IDateTimeProvider>();
         var notifier = scope.ServiceProvider.GetRequiredService<IRealtimeNotifier>();
         var telegram = scope.ServiceProvider.GetRequiredService<ITelegramAdminNotifier>();
 
         var now = dateTime.UtcNow;
 
-        var due = await context.OrderItemStatusHistories
-            .Include(h => h.OrderItem)
-            .Where(h => !h.IsPublished && h.PublishAt != null && h.PublishAt <= now)
-            .OrderBy(h => h.PublishAt)
-            .ThenBy(h => h.Id)
-            .ToListAsync(cancellationToken);
+        var due = await orderRepository.GetDueScheduledHistoriesAsync(now, cancellationToken);
 
         if (due.Count == 0)
         {
@@ -83,13 +78,10 @@ public sealed class StatusPublishBackgroundService : BackgroundService
             var changedAt = history.PublishAt ?? now;
 
             // Atomic claim so a concurrent manual publish does not double-apply / double-notify.
-            var claimed = await context.OrderItemStatusHistories
-                .Where(h => h.Id == history.Id && !h.IsPublished)
-                .ExecuteUpdateAsync(
-                    setters => setters
-                        .SetProperty(h => h.IsPublished, true)
-                        .SetProperty(h => h.ChangedAt, changedAt),
-                    cancellationToken);
+            var claimed = await orderRepository.ClaimScheduledHistoryPublishAsync(
+                history.Id,
+                changedAt,
+                cancellationToken);
 
             if (claimed == 0)
             {
@@ -101,13 +93,14 @@ public sealed class StatusPublishBackgroundService : BackgroundService
             history.ChangedAt = changedAt;
 
             await OrderItemCurrentStatusSync.SyncFromPublishedHistoryAsync(
-                context,
+                orderRepository,
                 history.OrderItem,
                 cancellationToken);
             affectedOrderIds.Add(history.OrderItem.OrderId);
 
-            var order = await context.Orders
-                .FirstOrDefaultAsync(o => o.Id == history.OrderItem.OrderId, cancellationToken);
+            var order = await orderRepository.GetByIdTrackedAsync(
+                history.OrderItem.OrderId,
+                cancellationToken);
             if (order is not null)
             {
                 order.UpdatedAt = now;
@@ -127,7 +120,7 @@ public sealed class StatusPublishBackgroundService : BackgroundService
             return;
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Published {Count} scheduled status history entries", publishedCount);
 

@@ -1,7 +1,7 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Common.Models;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Common.Realtime;
 using OrderTracking.Application.Customers.Models;
 
@@ -9,12 +9,12 @@ namespace OrderTracking.Application.Customers.GetCustomers;
 
 public sealed class GetCustomersQueryHandler : IRequestHandler<GetCustomersQuery, PaginatedList<CustomerDto>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly ICustomerRepository _customers;
     private readonly IPresenceRegistry _presence;
 
-    public GetCustomersQueryHandler(IApplicationDbContext context, IPresenceRegistry presence)
+    public GetCustomersQueryHandler(ICustomerRepository customers, IPresenceRegistry presence)
     {
-        _context = context;
+        _customers = customers;
         _presence = presence;
     }
 
@@ -22,35 +22,11 @@ public sealed class GetCustomersQueryHandler : IRequestHandler<GetCustomersQuery
         GetCustomersQuery request,
         CancellationToken cancellationToken)
     {
-        var page = Math.Max(1, request.Page);
-        var pageSize = Math.Clamp(request.PageSize, 1, 500);
-
-        var query = _context.Customers.AsNoTracking();
-
-        var totalCount = await query.CountAsync(cancellationToken);
-
-        var rows = await query
-            .OrderByDescending(c => c.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(c => new
-            {
-                c.Id,
-                c.LastName,
-                c.FirstName,
-                c.Patronymic,
-                c.Telegram,
-                c.Phone,
-                c.Email,
-                c.Notes,
-                c.CreatedAt,
-                OrdersCount = c.Orders.Count,
-            })
-            .ToListAsync(cancellationToken);
+        var rows = await _customers.GetPagedAsync(request.Page, request.PageSize, cancellationToken);
 
         var online = _presence.GetOnlineCustomerIds();
 
-        var items = rows
+        var items = rows.Items
             .Select(c => new CustomerDto(
                 c.Id,
                 c.LastName,
@@ -66,6 +42,6 @@ public sealed class GetCustomersQueryHandler : IRequestHandler<GetCustomersQuery
                 online.Contains(c.Id)))
             .ToList();
 
-        return new PaginatedList<CustomerDto>(items, totalCount, page, pageSize);
+        return new PaginatedList<CustomerDto>(items, rows.TotalCount, rows.Page, rows.PageSize);
     }
 }

@@ -1,6 +1,6 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Orders.AddOrderItem;
 using OrderTracking.Application.Orders.Models;
 using OrderTracking.Domain.Common;
@@ -9,27 +9,27 @@ namespace OrderTracking.Application.Orders.UpdateOrderItem;
 
 public sealed class UpdateOrderItemCommandHandler : IRequestHandler<UpdateOrderItemCommand, OrderItemDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IOrderRepository _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _dateTimeProvider;
 
     public UpdateOrderItemCommandHandler(
-        IApplicationDbContext context,
+        IOrderRepository orderRepository,
+        IUnitOfWork unitOfWork,
         IDateTimeProvider dateTimeProvider)
     {
-        _context = context;
+        _orderRepository = orderRepository;
+        _unitOfWork = unitOfWork;
         _dateTimeProvider = dateTimeProvider;
     }
 
     public async Task<OrderItemDto> Handle(UpdateOrderItemCommand request, CancellationToken cancellationToken)
     {
-        var order = await _context.Orders
-            .FirstOrDefaultAsync(o => o.Id == request.OrderId, cancellationToken)
+        var order = await _orderRepository.GetByIdTrackedAsync(request.OrderId, cancellationToken)
             ?? throw new KeyNotFoundException($"Order '{request.OrderId}' was not found");
 
-        var item = await _context.OrderItems
-            .FirstOrDefaultAsync(
-                i => i.Id == request.ItemId && i.OrderId == request.OrderId,
-                cancellationToken)
+        var item = await _orderRepository.GetItemByIdForOrderAsync(
+            request.OrderId, request.ItemId, cancellationToken)
             ?? throw new KeyNotFoundException($"Order item '{request.ItemId}' was not found");
 
         item.ItemType = request.ItemType;
@@ -42,7 +42,7 @@ public sealed class UpdateOrderItemCommandHandler : IRequestHandler<UpdateOrderI
             : null;
         order.UpdatedAt = _dateTimeProvider.UtcNow;
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return AddOrderItemCommandHandler.Map(item);
     }

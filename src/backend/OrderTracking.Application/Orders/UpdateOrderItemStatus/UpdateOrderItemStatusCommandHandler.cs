@@ -1,7 +1,7 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Orders.AddOrderItem;
 using OrderTracking.Application.Orders.Models;
 using OrderTracking.Application.Orders.StatusHistory;
@@ -13,7 +13,9 @@ namespace OrderTracking.Application.Orders.UpdateOrderItemStatus;
 public sealed class UpdateOrderItemStatusCommandHandler
     : IRequestHandler<UpdateOrderItemStatusCommand, OrderItemDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IOrderRepository _orderRepository;
+    private readonly IStatusDefinitionRepository _statusDefinitionRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IImageCompressor _imageCompressor;
@@ -22,7 +24,9 @@ public sealed class UpdateOrderItemStatusCommandHandler
     private readonly ITelegramAdminNotifier _telegramNotifier;
 
     public UpdateOrderItemStatusCommandHandler(
-        IApplicationDbContext context,
+        IOrderRepository orderRepository,
+        IStatusDefinitionRepository statusDefinitionRepository,
+        IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
         IDateTimeProvider dateTimeProvider,
         IObjectStorage objectStorage,
@@ -30,7 +34,9 @@ public sealed class UpdateOrderItemStatusCommandHandler
         ITelegramAdminNotifier telegramNotifier,
         ILogger<UpdateOrderItemStatusCommandHandler> logger)
     {
-        _context = context;
+        _orderRepository = orderRepository;
+        _statusDefinitionRepository = statusDefinitionRepository;
+        _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _dateTimeProvider = dateTimeProvider;
         _objectStorage = objectStorage;
@@ -48,14 +54,11 @@ public sealed class UpdateOrderItemStatusCommandHandler
             throw new UnauthorizedAccessException();
         }
 
-        var order = await _context.Orders
-            .FirstOrDefaultAsync(o => o.Id == request.OrderId, cancellationToken)
+        var order = await _orderRepository.GetByIdTrackedAsync(request.OrderId, cancellationToken)
             ?? throw new KeyNotFoundException($"Order '{request.OrderId}' was not found");
 
-        var item = await _context.OrderItems
-            .FirstOrDefaultAsync(
-                i => i.Id == request.ItemId && i.OrderId == request.OrderId,
-                cancellationToken)
+        var item = await _orderRepository.GetItemByIdForOrderAsync(
+            request.OrderId, request.ItemId, cancellationToken)
             ?? throw new KeyNotFoundException($"Order item '{request.ItemId}' was not found");
 
         string statusText;
@@ -65,8 +68,8 @@ public sealed class UpdateOrderItemStatusCommandHandler
 
         if (request.StatusDefinitionId is { } definitionId)
         {
-            var definition = await _context.StatusDefinitions
-                .FirstOrDefaultAsync(s => s.Id == definitionId && s.IsActive, cancellationToken)
+            var definition = await _statusDefinitionRepository.GetActiveByIdAsync(
+                definitionId, cancellationToken)
                 ?? throw new KeyNotFoundException($"Status definition '{definitionId}' was not found");
 
             statusDefinitionId = definition.Id;
@@ -108,7 +111,7 @@ public sealed class UpdateOrderItemStatusCommandHandler
         };
 
         order.UpdatedAt = now;
-        _context.OrderItemStatusHistories.Add(history);
+        _orderRepository.AddStatusHistory(history);
 
         if (isPublished)
         {
@@ -118,7 +121,7 @@ public sealed class UpdateOrderItemStatusCommandHandler
         if (request.Photos is { Count: > 0 })
         {
             await StatusPhotoUploadHelper.UploadAsync(
-                _context,
+                _orderRepository,
                 _objectStorage,
                 _imageCompressor,
                 order.Id,
@@ -130,7 +133,7 @@ public sealed class UpdateOrderItemStatusCommandHandler
                 cancellationToken);
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         if (isPublished)
         {

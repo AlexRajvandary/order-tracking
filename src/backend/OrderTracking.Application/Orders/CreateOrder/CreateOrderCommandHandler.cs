@@ -1,7 +1,8 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
+using OrderTracking.Application.Common.Persistence.Models;
 using OrderTracking.Application.Customers;
 using OrderTracking.Application.Orders.Models;
 using OrderTracking.Application.Orders.StatusHistory;
@@ -14,7 +15,10 @@ namespace OrderTracking.Application.Orders.CreateOrder;
 public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, OrderDetailsDto>
 {
     private const int MaxTrackingCodeAttempts = 5;
-    private readonly IApplicationDbContext _context;
+    private readonly ICustomerRepository _customerRepository;
+    private readonly IOrderRepository _orderRepository;
+    private readonly IStatusDefinitionRepository _statusDefinitionRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ILogger<CreateOrderCommandHandler> _logger;
@@ -22,14 +26,20 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
     private readonly ITrackingCodeGenerator _trackingCodeGenerator;
 
     public CreateOrderCommandHandler(
-        IApplicationDbContext context,
+        IOrderRepository orderRepository,
+        ICustomerRepository customerRepository,
+        IStatusDefinitionRepository statusDefinitionRepository,
+        IUnitOfWork unitOfWork,
         ITrackingCodeGenerator trackingCodeGenerator,
         ICurrentUserService currentUserService,
         IDateTimeProvider dateTimeProvider,
         ITelegramAdminNotifier telegramNotifier,
         ILogger<CreateOrderCommandHandler> logger)
     {
-        _context = context;
+        _orderRepository = orderRepository;
+        _customerRepository = customerRepository;
+        _statusDefinitionRepository = statusDefinitionRepository;
+        _unitOfWork = unitOfWork;
         _trackingCodeGenerator = trackingCodeGenerator;
         _currentUserService = currentUserService;
         _dateTimeProvider = dateTimeProvider;
@@ -66,7 +76,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
                 UpdatedAt = now,
             };
 
-            _context.Customers.Add(customer);
+            _customerRepository.Add(customer);
             customerId = customer.Id;
             customerName = CustomerNameFormatting.Format(
                 customer.LastName,
@@ -78,9 +88,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
         }
         else if (customerId is { } existingId)
         {
-            var customer = await _context.Customers
-                .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.Id == existingId, cancellationToken)
+            var customer = await _customerRepository.GetByIdTrackedAsync(existingId, cancellationToken)
                 ?? throw new KeyNotFoundException($"Customer '{existingId}' was not found");
 
             customerName = CustomerNameFormatting.Format(
@@ -134,15 +142,16 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
             })
             .ToList();
 
-        _context.Orders.Add(order);
+        _orderRepository.Add(order);
 
         foreach (var item in items)
         {
-            _context.OrderItems.Add(item);
+            _orderRepository.AddItem(item);
         }
 
         await ScheduledStatusHistorySeeder.SeedForItemsAsync(
-            _context,
+            _orderRepository,
+            _statusDefinitionRepository,
             order,
             items,
             adminId,
@@ -150,12 +159,12 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
 
         try
         {
-            await _context.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        catch (Exception ex) when (IsUniqueViolation(ex))
         {
             order.TrackingCode = await GenerateUniqueTrackingCodeAsync(cancellationToken);
-            await _context.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         try
@@ -179,8 +188,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
         for (var attempt = 0; attempt < MaxTrackingCodeAttempts; attempt++)
         {
             var code = _trackingCodeGenerator.Generate(5);
-            var exists = await _context.Orders
-                .AnyAsync(o => o.TrackingCode == code, cancellationToken);
+            var exists = await _orderRepository.ExistsByTrackingCodeAsync(code, cancellationToken);
 
             if (!exists)
             {
@@ -212,12 +220,20 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
             || !string.IsNullOrWhiteSpace(customer.Phone)
             || !string.IsNullOrWhiteSpace(customer.Email));
 
-    private static bool IsUniqueViolation(DbUpdateException ex)
+    private static bool IsUniqueViolation(Exception ex)
     {
-        var message = ex.InnerException?.Message ?? ex.Message;
-        return message.Contains("23505", StringComparison.Ordinal)
-               || message.Contains("unique", StringComparison.OrdinalIgnoreCase)
-               || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase);
+        for (var current = ex; current is not null; current = current.InnerException)
+        {
+            var message = current.Message;
+            if (message.Contains("23505", StringComparison.Ordinal)
+                || message.Contains("unique", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static OrderDetailsDto MapDetails(
@@ -283,8 +299,8 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
     {
         if (request.DeliveryAddressId is { } existingAddressId)
         {
-            var address = await _context.CustomerAddresses
-                .FirstOrDefaultAsync(a => a.Id == existingAddressId, cancellationToken)
+            var address = await _customerRepository.GetAddressByIdAsync(
+                existingAddressId, cancellationToken)
                 ?? throw new KeyNotFoundException($"Delivery address '{existingAddressId}' was not found");
 
             if (address.CustomerId != customerId)
@@ -321,16 +337,12 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
         var apartmentKey = apartment?.ToLowerInvariant() ?? "";
         var postalCodeKey = postalCode?.ToLowerInvariant() ?? "";
 
-        var existingAddress = await _context.CustomerAddresses
-            .FirstOrDefaultAsync(
-                address =>
-                    address.CustomerId == customerId
-                    && (address.City ?? "").ToLower() == cityKey
-                    && (address.Street ?? "").ToLower() == streetKey
-                    && (address.Building ?? "").ToLower() == buildingKey
-                    && (address.Apartment ?? "").ToLower() == apartmentKey
-                    && (address.PostalCode ?? "").ToLower() == postalCodeKey,
-                cancellationToken);
+        var existingAddress = customerId is { } id
+            ? await _customerRepository.FindDuplicateAddressAsync(
+                id,
+                new AddressDuplicateCriteria(cityKey, streetKey, buildingKey, apartmentKey, postalCodeKey),
+                cancellationToken)
+            : null;
 
         Guid addressId;
         if (existingAddress is not null)
@@ -341,7 +353,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
         {
             var now = _dateTimeProvider.UtcNow;
             addressId = Guid.NewGuid();
-            _context.CustomerAddresses.Add(new CustomerAddress
+            _customerRepository.AddAddress(new CustomerAddress
             {
                 Id = addressId,
                 CustomerId = customerId,

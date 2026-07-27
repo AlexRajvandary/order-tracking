@@ -1,11 +1,10 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Domain.Entities;
 using OrderTracking.Domain.Enums;
-using OrderTracking.Infrastructure.Persistence;
 
 namespace OrderTracking.Infrastructure.TelegramBot;
 
@@ -74,53 +73,16 @@ public sealed class TelegramOutboxProcessorHostedService : BackgroundService
             return 0;
         }
 
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var outbox = scope.ServiceProvider.GetRequiredService<ITelegramOutboxRepository>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
         // Recover rows stuck in Processing after a crash mid-batch.
         var staleBefore = DateTimeOffset.UtcNow.AddMinutes(-5);
-        await db.TelegramOutboxMessages
-            .Where(m => m.Status == TelegramOutboxStatus.Processing && m.LockedAt != null && m.LockedAt < staleBefore)
-            .ExecuteUpdateAsync(
-                setters => setters
-                    .SetProperty(m => m.Status, TelegramOutboxStatus.Pending)
-                    .SetProperty(m => m.LockedAt, (DateTimeOffset?)null),
-                cancellationToken);
-
-        List<TelegramOutboxMessage> batch;
-
-        await using (var tx = await db.Database.BeginTransactionAsync(cancellationToken))
+        await outbox.RecoverStaleProcessingAsync(staleBefore, cancellationToken);
+        var batch = await outbox.ClaimPendingBatchAsync(BatchSize, DateTimeOffset.UtcNow, cancellationToken);
+        if (batch.Count == 0)
         {
-            batch = await db.TelegramOutboxMessages
-                .FromSqlRaw(
-                    """
-                    SELECT *
-                    FROM telegram_outbox_messages
-                    WHERE "Status" = {0}
-                    ORDER BY "CreatedAt", "Id"
-                    FOR UPDATE SKIP LOCKED
-                    LIMIT {1}
-                    """,
-                    (short)TelegramOutboxStatus.Pending,
-                    BatchSize)
-                .AsTracking()
-                .ToListAsync(cancellationToken);
-
-            if (batch.Count == 0)
-            {
-                await tx.CommitAsync(cancellationToken);
-                return 0;
-            }
-
-            var now = DateTimeOffset.UtcNow;
-            foreach (var message in batch)
-            {
-                message.Status = TelegramOutboxStatus.Processing;
-                message.LockedAt = now;
-                message.AttemptCount += 1;
-            }
-
-            await db.SaveChangesAsync(cancellationToken);
-            await tx.CommitAsync(cancellationToken);
+            return 0;
         }
 
         foreach (var message in batch)
@@ -128,22 +90,16 @@ public sealed class TelegramOutboxProcessorHostedService : BackgroundService
             try
             {
                 await DispatchAsync(bot, message, cancellationToken);
-                message.Status = TelegramOutboxStatus.Sent;
-                message.ProcessedAt = DateTimeOffset.UtcNow;
-                message.LastError = null;
+                await outbox.MarkSentAsync(message, DateTimeOffset.UtcNow, cancellationToken);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Telegram outbox message {MessageId} failed", message.Id);
-                message.LastError = Truncate(ex.Message, 2000);
-                message.Status = message.AttemptCount >= MaxAttempts
-                    ? TelegramOutboxStatus.Dead
-                    : TelegramOutboxStatus.Pending;
-                message.LockedAt = null;
+                await outbox.MarkFailedAsync(message, Truncate(ex.Message, 2000), MaxAttempts, cancellationToken);
             }
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return batch.Count;
     }
 

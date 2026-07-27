@@ -1,25 +1,25 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
-using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 
 namespace OrderTracking.Application.Orders.DeleteOrder;
 
 public sealed class DeleteOrderCommandHandler : IRequestHandler<DeleteOrderCommand>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IOrderRepository _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public DeleteOrderCommandHandler(IApplicationDbContext context)
+    public DeleteOrderCommandHandler(IOrderRepository orderRepository, IUnitOfWork unitOfWork)
     {
-        _context = context;
+        _orderRepository = orderRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task Handle(DeleteOrderCommand request, CancellationToken cancellationToken)
     {
-        var order = await _context.Orders
-            .FirstOrDefaultAsync(o => o.Id == request.Id, cancellationToken)
+        var order = await _orderRepository.GetByIdTrackedAsync(request.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Order '{request.Id}' was not found");
 
-        _context.Orders.Remove(order);
-        await _context.SaveChangesAsync(cancellationToken);
+        _orderRepository.Remove(order);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

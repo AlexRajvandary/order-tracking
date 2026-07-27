@@ -1,4 +1,5 @@
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Domain.Entities;
 
 namespace OrderTracking.Application.Orders.StatusPhotos;
@@ -8,7 +9,7 @@ public static class StatusPhotoUploadHelper
     public const int MaxPhotosPerRequest = 5;
 
     public static async Task<IReadOnlyList<OrderItemStatusAttachment>> UploadAsync(
-        IApplicationDbContext context,
+        IOrderRepository orderRepository,
         IObjectStorage objectStorage,
         IImageCompressor imageCompressor,
         Guid orderId,
@@ -64,7 +65,7 @@ public static class StatusPhotoUploadHelper
                     UploadedAt = uploadedAt,
                 };
 
-                context.OrderItemStatusAttachments.Add(attachment);
+                orderRepository.AddAttachment(attachment);
                 attachments.Add(attachment);
             }
 

@@ -1,31 +1,32 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
-using OrderTracking.Application.Admins;
 using OrderTracking.Application.Admins.Models;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 
 namespace OrderTracking.Application.Admins.UpdateAdmin;
 
 public sealed class UpdateAdminCommandHandler : IRequestHandler<UpdateAdminCommand, AdminUserDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IAdminUserRepository _adminUsers;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
 
     public UpdateAdminCommandHandler(
-        IApplicationDbContext context,
+        IAdminUserRepository adminUsers,
+        IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock)
     {
-        _context = context;
+        _adminUsers = adminUsers;
+        _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
     }
 
     public async Task<AdminUserDto> Handle(UpdateAdminCommand request, CancellationToken cancellationToken)
     {
-        var user = await _context.AdminUsers
-            .FirstOrDefaultAsync(u => u.Id == request.Id, cancellationToken)
+        var user = await _adminUsers.GetByIdTrackedAsync(request.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Admin '{request.Id}' was not found");
 
         var actorRole = AdminPermissionGuard.RequireActorRole(_currentUser);
@@ -45,7 +46,7 @@ public sealed class UpdateAdminCommandHandler : IRequestHandler<UpdateAdminComma
             user.Role = request.Role.Value;
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return AdminUserMapping.ToDto(user, _clock.UtcNow);
     }

@@ -1,5 +1,5 @@
 using MediatR;
-using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Statuses.Models;
 using OrderTracking.Domain.Entities;
 
@@ -8,11 +8,15 @@ namespace OrderTracking.Application.Statuses.CreateStatusDefinition;
 public sealed class CreateStatusDefinitionCommandHandler
     : IRequestHandler<CreateStatusDefinitionCommand, StatusDefinitionDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IStatusDefinitionRepository _statusDefinitionRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public CreateStatusDefinitionCommandHandler(IApplicationDbContext context)
+    public CreateStatusDefinitionCommandHandler(
+        IStatusDefinitionRepository statusDefinitionRepository,
+        IUnitOfWork unitOfWork)
     {
-        _context = context;
+        _statusDefinitionRepository = statusDefinitionRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<StatusDefinitionDto> Handle(
@@ -37,8 +41,8 @@ public sealed class CreateStatusDefinitionCommandHandler
             IsFinal = request.IsFinal,
         };
 
-        _context.StatusDefinitions.Add(status);
-        await _context.SaveChangesAsync(cancellationToken);
+        _statusDefinitionRepository.Add(status);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Map(status);
     }

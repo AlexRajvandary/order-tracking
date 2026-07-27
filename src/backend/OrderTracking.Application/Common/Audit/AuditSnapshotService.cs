@@ -1,25 +1,22 @@
-using Microsoft.EntityFrameworkCore;
-using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Customers;
 
 namespace OrderTracking.Application.Common.Audit;
 
-public interface IAuditSnapshotService
-{
-    Task<IReadOnlyDictionary<string, string?>?> CaptureAsync(
-        object request,
-        string entityType,
-        bool includeDeleted,
-        CancellationToken cancellationToken = default);
-}
-
 public sealed class AuditSnapshotService : IAuditSnapshotService
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IOrderRepository _orderRepository;
+    private readonly ICustomerRepository _customerRepository;
+    private readonly IStatusDefinitionRepository _statusDefinitionRepository;
 
-    public AuditSnapshotService(IApplicationDbContext context)
+    public AuditSnapshotService(
+        IOrderRepository orderRepository,
+        ICustomerRepository customerRepository,
+        IStatusDefinitionRepository statusDefinitionRepository)
     {
-        _context = context;
+        _orderRepository = orderRepository;
+        _customerRepository = customerRepository;
+        _statusDefinitionRepository = statusDefinitionRepository;
     }
 
     public async Task<IReadOnlyDictionary<string, string?>?> CaptureAsync(
@@ -68,31 +65,10 @@ public sealed class AuditSnapshotService : IAuditSnapshotService
         bool includeDeleted,
         CancellationToken cancellationToken)
     {
-        var query = _context.Orders.AsNoTracking();
-        if (includeDeleted)
-        {
-            query = query.IgnoreQueryFilters();
-        }
-
-        var order = await query
-            .Where(o => o.Id == id)
-            .Select(o => new
-            {
-                o.TrackingCode,
-                o.CustomerId,
-                o.AdminNotes,
-                Status = o.Status.ToString(),
-                o.ExpectedDeliveryAt,
-                o.DeliveryAddressId,
-                o.DeliveryCity,
-                o.DeliveryStreet,
-                o.DeliveryBuilding,
-                o.DeliveryApartment,
-                o.DeliveryPostalCode,
-                o.DeliveryNote,
-                o.IsDeleted,
-            })
-            .FirstOrDefaultAsync(cancellationToken);
+        var order = await _orderRepository.GetAuditSnapshotAsync(
+            id,
+            includeDeleted,
+            cancellationToken);
 
         if (order is null)
         {
@@ -122,26 +98,10 @@ public sealed class AuditSnapshotService : IAuditSnapshotService
         bool includeDeleted,
         CancellationToken cancellationToken)
     {
-        var query = _context.OrderItems.AsNoTracking();
-        if (includeDeleted)
-        {
-            query = query.IgnoreQueryFilters();
-        }
-
-        var item = await query
-            .Where(i => i.Id == itemId)
-            .Select(i => new
-            {
-                i.Name,
-                ItemType = i.ItemType.ToString(),
-                i.Description,
-                i.Quantity,
-                i.UnitPrice,
-                i.CurrencyCode,
-                i.CurrentStatusText,
-                i.IsDeleted,
-            })
-            .FirstOrDefaultAsync(cancellationToken);
+        var item = await _orderRepository.GetItemAuditSnapshotAsync(
+            itemId,
+            includeDeleted,
+            cancellationToken);
 
         if (item is null)
         {
@@ -166,26 +126,10 @@ public sealed class AuditSnapshotService : IAuditSnapshotService
         bool includeDeleted,
         CancellationToken cancellationToken)
     {
-        var query = _context.Customers.AsNoTracking();
-        if (includeDeleted)
-        {
-            query = query.IgnoreQueryFilters();
-        }
-
-        var customer = await query
-            .Where(c => c.Id == id)
-            .Select(c => new
-            {
-                c.LastName,
-                c.FirstName,
-                c.Patronymic,
-                c.Telegram,
-                c.Phone,
-                c.Email,
-                c.Notes,
-                c.IsDeleted,
-            })
-            .FirstOrDefaultAsync(cancellationToken);
+        var customer = await _customerRepository.GetAuditSnapshotAsync(
+            id,
+            includeDeleted,
+            cancellationToken);
 
         if (customer is null)
         {
@@ -214,24 +158,10 @@ public sealed class AuditSnapshotService : IAuditSnapshotService
         bool includeDeleted,
         CancellationToken cancellationToken)
     {
-        var query = _context.StatusDefinitions.AsNoTracking();
-        if (includeDeleted)
-        {
-            query = query.IgnoreQueryFilters();
-        }
-
-        var status = await query
-            .Where(s => s.Id == id)
-            .Select(s => new
-            {
-                s.Name,
-                ItemType = s.ItemType.HasValue ? s.ItemType.Value.ToString() : null,
-                s.Color,
-                s.IsActive,
-                s.IsFinal,
-                s.IsDeleted,
-            })
-            .FirstOrDefaultAsync(cancellationToken);
+        var status = await _statusDefinitionRepository.GetAuditSnapshotAsync(
+            id,
+            includeDeleted,
+            cancellationToken);
 
         if (status is null)
         {

@@ -6,6 +6,7 @@ using OrderTracking.Application.Orders.StatusHistory;
 using OrderTracking.Domain.Entities;
 using OrderTracking.Domain.Enums;
 using OrderTracking.Infrastructure.Persistence;
+using OrderTracking.Infrastructure.Persistence.Repositories;
 using Xunit;
 
 namespace OrderTracking.Infrastructure.Tests.Orders;
@@ -16,12 +17,13 @@ public sealed class StatusScheduleTests
     public async Task CancelScheduled_SoftDeletesUnpublishedEntry()
     {
         await using var db = CreateDbContext();
+        var orders = new OrderRepository(db);
         var (orderId, historyId) = await SeedOrderWithScheduledAsync(db, isPublished: false);
 
         var dateTime = new Mock<IDateTimeProvider>();
         dateTime.Setup(x => x.UtcNow).Returns(DateTimeOffset.UtcNow);
 
-        var handler = new CancelScheduledStatusHistoryCommandHandler(db, dateTime.Object);
+        var handler = new CancelScheduledStatusHistoryCommandHandler(orders, db, dateTime.Object);
         await handler.Handle(new CancelScheduledStatusHistoryCommand(orderId, historyId), CancellationToken.None);
 
         Assert.Empty(await db.OrderItemStatusHistories.ToListAsync());
@@ -31,12 +33,13 @@ public sealed class StatusScheduleTests
     public async Task CancelScheduled_RejectsPublishedEntry()
     {
         await using var db = CreateDbContext();
+        var orders = new OrderRepository(db);
         var (orderId, historyId) = await SeedOrderWithScheduledAsync(db, isPublished: true);
 
         var dateTime = new Mock<IDateTimeProvider>();
         dateTime.Setup(x => x.UtcNow).Returns(DateTimeOffset.UtcNow);
 
-        var handler = new CancelScheduledStatusHistoryCommandHandler(db, dateTime.Object);
+        var handler = new CancelScheduledStatusHistoryCommandHandler(orders, db, dateTime.Object);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             handler.Handle(new CancelScheduledStatusHistoryCommand(orderId, historyId), CancellationToken.None));
@@ -46,6 +49,8 @@ public sealed class StatusScheduleTests
     public async Task SeedForItems_CreatesUnpublishedHistoryWithPublishAt()
     {
         await using var db = CreateDbContext();
+        var orders = new OrderRepository(db);
+        var statuses = new StatusDefinitionRepository(db);
         var createdAt = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);
         var adminId = Guid.NewGuid();
 
@@ -94,7 +99,8 @@ public sealed class StatusScheduleTests
         await db.SaveChangesAsync();
 
         await ScheduledStatusHistorySeeder.SeedForItemsAsync(
-            db,
+            orders,
+            statuses,
             order,
             [item],
             adminId,
@@ -112,6 +118,7 @@ public sealed class StatusScheduleTests
     public async Task SyncFromPublishedHistory_IgnoresUnpublished()
     {
         await using var db = CreateDbContext();
+        var orders = new OrderRepository(db);
         var createdAt = DateTimeOffset.UtcNow;
         var adminId = Guid.NewGuid();
 
@@ -168,7 +175,7 @@ public sealed class StatusScheduleTests
         });
         await db.SaveChangesAsync();
 
-        await OrderItemCurrentStatusSync.SyncFromPublishedHistoryAsync(db, item, CancellationToken.None);
+        await OrderItemCurrentStatusSync.SyncFromPublishedHistoryAsync(orders, item, CancellationToken.None);
 
         Assert.Equal("Published", item.CurrentStatusText);
     }

@@ -1,7 +1,6 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Audit;
-using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Dashboard.GetDashboardSummary;
 
 namespace OrderTracking.Application.Audit.GetAuditLogById;
@@ -9,45 +8,25 @@ namespace OrderTracking.Application.Audit.GetAuditLogById;
 public sealed class GetAuditLogByIdQueryHandler
     : IRequestHandler<GetAuditLogByIdQuery, AuditLogDetailsDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IAuditLogRepository _auditLogRepository;
 
-    public GetAuditLogByIdQueryHandler(IApplicationDbContext context)
+    public GetAuditLogByIdQueryHandler(IAuditLogRepository auditLogRepository)
     {
-        _context = context;
+        _auditLogRepository = auditLogRepository;
     }
 
     public async Task<AuditLogDetailsDto> Handle(
         GetAuditLogByIdQuery request,
         CancellationToken cancellationToken)
     {
-        var entry = await _context.AuditLogs
-            .AsNoTracking()
-            .Where(a => a.Id == request.Id)
-            .Select(a => new
-            {
-                a.Id,
-                a.EntityType,
-                a.EntityId,
-                a.Action,
-                a.AdminUserId,
-                AdminLogin = a.AdminUser != null ? a.AdminUser.Login : null,
-                a.OldValues,
-                a.NewValues,
-                a.IpAddress,
-                a.UserAgent,
-                a.CorrelationId,
-                a.CreatedAt,
-            })
-            .FirstOrDefaultAsync(cancellationToken)
+        var entry = await _auditLogRepository.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Audit log '{request.Id}' was not found");
 
         var canRestore = false;
         if (entry.Action == "DeleteOrder" && entry.EntityType == "Order")
         {
-            canRestore = await _context.Orders
-                .IgnoreQueryFilters()
-                .AsNoTracking()
-                .AnyAsync(o => o.Id == entry.EntityId && o.IsDeleted, cancellationToken);
+            canRestore = await _auditLogRepository
+                .IsDeletedOrderRestorableAsync(entry.EntityId, cancellationToken);
         }
 
         var changes = AuditValueDiff.FromStoredJson(entry.OldValues, entry.NewValues)

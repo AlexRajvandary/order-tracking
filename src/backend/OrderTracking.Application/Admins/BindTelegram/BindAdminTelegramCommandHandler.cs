@@ -1,26 +1,29 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Admins;
 using OrderTracking.Application.Admins.Models;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 
 namespace OrderTracking.Application.Admins.BindTelegram;
 
 public sealed class BindAdminTelegramCommandHandler
     : IRequestHandler<BindAdminTelegramCommand, AdminUserDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IAdminUserRepository _adminUsers;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ITelegramAuthValidator _telegramAuth;
     private readonly IDateTimeProvider _clock;
     private readonly ICurrentUserService _currentUser;
 
     public BindAdminTelegramCommandHandler(
-        IApplicationDbContext context,
+        IAdminUserRepository adminUsers,
+        IUnitOfWork unitOfWork,
         ITelegramAuthValidator telegramAuth,
         IDateTimeProvider clock,
         ICurrentUserService currentUser)
     {
-        _context = context;
+        _adminUsers = adminUsers;
+        _unitOfWork = unitOfWork;
         _telegramAuth = telegramAuth;
         _clock = clock;
         _currentUser = currentUser;
@@ -36,17 +39,16 @@ public sealed class BindAdminTelegramCommandHandler
             throw new UnauthorizedAccessException(error);
         }
 
-        var user = await _context.AdminUsers
-            .FirstOrDefaultAsync(u => u.Id == request.AdminId, cancellationToken)
+        var user = await _adminUsers.GetByIdTrackedAsync(request.AdminId, cancellationToken)
             ?? throw new KeyNotFoundException($"Admin '{request.AdminId}' was not found");
 
         var actorRole = AdminPermissionGuard.RequireActorRole(_currentUser);
         AdminPermissionGuard.EnsureCanManageTarget(actorRole, user);
 
-        var taken = await _context.AdminUsers
-            .AnyAsync(
-                u => u.TelegramId == request.Data.Id && u.Id != request.AdminId,
-                cancellationToken);
+        var taken = await _adminUsers.IsTelegramIdTakenAsync(
+            request.Data.Id,
+            request.AdminId,
+            cancellationToken);
 
         if (taken)
         {
@@ -61,7 +63,7 @@ public sealed class BindAdminTelegramCommandHandler
             ? null
             : request.Data.PhotoUrl.Trim();
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return AdminUserMapping.ToDto(user, _clock.UtcNow);
     }

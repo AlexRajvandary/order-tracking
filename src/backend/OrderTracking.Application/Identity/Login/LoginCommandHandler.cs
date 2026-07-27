@@ -1,27 +1,30 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Common.Models;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Identity;
 
 namespace OrderTracking.Application.Identity.Login;
 
 public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResultDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IAdminUserRepository _adminUsers;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IRefreshTokenService _refreshTokenService;
     private readonly IDateTimeProvider _clock;
 
     public LoginCommandHandler(
-        IApplicationDbContext context,
+        IAdminUserRepository adminUsers,
+        IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService,
         IRefreshTokenService refreshTokenService,
         IDateTimeProvider clock)
     {
-        _context = context;
+        _adminUsers = adminUsers;
+        _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
         _refreshTokenService = refreshTokenService;
@@ -30,8 +33,7 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResu
 
     public async Task<AuthResultDto> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        var user = await _context.AdminUsers
-            .FirstOrDefaultAsync(u => u.Login == request.Login, cancellationToken);
+        var user = await _adminUsers.GetByLoginAsync(request.Login, cancellationToken);
 
         if (user is null ||
             !user.IsActive ||
@@ -41,7 +43,7 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResu
         }
 
         user.LastSeenAt = _clock.UtcNow;
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var accessToken = _jwtTokenService.GenerateAccessToken(user, out var expiresAt);
         var (refreshToken, _) = await _refreshTokenService.CreateAsync(

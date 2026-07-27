@@ -1,13 +1,12 @@
 using System.Text;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Domain.Enums;
 using OrderTracking.Infrastructure.Identity;
-using OrderTracking.Infrastructure.Persistence;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -84,9 +83,8 @@ public sealed class TelegramAdminBotService
         }
 
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-        var csv = await BuildOrdersCsvAsync(db, cancellationToken);
+        var orders = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
+        var csv = await BuildOrdersCsvAsync(orders, cancellationToken);
         await using var stream = new MemoryStream(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv)).ToArray());
         var fileName = $"orders-{DateTime.UtcNow:yyyyMMdd}.csv";
 
@@ -102,11 +100,9 @@ public sealed class TelegramAdminBotService
         CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var admins = await db.AdminUsers
-            .Where(a => a.IsActive && a.TelegramId != null)
-            .Select(a => new { a.Id, TelegramId = a.TelegramId!.Value, a.SettingsJson })
-            .ToListAsync(cancellationToken);
+        var admins = await scope.ServiceProvider
+            .GetRequiredService<IAdminUserRepository>()
+            .ListActiveWithTelegramAsync(cancellationToken);
 
         var result = new List<(Guid, long, string)>();
         foreach (var admin in admins)
@@ -122,7 +118,7 @@ public sealed class TelegramAdminBotService
                 continue;
             }
 
-            result.Add((admin.Id, admin.TelegramId, admin.SettingsJson));
+            result.Add((admin.Id, admin.TelegramId!.Value, admin.SettingsJson));
         }
 
         return result;
@@ -136,39 +132,22 @@ public sealed class TelegramAdminBotService
         }
     }
 
-    private static async Task<string> BuildOrdersCsvAsync(ApplicationDbContext db, CancellationToken cancellationToken)
+    private static async Task<string> BuildOrdersCsvAsync(IOrderRepository orders, CancellationToken cancellationToken)
     {
-        var orders = await db.Orders.AsNoTracking()
-            .OrderByDescending(o => o.CreatedAt)
-            .Select(o => new
-            {
-                o.TrackingCode,
-                o.Status,
-                o.CreatedAt,
-                o.UpdatedAt,
-                CustomerName = o.Customer == null
-                    ? null
-                    : ((o.Customer.LastName ?? "") + " " + (o.Customer.FirstName ?? "") + " " + (o.Customer.Patronymic ?? "")).Trim(),
-                Phone = o.Customer != null ? o.Customer.Phone : null,
-                Telegram = o.Customer != null ? o.Customer.Telegram : null,
-                Email = o.Customer != null ? o.Customer.Email : null,
-                ItemsCount = o.Items.Count,
-                o.AdminNotes,
-            })
-            .ToListAsync(cancellationToken);
+        var rows = await orders.GetAllForTelegramCsvAsync(cancellationToken);
 
         var sb = new StringBuilder();
         sb.AppendLine("TrackingCode,Status,CreatedAtUtc,UpdatedAtUtc,CustomerName,Phone,Telegram,Email,ItemsCount,AdminNotes");
-        foreach (var o in orders)
+        foreach (var o in rows)
         {
             sb.Append(Csv(o.TrackingCode)).Append(',');
-            sb.Append(Csv(o.Status.ToString())).Append(',');
+            sb.Append(Csv(o.Status)).Append(',');
             sb.Append(Csv(o.CreatedAt.ToString("o"))).Append(',');
-            sb.Append(Csv((o.UpdatedAt ?? o.CreatedAt).ToString("o"))).Append(',');
+            sb.Append(Csv(o.UpdatedAt.ToString("o"))).Append(',');
             sb.Append(Csv(o.CustomerName)).Append(',');
-            sb.Append(Csv(o.Phone)).Append(',');
-            sb.Append(Csv(o.Telegram)).Append(',');
-            sb.Append(Csv(o.Email)).Append(',');
+            sb.Append(Csv(o.CustomerPhone)).Append(',');
+            sb.Append(Csv(o.CustomerTelegram)).Append(',');
+            sb.Append(Csv(o.CustomerEmail)).Append(',');
             sb.Append(o.ItemsCount).Append(',');
             sb.Append(Csv(o.AdminNotes));
             sb.AppendLine();
@@ -202,12 +181,13 @@ public sealed class TelegramAdminBotService
     private async Task<IReadOnlyList<long>> GetRecipientTelegramIdsAsync(CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        return await db.AdminUsers.AsNoTracking()
-            .Where(a => a.IsActive && a.TelegramId != null)
+        var admins = await scope.ServiceProvider
+            .GetRequiredService<IAdminUserRepository>()
+            .ListActiveWithTelegramAsync(cancellationToken);
+        return admins
             .Select(a => a.TelegramId!.Value)
             .Distinct()
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 
     private async Task HandleCallbackAsync(CallbackQuery callback, CancellationToken cancellationToken)
@@ -363,21 +343,26 @@ public sealed class TelegramAdminBotService
         CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var user = await db.AdminUsers.FirstAsync(u => u.Id == admin.AdminId, cancellationToken);
+        var admins = scope.ServiceProvider.GetRequiredService<IAdminUserRepository>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var user = await admins.GetByIdTrackedAsync(admin.AdminId, cancellationToken);
+        if (user is null)
+        {
+            return;
+        }
         var settings = TelegramBotUserSettings.FromJson(user.SettingsJson);
 
         if (data == TelegramBotCallback.SettingsCsvOn)
         {
             settings.DailyOrdersCsvEnabled = true;
             user.SettingsJson = TelegramBotUserSettings.MergeInto(user.SettingsJson, settings);
-            await db.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
         }
         else if (data == TelegramBotCallback.SettingsCsvOff)
         {
             settings.DailyOrdersCsvEnabled = false;
             user.SettingsJson = TelegramBotUserSettings.MergeInto(user.SettingsJson, settings);
-            await db.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         settings = TelegramBotUserSettings.FromJson(user.SettingsJson);
@@ -411,9 +396,9 @@ public sealed class TelegramAdminBotService
         }
 
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var admin = await db.AdminUsers.AsNoTracking()
-            .FirstOrDefaultAsync(a => a.TelegramId == telegramId && a.IsActive, cancellationToken);
+        var admin = await scope.ServiceProvider
+            .GetRequiredService<IAdminUserRepository>()
+            .GetActiveByTelegramIdAsync(telegramId.Value, cancellationToken);
 
         if (admin is null)
         {
@@ -443,19 +428,19 @@ public sealed class TelegramAdminBotService
     private async Task SendAdminsPageAsync(long chatId, int page, CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var admins = await scope.ServiceProvider
+            .GetRequiredService<IAdminUserRepository>()
+            .ListOrderedByLoginAsync(cancellationToken);
 
         page = Math.Max(1, page);
-        var total = await db.AdminUsers.AsNoTracking().CountAsync(cancellationToken);
+        var total = admins.Count;
         var totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)PageSize));
         page = Math.Min(page, totalPages);
 
-        var items = await db.AdminUsers.AsNoTracking()
-            .OrderBy(a => a.Login)
+        var items = admins
             .Skip((page - 1) * PageSize)
             .Take(PageSize)
-            .Select(a => new { a.Login, a.DisplayName, a.Role, a.IsActive, a.TelegramUsername })
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var buttons = new List<InlineKeyboardButton[]>
         {
@@ -481,8 +466,8 @@ public sealed class TelegramAdminBotService
     private async Task SendCustomerCardAsync(long chatId, Guid customerId, CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var c = await db.Customers.AsNoTracking().FirstOrDefaultAsync(x => x.Id == customerId, cancellationToken);
+        var customers = scope.ServiceProvider.GetRequiredService<ICustomerRepository>();
+        var c = await customers.GetByIdUntrackedAsync(customerId, cancellationToken);
         if (c is null)
         {
             await _bot!.SendMessage(chatId, "Клиент не найден", cancellationToken: cancellationToken);
@@ -490,13 +475,12 @@ public sealed class TelegramAdminBotService
         }
 
         var name = $"{c.LastName} {c.FirstName} {c.Patronymic}".Trim();
-        var ordersCount = await db.Orders.CountAsync(o => o.CustomerId == customerId, cancellationToken);
         var text =
             $"👤 <b>{TelegramBotText.Escape(name)}</b>\n" +
             $"Телефон: {TelegramBotText.Escape(c.Phone)}\n" +
             $"Email: {TelegramBotText.Escape(c.Email)}\n" +
             $"Telegram: {TelegramBotText.Escape(c.Telegram)}\n" +
-            $"Заказов: {ordersCount}\n" +
+            $"Заказов: {c.OrdersCount}\n" +
             $"Создан: {c.CreatedAt:yyyy-MM-dd HH:mm} UTC";
 
         await _bot!.SendMessage(
@@ -512,24 +496,21 @@ public sealed class TelegramAdminBotService
     private async Task SendCustomersPageAsync(long chatId, int page, CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var customers = scope.ServiceProvider.GetRequiredService<ICustomerRepository>();
 
         page = Math.Max(1, page);
-        var total = await db.Customers.AsNoTracking().CountAsync(cancellationToken);
-        var totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)PageSize));
+        var customersPage = await customers.GetPagedAsync(page, PageSize, cancellationToken);
+        var total = customersPage.TotalCount;
+        var totalPages = Math.Max(1, customersPage.TotalPages);
         page = Math.Min(page, totalPages);
+        if (page != customersPage.Page)
+        {
+            customersPage = await customers.GetPagedAsync(page, PageSize, cancellationToken);
+        }
 
-        var items = await db.Customers.AsNoTracking()
-            .OrderByDescending(c => c.CreatedAt)
-            .Skip((page - 1) * PageSize)
-            .Take(PageSize)
-            .Select(c => new
-            {
-                c.Id,
-                Name = ((c.LastName ?? "") + " " + (c.FirstName ?? "")).Trim(),
-                c.Phone,
-            })
-            .ToListAsync(cancellationToken);
+        var items = customersPage.Items
+            .Select(c => new { c.Id, Name = ((c.LastName ?? "") + " " + (c.FirstName ?? "")).Trim(), c.Phone })
+            .ToList();
 
         var buttons = new List<InlineKeyboardButton[]>();
         for (var i = 0; i < items.Count; i += 5)
@@ -589,13 +570,10 @@ public sealed class TelegramAdminBotService
     private async Task SendOrderCardAsync(long chatId, Guid orderId, CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var storage = scope.ServiceProvider.GetRequiredService<IObjectStorage>();
-
-        var order = await db.Orders.AsNoTracking()
-            .Include(o => o.Customer)
-            .Include(o => o.Items)
-            .FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+        var order = await scope.ServiceProvider
+            .GetRequiredService<IOrderRepository>()
+            .GetByIdWithPublishedStatusHistoryAsync(orderId, cancellationToken);
 
         if (order is null)
         {
@@ -625,14 +603,11 @@ public sealed class TelegramAdminBotService
                 InlineKeyboardButton.WithCallbackData("« В меню", TelegramBotCallback.Main)),
             cancellationToken: cancellationToken);
 
-        var itemIds = order.Items.Select(i => i.Id).ToList();
-        var history = await db.OrderItemStatusHistories.AsNoTracking()
-            .Include(h => h.Attachments)
-            .Include(h => h.OrderItem)
-            .Where(h => itemIds.Contains(h.OrderItemId) && h.IsPublished)
+        var history = order.Items
+            .SelectMany(i => i.StatusHistory)
             .OrderBy(h => h.ChangedAt)
             .ThenBy(h => h.Id)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         if (history.Count == 0)
         {
@@ -769,27 +744,19 @@ public sealed class TelegramAdminBotService
     private async Task SendOrdersPageAsync(long chatId, int page, CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var orders = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
 
         page = Math.Max(1, page);
-        var total = await db.Orders.AsNoTracking().CountAsync(cancellationToken);
-        var totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)PageSize));
+        var ordersPage = await orders.GetPagedAsync(page, PageSize, cancellationToken);
+        var total = ordersPage.TotalCount;
+        var totalPages = Math.Max(1, ordersPage.TotalPages);
         page = Math.Min(page, totalPages);
+        if (page != ordersPage.Page)
+        {
+            ordersPage = await orders.GetPagedAsync(page, PageSize, cancellationToken);
+        }
 
-        var items = await db.Orders.AsNoTracking()
-            .OrderByDescending(o => o.CreatedAt)
-            .ThenByDescending(o => o.Id)
-            .Skip((page - 1) * PageSize)
-            .Take(PageSize)
-            .Select(o => new
-            {
-                o.Id,
-                o.TrackingCode,
-                CustomerName = o.Customer == null
-                    ? null
-                    : ((o.Customer.LastName ?? "") + " " + (o.Customer.FirstName ?? "")).Trim(),
-            })
-            .ToListAsync(cancellationToken);
+        var items = ordersPage.Items;
 
         var buttons = new List<InlineKeyboardButton[]>();
         for (var i = 0; i < items.Count; i += 5)
@@ -904,34 +871,24 @@ public sealed class TelegramAdminBotService
     private async Task<bool> HasSentOutboxAsync(string dedupKey, CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        return await db.TelegramOutboxMessages.AsNoTracking()
-            .AnyAsync(
-                m => m.DedupKey == dedupKey && m.Status == TelegramOutboxStatus.Sent,
-                cancellationToken);
+        return await scope.ServiceProvider
+            .GetRequiredService<ITelegramOutboxRepository>()
+            .ExistsByDedupKeyAndStatusAsync(dedupKey, TelegramOutboxStatus.Sent, cancellationToken);
     }
 
     private async Task<bool> TryClaimStatusHistoryNotifyAsync(Guid statusHistoryId, CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var now = DateTimeOffset.UtcNow;
-        var rows = await db.OrderItemStatusHistories
-            .Where(h => h.Id == statusHistoryId && h.TelegramNotifiedAt == null && h.IsPublished)
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(h => h.TelegramNotifiedAt, now),
-                cancellationToken);
-        return rows > 0;
+        return await scope.ServiceProvider
+            .GetRequiredService<IOrderRepository>()
+            .TryClaimTelegramNotifyAsync(statusHistoryId, DateTimeOffset.UtcNow, cancellationToken);
     }
 
     private async Task ClearStatusHistoryNotifyClaimAsync(Guid statusHistoryId, CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        await db.OrderItemStatusHistories
-            .Where(h => h.Id == statusHistoryId && h.TelegramNotifiedAt != null)
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(h => h.TelegramNotifiedAt, (DateTimeOffset?)null),
-                cancellationToken);
+        await scope.ServiceProvider
+            .GetRequiredService<IOrderRepository>()
+            .ClearTelegramNotifyClaimAsync(statusHistoryId, cancellationToken);
     }
 }

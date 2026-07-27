@@ -1,6 +1,6 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Orders.StatusHistory;
 
 namespace OrderTracking.Application.Orders.CancelScheduledStatusHistory;
@@ -8,14 +8,17 @@ namespace OrderTracking.Application.Orders.CancelScheduledStatusHistory;
 public sealed class CancelScheduledStatusHistoryCommandHandler
     : IRequestHandler<CancelScheduledStatusHistoryCommand>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IOrderRepository _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _dateTimeProvider;
 
     public CancelScheduledStatusHistoryCommandHandler(
-        IApplicationDbContext context,
+        IOrderRepository orderRepository,
+        IUnitOfWork unitOfWork,
         IDateTimeProvider dateTimeProvider)
     {
-        _context = context;
+        _orderRepository = orderRepository;
+        _unitOfWork = unitOfWork;
         _dateTimeProvider = dateTimeProvider;
     }
 
@@ -23,11 +26,8 @@ public sealed class CancelScheduledStatusHistoryCommandHandler
         CancelScheduledStatusHistoryCommand request,
         CancellationToken cancellationToken)
     {
-        var history = await _context.OrderItemStatusHistories
-            .Include(h => h.OrderItem)
-            .FirstOrDefaultAsync(
-                h => h.Id == request.HistoryId && h.OrderItem.OrderId == request.OrderId,
-                cancellationToken)
+        var history = await _orderRepository.GetStatusHistoryByIdForOrderAsync(
+                request.OrderId, request.HistoryId, cancellationToken)
             ?? throw new KeyNotFoundException($"Status history '{request.HistoryId}' was not found");
 
         if (history.IsPublished)
@@ -36,17 +36,17 @@ public sealed class CancelScheduledStatusHistoryCommandHandler
                 "Only scheduled (unpublished) status history entries can be cancelled");
         }
 
-        var order = await _context.Orders
-            .FirstAsync(o => o.Id == request.OrderId, cancellationToken);
+        var order = await _orderRepository.GetByIdTrackedAsync(request.OrderId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Order '{request.OrderId}' was not found");
         order.UpdatedAt = _dateTimeProvider.UtcNow;
 
-        _context.OrderItemStatusHistories.Remove(history);
+        _orderRepository.RemoveStatusHistory(history);
 
         await OrderItemCurrentStatusSync.SyncFromPublishedHistoryAsync(
-            _context,
+            _orderRepository,
             history.OrderItem,
             cancellationToken);
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

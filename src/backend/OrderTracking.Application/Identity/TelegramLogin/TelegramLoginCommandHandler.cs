@@ -1,27 +1,30 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Common.Models;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Identity.Login;
 
 namespace OrderTracking.Application.Identity.TelegramLogin;
 
 public sealed class TelegramLoginCommandHandler : IRequestHandler<TelegramLoginCommand, AuthResultDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IAdminUserRepository _adminUsers;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ITelegramAuthValidator _telegramAuth;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IRefreshTokenService _refreshTokenService;
     private readonly IDateTimeProvider _clock;
 
     public TelegramLoginCommandHandler(
-        IApplicationDbContext context,
+        IAdminUserRepository adminUsers,
+        IUnitOfWork unitOfWork,
         ITelegramAuthValidator telegramAuth,
         IJwtTokenService jwtTokenService,
         IRefreshTokenService refreshTokenService,
         IDateTimeProvider clock)
     {
-        _context = context;
+        _adminUsers = adminUsers;
+        _unitOfWork = unitOfWork;
         _telegramAuth = telegramAuth;
         _jwtTokenService = jwtTokenService;
         _refreshTokenService = refreshTokenService;
@@ -36,8 +39,7 @@ public sealed class TelegramLoginCommandHandler : IRequestHandler<TelegramLoginC
             throw new UnauthorizedAccessException(error);
         }
 
-        var user = await _context.AdminUsers
-            .FirstOrDefaultAsync(u => u.TelegramId == request.Data.Id, cancellationToken);
+        var user = await _adminUsers.GetByTelegramIdAsync(request.Data.Id, cancellationToken);
 
         if (user is null || !user.IsActive)
         {
@@ -55,7 +57,7 @@ public sealed class TelegramLoginCommandHandler : IRequestHandler<TelegramLoginC
             : request.Data.PhotoUrl.Trim();
 
         user.LastSeenAt = _clock.UtcNow;
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var accessToken = _jwtTokenService.GenerateAccessToken(user, out var expiresAt);
         var (refreshToken, _) = await _refreshTokenService.CreateAsync(

@@ -1,22 +1,26 @@
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Domain.Entities;
 
 namespace OrderTracking.Infrastructure.Services;
 
 public sealed class AuditService : IAuditService
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IAuditLogRepository _auditLogs;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IRequestContext _requestContext;
     private readonly IDateTimeProvider _clock;
 
     public AuditService(
-        IApplicationDbContext context,
+        IAuditLogRepository auditLogs,
+        IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IRequestContext requestContext,
         IDateTimeProvider clock)
     {
-        _context = context;
+        _auditLogs = auditLogs;
+        _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _requestContext = requestContext;
         _clock = clock;
@@ -30,7 +34,7 @@ public sealed class AuditService : IAuditService
         string? newValues,
         CancellationToken cancellationToken = default)
     {
-        _context.AuditLogs.Add(new AuditLogEntry
+        _auditLogs.Add(new AuditLogEntry
         {
             Id = Guid.NewGuid(),
             EntityType = entityType,
@@ -45,7 +49,7 @@ public sealed class AuditService : IAuditService
             CreatedAt = _clock.UtcNow,
         });
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     private static string? Truncate(string? value, int maxLength)

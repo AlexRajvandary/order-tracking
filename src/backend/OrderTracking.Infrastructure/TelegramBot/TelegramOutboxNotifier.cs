@@ -3,9 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Domain.Entities;
 using OrderTracking.Domain.Enums;
-using OrderTracking.Infrastructure.Persistence;
 
 namespace OrderTracking.Infrastructure.TelegramBot;
 
@@ -16,18 +16,21 @@ public sealed class TelegramOutboxNotifier : ITelegramAdminNotifier
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    private readonly ApplicationDbContext _db;
+    private readonly ITelegramOutboxRepository _outbox;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly TelegramAdminBotService _bot;
     private readonly IDateTimeProvider _dateTime;
     private readonly ILogger<TelegramOutboxNotifier> _logger;
 
     public TelegramOutboxNotifier(
-        ApplicationDbContext db,
+        ITelegramOutboxRepository outbox,
+        IUnitOfWork unitOfWork,
         TelegramAdminBotService bot,
         IDateTimeProvider dateTime,
         ILogger<TelegramOutboxNotifier> logger)
     {
-        _db = db;
+        _outbox = outbox;
+        _unitOfWork = unitOfWork;
         _bot = bot;
         _dateTime = dateTime;
         _logger = logger;
@@ -47,7 +50,7 @@ public sealed class TelegramOutboxNotifier : ITelegramAdminNotifier
         }
 
         var payload = new TelegramOrderCreatedPayload(orderId, trackingCode, customerName);
-        _db.TelegramOutboxMessages.Add(new TelegramOutboxMessage
+        _outbox.Add(new TelegramOutboxMessage
         {
             Id = Guid.NewGuid(),
             Kind = TelegramOutboxKinds.OrderCreated,
@@ -56,7 +59,7 @@ public sealed class TelegramOutboxNotifier : ITelegramAdminNotifier
             CreatedAt = _dateTime.UtcNow,
         });
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     public async Task NotifyStatusPublishedAsync(
@@ -83,7 +86,7 @@ public sealed class TelegramOutboxNotifier : ITelegramAdminNotifier
             location,
             statusHistoryId);
 
-        _db.TelegramOutboxMessages.Add(new TelegramOutboxMessage
+        _outbox.Add(new TelegramOutboxMessage
         {
             Id = Guid.NewGuid(),
             Kind = TelegramOutboxKinds.StatusPublished,
@@ -95,11 +98,10 @@ public sealed class TelegramOutboxNotifier : ITelegramAdminNotifier
 
         try
         {
-            await _db.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {
-            _db.ChangeTracker.Clear();
             _logger.LogDebug(
                 "Telegram outbox dedup: status history {HistoryId} already queued",
                 statusHistoryId);

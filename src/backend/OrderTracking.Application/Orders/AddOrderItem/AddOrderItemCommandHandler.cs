@@ -1,6 +1,6 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Orders.Models;
 using OrderTracking.Application.Orders.StatusHistory;
 using OrderTracking.Domain.Common;
@@ -10,16 +10,22 @@ namespace OrderTracking.Application.Orders.AddOrderItem;
 
 public sealed class AddOrderItemCommandHandler : IRequestHandler<AddOrderItemCommand, OrderItemDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IOrderRepository _orderRepository;
+    private readonly IStatusDefinitionRepository _statusDefinitionRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ICurrentUserService _currentUserService;
 
     public AddOrderItemCommandHandler(
-        IApplicationDbContext context,
+        IOrderRepository orderRepository,
+        IStatusDefinitionRepository statusDefinitionRepository,
+        IUnitOfWork unitOfWork,
         IDateTimeProvider dateTimeProvider,
         ICurrentUserService currentUserService)
     {
-        _context = context;
+        _orderRepository = orderRepository;
+        _statusDefinitionRepository = statusDefinitionRepository;
+        _unitOfWork = unitOfWork;
         _dateTimeProvider = dateTimeProvider;
         _currentUserService = currentUserService;
     }
@@ -31,14 +37,10 @@ public sealed class AddOrderItemCommandHandler : IRequestHandler<AddOrderItemCom
             throw new UnauthorizedAccessException();
         }
 
-        var order = await _context.Orders
-            .FirstOrDefaultAsync(o => o.Id == request.OrderId, cancellationToken)
+        var order = await _orderRepository.GetByIdTrackedAsync(request.OrderId, cancellationToken)
             ?? throw new KeyNotFoundException($"Order '{request.OrderId}' was not found");
 
-        var maxSort = await _context.OrderItems
-            .Where(i => i.OrderId == request.OrderId)
-            .Select(i => (int?)i.SortOrder)
-            .MaxAsync(cancellationToken) ?? -1;
+        var maxSort = await _orderRepository.GetMaxItemSortOrderAsync(request.OrderId, cancellationToken);
 
         var now = _dateTimeProvider.UtcNow;
         var item = new OrderItem
@@ -58,16 +60,17 @@ public sealed class AddOrderItemCommandHandler : IRequestHandler<AddOrderItemCom
         };
 
         order.UpdatedAt = now;
-        _context.OrderItems.Add(item);
+        _orderRepository.AddItem(item);
 
         await ScheduledStatusHistorySeeder.SeedForItemsAsync(
-            _context,
+            _orderRepository,
+            _statusDefinitionRepository,
             order,
             [item],
             adminId,
             cancellationToken);
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Map(item);
     }

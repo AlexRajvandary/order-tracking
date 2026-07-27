@@ -1,7 +1,7 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Orders.StatusHistory;
 using OrderTracking.Application.Statuses.Models;
 
@@ -10,18 +10,21 @@ namespace OrderTracking.Application.Orders.UpdateOrderItemStatusHistory;
 public sealed class UpdateOrderItemStatusHistoryCommandHandler
     : IRequestHandler<UpdateOrderItemStatusHistoryCommand, StatusHistoryEntryDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IOrderRepository _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ILogger<UpdateOrderItemStatusHistoryCommandHandler> _logger;
     private readonly ITelegramAdminNotifier _telegramNotifier;
 
     public UpdateOrderItemStatusHistoryCommandHandler(
-        IApplicationDbContext context,
+        IOrderRepository orderRepository,
+        IUnitOfWork unitOfWork,
         IDateTimeProvider dateTimeProvider,
         ITelegramAdminNotifier telegramNotifier,
         ILogger<UpdateOrderItemStatusHistoryCommandHandler> logger)
     {
-        _context = context;
+        _orderRepository = orderRepository;
+        _unitOfWork = unitOfWork;
         _dateTimeProvider = dateTimeProvider;
         _telegramNotifier = telegramNotifier;
         _logger = logger;
@@ -31,15 +34,8 @@ public sealed class UpdateOrderItemStatusHistoryCommandHandler
         UpdateOrderItemStatusHistoryCommand request,
         CancellationToken cancellationToken)
     {
-        var history = await _context.OrderItemStatusHistories
-            .Include(h => h.OrderItem)
-            .Include(h => h.StatusDefinition)
-            .Include(h => h.ChangedByAdmin)
-            .Include(h => h.Attachments)
-            .ThenInclude(a => a.UploadedByAdmin)
-            .FirstOrDefaultAsync(
-                h => h.Id == request.HistoryId && h.OrderItem.OrderId == request.OrderId,
-                cancellationToken)
+        var history = await _orderRepository.GetStatusHistoryWithDetailsForUpdateAsync(
+                request.OrderId, request.HistoryId, cancellationToken)
             ?? throw new KeyNotFoundException($"Status history '{request.HistoryId}' was not found");
 
         var wasPublished = history.IsPublished;
@@ -94,16 +90,16 @@ public sealed class UpdateOrderItemStatusHistoryCommandHandler
             }
         }
 
-        var order = await _context.Orders
-            .FirstAsync(o => o.Id == request.OrderId, cancellationToken);
+        var order = await _orderRepository.GetByIdTrackedAsync(request.OrderId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Order '{request.OrderId}' was not found");
         order.UpdatedAt = now;
 
         await OrderItemCurrentStatusSync.SyncFromPublishedHistoryAsync(
-            _context,
+            _orderRepository,
             history.OrderItem,
             cancellationToken);
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         if (!wasPublished && history.IsPublished)
         {

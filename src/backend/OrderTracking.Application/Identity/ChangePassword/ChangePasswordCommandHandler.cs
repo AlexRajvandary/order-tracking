@@ -1,24 +1,27 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Domain.Common;
 
 namespace OrderTracking.Application.Identity.ChangePassword;
 
 public sealed class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordCommand>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IAdminUserRepository _adminUsers;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IRefreshTokenService _refreshTokenService;
 
     public ChangePasswordCommandHandler(
-        IApplicationDbContext context,
+        IAdminUserRepository adminUsers,
+        IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
         IPasswordHasher passwordHasher,
         IRefreshTokenService refreshTokenService)
     {
-        _context = context;
+        _adminUsers = adminUsers;
+        _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _passwordHasher = passwordHasher;
         _refreshTokenService = refreshTokenService;
@@ -31,8 +34,7 @@ public sealed class ChangePasswordCommandHandler : IRequestHandler<ChangePasswor
             throw new UnauthorizedAccessException();
         }
 
-        var user = await _context.AdminUsers
-            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive, cancellationToken)
+        var user = await _adminUsers.GetActiveByIdAsync(userId, cancellationToken)
             ?? throw new UnauthorizedAccessException();
 
         if (!_passwordHasher.Verify(user, request.CurrentPassword, user.PasswordHash))
@@ -42,6 +44,6 @@ public sealed class ChangePasswordCommandHandler : IRequestHandler<ChangePasswor
 
         user.PasswordHash = _passwordHasher.Hash(user, request.NewPassword);
         await _refreshTokenService.RevokeAllForUserAsync(userId, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

@@ -1,22 +1,25 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 
 namespace OrderTracking.Application.Orders.DeleteStatusHistoryPhoto;
 
 public sealed class DeleteStatusHistoryPhotoCommandHandler
     : IRequestHandler<DeleteStatusHistoryPhotoCommand>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IOrderRepository _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IObjectStorage _objectStorage;
 
     public DeleteStatusHistoryPhotoCommandHandler(
-        IApplicationDbContext context,
+        IOrderRepository orderRepository,
+        IUnitOfWork unitOfWork,
         IDateTimeProvider dateTimeProvider,
         IObjectStorage objectStorage)
     {
-        _context = context;
+        _orderRepository = orderRepository;
+        _unitOfWork = unitOfWork;
         _dateTimeProvider = dateTimeProvider;
         _objectStorage = objectStorage;
     }
@@ -25,24 +28,18 @@ public sealed class DeleteStatusHistoryPhotoCommandHandler
         DeleteStatusHistoryPhotoCommand request,
         CancellationToken cancellationToken)
     {
-        var attachment = await _context.OrderItemStatusAttachments
-            .Include(a => a.StatusHistory)
-            .ThenInclude(h => h.OrderItem)
-            .FirstOrDefaultAsync(
-                a => a.Id == request.AttachmentId
-                     && a.StatusHistoryId == request.HistoryId
-                     && a.StatusHistory.OrderItem.OrderId == request.OrderId,
-                cancellationToken)
+        var attachment = await _orderRepository.GetAttachmentForOrderHistoryAsync(
+                request.OrderId, request.HistoryId, request.AttachmentId, cancellationToken)
             ?? throw new KeyNotFoundException($"Attachment '{request.AttachmentId}' was not found");
 
         var objectKey = attachment.ObjectKey;
 
-        var order = await _context.Orders
-            .FirstAsync(o => o.Id == request.OrderId, cancellationToken);
+        var order = await _orderRepository.GetByIdTrackedAsync(request.OrderId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Order '{request.OrderId}' was not found");
         order.UpdatedAt = _dateTimeProvider.UtcNow;
 
-        _context.OrderItemStatusAttachments.Remove(attachment);
-        await _context.SaveChangesAsync(cancellationToken);
+        _orderRepository.RemoveAttachment(attachment);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         try
         {

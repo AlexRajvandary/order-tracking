@@ -3,10 +3,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Minio;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Infrastructure.Identity;
 using OrderTracking.Infrastructure.Monitoring;
 using OrderTracking.Infrastructure.Persistence;
 using OrderTracking.Infrastructure.Persistence.Interceptors;
+using OrderTracking.Infrastructure.Persistence.Repositories;
 using OrderTracking.Infrastructure.Services;
 using OrderTracking.Infrastructure.Storage;
 using OrderTracking.Infrastructure.TelegramBot;
@@ -60,7 +62,13 @@ public static class DependencyInjection
                 sp.GetRequiredService<SoftDeleteInterceptor>());
         });
 
-        services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
+        services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ApplicationDbContext>());
+        services.AddScoped<IAdminUserRepository, AdminUserRepository>();
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IStatusDefinitionRepository, StatusDefinitionRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<ITelegramOutboxRepository, TelegramOutboxRepository>();
 
         services.AddSingleton<TelegramBot.TelegramWorkQueue>();
         services.AddSingleton<TelegramBot.TelegramAdminBotService>(sp =>

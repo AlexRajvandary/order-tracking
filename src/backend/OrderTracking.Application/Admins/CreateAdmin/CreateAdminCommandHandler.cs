@@ -1,26 +1,29 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Admins;
 using OrderTracking.Application.Admins.Models;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Domain.Entities;
 
 namespace OrderTracking.Application.Admins.CreateAdmin;
 
 public sealed class CreateAdminCommandHandler : IRequestHandler<CreateAdminCommand, AdminUserDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IAdminUserRepository _adminUsers;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IDateTimeProvider _clock;
     private readonly ICurrentUserService _currentUser;
 
     public CreateAdminCommandHandler(
-        IApplicationDbContext context,
+        IAdminUserRepository adminUsers,
+        IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         IDateTimeProvider clock,
         ICurrentUserService currentUser)
     {
-        _context = context;
+        _adminUsers = adminUsers;
+        _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _clock = clock;
         _currentUser = currentUser;
@@ -32,8 +35,7 @@ public sealed class CreateAdminCommandHandler : IRequestHandler<CreateAdminComma
         AdminPermissionGuard.EnsureCanCreate(actorRole, request.Role);
 
         var login = request.Login.Trim();
-        var exists = await _context.AdminUsers
-            .AnyAsync(u => u.Login == login, cancellationToken);
+        var exists = await _adminUsers.ExistsByLoginAsync(login, cancellationToken);
 
         if (exists)
         {
@@ -54,8 +56,8 @@ public sealed class CreateAdminCommandHandler : IRequestHandler<CreateAdminComma
         };
         user.PasswordHash = _passwordHasher.Hash(user, request.Password);
 
-        _context.AdminUsers.Add(user);
-        await _context.SaveChangesAsync(cancellationToken);
+        _adminUsers.Add(user);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return AdminUserMapping.ToDto(user, now);
     }

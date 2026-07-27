@@ -1,6 +1,5 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
-using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Customers;
 using OrderTracking.Application.Orders.Models;
 
@@ -8,25 +7,28 @@ namespace OrderTracking.Application.Orders.UpdateOrder;
 
 public sealed class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, OrderDetailsDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly ICustomerRepository _customerRepository;
+    private readonly IOrderRepository _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateOrderCommandHandler(IApplicationDbContext context)
+    public UpdateOrderCommandHandler(
+        IOrderRepository orderRepository,
+        ICustomerRepository customerRepository,
+        IUnitOfWork unitOfWork)
     {
-        _context = context;
+        _orderRepository = orderRepository;
+        _customerRepository = customerRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<OrderDetailsDto> Handle(UpdateOrderCommand request, CancellationToken cancellationToken)
     {
-        var order = await _context.Orders
-            .Include(o => o.Items)
-            .Include(o => o.Customer)
-            .FirstOrDefaultAsync(o => o.Id == request.Id, cancellationToken)
+        var order = await _orderRepository.GetByIdWithCustomerAndItemsAsync(request.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Order '{request.Id}' was not found");
 
         if (request.CustomerId is { } customerId)
         {
-            var customerExists = await _context.Customers
-                .AnyAsync(c => c.Id == customerId, cancellationToken);
+            var customerExists = await _customerRepository.ExistsAsync(customerId, cancellationToken);
 
             if (!customerExists)
             {
@@ -47,7 +49,7 @@ public sealed class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderComma
         order.ExpectedDeliveryAt = request.ExpectedDeliveryAt;
         order.UpdatedAt = DateTimeOffset.UtcNow;
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Reload customer for display name after update
         string? customerName = null;
@@ -57,9 +59,7 @@ public sealed class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderComma
 
         if (order.CustomerId is { } cid)
         {
-            var customer = await _context.Customers
-                .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.Id == cid, cancellationToken);
+            var customer = await _customerRepository.GetByIdTrackedAsync(cid, cancellationToken);
 
             customerName = CustomerNameFormatting.Format(
                 customer?.LastName,

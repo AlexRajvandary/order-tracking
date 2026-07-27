@@ -1,21 +1,21 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Admins;
 using OrderTracking.Application.Admins.Models;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Common.Realtime;
 
 namespace OrderTracking.Application.Admins.GetAdmins;
 
 public sealed class GetAdminsQueryHandler : IRequestHandler<GetAdminsQuery, IReadOnlyList<AdminUserDto>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IAdminUserRepository _adminUsers;
     private readonly IDateTimeProvider _clock;
     private readonly IPresenceRegistry _presence;
 
-    public GetAdminsQueryHandler(IApplicationDbContext context, IDateTimeProvider clock, IPresenceRegistry presence)
+    public GetAdminsQueryHandler(IAdminUserRepository adminUsers, IDateTimeProvider clock, IPresenceRegistry presence)
     {
-        _context = context;
+        _adminUsers = adminUsers;
         _clock = clock;
         _presence = presence;
     }
@@ -25,10 +25,7 @@ public sealed class GetAdminsQueryHandler : IRequestHandler<GetAdminsQuery, IRea
         CancellationToken cancellationToken)
     {
         var now = _clock.UtcNow;
-        var users = await _context.AdminUsers
-            .AsNoTracking()
-            .OrderBy(u => u.Login)
-            .ToListAsync(cancellationToken);
+        var users = await _adminUsers.ListOrderedByLoginAsync(cancellationToken);
 
         var online = _presence.GetOnlineAdminIds();
 

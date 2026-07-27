@@ -1,5 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Domain.Entities;
 using OrderTracking.Domain.Enums;
 
@@ -8,7 +7,8 @@ namespace OrderTracking.Application.Orders.StatusHistory;
 public static class ScheduledStatusHistorySeeder
 {
     public static async Task SeedForItemsAsync(
-        IApplicationDbContext context,
+        IOrderRepository orderRepository,
+        IStatusDefinitionRepository statusDefinitionRepository,
         Order order,
         IReadOnlyList<OrderItem> items,
         Guid changedByAdminId,
@@ -21,15 +21,9 @@ public static class ScheduledStatusHistorySeeder
 
         var itemTypes = items.Select(i => i.ItemType).Distinct().ToList();
 
-        var definitions = await context.StatusDefinitions
-            .AsNoTracking()
-            .Where(s =>
-                s.IsActive
-                && s.PublishAfterDays != null
-                && (s.ItemType == null || itemTypes.Contains(s.ItemType.Value)))
-            .OrderBy(s => s.PublishAfterDays)
-            .ThenBy(s => s.SortOrder)
-            .ToListAsync(cancellationToken);
+        var definitions = await statusDefinitionRepository.GetScheduledForItemTypesAsync(
+            itemTypes,
+            cancellationToken);
 
         if (definitions.Count == 0)
         {
@@ -41,7 +35,7 @@ public static class ScheduledStatusHistorySeeder
             foreach (var definition in definitions.Where(d => MatchesItemType(d.ItemType, item.ItemType)))
             {
                 var publishAt = order.CreatedAt.AddDays(definition.PublishAfterDays!.Value);
-                context.OrderItemStatusHistories.Add(new OrderItemStatusHistory
+                orderRepository.AddStatusHistory(new OrderItemStatusHistory
                 {
                     Id = Guid.NewGuid(),
                     OrderItemId = item.Id,

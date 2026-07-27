@@ -1,21 +1,24 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 
 namespace OrderTracking.Application.Identity.Heartbeat;
 
 public sealed class HeartbeatCommandHandler : IRequestHandler<HeartbeatCommand>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IAdminUserRepository _adminUsers;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
 
     public HeartbeatCommandHandler(
-        IApplicationDbContext context,
+        IAdminUserRepository adminUsers,
+        IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock)
     {
-        _context = context;
+        _adminUsers = adminUsers;
+        _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
     }
@@ -27,11 +30,10 @@ public sealed class HeartbeatCommandHandler : IRequestHandler<HeartbeatCommand>
             throw new UnauthorizedAccessException();
         }
 
-        var user = await _context.AdminUsers
-            .FirstOrDefaultAsync(u => u.Id == _currentUser.UserId.Value, cancellationToken)
+        var user = await _adminUsers.GetByIdTrackedAsync(_currentUser.UserId.Value, cancellationToken)
             ?? throw new UnauthorizedAccessException();
 
         user.LastSeenAt = _clock.UtcNow;
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

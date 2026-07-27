@@ -1,5 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Domain.Entities;
 
 namespace OrderTracking.Application.Orders.StatusHistory;
@@ -7,22 +6,14 @@ namespace OrderTracking.Application.Orders.StatusHistory;
 public static class OrderItemCurrentStatusSync
 {
     public static async Task SyncFromPublishedHistoryAsync(
-        IApplicationDbContext context,
+        IOrderRepository orderRepository,
         OrderItem item,
         CancellationToken cancellationToken)
     {
         // Tracked query so in-memory IsPublished changes (before SaveChanges) are visible.
-        var latest = await context.OrderItemStatusHistories
-            .Where(h => h.OrderItemId == item.Id && h.IsPublished)
-            .OrderByDescending(h => h.ChangedAt)
-            .ThenByDescending(h => h.Id)
-            .Select(h => new
-            {
-                h.StatusDefinitionId,
-                h.StatusText,
-                h.ChangedAt,
-            })
-            .FirstOrDefaultAsync(cancellationToken);
+        var latest = await orderRepository.GetLatestPublishedStatusForItemAsync(
+            item.Id,
+            cancellationToken);
 
         if (latest is null)
         {

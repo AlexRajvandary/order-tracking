@@ -1,23 +1,24 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Customers.Models;
 
 namespace OrderTracking.Application.Customers.UpdateCustomer;
 
 public sealed class UpdateCustomerCommandHandler : IRequestHandler<UpdateCustomerCommand, CustomerDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly ICustomerRepository _customers;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateCustomerCommandHandler(IApplicationDbContext context)
+    public UpdateCustomerCommandHandler(ICustomerRepository customers, IUnitOfWork unitOfWork)
     {
-        _context = context;
+        _customers = customers;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<CustomerDto> Handle(UpdateCustomerCommand request, CancellationToken cancellationToken)
     {
-        var customer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.Id == request.Id, cancellationToken)
+        var customer = await _customers.GetByIdTrackedAsync(request.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Customer '{request.Id}' was not found");
 
         customer.LastName = CustomerNameFormatting.NormalizePart(request.LastName);
@@ -28,10 +29,9 @@ public sealed class UpdateCustomerCommandHandler : IRequestHandler<UpdateCustome
         customer.Email = Normalize(request.Email);
         customer.Notes = Normalize(request.Notes);
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var ordersCount = await _context.Orders
-            .CountAsync(o => o.CustomerId == customer.Id, cancellationToken);
+        var ordersCount = await _customers.CountOrdersForCustomerAsync(customer.Id, cancellationToken);
 
         return new CustomerDto(
             customer.Id,

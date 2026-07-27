@@ -1,6 +1,5 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
-using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Customers;
 using OrderTracking.Application.Orders.Models;
 
@@ -9,26 +8,25 @@ namespace OrderTracking.Application.Orders.UpdateOrderStatus;
 public sealed class UpdateOrderStatusCommandHandler
     : IRequestHandler<UpdateOrderStatusCommand, OrderDetailsDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IOrderRepository _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateOrderStatusCommandHandler(IApplicationDbContext context)
+    public UpdateOrderStatusCommandHandler(IOrderRepository orderRepository, IUnitOfWork unitOfWork)
     {
-        _context = context;
+        _orderRepository = orderRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<OrderDetailsDto> Handle(
         UpdateOrderStatusCommand request,
         CancellationToken cancellationToken)
     {
-        var order = await _context.Orders
-            .Include(o => o.Items)
-            .Include(o => o.Customer)
-            .FirstOrDefaultAsync(o => o.Id == request.Id, cancellationToken)
+        var order = await _orderRepository.GetByIdWithCustomerAndItemsAsync(request.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Order '{request.Id}' was not found");
 
         order.Status = request.Status;
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var items = order.Items
             .Where(i => !i.IsDeleted)

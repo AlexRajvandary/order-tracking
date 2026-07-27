@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
-using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Common.Realtime;
 
 namespace OrderTracking.Api.Realtime;
@@ -16,12 +15,12 @@ public sealed class TrackingHub : Hub
     private const string OrderIdKey = "orderId";
     private const string CustomerIdKey = "customerId";
 
-    private readonly IApplicationDbContext _dbContext;
+    private readonly IOrderRepository _orders;
     private readonly IPresenceRegistry _presence;
 
-    public TrackingHub(IApplicationDbContext dbContext, IPresenceRegistry presence)
+    public TrackingHub(IOrderRepository orders, IPresenceRegistry presence)
     {
-        _dbContext = dbContext;
+        _orders = orders;
         _presence = presence;
     }
 
@@ -42,19 +41,15 @@ public sealed class TrackingHub : Hub
 
         var code = trackingCode.Trim().ToUpperInvariant();
 
-        var order = await _dbContext.Orders
-            .AsNoTracking()
-            .Where(o => o.TrackingCode == code)
-            .Select(o => new { o.Id, o.CustomerId })
-            .FirstOrDefaultAsync(Context.ConnectionAborted);
+        var order = await _orders.GetTrackingPresenceByCodeAsync(code, Context.ConnectionAborted);
 
         if (order is null || Context.ConnectionAborted.IsCancellationRequested)
         {
             return;
         }
 
-        await Groups.AddToGroupAsync(Context.ConnectionId, TrackingGroup(order.Id), Context.ConnectionAborted);
-        Context.Items[OrderIdKey] = order.Id;
+        await Groups.AddToGroupAsync(Context.ConnectionId, TrackingGroup(order.OrderId), Context.ConnectionAborted);
+        Context.Items[OrderIdKey] = order.OrderId;
 
         if (order.CustomerId is { } customerId)
         {

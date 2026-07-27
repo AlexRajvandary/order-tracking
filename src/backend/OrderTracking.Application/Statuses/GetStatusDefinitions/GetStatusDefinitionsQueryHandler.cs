@@ -1,6 +1,6 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
-using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
+using OrderTracking.Application.Common.Persistence.Models;
 using OrderTracking.Application.Statuses.Models;
 using OrderTracking.Domain.Enums;
 
@@ -9,36 +9,31 @@ namespace OrderTracking.Application.Statuses.GetStatusDefinitions;
 public sealed class GetStatusDefinitionsQueryHandler
     : IRequestHandler<GetStatusDefinitionsQuery, IReadOnlyList<StatusDefinitionDto>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IStatusDefinitionRepository _statusDefinitionRepository;
 
-    public GetStatusDefinitionsQueryHandler(IApplicationDbContext context)
+    public GetStatusDefinitionsQueryHandler(IStatusDefinitionRepository statusDefinitionRepository)
     {
-        _context = context;
+        _statusDefinitionRepository = statusDefinitionRepository;
     }
 
     public async Task<IReadOnlyList<StatusDefinitionDto>> Handle(
         GetStatusDefinitionsQuery request,
         CancellationToken cancellationToken)
     {
-        var query = _context.StatusDefinitions.AsNoTracking();
+        var itemType = !string.IsNullOrWhiteSpace(request.ItemType)
+            && Enum.TryParse<OrderItemType>(request.ItemType, true, out var parsedItemType)
+                ? parsedItemType
+                : (OrderItemType?)null;
 
-        if (!request.IncludeInactive)
-        {
-            query = query.Where(s => s.IsActive);
-        }
+        var statuses = await _statusDefinitionRepository.ListAsync(
+            new StatusDefinitionListCriteria(request.IncludeInactive, itemType),
+            cancellationToken);
 
-        if (!string.IsNullOrWhiteSpace(request.ItemType)
-            && Enum.TryParse<OrderItemType>(request.ItemType, true, out var itemType))
-        {
-            query = query.Where(s => s.ItemType == null || s.ItemType == itemType);
-        }
-
-        return await query
-            .OrderBy(s => s.Name)
+        return statuses
             .Select(s => new StatusDefinitionDto(
                 s.Id,
                 s.Name,
-                s.ItemType.HasValue ? s.ItemType.Value.ToString() : null,
+                s.ItemType,
                 s.Color,
                 s.DefaultCountry,
                 s.DefaultLocation,
@@ -47,6 +42,6 @@ public sealed class GetStatusDefinitionsQueryHandler
                 s.IsActive,
                 s.IsFinal,
                 s.CreatedAt))
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 }

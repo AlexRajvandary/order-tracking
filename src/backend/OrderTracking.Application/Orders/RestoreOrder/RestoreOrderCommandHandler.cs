@@ -1,6 +1,5 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
-using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Customers;
 using OrderTracking.Application.Orders.Models;
 using OrderTracking.Domain.Common;
@@ -9,22 +8,21 @@ namespace OrderTracking.Application.Orders.RestoreOrder;
 
 public sealed class RestoreOrderCommandHandler : IRequestHandler<RestoreOrderCommand, OrderDetailsDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IOrderRepository _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public RestoreOrderCommandHandler(IApplicationDbContext context)
+    public RestoreOrderCommandHandler(IOrderRepository orderRepository, IUnitOfWork unitOfWork)
     {
-        _context = context;
+        _orderRepository = orderRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<OrderDetailsDto> Handle(
         RestoreOrderCommand request,
         CancellationToken cancellationToken)
     {
-        var order = await _context.Orders
-            .IgnoreQueryFilters()
-            .Include(o => o.Items)
-            .Include(o => o.Customer)
-            .FirstOrDefaultAsync(o => o.Id == request.Id, cancellationToken)
+        var order = await _orderRepository.GetDeletedByIdWithCustomerAndItemsAsync(
+                request.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Order '{request.Id}' was not found");
 
         if (!order.IsDeleted)
@@ -32,8 +30,8 @@ public sealed class RestoreOrderCommandHandler : IRequestHandler<RestoreOrderCom
             throw new DomainException($"Order '{request.Id}' is not deleted");
         }
 
-        var trackingCodeTaken = await _context.Orders
-            .AnyAsync(o => o.TrackingCode == order.TrackingCode, cancellationToken);
+        var trackingCodeTaken = await _orderRepository.IsActiveTrackingCodeTakenAsync(
+            order.TrackingCode, cancellationToken);
 
         if (trackingCodeTaken)
         {
@@ -44,7 +42,7 @@ public sealed class RestoreOrderCommandHandler : IRequestHandler<RestoreOrderCom
         order.IsDeleted = false;
         order.DeletedAt = null;
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var items = order.Items
             .Where(i => !i.IsDeleted)

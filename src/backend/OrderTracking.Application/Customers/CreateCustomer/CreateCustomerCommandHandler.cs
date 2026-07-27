@@ -1,5 +1,6 @@
 using MediatR;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Customers.Models;
 using OrderTracking.Domain.Entities;
 
@@ -7,12 +8,17 @@ namespace OrderTracking.Application.Customers.CreateCustomer;
 
 public sealed class CreateCustomerCommandHandler : IRequestHandler<CreateCustomerCommand, CustomerDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly ICustomerRepository _customers;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _clock;
 
-    public CreateCustomerCommandHandler(IApplicationDbContext context, IDateTimeProvider clock)
+    public CreateCustomerCommandHandler(
+        ICustomerRepository customers,
+        IUnitOfWork unitOfWork,
+        IDateTimeProvider clock)
     {
-        _context = context;
+        _customers = customers;
+        _unitOfWork = unitOfWork;
         _clock = clock;
     }
 
@@ -33,8 +39,8 @@ public sealed class CreateCustomerCommandHandler : IRequestHandler<CreateCustome
             UpdatedAt = now,
         };
 
-        _context.Customers.Add(customer);
-        await _context.SaveChangesAsync(cancellationToken);
+        _customers.Add(customer);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ToDto(customer, 0);
     }

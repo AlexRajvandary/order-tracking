@@ -1,21 +1,27 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Audit;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 
 namespace OrderTracking.Application.Dashboard.GetDashboardSummary;
 
 public sealed class GetDashboardSummaryQueryHandler
     : IRequestHandler<GetDashboardSummaryQuery, DashboardSummaryDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IOrderRepository _orderRepository;
+    private readonly ICustomerRepository _customerRepository;
+    private readonly IAuditLogRepository _auditLogRepository;
     private readonly IDateTimeProvider _clock;
 
     public GetDashboardSummaryQueryHandler(
-        IApplicationDbContext context,
+        IOrderRepository orderRepository,
+        ICustomerRepository customerRepository,
+        IAuditLogRepository auditLogRepository,
         IDateTimeProvider clock)
     {
-        _context = context;
+        _orderRepository = orderRepository;
+        _customerRepository = customerRepository;
+        _auditLogRepository = auditLogRepository;
         _clock = clock;
     }
 
@@ -27,62 +33,40 @@ public sealed class GetDashboardSummaryQueryHandler
         var startOfToday = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
         var weekAgo = now.AddDays(-7);
 
-        var totalOrders = await _context.Orders.CountAsync(cancellationToken);
-        var totalCustomers = await _context.Customers.CountAsync(cancellationToken);
+        var totalOrders = await _orderRepository.CountOrdersAsync(cancellationToken);
+        var totalCustomers = await _customerRepository.CountAsync(cancellationToken);
+        var ordersCreatedToday = await _orderRepository
+            .CountOrdersCreatedSinceAsync(startOfToday, cancellationToken);
+        var ordersUpdatedLast7Days = await _orderRepository
+            .CountOrdersUpdatedSinceAsync(weekAgo, cancellationToken);
+        var statusChangesLast7Days = await _orderRepository
+            .CountStatusChangesSinceAsync(weekAgo, cancellationToken);
+        var recentOrderRows = await _orderRepository
+            .GetRecentOrdersForDashboardAsync(5, cancellationToken);
+        var recentStatusChangeRows = await _orderRepository
+            .GetRecentStatusChangesForDashboardAsync(8, cancellationToken);
+        var recentAuditRaw = await _auditLogRepository
+            .GetRecentForDashboardAsync(200, cancellationToken);
 
-        var ordersCreatedToday = await _context.Orders
-            .CountAsync(o => o.CreatedAt >= startOfToday, cancellationToken);
-
-        var ordersUpdatedLast7Days = await _context.Orders
-            .CountAsync(o => (o.UpdatedAt ?? o.CreatedAt) >= weekAgo, cancellationToken);
-
-        var statusChangesLast7Days = await _context.OrderItemStatusHistories
-            .CountAsync(h => h.ChangedAt >= weekAgo, cancellationToken);
-
-        var recentOrders = await _context.Orders
-            .AsNoTracking()
-            .OrderByDescending(o => o.CreatedAt)
-            .Take(5)
+        var recentOrders = recentOrderRows
             .Select(o => new DashboardRecentOrderDto(
                 o.Id,
                 o.TrackingCode,
-                o.Customer != null
-                    ? ((o.Customer.LastName ?? "") + " " + (o.Customer.FirstName ?? "") + " " + (o.Customer.Patronymic ?? "")).Trim()
-                    : null,
-                o.Status.ToString(),
+                o.CustomerName,
+                o.Status,
                 o.CreatedAt,
-                o.UpdatedAt ?? o.CreatedAt))
-            .ToListAsync(cancellationToken);
+                o.UpdatedAt))
+            .ToList();
 
-        var recentStatusChanges = await _context.OrderItemStatusHistories
-            .AsNoTracking()
-            .OrderByDescending(h => h.ChangedAt)
-            .Take(8)
+        var recentStatusChanges = recentStatusChangeRows
             .Select(h => new DashboardRecentStatusDto(
-                h.OrderItem.OrderId,
-                h.OrderItem.Order.TrackingCode,
-                h.OrderItem.Name,
+                h.OrderId,
+                h.TrackingCode,
+                h.ItemName,
                 h.StatusText,
                 h.Comment,
                 h.ChangedAt))
-            .ToListAsync(cancellationToken);
-
-        var recentAuditRaw = await _context.AuditLogs
-            .AsNoTracking()
-            .OrderByDescending(a => a.CreatedAt)
-            .Take(200)
-            .Select(a => new
-            {
-                a.Id,
-                a.EntityType,
-                a.EntityId,
-                a.Action,
-                AdminLogin = a.AdminUser != null ? a.AdminUser.Login : null,
-                a.CreatedAt,
-                a.OldValues,
-                a.NewValues,
-            })
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var deleteOrderIds = recentAuditRaw
             .Where(a => a.Action == "DeleteOrder" && a.EntityType == "Order")
@@ -92,12 +76,8 @@ public sealed class GetDashboardSummaryQueryHandler
 
         var restorableOrderIds = deleteOrderIds.Count == 0
             ? new HashSet<Guid>()
-            : (await _context.Orders
-                    .IgnoreQueryFilters()
-                    .AsNoTracking()
-                    .Where(o => deleteOrderIds.Contains(o.Id) && o.IsDeleted)
-                    .Select(o => o.Id)
-                    .ToListAsync(cancellationToken))
+            : (await _auditLogRepository
+                    .GetRestorableDeletedOrderIdsAsync(deleteOrderIds, cancellationToken))
                 .ToHashSet();
 
         var recentAudit = recentAuditRaw

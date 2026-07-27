@@ -1,6 +1,5 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
-using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Tracking.Models;
 
 namespace OrderTracking.Application.Tracking.GetOrderByTrackingCode;
@@ -8,11 +7,11 @@ namespace OrderTracking.Application.Tracking.GetOrderByTrackingCode;
 public sealed class GetOrderByTrackingCodeQueryHandler
     : IRequestHandler<GetOrderByTrackingCodeQuery, PublicTrackingDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IOrderRepository _orderRepository;
 
-    public GetOrderByTrackingCodeQueryHandler(IApplicationDbContext context)
+    public GetOrderByTrackingCodeQueryHandler(IOrderRepository orderRepository)
     {
-        _context = context;
+        _orderRepository = orderRepository;
     }
 
     public async Task<PublicTrackingDto> Handle(
@@ -21,51 +20,7 @@ public sealed class GetOrderByTrackingCodeQueryHandler
     {
         var code = request.TrackingCode.Trim().ToUpperInvariant();
 
-        var order = await _context.Orders
-            .AsNoTracking()
-            .Where(o => o.TrackingCode == code)
-            .Select(o => new
-            {
-                o.TrackingCode,
-                o.CreatedAt,
-                o.ExpectedDeliveryAt,
-                Status = o.Status.ToString(),
-                Items = o.Items
-                    .OrderBy(i => i.SortOrder)
-                    .Select(i => new
-                    {
-                        i.Name,
-                        Type = i.ItemType.ToString(),
-                        i.Quantity,
-                        CurrentStatus = i.CurrentStatusText,
-                        StatusColor = i.CurrentStatus != null ? i.CurrentStatus.Color : null,
-                        History = i.StatusHistory
-                            .Where(h => h.IsPublished)
-                            .OrderByDescending(h => h.ChangedAt)
-                            .Select(h => new
-                            {
-                                h.StatusText,
-                                h.Comment,
-                                h.Country,
-                                h.Location,
-                                h.ChangedAt,
-                                Attachments = h.Attachments
-                                    .OrderBy(a => a.SortOrder)
-                                    .Select(a => new
-                                    {
-                                        a.Id,
-                                        a.ContentType,
-                                        UploadedByAdminName = a.UploadedByAdmin.DisplayName
-                                            ?? a.UploadedByAdmin.Login,
-                                        a.UploadedAt,
-                                    })
-                                    .ToList(),
-                            })
-                            .ToList(),
-                    })
-                    .ToList(),
-            })
-            .FirstOrDefaultAsync(cancellationToken)
+        var order = await _orderRepository.GetPublicTrackingByCodeAsync(code, cancellationToken)
             ?? throw new KeyNotFoundException("Order not found");
 
         return new PublicTrackingDto(

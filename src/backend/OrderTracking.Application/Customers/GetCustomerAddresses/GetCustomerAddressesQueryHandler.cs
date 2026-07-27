@@ -1,17 +1,17 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Application.Common.Persistence;
 
 namespace OrderTracking.Application.Customers.GetCustomerAddresses;
 
 public sealed class GetCustomerAddressesQueryHandler
     : IRequestHandler<GetCustomerAddressesQuery, IReadOnlyList<CustomerAddressDto>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly ICustomerRepository _customers;
 
-    public GetCustomerAddressesQueryHandler(IApplicationDbContext context)
+    public GetCustomerAddressesQueryHandler(ICustomerRepository customers)
     {
-        _context = context;
+        _customers = customers;
     }
 
     public async Task<IReadOnlyList<CustomerAddressDto>> Handle(
@@ -19,16 +19,16 @@ public sealed class GetCustomerAddressesQueryHandler
         CancellationToken cancellationToken)
     {
         if (request.CustomerId is { } customerId
-            && !await _context.Customers.AnyAsync(c => c.Id == customerId, cancellationToken))
+            && !await _customers.ExistsAsync(customerId, cancellationToken))
         {
             throw new KeyNotFoundException($"Customer '{customerId}' was not found");
         }
 
-        return await _context.CustomerAddresses
-            .AsNoTracking()
-            .Where(a => a.CustomerId == request.CustomerId)
-            .OrderByDescending(a => a.Orders.Max(order => (DateTimeOffset?)order.CreatedAt))
-            .ThenByDescending(a => a.CreatedAt)
+        var rows = await _customers.GetAddressesByCustomerIdAsync(
+            request.CustomerId,
+            cancellationToken);
+
+        return rows
             .Select(a => new CustomerAddressDto(
                 a.Id,
                 a.CustomerId,
@@ -39,8 +39,8 @@ public sealed class GetCustomerAddressesQueryHandler
                 a.PostalCode,
                 a.Note,
                 a.CreatedAt,
-                a.UpdatedAt ?? a.CreatedAt,
-                a.Orders.Max(order => (DateTimeOffset?)order.CreatedAt)))
-            .ToListAsync(cancellationToken);
+                a.UpdatedAt,
+                a.LastUsedAt))
+            .ToList();
     }
 }
