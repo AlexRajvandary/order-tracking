@@ -1,4 +1,4 @@
-import { addDays, format, isSameDay, startOfDay } from 'date-fns'
+import { format, isSameDay, startOfDay } from 'date-fns'
 import { enUS, ru } from 'date-fns/locale'
 import { CalendarIcon } from 'lucide-react'
 import { useEffect, useId, useMemo, useState } from 'react'
@@ -127,11 +127,7 @@ type DateTimePickerProps = {
   align?: 'start' | 'center' | 'end'
   /** Relative day shortcuts. Empty disables them. */
   dayPresets?: readonly number[]
-  /**
-   * Highlights the order creation day. When set, days before the order was
-   * created are disabled — but past dates after creation are allowed
-   * (backdated publish).
-   */
+  /** Highlights the order creation day in the calendar (selection is not limited by it). */
   orderCreatedAt?: string | null
 }
 
@@ -178,8 +174,6 @@ export function DateTimePicker({
     return created ? startOfDay(created) : undefined
   }, [orderCreatedAt])
 
-  const minSelectableDay = orderCreatedDay
-
   useEffect(() => {
     if (valid) setMonth(valid)
   }, [value])
@@ -187,18 +181,12 @@ export function DateTimePicker({
   function commit(date: Date, hours: string, minutes: string) {
     const next = new Date(date)
     next.setHours(Number(hours) || 0, Number(minutes) || 0, 0, 0)
-    if (minSelectableDay && startOfDay(next) < minSelectableDay) {
-      return
-    }
     onChange(next.toISOString())
   }
 
   function applyInDays(days: number) {
     const base = new Date()
     base.setDate(base.getDate() + days)
-    if (minSelectableDay && startOfDay(base) < minSelectableDay) {
-      return
-    }
     setMonth(base)
     commit(base, time.hours, time.minutes)
   }
@@ -244,11 +232,7 @@ export function DateTimePicker({
                     variant="secondary"
                     size="sm"
                     className="h-7 shrink-0 px-2 text-xs whitespace-nowrap"
-                    disabled={
-                      disabled ||
-                      (minSelectableDay != null &&
-                        startOfDay(addDays(new Date(), days)) < minSelectableDay)
-                    }
+                    disabled={disabled}
                     onClick={() => applyInDays(days)}
                   >
                     {presetLabel(days)}
@@ -273,7 +257,6 @@ export function DateTimePicker({
           selected={valid}
           month={month}
           onMonthChange={setMonth}
-          disabled={minSelectableDay ? { before: minSelectableDay } : undefined}
           modifiers={{
             orderCreated: orderCreatedDay
               ? (date) => isSameDay(date, orderCreatedDay)
