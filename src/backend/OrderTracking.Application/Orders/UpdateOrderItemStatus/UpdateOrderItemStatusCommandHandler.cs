@@ -118,6 +118,13 @@ public sealed class UpdateOrderItemStatusCommandHandler
             OrderItemCurrentStatusSync.ApplyPublishedIfLatest(item, history);
         }
 
+        await OrderCreatedAtSync.AlignToEarliestStatusAsync(
+            _orderRepository,
+            order,
+            now,
+            cancellationToken,
+            pendingChangedAt: history.ChangedAt);
+
         if (request.Photos is { Count: > 0 })
         {
             await StatusPhotoUploadHelper.UploadAsync(

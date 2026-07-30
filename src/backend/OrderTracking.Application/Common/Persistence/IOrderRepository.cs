@@ -119,6 +119,15 @@ public interface IOrderRepository
         Guid orderId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Earliest <see cref="OrderItemStatusHistory.ChangedAt"/> for the order.
+    /// Optionally excludes one history row (e.g. when its date is being updated in memory).
+    /// </summary>
+    Task<DateTimeOffset?> GetEarliestStatusChangedAtForOrderAsync(
+        Guid orderId,
+        Guid? excludeHistoryId = null,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<OrderItemStatusHistory>> GetDueScheduledHistoriesAsync(
         DateTimeOffset now,
         CancellationToken cancellationToken = default);

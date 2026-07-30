@@ -94,6 +94,14 @@ public sealed class UpdateOrderItemStatusHistoryCommandHandler
             ?? throw new KeyNotFoundException($"Order '{request.OrderId}' was not found");
         order.UpdatedAt = now;
 
+        await OrderCreatedAtSync.AlignToEarliestStatusAsync(
+            _orderRepository,
+            order,
+            now,
+            cancellationToken,
+            pendingChangedAt: history.ChangedAt,
+            excludeHistoryId: history.Id);
+
         await OrderItemCurrentStatusSync.SyncFromPublishedHistoryAsync(
             _orderRepository,
             history.OrderItem,

@@ -408,6 +408,25 @@ public sealed class OrderRepository : IOrderRepository
                 h => h.Id == historyId && h.OrderItem.OrderId == orderId,
                 cancellationToken);
 
+    public async Task<DateTimeOffset?> GetEarliestStatusChangedAtForOrderAsync(
+        Guid orderId,
+        Guid? excludeHistoryId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _db.OrderItemStatusHistories
+            .Where(h => h.OrderItem.OrderId == orderId);
+
+        if (excludeHistoryId is { } excludedId)
+        {
+            query = query.Where(h => h.Id != excludedId);
+        }
+
+        return await query
+            .OrderBy(h => h.ChangedAt)
+            .Select(h => (DateTimeOffset?)h.ChangedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<StatusHistoryListRow>> GetStatusHistoryForOrderAsync(
         Guid orderId,
         CancellationToken cancellationToken = default) =>
