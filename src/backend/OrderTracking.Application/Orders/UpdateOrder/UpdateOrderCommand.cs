@@ -7,4 +7,5 @@ public sealed record UpdateOrderCommand(
     Guid Id,
     Guid? CustomerId,
     string? AdminNotes,
-    DateTimeOffset? ExpectedDeliveryAt) : IRequest<OrderDetailsDto>;
+    DateTimeOffset? ExpectedDeliveryAt,
+    DateTimeOffset? CreatedAt) : IRequest<OrderDetailsDto>;

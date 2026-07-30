@@ -47,6 +47,12 @@ public sealed class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderComma
             : request.AdminNotes.Trim();
 
         order.ExpectedDeliveryAt = request.ExpectedDeliveryAt;
+
+        if (request.CreatedAt is { } createdAt)
+        {
+            order.CreatedAt = createdAt;
+        }
+
         order.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

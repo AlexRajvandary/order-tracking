@@ -108,6 +108,7 @@ export type UpdateOrderRequest = {
   customerId?: string | null
   adminNotes?: string | null
   expectedDeliveryAt?: string | null
+  createdAt?: string | null
 }
 
 export type UpdateOrderStatusRequest = {

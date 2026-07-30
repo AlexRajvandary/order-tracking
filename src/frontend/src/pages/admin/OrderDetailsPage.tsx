@@ -81,13 +81,6 @@ const ORDER_STATUSES: OrderStatus[] = [
   'Cancelled',
 ]
 
-/** Format order timestamps for display */
-function formatOrderDate(value: string) {
-  const d = new Date(value)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
 type CustomerEditFormState = {
   lastName: string
   firstName: string
@@ -840,11 +833,18 @@ export function OrderDetailsPage() {
   })
 
   const updateOrderMutation = useMutation({
-    mutationFn: (expectedDeliveryAt: string | null) =>
+    mutationFn: (patch: {
+      expectedDeliveryAt?: string | null
+      createdAt?: string
+    }) =>
       ordersApi.updateOrder(id, {
         customerId: order!.customerId,
         adminNotes: order!.adminNotes,
-        expectedDeliveryAt,
+        expectedDeliveryAt:
+          patch.expectedDeliveryAt !== undefined
+            ? patch.expectedDeliveryAt
+            : order!.expectedDeliveryAt,
+        createdAt: patch.createdAt ?? order!.createdAt,
       }),
     onSuccess: () => invalidateOrder(),
   })
@@ -865,6 +865,7 @@ export function OrderDetailsPage() {
         customerId: created.id,
         adminNotes: order!.adminNotes,
         expectedDeliveryAt: order!.expectedDeliveryAt,
+        createdAt: order!.createdAt,
       })
       return created
     },
@@ -985,11 +986,21 @@ export function OrderDetailsPage() {
                     : null
                 }
               />
-              <CustomerField
-                label={t('details.createdAt')}
-                value={formatOrderDate(order.createdAt)}
-                emptyLabel={t('details.emptyValue')}
-              />
+              <div className="flex items-baseline gap-3 text-sm">
+                <span className="shrink-0 text-muted-foreground">
+                  {t('details.createdAt')}:
+                </span>
+                <DateTimePicker
+                  value={order.createdAt}
+                  disabled={updateOrderMutation.isPending}
+                  dayPresets={STATUS_HISTORY_DAY_PRESETS}
+                  className="h-8 min-w-0 flex-1"
+                  onChange={(iso) => {
+                    if (!iso) return
+                    updateOrderMutation.mutate({ createdAt: iso })
+                  }}
+                />
+              </div>
               <div className="flex items-baseline gap-3 text-sm">
                 <span className="shrink-0 text-muted-foreground">
                   {t('details.expectedDeliveryAt')}:
@@ -1006,11 +1017,13 @@ export function OrderDetailsPage() {
                   className="h-8 min-w-0 flex-1 justify-end"
                   onChange={(ymd) => {
                     if (!ymd) {
-                      updateOrderMutation.mutate(null)
+                      updateOrderMutation.mutate({ expectedDeliveryAt: null })
                       return
                     }
                     const date = parseYmdLocal(ymd)
-                    updateOrderMutation.mutate(date ? date.toISOString() : null)
+                    updateOrderMutation.mutate({
+                      expectedDeliveryAt: date ? date.toISOString() : null,
+                    })
                   }}
                 />
               </div>

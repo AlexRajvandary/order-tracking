@@ -99,7 +99,12 @@ public sealed class OrdersController : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(
-            new UpdateOrderCommand(id, request.CustomerId, request.AdminNotes, request.ExpectedDeliveryAt),
+            new UpdateOrderCommand(
+                id,
+                request.CustomerId,
+                request.AdminNotes,
+                request.ExpectedDeliveryAt,
+                request.CreatedAt),
             cancellationToken);
 
         return Ok(result);
@@ -379,7 +384,8 @@ public sealed record CreateOrderRequest(
 public sealed record UpdateOrderRequest(
     Guid? CustomerId,
     string? AdminNotes,
-    DateTimeOffset? ExpectedDeliveryAt);
+    DateTimeOffset? ExpectedDeliveryAt,
+    DateTimeOffset? CreatedAt = null);
 
 public sealed record UpdateOrderStatusRequest(OrderStatus Status);
 
