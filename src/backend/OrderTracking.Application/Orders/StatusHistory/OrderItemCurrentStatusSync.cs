@@ -34,4 +34,24 @@ public static class OrderItemCurrentStatusSync
         item.CurrentStatusText = history.StatusText;
         item.CurrentStatusUpdatedAt = history.ChangedAt;
     }
+
+    /// <summary>
+    /// Updates the item's current status only when <paramref name="history"/> is
+    /// published and not older than the status already shown on the item.
+    /// Prevents backdated entries from overwriting a newer current status.
+    /// </summary>
+    public static void ApplyPublishedIfLatest(OrderItem item, OrderItemStatusHistory history)
+    {
+        if (!history.IsPublished)
+        {
+            return;
+        }
+
+        if (item.CurrentStatusUpdatedAt is { } current && history.ChangedAt < current)
+        {
+            return;
+        }
+
+        ApplyPublished(item, history);
+    }
 }

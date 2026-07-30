@@ -1,4 +1,4 @@
-import { format, isSameDay, startOfDay } from 'date-fns'
+import { addDays, format, isSameDay, startOfDay } from 'date-fns'
 import { enUS, ru } from 'date-fns/locale'
 import { CalendarIcon } from 'lucide-react'
 import { useEffect, useId, useMemo, useState } from 'react'
@@ -128,13 +128,17 @@ type DateTimePickerProps = {
   /** Relative day shortcuts. Empty disables them. */
   dayPresets?: readonly number[]
   /**
-   * When the order already exists, past calendar days are disabled and the
-   * order creation day is highlighted on the calendar.
+   * Highlights the order creation day. When set, days before the order was
+   * created are disabled — but past dates after creation are allowed
+   * (backdated publish).
    */
   orderCreatedAt?: string | null
 }
 
 const DEFAULT_DAY_PRESETS = [1, 3, 7, 14, 30] as const
+
+/** Presets for status publish/history date (past and future). */
+export const STATUS_HISTORY_DAY_PRESETS = [-7, -3, -1, 0, 1, 3, 7] as const
 
 function toTimeParts(date: Date) {
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -174,9 +178,7 @@ export function DateTimePicker({
     return created ? startOfDay(created) : undefined
   }, [orderCreatedAt])
 
-  const today = useMemo(() => startOfDay(new Date()), [])
-  const disablePast = Boolean(orderCreatedAt)
-  const minSelectableDay = disablePast ? today : undefined
+  const minSelectableDay = orderCreatedDay
 
   useEffect(() => {
     if (valid) setMonth(valid)
@@ -199,6 +201,12 @@ export function DateTimePicker({
     }
     setMonth(base)
     commit(base, time.hours, time.minutes)
+  }
+
+  function presetLabel(days: number) {
+    if (days === 0) return t('table.now')
+    if (days < 0) return t('table.daysAgo', { count: Math.abs(days) })
+    return t('table.inDays', { count: days })
   }
 
   return (
@@ -236,10 +244,14 @@ export function DateTimePicker({
                     variant="secondary"
                     size="sm"
                     className="h-7 shrink-0 px-2 text-xs whitespace-nowrap"
-                    disabled={disabled}
+                    disabled={
+                      disabled ||
+                      (minSelectableDay != null &&
+                        startOfDay(addDays(new Date(), days)) < minSelectableDay)
+                    }
                     onClick={() => applyInDays(days)}
                   >
-                    {t('table.inDays', { count: days })}
+                    {presetLabel(days)}
                   </Button>
                 </CarouselItem>
               ))}
@@ -284,7 +296,7 @@ export function DateTimePicker({
           locale={locale}
         />
 
-        {disablePast || orderCreatedDay ? (
+        {orderCreatedDay ? (
           <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <span
@@ -293,15 +305,13 @@ export function DateTimePicker({
               />
               {t('table.calendarToday')}
             </span>
-            {orderCreatedDay ? (
-              <span className="inline-flex items-center gap-1.5">
-                <span
-                  className="size-2.5 rounded-sm bg-sky-100 ring-1 ring-sky-400/80 dark:bg-sky-950 dark:ring-sky-500/70"
-                  aria-hidden
-                />
-                {t('table.calendarOrderCreated')}
-              </span>
-            ) : null}
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="size-2.5 rounded-sm bg-sky-100 ring-1 ring-sky-400/80 dark:bg-sky-950 dark:ring-sky-500/70"
+                aria-hidden
+              />
+              {t('table.calendarOrderCreated')}
+            </span>
           </div>
         ) : null}
 

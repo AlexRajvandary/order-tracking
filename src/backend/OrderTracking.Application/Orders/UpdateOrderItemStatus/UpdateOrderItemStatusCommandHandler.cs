@@ -115,7 +115,7 @@ public sealed class UpdateOrderItemStatusCommandHandler
 
         if (isPublished)
         {
-            OrderItemCurrentStatusSync.ApplyPublished(item, history);
+            OrderItemCurrentStatusSync.ApplyPublishedIfLatest(item, history);
         }
 
         if (request.Photos is { Count: > 0 })

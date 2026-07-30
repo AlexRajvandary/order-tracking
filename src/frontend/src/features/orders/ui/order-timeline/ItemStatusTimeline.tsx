@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/dialog'
-import { DateTimePicker } from '@/shared/ui/date-picker'
+import { DateTimePicker, STATUS_HISTORY_DAY_PRESETS } from '@/shared/ui/date-picker'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
@@ -248,7 +248,7 @@ function EditStatusHistoryDialog({
               comment: comment.trim() || null,
               country: country.trim() || null,
               location: location.trim() || null,
-              ...(entry.isPublished ? {} : { publishAt }),
+              publishAt,
             })
           }}
         >
@@ -281,19 +281,18 @@ function EditStatusHistoryDialog({
               placeholder={t('update.locationPlaceholder')}
             />
           </div>
-          {!entry.isPublished ? (
-            <div className="space-y-1.5">
-              <Label>{t('update.publishAt')}</Label>
-              <DateTimePicker
-                value={publishAt}
-                onChange={setPublishAt}
-                orderCreatedAt={orderCreatedAt}
-                align="start"
-                className="h-9 w-full justify-start"
-              />
-              <p className="text-xs text-muted-foreground">{t('update.publishAtHint')}</p>
-            </div>
-          ) : null}
+          <div className="space-y-1.5">
+            <Label>{t('update.publishAt')}</Label>
+            <DateTimePicker
+              value={publishAt}
+              onChange={setPublishAt}
+              orderCreatedAt={orderCreatedAt}
+              dayPresets={STATUS_HISTORY_DAY_PRESETS}
+              align="start"
+              className="h-9 w-full justify-start"
+            />
+            <p className="text-xs text-muted-foreground">{t('update.publishAtHint')}</p>
+          </div>
           {error ? (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>

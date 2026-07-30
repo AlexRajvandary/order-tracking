@@ -62,7 +62,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-import { DatePicker, DateTimePicker, formatYmd, parseYmdLocal } from '@/shared/ui/date-picker'
+import { DatePicker, DateTimePicker, STATUS_HISTORY_DAY_PRESETS, formatYmd, parseYmdLocal } from '@/shared/ui/date-picker'
 import {
   Select,
   SelectContent,
@@ -627,6 +627,7 @@ function StatusUpdateDialog({
               value={publishAt || null}
               onChange={(iso) => setPublishAt(iso ?? '')}
               orderCreatedAt={orderCreatedAt}
+              dayPresets={STATUS_HISTORY_DAY_PRESETS}
               align="start"
               className="h-9 w-full justify-start"
             />
