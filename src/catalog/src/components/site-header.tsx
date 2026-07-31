@@ -94,7 +94,7 @@ export function SiteHeader() {
   }, [menuOpen]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[#ECECEC] bg-white">
+    <header className="sticky top-0 z-50 border-b border-[#ECECEC] bg-white/95 backdrop-blur-md supports-backdrop-filter:bg-white/90">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4 sm:h-[78px] sm:gap-6 sm:px-5 lg:px-6">
         <button
           type="button"
