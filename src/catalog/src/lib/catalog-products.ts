@@ -1,5 +1,6 @@
 import type { CategoryItem, CategorySection } from "@/lib/categories";
 import { categorySections } from "@/lib/categories";
+import { BAGS_COLLECTION } from "@/lib/bags-collection";
 import { formatPrice, type Product } from "@/lib/products";
 
 export type CatalogProduct = Product & {
@@ -74,6 +75,9 @@ export function listProductsForCategoryItem(
   sectionId: string,
   itemSlug: string,
 ): CatalogProduct[] {
+  if (sectionId === "bags") {
+    return BAGS_COLLECTION.filter((p) => p.categorySlug === itemSlug);
+  }
   const section = categorySections.find((s) => s.id === sectionId);
   if (!section) return [];
   const item = section.items.find((i) => i.slug === itemSlug);
@@ -84,6 +88,9 @@ export function listProductsForCategoryItem(
 }
 
 export function listProductsForSection(sectionId: string): CatalogProduct[] {
+  if (sectionId === "bags") {
+    return [...BAGS_COLLECTION];
+  }
   const section = categorySections.find((s) => s.id === sectionId);
   if (!section) return [];
   return section.items.flatMap((item) =>
@@ -92,7 +99,11 @@ export function listProductsForSection(sectionId: string): CatalogProduct[] {
 }
 
 export function findCatalogProductBySlug(slug: string): CatalogProduct | undefined {
+  const fromBags = BAGS_COLLECTION.find((p) => p.slug === slug || p.id === slug);
+  if (fromBags) return fromBags;
+
   for (const section of categorySections) {
+    if (section.id === "bags") continue;
     for (const item of section.items) {
       const found = listProductsForCategoryItem(section.id, item.slug).find(
         (p) => p.slug === slug || p.id === slug,

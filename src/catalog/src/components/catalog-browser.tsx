@@ -1,16 +1,32 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { LayoutGrid, ListFilter, Rows3, ChevronDown, Check } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import type { CatalogProduct } from "@/lib/catalog-products";
 import { cn } from "@/lib/utils";
 
 type SortOption = "relevance" | "price-asc" | "price-desc" | "name";
+type GridCols = 3 | 4;
+
+const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
+  { value: "relevance", label: "По умолчанию" },
+  { value: "price-asc", label: "Цена: по возрастанию" },
+  { value: "price-desc", label: "Цена: по убыванию" },
+  { value: "name", label: "По названию" },
+];
 
 type CatalogBrowserProps = {
   products: CatalogProduct[];
@@ -22,6 +38,230 @@ type CatalogBrowserProps = {
   /** Show subcategory filter chips when browsing a whole section */
   subcategoryOptions?: Array<{ slug: string; label: string }>;
 };
+
+type FilterPanelProps = {
+  query: string;
+  setQuery: (value: string) => void;
+  minPrice: string;
+  setMinPrice: (value: string) => void;
+  maxPrice: string;
+  setMaxPrice: (value: string) => void;
+  inStockOnly: boolean;
+  setInStockOnly: (value: boolean) => void;
+  subcategory: string;
+  setSubcategory: (value: string) => void;
+  absMin: number;
+  absMax: number;
+  activeCount: number;
+  resetFilters: () => void;
+  subcategoryOptions?: Array<{ slug: string; label: string }>;
+  idPrefix: string;
+};
+
+function FilterPanel({
+  query,
+  setQuery,
+  minPrice,
+  setMinPrice,
+  maxPrice,
+  setMaxPrice,
+  inStockOnly,
+  setInStockOnly,
+  subcategory,
+  setSubcategory,
+  absMin,
+  absMax,
+  activeCount,
+  resetFilters,
+  subcategoryOptions,
+  idPrefix,
+}: FilterPanelProps) {
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold tracking-tight">Фильтры</h2>
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          disabled={activeCount === 0}
+          onClick={resetFilters}
+        >
+          Сбросить
+        </Button>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <label
+          htmlFor={`${idPrefix}-search`}
+          className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+        >
+          Поиск
+        </label>
+        <Input
+          id={`${idPrefix}-search`}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Название, тег…"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Цена, ₽
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            inputMode="numeric"
+            placeholder={`от ${absMin}`}
+            value={minPrice}
+            onChange={(e) => setMinPrice(e.target.value.replace(/[^\d]/g, ""))}
+            aria-label="Цена от"
+          />
+          <Input
+            inputMode="numeric"
+            placeholder={`до ${absMax}`}
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(e.target.value.replace(/[^\d]/g, ""))}
+            aria-label="Цена до"
+          />
+        </div>
+      </div>
+
+      <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-transparent px-1 py-1 text-sm transition hover:bg-muted/50">
+        <input
+          type="checkbox"
+          checked={inStockOnly}
+          onChange={(e) => setInStockOnly(e.target.checked)}
+          className="size-4 accent-foreground"
+        />
+        Только в наличии
+      </label>
+
+      {subcategoryOptions && subcategoryOptions.length > 0 ? (
+        <div className="space-y-2.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Подкатегория
+          </p>
+          <div className="flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => setSubcategory("all")}
+              className={cn(
+                "rounded-md px-2.5 py-2 text-left text-sm transition",
+                subcategory === "all"
+                  ? "bg-[#111827] font-medium text-white"
+                  : "text-foreground hover:bg-muted",
+              )}
+            >
+              Все
+            </button>
+            {subcategoryOptions.map((opt) => (
+              <button
+                key={opt.slug}
+                type="button"
+                onClick={() => setSubcategory(opt.slug)}
+                className={cn(
+                  "rounded-md px-2.5 py-2 text-left text-sm transition",
+                  subcategory === opt.slug
+                    ? "bg-[#111827] font-medium text-white"
+                    : "text-foreground hover:bg-muted",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SortDropdown({
+  value,
+  onChange,
+}: {
+  value: SortOption;
+  onChange: (value: SortOption) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  const current = SORT_OPTIONS.find((o) => o.value === value) ?? SORT_OPTIONS[0];
+
+  useEffect(() => {
+    if (!open) return;
+
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={listId}
+        className="min-w-[11.5rem] justify-between gap-2"
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <span className="truncate">{current.label}</span>
+        <ChevronDown className={cn("size-4 shrink-0 opacity-60 transition", open && "rotate-180")} />
+      </Button>
+
+      {open ? (
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label="Сортировка"
+          className="absolute right-0 z-30 mt-1.5 min-w-[14rem] overflow-hidden rounded-lg border border-[#E5E7EB] bg-white py-1 shadow-lg"
+        >
+          {SORT_OPTIONS.map((option) => {
+            const selected = option.value === value;
+            return (
+              <li key={option.value} role="option" aria-selected={selected}>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition",
+                    selected ? "bg-muted font-medium" : "hover:bg-muted/70",
+                  )}
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                >
+                  {option.label}
+                  {selected ? <Check className="size-4 shrink-0" /> : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
 
 export function CatalogBrowser({
   products,
@@ -42,6 +282,8 @@ export function CatalogBrowser({
   const [inStockOnly, setInStockOnly] = useState(false);
   const [sort, setSort] = useState<SortOption>("relevance");
   const [subcategory, setSubcategory] = useState<string>("all");
+  const [gridCols, setGridCols] = useState<GridCols>(3);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -73,7 +315,6 @@ export function CatalogBrowser({
     setMinPrice("");
     setMaxPrice("");
     setInStockOnly(false);
-    setSort("relevance");
     setSubcategory("all");
   }
 
@@ -82,9 +323,26 @@ export function CatalogBrowser({
     minPrice ? 1 : 0,
     maxPrice ? 1 : 0,
     inStockOnly ? 1 : 0,
-    sort !== "relevance" ? 1 : 0,
     subcategory !== "all" ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
+
+  const filterProps: Omit<FilterPanelProps, "idPrefix"> = {
+    query,
+    setQuery,
+    minPrice,
+    setMinPrice,
+    maxPrice,
+    setMaxPrice,
+    inStockOnly,
+    setInStockOnly,
+    subcategory,
+    setSubcategory,
+    absMin,
+    absMax,
+    activeCount,
+    resetFilters,
+    subcategoryOptions,
+  };
 
   return (
     <div className="space-y-6">
@@ -102,127 +360,86 @@ export function CatalogBrowser({
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
           {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
-          <p className="mt-2 text-sm text-muted-foreground">
-            Показано {filtered.length} из {products.length}
-            {activeCount > 0 ? (
-              <Badge variant="secondary" className="ml-2 align-middle">
-                фильтров: {activeCount}
-              </Badge>
-            ) : null}
-          </p>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-        <aside className="h-fit space-y-4 border bg-card p-4 lg:sticky lg:top-20">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">Фильтры</h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="xs"
-              disabled={activeCount === 0}
-              onClick={resetFilters}
-            >
-              Сбросить
-            </Button>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-1.5">
-            <label htmlFor="catalog-search" className="text-xs font-medium text-muted-foreground">
-              Поиск
-            </label>
-            <Input
-              id="catalog-search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Название, тег…"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">Цена, ₽</p>
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                inputMode="numeric"
-                placeholder={`${absMin}`}
-                value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value.replace(/[^\d]/g, ""))}
-                aria-label="Цена от"
-              />
-              <Input
-                inputMode="numeric"
-                placeholder={`${absMax}`}
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value.replace(/[^\d]/g, ""))}
-                aria-label="Цена до"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="catalog-sort" className="text-xs font-medium text-muted-foreground">
-              Сортировка
-            </label>
-            <select
-              id="catalog-sort"
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortOption)}
-              className={cn(
-                "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none",
-                "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-              )}
-            >
-              <option value="relevance">По умолчанию</option>
-              <option value="price-asc">Цена ↑</option>
-              <option value="price-desc">Цена ↓</option>
-              <option value="name">По названию</option>
-            </select>
-          </div>
-
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={inStockOnly}
-              onChange={(e) => setInStockOnly(e.target.checked)}
-              className="size-4 accent-foreground"
-            />
-            Только в наличии
-          </label>
-
-          {subcategoryOptions && subcategoryOptions.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Подкатегория</p>
-              <div className="flex flex-wrap gap-1.5">
-                <Button
-                  type="button"
-                  size="xs"
-                  variant={subcategory === "all" ? "default" : "outline"}
-                  onClick={() => setSubcategory("all")}
-                >
-                  Все
-                </Button>
-                {subcategoryOptions.map((opt) => (
-                  <Button
-                    key={opt.slug}
-                    type="button"
-                    size="xs"
-                    variant={subcategory === opt.slug ? "default" : "outline"}
-                    onClick={() => setSubcategory(opt.slug)}
-                  >
-                    {opt.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          ) : null}
+      <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <aside className="hidden h-fit rounded-xl border border-[#E5E7EB] bg-white p-5 lg:sticky lg:top-20 lg:block">
+          <FilterPanel {...filterProps} idPrefix="desktop" />
         </aside>
 
-        <div>
+        <div className="min-w-0 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E7EB] pb-3">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="lg:hidden"
+                onClick={() => setMobileFiltersOpen(true)}
+              >
+                <ListFilter className="size-4" />
+                Фильтры
+                {activeCount > 0 ? (
+                  <Badge variant="secondary" className="ml-0.5">
+                    {activeCount}
+                  </Badge>
+                ) : null}
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{filtered.length}</span>
+                {" из "}
+                {products.length}
+                {activeCount > 0 ? (
+                  <Badge variant="secondary" className="ml-2 align-middle">
+                    фильтров: {activeCount}
+                  </Badge>
+                ) : null}
+              </p>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <div
+                className="hidden items-center rounded-lg border border-[#E5E7EB] p-0.5 sm:flex"
+                role="group"
+                aria-label="Сетка товаров"
+              >
+                <button
+                  type="button"
+                  aria-label="3 колонки"
+                  aria-pressed={gridCols === 3}
+                  className={cn(
+                    "flex size-8 items-center justify-center rounded-md transition",
+                    gridCols === 3
+                      ? "bg-[#111827] text-white"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                  onClick={() => setGridCols(3)}
+                >
+                  <Rows3 className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="4 колонки"
+                  aria-pressed={gridCols === 4}
+                  className={cn(
+                    "hidden size-8 items-center justify-center rounded-md transition 2xl:flex",
+                    gridCols === 4
+                      ? "bg-[#111827] text-white"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                  onClick={() => setGridCols(4)}
+                >
+                  <LayoutGrid className="size-4" />
+                </button>
+              </div>
+
+              <SortDropdown value={sort} onChange={setSort} />
+            </div>
+          </div>
+
           {filtered.length === 0 ? (
-            <div className="border bg-card px-6 py-16 text-center">
+            <div className="rounded-xl border border-[#E5E7EB] bg-white px-6 py-16 text-center">
               <p className="font-medium">Ничего не найдено</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Попробуйте сбросить фильтры или изменить запрос.
@@ -232,7 +449,12 @@ export function CatalogBrowser({
               </Button>
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div
+              className={cn(
+                "grid gap-4 sm:grid-cols-2 xl:grid-cols-3",
+                gridCols === 4 && "2xl:grid-cols-4",
+              )}
+            >
               {filtered.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
@@ -240,6 +462,27 @@ export function CatalogBrowser({
           )}
         </div>
       </div>
+
+      <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+        <SheetContent side="left" className="w-[min(100%,20rem)] gap-0 p-0">
+          <SheetHeader className="border-b border-[#E5E7EB]">
+            <SheetTitle>Фильтры</SheetTitle>
+            <SheetDescription>Уточните подборку товаров</SheetDescription>
+          </SheetHeader>
+          <div className="overflow-y-auto p-4">
+            <FilterPanel {...filterProps} idPrefix="mobile" />
+          </div>
+          <div className="mt-auto border-t border-[#E5E7EB] p-4">
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => setMobileFiltersOpen(false)}
+            >
+              Показать {filtered.length}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

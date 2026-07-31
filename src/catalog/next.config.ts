@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "static2.zenmarket.jp",
       },
+      {
+        protocol: "https",
+        hostname: "a.lmcdn.ru",
+      },
     ],
   },
 };

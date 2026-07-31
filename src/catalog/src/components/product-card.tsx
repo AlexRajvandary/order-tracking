@@ -1,62 +1,58 @@
 import Link from "next/link";
+import Image from "next/image";
+import { Card, CardTitle } from "@/components/ui/card";
 import { AddToCartButton } from "@/components/add-to-cart-button";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { formatPrice, type Product } from "@/lib/products";
+import { FavoriteButton } from "@/components/favorite-button";
+import type { CatalogProduct } from "@/lib/catalog-products";
+import { formatPrice } from "@/lib/products";
 
 type ProductCardProps = {
-  product: Product;
+  product: CatalogProduct;
 };
 
 export function ProductCard({ product }: ProductCardProps) {
   return (
-    <Card className="gap-0 rounded-none py-0 shadow-xs ring-border/20">
-      <Link href={`/products/${product.slug}`} className="block">
-        <div
-          className="relative aspect-[4/3] overflow-hidden bg-muted"
-          style={{ background: `linear-gradient(145deg, ${product.tint}, oklch(0.25 0 0) 85%)` }}
-        >
-          <p className="absolute bottom-4 left-4 text-2xl font-bold text-white/90">
-            {product.name.split(" ")[0]}
-          </p>
-          {!product.inStock && (
-            <Badge className="absolute right-3 top-3" variant="secondary">
-              нет в наличии
-            </Badge>
+    <Card className="relative flex h-full flex-col gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md">
+      <Link href={`/products/${product.slug}`} className="flex min-h-0 flex-1 flex-col">
+        <div className="relative aspect-[3/4] shrink-0 overflow-hidden bg-muted">
+          {product.imageUrl ? (
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className="object-cover"
+            />
+          ) : (
+            <div
+              className="h-full w-full"
+              style={{
+                background: `linear-gradient(145deg, ${product.tint}, oklch(0.22 0 0) 80%)`,
+              }}
+            />
           )}
         </div>
-      </Link>
-      <CardHeader className="gap-2 pt-4">
-        <p className="text-xs text-muted-foreground">{product.category}</p>
-        <CardTitle className="text-lg">
-          <Link href={`/products/${product.slug}`} className="hover:underline">
+
+        <div className="flex flex-1 flex-col gap-1.5 px-4 pt-4 pb-3">
+          <p className="h-4 truncate text-xs font-medium leading-4 text-muted-foreground">
+            {product.brand ?? "\u00A0"}
+          </p>
+          <CardTitle className="h-[2.75rem] line-clamp-2 text-base leading-snug">
             {product.name}
-          </Link>
-        </CardTitle>
-        <CardDescription className="line-clamp-2">{product.shortDescription}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-base font-semibold">{formatPrice(product)}</p>
-      </CardContent>
-      <CardFooter className="gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1"
-          render={<Link href={`/products/${product.slug}`} />}
-        >
-          Подробнее
-        </Button>
-        <AddToCartButton product={product} size="sm" className="flex-1" />
-      </CardFooter>
+          </CardTitle>
+          <p className="mt-auto pt-2 text-lg font-semibold tracking-tight text-foreground">
+            {formatPrice(product)}
+          </p>
+        </div>
+      </Link>
+
+      <FavoriteButton productId={product.id} />
+      <div className="mt-auto px-3 pb-3">
+        <AddToCartButton
+          product={product}
+          className="h-11 w-full rounded-lg border border-solid border-[#D1D5DB] bg-white text-[#111827] shadow-none hover:border-[#111827] hover:bg-[#111827] hover:text-white hover:-translate-y-px"
+        />
+      </div>
     </Card>
   );
 }

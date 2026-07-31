@@ -11,6 +11,13 @@ export type Product = {
   /** Placeholder visual: solid brand tint for in-memory demo */
   tint: string;
   inStock: boolean;
+  imageUrl?: string;
+  brand?: string;
+  oldPriceRub?: number;
+  discountPercent?: string;
+  rating?: number;
+  reviewsCount?: number;
+  isPremium?: boolean;
 };
 
 const products: Product[] = [

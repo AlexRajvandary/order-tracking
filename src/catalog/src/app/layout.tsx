@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CartProvider } from "@/components/cart-provider";
+import { FavoritesProvider } from "@/components/favorites-provider";
 import { Footer } from "@/components/footer";
 import "./globals.css";
 
@@ -20,8 +21,10 @@ export default function RootLayout({
     <html lang="ru" className="h-full">
       <body className="flex min-h-full flex-col bg-background font-sans antialiased">
         <CartProvider>
-          <div className="flex min-h-full flex-1 flex-col">{children}</div>
-          <Footer />
+          <FavoritesProvider>
+            <div className="flex min-h-full flex-1 flex-col">{children}</div>
+            <Footer />
+          </FavoritesProvider>
         </CartProvider>
       </body>
     </html>
