@@ -33,6 +33,8 @@ coverage/
 
 # Misc
 *.tsbuildinfo
+.next/
+out/
 
 # Local ops dumps / VPS backups (never commit production data)
 vps-backup*/

@@ -65,12 +65,20 @@ services:
     expose:
       - "8080"
 
+  catalog:
+    image: ghcr.io/alexrajvandary/order-tracking-catalog:latest
+    container_name: order-tracking-catalog
+    restart: unless-stopped
+    expose:
+      - "3000"
+
   caddy:
     image: caddy:2-alpine
     container_name: order-tracking-caddy
     restart: unless-stopped
     depends_on:
       - api
+      - catalog
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS}
     ports:

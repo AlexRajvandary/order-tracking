@@ -1,0 +1,15 @@
+**/node_modules
+**/bin
+**/obj
+**/dist
+**/.next
+**/out
+**/.git
+**/.vs
+**/.idea
+**/TestResults
+**/*.md
+.env
+.env.*
+vps-backup*
+*.dump

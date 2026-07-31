@@ -1,4 +1,38 @@
 {$SITE_ADDRESS} {
 	encode zstd gzip
-	reverse_proxy api:8080
+
+	# ASP.NET API + SignalR + health
+	handle /api* {
+		reverse_proxy api:8080
+	}
+	handle /hubs* {
+		reverse_proxy api:8080
+	}
+	handle /health* {
+		reverse_proxy api:8080
+	}
+
+	# React admin SPA (bundled in API wwwroot) + public tracking
+	handle /admin* {
+		reverse_proxy api:8080
+	}
+	handle /track* {
+		reverse_proxy api:8080
+	}
+
+	# Vite build assets for the admin SPA (base: "/")
+	handle /assets* {
+		reverse_proxy api:8080
+	}
+	handle /favicon.svg {
+		reverse_proxy api:8080
+	}
+	handle /favicon.ico {
+		reverse_proxy api:8080
+	}
+
+	# Next.js catalog storefront at domain root
+	handle {
+		reverse_proxy catalog:3000
+	}
 }

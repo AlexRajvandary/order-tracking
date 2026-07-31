@@ -5,8 +5,9 @@ Internal CRM for managing customer orders with public QR-based tracking.
 ## Tech stack
 
 - **Backend:** ASP.NET Core (.NET 10), EF Core, PostgreSQL, MediatR, FluentValidation, CQRS
-- **Frontend:** React, TypeScript, Vite, TailwindCSS, TanStack Query, react-i18next (RU/EN)
-- **Deployment:** Docker Compose (single VPS)
+- **Admin UI:** React, TypeScript, Vite, TailwindCSS, TanStack Query, react-i18next (RU/EN) — `/admin`
+- **Storefront:** Next.js catalog — `/` (demo, in-memory)
+- **Deployment:** Docker Compose (single VPS) + Caddy reverse proxy
 
 ## Project structure
 
@@ -15,7 +16,8 @@ order-tracking/
 ├── docker/                 # Dockerfiles
 ├── src/
 │   ├── backend/            # .NET solution (OrderTracking.slnx)
-│   └── frontend/           # React SPA → bundled into API wwwroot
+│   ├── frontend/           # React SPA (admin) → bundled into API wwwroot
+│   └── catalog/            # Next.js каталог товаров (демо, in-memory)
 ├── docker-compose.yml
 └── .env.example
 ```
@@ -57,6 +59,16 @@ npm run dev
 
 UI: `http://localhost:5173` (proxies `/api` → backend)
 
+### 4. Catalog (Next.js, optional)
+
+```powershell
+cd src/catalog
+npm install
+npm run dev
+```
+
+Catalog: `http://localhost:3001` (mock products in memory)
+
 ## Docker (full stack)
 
 ```powershell
@@ -65,6 +77,14 @@ docker compose up --build
 ```
 
 App: `http://localhost:8080`
+
+## Production routing (Caddy)
+
+| Path | Service |
+|------|---------|
+| `/` | Next.js catalog (`order-tracking-catalog`) |
+| `/admin`, `/track`, `/assets` | React SPA via API wwwroot |
+| `/api`, `/hubs`, `/health` | ASP.NET API |
 
 ## Auth tokens (planned)
 
