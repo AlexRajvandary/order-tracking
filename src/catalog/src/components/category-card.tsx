@@ -12,21 +12,25 @@ export function CategoryCard({ item, sectionId }: CategoryCardProps) {
     <Link
       href={`/categories/${sectionId}/${item.slug}`}
       className={cn(
-        "group flex flex-col overflow-hidden rounded-none border bg-card text-card-foreground shadow-xs",
-        "transition-colors hover:bg-accent/40",
+        "group flex h-full cursor-pointer flex-col items-center rounded-[18px] border border-[#EFEFEF] bg-white p-6",
+        "shadow-[0_8px_30px_rgba(0,0,0,0.04)]",
+        "transition-[transform,box-shadow] duration-[250ms] ease-out",
+        "hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.1)]",
       )}
     >
-      <span className="flex aspect-square items-center justify-center bg-muted/40 p-4 sm:p-5">
+      <span className="flex h-[100px] w-full shrink-0 items-center justify-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={item.imageUrl}
           alt=""
           loading="lazy"
-          className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-[1.04]"
+          className="max-h-[100px] max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.06]"
         />
       </span>
-      <span className="border-t px-3 py-2.5 text-center text-sm font-medium leading-snug">
-        {item.label}
+      <span className="mt-5 flex min-h-[48px] w-full items-start justify-center">
+        <span className="line-clamp-2 text-center text-lg font-semibold leading-snug text-[#111] transition-colors duration-200 group-hover:text-[#F24676]">
+          {item.label}
+        </span>
       </span>
     </Link>
   );

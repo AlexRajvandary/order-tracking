@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactElement } from "react";
 import Link from "next/link";
 import { MinusIcon, PlusIcon, ShoppingBagIcon, Trash2Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -17,28 +18,36 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatCartMoney, useCart } from "@/components/cart-provider";
 
-export function CartSheet() {
+type CartSheetProps = {
+  trigger?: ReactElement;
+};
+
+export function CartSheet({ trigger }: CartSheetProps) {
   const { items, itemCount, totalRub, setQuantity, removeItem, clear } = useCart();
 
   return (
     <Sheet>
-      <SheetTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="relative"
-            aria-label="Корзина"
-          />
-        }
-      >
-        <ShoppingBagIcon className="size-4" />
-        {itemCount > 0 && (
-          <Badge className="absolute -right-1.5 -top-1.5 h-5 min-w-5 rounded-full px-1">
-            {itemCount}
-          </Badge>
-        )}
-      </SheetTrigger>
+      {trigger ? (
+        <SheetTrigger render={trigger} />
+      ) : (
+        <SheetTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="relative"
+              aria-label="Корзина"
+            />
+          }
+        >
+          <ShoppingBagIcon className="size-4" />
+          {itemCount > 0 && (
+            <Badge className="absolute -right-1.5 -top-1.5 h-5 min-w-5 rounded-full px-1">
+              {itemCount}
+            </Badge>
+          )}
+        </SheetTrigger>
+      )}
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader>
           <SheetTitle className="text-xl">Корзина</SheetTitle>
@@ -52,9 +61,7 @@ export function CartSheet() {
         {items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 pb-8 text-center">
             <ShoppingBagIcon className="size-10 text-muted-foreground" />
-            <Button render={<Link href="/" />}>
-              К каталогу
-            </Button>
+            <Button render={<Link href="/" />}>К каталогу</Button>
           </div>
         ) : (
           <>
@@ -93,7 +100,9 @@ export function CartSheet() {
                           variant="outline"
                           size="icon-xs"
                           aria-label="Меньше"
-                          onClick={() => setQuantity(item.productId, item.quantity - 1)}
+                          onClick={() =>
+                            setQuantity(item.productId, item.quantity - 1)
+                          }
                         >
                           <MinusIcon />
                         </Button>
@@ -104,7 +113,9 @@ export function CartSheet() {
                           variant="outline"
                           size="icon-xs"
                           aria-label="Больше"
-                          onClick={() => setQuantity(item.productId, item.quantity + 1)}
+                          onClick={() =>
+                            setQuantity(item.productId, item.quantity + 1)
+                          }
                         >
                           <PlusIcon />
                         </Button>

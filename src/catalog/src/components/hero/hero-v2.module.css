@@ -1,0 +1,153 @@
+.hero {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  margin: 0;
+  background: #f6f4f2;
+  /* Mobile first */
+  height: clamp(650px, 175vw, 720px);
+}
+
+.heroMedia {
+  position: absolute;
+  inset: 0;
+}
+
+.heroBackground {
+  object-fit: cover;
+  object-position: 62% center;
+}
+
+.heroOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  /* Mobile: soft radial behind content + light vertical wash for readability */
+  background:
+    radial-gradient(
+      ellipse at 28% 28%,
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(255, 255, 255, 0.42) 28%,
+      rgba(255, 255, 255, 0.16) 52%,
+      rgba(255, 255, 255, 0) 78%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.22) 0%,
+      rgba(255, 255, 255, 0.08) 45%,
+      rgba(255, 255, 255, 0) 72%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.22) 0%,
+      rgba(255, 255, 255, 0.1) 30%,
+      rgba(255, 255, 255, 0) 55%
+    );
+}
+
+.heroInner {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  width: min(calc(100% - 40px), 72rem);
+  margin-inline: auto;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 28px;
+}
+
+.heroContent {
+  width: min(100%, 330px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* Tablet */
+@media (min-width: 640px) {
+  .hero {
+    height: clamp(520px, 62vw, 570px);
+  }
+
+  .heroBackground {
+    object-position: 54% center;
+  }
+
+  .heroOverlay {
+    background:
+      radial-gradient(
+        ellipse at 24% 40%,
+        rgba(255, 255, 255, 0.74) 0%,
+        rgba(255, 255, 255, 0.5) 26%,
+        rgba(255, 255, 255, 0.26) 50%,
+        rgba(255, 255, 255, 0.08) 72%,
+        rgba(255, 255, 255, 0) 100%
+      ),
+      linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.24) 0%,
+        rgba(255, 255, 255, 0.12) 18%,
+        rgba(255, 255, 255, 0.04) 35%,
+        rgba(255, 255, 255, 0) 48%
+      );
+  }
+
+  .heroInner {
+    align-items: center;
+    padding-top: 0;
+  }
+
+  .heroContent {
+    width: min(100%, 460px);
+    transform: translateY(-4px);
+  }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .hero {
+    height: clamp(430px, 31vw, 480px);
+  }
+
+  /* Shift scene slightly so Fuji sits between text and container */
+  .heroBackground {
+    object-position: 52% center;
+  }
+
+  .heroOverlay {
+    background:
+      radial-gradient(
+        ellipse at 22% 38%,
+        rgba(255, 255, 255, 0.78) 0%,
+        rgba(255, 255, 255, 0.56) 24%,
+        rgba(255, 255, 255, 0.3) 48%,
+        rgba(255, 255, 255, 0.1) 70%,
+        rgba(255, 255, 255, 0) 100%
+      ),
+      linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.28) 0%,
+        rgba(255, 255, 255, 0.16) 18%,
+        rgba(255, 255, 255, 0.06) 35%,
+        rgba(255, 255, 255, 0) 50%
+      );
+  }
+
+  .heroContent {
+    width: min(100%, 500px);
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 850px) {
+  .hero {
+    height: 430px;
+  }
+}
+
+/* Keep container fully in frame on ultra-wide */
+@media (min-width: 1600px) {
+  .heroBackground {
+    object-position: 50% center;
+  }
+}
