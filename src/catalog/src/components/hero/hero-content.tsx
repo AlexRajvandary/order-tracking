@@ -32,8 +32,8 @@ export function HeroContent() {
         </div>
       </div>
 
-      {/* Gap keeps the container visible; CTA has its own local frosted pad */}
-      <div className={`${styles.heroCtaPanel} mt-[200px] lg:mt-5`}>
+      {/* Mobile: pinned to hero bottom via flex; desktop: normal spacing */}
+      <div className={`${styles.heroCtaPanel} ${styles.heroCtaAnchor}`}>
         <div className={styles.heroCtaBackdrop} aria-hidden />
         <div className={styles.heroTextInner}>
           <Link

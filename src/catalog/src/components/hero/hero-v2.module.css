@@ -4,10 +4,9 @@
   overflow: hidden;
   margin: 0;
   background: #f6f4f2;
-  /* Mobile: taller so CTA + benefits fit after extra gap */
+  /* Explicit height so CTA can pin to bottom on every phone */
+  height: min(100dvh - 3.5rem, 800px);
   min-height: min(100dvh - 3.5rem, 800px);
-  height: auto;
-  padding-bottom: 44px;
 }
 
 .heroMedia {
@@ -68,6 +67,11 @@
   width: 100%;
 }
 
+/* Push CTA (+ benefits below) to the bottom of the hero on mobile/tablet */
+.heroCtaAnchor {
+  margin-top: auto;
+}
+
 .heroCtaBackdrop {
   position: absolute;
   z-index: 0;
@@ -88,22 +92,26 @@
 }
 
 .heroInner {
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 2;
-  width: min(calc(100% - 32px), 72rem);
-  margin-inline: auto;
   display: flex;
-  align-items: flex-start;
-  padding-top: 24px;
-  padding-bottom: 8px;
+  align-items: stretch;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 24px 16px 44px;
 }
 
 .heroContent {
   width: 100%;
-  max-width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  height: 100%;
+  min-height: 0;
 }
 
 /* Tablet — still uses mobile hero image (< 1024px) */
@@ -111,7 +119,6 @@
   .hero {
     height: clamp(650px, 76vw, 730px);
     min-height: 0;
-    padding-bottom: 0;
   }
 
   .heroBackground {
@@ -119,15 +126,12 @@
   }
 
   .heroInner {
-    height: 100%;
-    align-items: flex-start;
-    padding-top: 36px;
-    padding-bottom: 24px;
-    width: min(calc(100% - 40px), 72rem);
+    padding: 36px 20px 24px;
   }
 
   .heroContent {
     width: min(100%, 460px);
+    margin-inline: 0;
     transform: none;
   }
 }
@@ -174,11 +178,17 @@
     align-items: center;
     padding-top: 0;
     padding-bottom: 0;
+    padding-inline: max(20px, calc((100% - 72rem) / 2));
   }
 
   .heroContent {
     width: min(100%, 500px);
+    height: auto;
     transform: translateY(-4px);
+  }
+
+  .heroCtaAnchor {
+    margin-top: 20px;
   }
 }
 
