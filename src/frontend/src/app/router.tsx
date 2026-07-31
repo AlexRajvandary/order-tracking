@@ -1,5 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import { HomePage } from '@/pages/HomePage'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { LoginPage } from '@/pages/admin/LoginPage'
 import { DashboardPage } from '@/pages/admin/DashboardPage'
@@ -25,7 +24,8 @@ export function AppRouter() {
       <AuthProvider>
         <AdminRealtime />
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          {/* Storefront lives on Next.js at domain root; SPA root is unused. */}
+          <Route path="/" element={<Navigate to="/admin/login" replace />} />
 
           <Route path="/track" element={<TrackingPage />} />
           <Route path="/track/:code" element={<TrackingPage />} />

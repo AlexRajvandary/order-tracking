@@ -18,12 +18,6 @@
     "logout": "Log out",
     "menu": "Menu"
   },
-  "home": {
-    "title": "Order Tracking System",
-    "subtitle": "Internal CRM for order management and public QR-based tracking.",
-    "adminLogin": "Administrator login",
-    "trackOrder": "Track order"
-  },
   "notFound": {
     "title": "Page not found",
     "description": "The page you requested does not exist.",
