@@ -50,21 +50,21 @@ export function HeroBenefitItem({
   return (
     <div
       className={cn(
-        "relative flex min-w-0 items-center gap-2 px-[11px]",
+        "relative flex min-w-0 items-center gap-1 px-1 sm:gap-2 sm:px-[11px]",
         showDivider &&
           "lg:after:absolute lg:after:top-1/2 lg:after:right-0 lg:after:h-8 lg:after:w-px lg:after:-translate-y-1/2 lg:after:bg-[rgba(17,17,17,0.09)] lg:after:content-['']",
       )}
     >
       <Icon
-        className="size-5 shrink-0 text-[#F24676]"
+        className="size-3.5 shrink-0 text-[#F24676] sm:size-5"
         strokeWidth={1.8}
         aria-hidden
       />
       <div className="min-w-0">
-        <p className="text-[12px] font-[650] leading-[1.15] text-balance text-[#171717] hyphens-none [overflow-wrap:normal]">
+        <p className="text-[11px] font-[650] leading-[1.15] text-balance text-[#171717] hyphens-none [overflow-wrap:normal] sm:text-[12px]">
           {benefit.title}
         </p>
-        <p className="mt-0.5 text-[10px] leading-[1.2] text-[#777777] text-balance hyphens-none [overflow-wrap:normal]">
+        <p className="mt-0.5 text-[9.5px] leading-[1.2] text-[#777777] text-balance hyphens-none [overflow-wrap:normal] sm:text-[10px]">
           {benefit.description}
         </p>
       </div>
@@ -80,11 +80,11 @@ export function HeroBenefits({ className }: HeroBenefitsProps) {
   return (
     <div
       className={cn(
-        "w-[min(620px,calc(100vw-40px))] min-h-[68px] rounded-[14px] border border-[rgba(17,17,17,0.07)] bg-[rgba(255,255,255,0.90)] px-[14px] py-3 shadow-[0_10px_30px_rgba(0,0,0,0.07)] backdrop-blur-[8px]",
+        "w-full max-w-full rounded-[14px] border border-[rgba(17,17,17,0.07)] bg-[rgba(255,255,255,0.92)] px-2 py-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.07)] backdrop-blur-[8px] sm:min-h-[68px] sm:w-[min(620px,calc(100vw-40px))] sm:px-[14px] sm:py-3",
         className,
       )}
     >
-      <div className="grid grid-cols-2 gap-x-1 gap-y-3 lg:grid-cols-4 lg:items-center lg:gap-0">
+      <div className="grid grid-cols-2 gap-x-0 gap-y-1.5 sm:gap-x-1 sm:gap-y-3 lg:grid-cols-4 lg:items-center lg:gap-0">
         {HERO_BENEFITS.map((benefit, index) => (
           <HeroBenefitItem
             key={benefit.title}

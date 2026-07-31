@@ -110,7 +110,7 @@ function FooterColumnDesktop({ column }: { column: FooterColumn }) {
 function FooterColumnMobile({ column }: { column: FooterColumn }) {
   return (
     <details className="group border-b border-white/10 py-1 open:pb-4">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-4 text-left text-2xl font-bold text-white [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3.5 text-left text-lg font-bold text-white sm:py-4 sm:text-2xl [&::-webkit-details-marker]:hidden">
         {column.title}
         <ChevronDown
           className="size-5 shrink-0 text-white/70 transition-transform duration-200 group-open:rotate-180"
@@ -138,7 +138,7 @@ function VkIcon({ className }: { className?: string }) {
 export function Footer() {
   return (
     <footer className="mt-auto bg-black text-white">
-      <div className="mx-auto w-full max-w-[1280px] px-8 py-[72px]">
+      <div className="mx-auto w-full max-w-[1280px] px-4 py-12 sm:px-8 sm:py-[72px]">
         {/* Desktop / tablet grid */}
         <div className="hidden gap-x-14 gap-y-5 md:grid md:grid-cols-2 lg:grid-cols-5 lg:gap-x-16">
           {FOOTER_COLUMNS.map((column) => (
@@ -153,13 +153,13 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-14 border-t border-white/15 pt-8">
-          <div className="flex flex-col items-center gap-5 text-sm text-white/70 sm:flex-row sm:justify-between">
+        <div className="mt-10 border-t border-white/15 pt-6 sm:mt-14 sm:pt-8">
+          <div className="flex flex-col items-center gap-4 text-sm text-white/70 sm:flex-row sm:justify-between sm:gap-5">
             <p className="shrink-0 text-white/80">© 2026 THE GET</p>
 
             <nav
               aria-label="Соцсети"
-              className="flex items-center gap-5"
+              className="flex flex-wrap items-center justify-center gap-4 sm:gap-5"
             >
               <Link
                 href="https://t.me/theget"

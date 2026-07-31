@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { HeroContent } from "@/components/hero/hero-content";
 import styles from "@/components/hero/hero-v2.module.css";
 
@@ -6,15 +5,16 @@ export function HeroV2() {
   return (
     <section aria-label="The Get" className={styles.hero}>
       <div className={styles.heroMedia}>
-        <Image
-          src="/hero-wide-v3.png"
-          alt=""
-          fill
-          priority
-          unoptimized
-          sizes="100vw"
-          className={styles.heroBackground}
-        />
+        <picture>
+          <source media="(min-width: 1024px)" srcSet="/hero-wide-v3.png" />
+          <img
+            src="/hero-mobile.png"
+            alt=""
+            className={styles.heroBackground}
+            fetchPriority="high"
+            decoding="async"
+          />
+        </picture>
       </div>
 
       <div className={styles.heroOverlay} aria-hidden />

@@ -4,8 +4,10 @@
   overflow: hidden;
   margin: 0;
   background: #f6f4f2;
-  /* Mobile first */
-  height: clamp(650px, 175vw, 720px);
+  /* Mobile: taller so CTA + benefits fit after extra gap */
+  min-height: min(100dvh - 3.5rem, 800px);
+  height: auto;
+  padding-bottom: 44px;
 }
 
 .heroMedia {
@@ -13,94 +15,120 @@
   inset: 0;
 }
 
+.heroMedia picture {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .heroBackground {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  object-position: 62% center;
+  /* Slightly lower framing — less aggressive upward shift */
+  object-position: center 26%;
 }
 
 .heroOverlay {
-  position: absolute;
-  inset: 0;
+  /* Mobile/tablet: no full-bleed wash — container stays vivid */
+  display: none;
   pointer-events: none;
   z-index: 1;
-  /* Mobile: soft radial behind content + light vertical wash for readability */
-  background:
-    radial-gradient(
-      ellipse at 28% 28%,
-      rgba(255, 255, 255, 0.72) 0%,
-      rgba(255, 255, 255, 0.42) 28%,
-      rgba(255, 255, 255, 0.16) 52%,
-      rgba(255, 255, 255, 0) 78%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.22) 0%,
-      rgba(255, 255, 255, 0.08) 45%,
-      rgba(255, 255, 255, 0) 72%
-    ),
-    linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.22) 0%,
-      rgba(255, 255, 255, 0.1) 30%,
-      rgba(255, 255, 255, 0) 55%
-    );
+}
+
+/* Localized frosted panel behind badge / heading / description */
+.heroTextPanel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.heroTextBackdrop {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  top: -18px;
+  right: -14px;
+  bottom: -22px;
+  left: -14px;
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.82);
+  filter: blur(48px);
+  opacity: 0.95;
+}
+
+.heroCtaPanel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.heroCtaBackdrop {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  top: -14px;
+  right: -10px;
+  bottom: -14px;
+  left: -10px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.78);
+  filter: blur(40px);
+  opacity: 0.92;
+}
+
+.heroTextInner {
+  position: relative;
+  z-index: 1;
 }
 
 .heroInner {
   position: relative;
   z-index: 2;
-  height: 100%;
-  width: min(calc(100% - 40px), 72rem);
+  width: min(calc(100% - 32px), 72rem);
   margin-inline: auto;
   display: flex;
   align-items: flex-start;
-  padding-top: 28px;
+  padding-top: 24px;
+  padding-bottom: 8px;
 }
 
 .heroContent {
-  width: min(100%, 330px);
+  width: 100%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
 }
 
-/* Tablet */
+/* Tablet — still uses mobile hero image (< 1024px) */
 @media (min-width: 640px) {
   .hero {
-    height: clamp(520px, 62vw, 570px);
+    height: clamp(650px, 76vw, 730px);
+    min-height: 0;
+    padding-bottom: 0;
   }
 
   .heroBackground {
-    object-position: 54% center;
-  }
-
-  .heroOverlay {
-    background:
-      radial-gradient(
-        ellipse at 24% 40%,
-        rgba(255, 255, 255, 0.74) 0%,
-        rgba(255, 255, 255, 0.5) 26%,
-        rgba(255, 255, 255, 0.26) 50%,
-        rgba(255, 255, 255, 0.08) 72%,
-        rgba(255, 255, 255, 0) 100%
-      ),
-      linear-gradient(
-        90deg,
-        rgba(255, 255, 255, 0.24) 0%,
-        rgba(255, 255, 255, 0.12) 18%,
-        rgba(255, 255, 255, 0.04) 35%,
-        rgba(255, 255, 255, 0) 48%
-      );
+    object-position: center 24%;
   }
 
   .heroInner {
-    align-items: center;
-    padding-top: 0;
+    height: 100%;
+    align-items: flex-start;
+    padding-top: 36px;
+    padding-bottom: 24px;
+    width: min(calc(100% - 40px), 72rem);
   }
 
   .heroContent {
     width: min(100%, 460px);
-    transform: translateY(-4px);
+    transform: none;
   }
 }
 
@@ -110,12 +138,14 @@
     height: clamp(430px, 31vw, 480px);
   }
 
-  /* Shift scene slightly so Fuji sits between text and container */
   .heroBackground {
     object-position: 52% center;
   }
 
   .heroOverlay {
+    display: block;
+    position: absolute;
+    inset: 0;
     background:
       radial-gradient(
         ellipse at 22% 38%,
@@ -134,8 +164,21 @@
       );
   }
 
+  /* Desktop keeps the previous full-bleed overlay — hide local panels */
+  .heroTextBackdrop,
+  .heroCtaBackdrop {
+    display: none;
+  }
+
+  .heroInner {
+    align-items: center;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
   .heroContent {
     width: min(100%, 500px);
+    transform: translateY(-4px);
   }
 }
 
@@ -145,7 +188,6 @@
   }
 }
 
-/* Keep container fully in frame on ultra-wide */
 @media (min-width: 1600px) {
   .heroBackground {
     object-position: 50% center;

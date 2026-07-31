@@ -67,7 +67,7 @@ export function PopularCategoryCard({ category }: PopularCategoryCardProps) {
     <Link
       href={category.href}
       className={cn(
-        "group relative block h-[240px] min-w-[220px] flex-none snap-start overflow-hidden rounded-[28px]",
+        "group relative block h-[220px] min-w-[min(78vw,260px)] flex-none snap-start overflow-hidden rounded-[24px] sm:h-[240px] sm:min-w-[220px] sm:rounded-[28px]",
         "border border-[rgba(15,23,42,0.05)]",
         "shadow-[0_8px_24px_rgba(15,23,42,0.05)]",
         "transition-[transform,box-shadow] duration-[250ms] ease",
@@ -113,17 +113,17 @@ export function PopularCategories({ className }: PopularCategoriesProps) {
         className,
       )}
     >
-      <div className="mb-8 flex items-end justify-between gap-4 sm:mb-10">
-        <h2 className="flex items-center gap-3 text-[32px] font-bold tracking-tight text-[#111] sm:text-[40px]">
+      <div className="mb-5 flex items-end justify-between gap-3 sm:mb-10 sm:gap-4">
+        <h2 className="flex min-w-0 items-center gap-2.5 text-[24px] font-bold tracking-tight text-[#111] sm:gap-3 sm:text-[40px]">
           <span
             className="inline-block h-[0.85em] w-1 shrink-0 rounded-full bg-[#F24676]"
             aria-hidden
           />
-          Популярные категории
+          <span className="min-w-0 leading-tight">Популярные категории</span>
         </h2>
         <Link
           href="/#figures"
-          className="group inline-flex shrink-0 items-center gap-1 text-[15px] text-[#666] transition-colors duration-200 hover:text-[#F24676]"
+          className="group inline-flex shrink-0 items-center gap-1 text-[13px] text-[#666] transition-colors duration-200 hover:text-[#F24676] sm:text-[15px]"
         >
           Смотреть все
           <span
@@ -136,7 +136,7 @@ export function PopularCategories({ className }: PopularCategoriesProps) {
       </div>
 
       {/* Mobile: horizontal scroll */}
-      <div className="flex gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory sm:hidden [&::-webkit-scrollbar]:hidden">
+      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory sm:mx-0 sm:hidden sm:px-0 [&::-webkit-scrollbar]:hidden">
         {POPULAR_CATEGORIES.map((category) => (
           <PopularCategoryCard key={category.id} category={category} />
         ))}
