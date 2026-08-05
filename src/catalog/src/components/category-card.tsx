@@ -19,13 +19,20 @@ export function CategoryCard({ item, sectionId }: CategoryCardProps) {
       )}
     >
       <span className="flex h-[72px] w-full shrink-0 items-center justify-center sm:h-[100px]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={item.imageUrl}
-          alt=""
-          loading="lazy"
-          className="max-h-[72px] max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.06] sm:max-h-[100px]"
-        />
+        {item.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.imageUrl}
+            alt=""
+            loading="lazy"
+            className="max-h-[72px] max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.06] sm:max-h-[100px]"
+          />
+        ) : (
+          <span
+            className="size-14 rounded-full bg-[#F4F4F5] sm:size-16"
+            aria-hidden
+          />
+        )}
       </span>
       <span className="mt-3 flex min-h-[40px] w-full items-start justify-center sm:mt-5 sm:min-h-[48px]">
         <span className="line-clamp-2 text-center text-[13px] font-semibold leading-snug text-[#111] transition-colors duration-200 group-hover:text-[#F24676] sm:text-lg">

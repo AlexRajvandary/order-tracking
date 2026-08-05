@@ -31,7 +31,7 @@ function productsApiBaseUrl(): string {
   return (
     process.env.PRODUCTS_API_BASE_URL?.replace(/\/$/, "") ||
     process.env.NEXT_PUBLIC_PRODUCTS_API_BASE_URL?.replace(/\/$/, "") ||
-    "https://87-242-65-184.sslip.io"
+    "https://89-127-208-99.sslip.io"
   );
 }
 

@@ -281,8 +281,8 @@ export const LEGACY_CATEGORY_SECTIONS: CategorySection[] = [
   },
 ];
 
-/** Active catalog sections — empty until Categories API. */
-export const categorySections: CategorySection[] = [];
+/** Active catalog sections on the homepage (ZenMarket-style grids). */
+export const categorySections: CategorySection[] = LEGACY_CATEGORY_SECTIONS;
 
 export function findCategoryItem(
   sectionId: string,
@@ -291,14 +291,13 @@ export function findCategoryItem(
   section: CategorySection;
   item: CategoryItem;
 } | null {
-  const section = LEGACY_CATEGORY_SECTIONS.find((x) => x.id === sectionId);
+  const section = categorySections.find((x) => x.id === sectionId);
   if (!section) return null;
   const found = section.items.find((x) => x.slug === slug);
   if (!found) return null;
   return { section, item: found };
 }
 
-export function getCategorySection(_id: string): CategorySection | undefined {
-  // Hardcoded grids disabled until Categories API.
-  return undefined;
+export function getCategorySection(id: string): CategorySection | undefined {
+  return categorySections.find((x) => x.id === id);
 }

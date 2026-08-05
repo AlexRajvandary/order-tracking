@@ -16,6 +16,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { CatalogPagination } from "@/components/catalog-pagination";
+import { CategoryTree } from "@/components/category-tree";
+import type { ApiCategory } from "@/lib/categories-api";
 import type { CatalogProduct } from "@/lib/catalog-products";
 import { cn } from "@/lib/utils";
 
@@ -36,8 +38,10 @@ type CatalogBrowserProps = {
   imageUrl?: string;
   backHref: string;
   backLabel: string;
-  /** Show subcategory filter chips when browsing a whole section */
-  subcategoryOptions?: Array<{ slug: string; label: string }>;
+  /** Category tree from Products API */
+  categoryTree?: ApiCategory[];
+  activeRootSlug?: string;
+  activeChildSlug?: string;
   /** Server-side pagination (Products API). When set, `products` is the current page. */
   pagination?: {
     page: number;
@@ -56,13 +60,13 @@ type FilterPanelProps = {
   setMaxPrice: (value: string) => void;
   inStockOnly: boolean;
   setInStockOnly: (value: boolean) => void;
-  subcategory: string;
-  setSubcategory: (value: string) => void;
   absMin: number;
   absMax: number;
   activeCount: number;
   resetFilters: () => void;
-  subcategoryOptions?: Array<{ slug: string; label: string }>;
+  categoryTree?: ApiCategory[];
+  activeRootSlug?: string;
+  activeChildSlug?: string;
   idPrefix: string;
 };
 
@@ -75,17 +79,34 @@ function FilterPanel({
   setMaxPrice,
   inStockOnly,
   setInStockOnly,
-  subcategory,
-  setSubcategory,
   absMin,
   absMax,
   activeCount,
   resetFilters,
-  subcategoryOptions,
+  categoryTree,
+  activeRootSlug,
+  activeChildSlug,
   idPrefix,
 }: FilterPanelProps) {
   return (
     <div className="space-y-5">
+      {categoryTree && categoryTree.length > 0 ? (
+        <div className="space-y-2.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Категории
+          </p>
+          <div className="max-h-[min(52vh,28rem)] overflow-y-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
+            <CategoryTree
+              categories={categoryTree}
+              activeRootSlug={activeRootSlug}
+              activeChildSlug={activeChildSlug}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {categoryTree && categoryTree.length > 0 ? <Separator /> : null}
+
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold tracking-tight">Фильтры</h2>
         <Button
@@ -98,8 +119,6 @@ function FilterPanel({
           Сбросить
         </Button>
       </div>
-
-      <Separator />
 
       <div className="space-y-2">
         <label
@@ -147,43 +166,6 @@ function FilterPanel({
         />
         Только в наличии
       </label>
-
-      {subcategoryOptions && subcategoryOptions.length > 0 ? (
-        <div className="space-y-2.5">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Подкатегория
-          </p>
-          <div className="flex flex-col gap-1">
-            <button
-              type="button"
-              onClick={() => setSubcategory("all")}
-              className={cn(
-                "rounded-md px-2.5 py-2 text-left text-sm transition",
-                subcategory === "all"
-                  ? "bg-[#111827] font-medium text-white"
-                  : "text-foreground hover:bg-muted",
-              )}
-            >
-              Все
-            </button>
-            {subcategoryOptions.map((opt) => (
-              <button
-                key={opt.slug}
-                type="button"
-                onClick={() => setSubcategory(opt.slug)}
-                className={cn(
-                  "rounded-md px-2.5 py-2 text-left text-sm transition",
-                  subcategory === opt.slug
-                    ? "bg-[#111827] font-medium text-white"
-                    : "text-foreground hover:bg-muted",
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -278,7 +260,9 @@ export function CatalogBrowser({
   imageUrl,
   backHref,
   backLabel,
-  subcategoryOptions,
+  categoryTree,
+  activeRootSlug,
+  activeChildSlug,
   pagination,
 }: CatalogBrowserProps) {
   const prices = products.map((p) => p.priceRub);
@@ -291,7 +275,6 @@ export function CatalogBrowser({
   const [maxPrice, setMaxPrice] = useState("");
   const [inStockOnly, setInStockOnly] = useState(false);
   const [sort, setSort] = useState<SortOption>("relevance");
-  const [subcategory, setSubcategory] = useState<string>("all");
   const [gridCols, setGridCols] = useState<GridCols>(3);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
@@ -301,7 +284,6 @@ export function CatalogBrowser({
     const max = maxPrice ? Number(maxPrice) : null;
 
     let list = products.filter((p) => {
-      if (subcategory !== "all" && p.categorySlug !== subcategory) return false;
       if (inStockOnly && !p.inStock) return false;
       if (min != null && !Number.isNaN(min) && p.priceRub < min) return false;
       if (max != null && !Number.isNaN(max) && p.priceRub > max) return false;
@@ -318,14 +300,13 @@ export function CatalogBrowser({
     if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, "ru"));
 
     return list;
-  }, [products, query, minPrice, maxPrice, inStockOnly, sort, subcategory]);
+  }, [products, query, minPrice, maxPrice, inStockOnly, sort]);
 
   function resetFilters() {
     setQuery("");
     setMinPrice("");
     setMaxPrice("");
     setInStockOnly(false);
-    setSubcategory("all");
   }
 
   const activeCount = [
@@ -333,7 +314,6 @@ export function CatalogBrowser({
     minPrice ? 1 : 0,
     maxPrice ? 1 : 0,
     inStockOnly ? 1 : 0,
-    subcategory !== "all" ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
   const filterProps: Omit<FilterPanelProps, "idPrefix"> = {
@@ -345,13 +325,13 @@ export function CatalogBrowser({
     setMaxPrice,
     inStockOnly,
     setInStockOnly,
-    subcategory,
-    setSubcategory,
     absMin,
     absMax,
     activeCount,
     resetFilters,
-    subcategoryOptions,
+    categoryTree,
+    activeRootSlug,
+    activeChildSlug,
   };
 
   return (
@@ -373,7 +353,7 @@ export function CatalogBrowser({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="hidden h-fit rounded-xl border border-[#E5E7EB] bg-white p-5 lg:sticky lg:top-20 lg:block">
           <FilterPanel {...filterProps} idPrefix="desktop" />
         </aside>
@@ -492,8 +472,8 @@ export function CatalogBrowser({
       <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
         <SheetContent side="left" className="w-[min(100%,20rem)] gap-0 p-0">
           <SheetHeader className="border-b border-[#E5E7EB]">
-            <SheetTitle>Фильтры</SheetTitle>
-            <SheetDescription>Уточните подборку товаров</SheetDescription>
+            <SheetTitle>Категории и фильтры</SheetTitle>
+            <SheetDescription>Выберите раздел и уточните подборку</SheetDescription>
           </SheetHeader>
           <div className="overflow-y-auto p-4">
             <FilterPanel {...filterProps} idPrefix="mobile" />

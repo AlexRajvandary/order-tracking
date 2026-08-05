@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import { CatalogBrowser } from "@/components/catalog-browser";
 import { SiteHeader } from "@/components/site-header";
-// Hardcoded categories.ts — disabled.
-// import { findCategoryItem } from "@/lib/categories";
-// import { listProductsForCategoryItem } from "@/lib/catalog-products";
+import {
+  fetchCategoryTree,
+  findChildCategory,
+  findRootCategory,
+} from "@/lib/categories-api";
 import {
   fetchBagsCatalogPage,
   PRODUCTS_PAGE_SIZE,
@@ -27,32 +29,42 @@ export default async function CategoryItemPage({
   const { page: pageParam } = await searchParams;
   const page = parsePage(pageParam);
 
-  // Hardcoded subcategory grids disabled; bags list lives at /categories/bags.
-  if (sectionId !== "bags") {
-    notFound();
-  }
+  const categoryTree = await fetchCategoryTree();
+  const root = findRootCategory(categoryTree, sectionId);
+  if (!root) notFound();
 
-  const bags = await fetchBagsCatalogPage({
-    page,
-    pageSize: PRODUCTS_PAGE_SIZE,
-  });
+  const child = findChildCategory(root, slug);
+  if (!child) notFound();
+
+  const catalog =
+    sectionId === "bags"
+      ? await fetchBagsCatalogPage({ page, pageSize: PRODUCTS_PAGE_SIZE })
+      : { products: [], total: 0, page: 1, pageSize: PRODUCTS_PAGE_SIZE };
 
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <main className="mx-auto max-w-6xl flex-1 px-4 py-6">
         <CatalogBrowser
-          products={bags.products}
-          title="Сумки"
-          subtitle="Products API"
-          backHref="/categories/bags"
-          backLabel="Сумки"
-          pagination={{
-            page: bags.page,
-            pageSize: bags.pageSize,
-            total: bags.total,
-            basePath: `/categories/bags/${slug}`,
-          }}
+          products={catalog.products}
+          title={child.name}
+          subtitle={root.name}
+          imageUrl={child.imageUrl ?? undefined}
+          backHref={`/categories/${root.slug}`}
+          backLabel={root.name}
+          categoryTree={categoryTree}
+          activeRootSlug={root.slug}
+          activeChildSlug={child.slug}
+          pagination={
+            sectionId === "bags"
+              ? {
+                  page: catalog.page,
+                  pageSize: catalog.pageSize,
+                  total: catalog.total,
+                  basePath: `/categories/${root.slug}/${child.slug}`,
+                }
+              : undefined
+          }
         />
       </main>
     </div>
