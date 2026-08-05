@@ -19,8 +19,11 @@ type CatalogPaginationProps = {
 };
 
 function buildHref(basePath: string, page: number): string {
-  if (page <= 1) return basePath;
-  return `${basePath}?page=${page}`;
+  const url = new URL(basePath, "http://local.invalid");
+  if (page <= 1) url.searchParams.delete("page");
+  else url.searchParams.set("page", String(page));
+  const search = url.searchParams.toString();
+  return search ? `${url.pathname}?${search}` : url.pathname;
 }
 
 function pageItems(current: number, totalPages: number): Array<number | "ellipsis"> {

@@ -6,8 +6,14 @@ import { LayoutGrid, ListFilter, Rows3, ChevronDown, Check } from "lucide-react"
 import { ProductCard } from "@/components/product-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderThumb,
+  SliderTrack,
+} from "@/components/ui/slider";
 import {
   Sheet,
   SheetContent,
@@ -31,6 +37,19 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "name", label: "По названию" },
 ];
 
+function formatRub(value: number): string {
+  return value.toLocaleString("ru-RU");
+}
+
+function priceStep(min: number, max: number): number {
+  const span = max - min;
+  if (span <= 0) return 1;
+  if (span > 50_000) return 500;
+  if (span > 10_000) return 100;
+  if (span > 1_000) return 10;
+  return 1;
+}
+
 type CatalogBrowserProps = {
   products: CatalogProduct[];
   title: string;
@@ -52,14 +71,8 @@ type CatalogBrowserProps = {
 };
 
 type FilterPanelProps = {
-  query: string;
-  setQuery: (value: string) => void;
-  minPrice: string;
-  setMinPrice: (value: string) => void;
-  maxPrice: string;
-  setMaxPrice: (value: string) => void;
-  inStockOnly: boolean;
-  setInStockOnly: (value: boolean) => void;
+  priceRange: [number, number];
+  setPriceRange: (value: [number, number]) => void;
   absMin: number;
   absMax: number;
   activeCount: number;
@@ -67,18 +80,11 @@ type FilterPanelProps = {
   categoryTree?: ApiCategory[];
   activeRootSlug?: string;
   activeChildSlug?: string;
-  idPrefix: string;
 };
 
 function FilterPanel({
-  query,
-  setQuery,
-  minPrice,
-  setMinPrice,
-  maxPrice,
-  setMaxPrice,
-  inStockOnly,
-  setInStockOnly,
+  priceRange,
+  setPriceRange,
   absMin,
   absMax,
   activeCount,
@@ -86,8 +92,10 @@ function FilterPanel({
   categoryTree,
   activeRootSlug,
   activeChildSlug,
-  idPrefix,
 }: FilterPanelProps) {
+  const canSlide = absMax > absMin;
+  const step = priceStep(absMin, absMax);
+
   return (
     <div className="space-y-5">
       {categoryTree && categoryTree.length > 0 ? (
@@ -120,52 +128,45 @@ function FilterPanel({
         </Button>
       </div>
 
-      <div className="space-y-2">
-        <label
-          htmlFor={`${idPrefix}-search`}
-          className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-        >
-          Поиск
-        </label>
-        <Input
-          id={`${idPrefix}-search`}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Название, тег…"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Цена, ₽
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <Input
-            inputMode="numeric"
-            placeholder={`от ${absMin}`}
-            value={minPrice}
-            onChange={(e) => setMinPrice(e.target.value.replace(/[^\d]/g, ""))}
-            aria-label="Цена от"
-          />
-          <Input
-            inputMode="numeric"
-            placeholder={`до ${absMax}`}
-            value={maxPrice}
-            onChange={(e) => setMaxPrice(e.target.value.replace(/[^\d]/g, ""))}
-            aria-label="Цена до"
-          />
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Цена, ₽
+          </p>
+          <p className="text-xs tabular-nums text-muted-foreground">
+            {formatRub(priceRange[0])} – {formatRub(priceRange[1])}
+          </p>
         </div>
-      </div>
 
-      <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-transparent px-1 py-1 text-sm transition hover:bg-muted/50">
-        <input
-          type="checkbox"
-          checked={inStockOnly}
-          onChange={(e) => setInStockOnly(e.target.checked)}
-          className="size-4 accent-foreground"
-        />
-        Только в наличии
-      </label>
+        {canSlide ? (
+          <Slider
+            value={priceRange}
+            onValueChange={(value) => {
+              if (Array.isArray(value) && value.length >= 2) {
+                setPriceRange([value[0], value[1]]);
+              }
+            }}
+            min={absMin}
+            max={absMax}
+            step={step}
+            minStepsBetweenValues={1}
+            thumbCollisionBehavior="none"
+            thumbAlignment="edge"
+          >
+            <SliderControl>
+              <SliderTrack>
+                <SliderIndicator />
+                <SliderThumb index={0} aria-label="Цена от" />
+                <SliderThumb index={1} aria-label="Цена до" />
+              </SliderTrack>
+            </SliderControl>
+          </Slider>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {absMax > 0 ? `${formatRub(absMin)} ₽` : "Нет товаров для фильтра"}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -270,27 +271,20 @@ export function CatalogBrowser({
   const absMax = prices.length ? Math.max(...prices) : 0;
   const totalCount = pagination?.total ?? products.length;
 
-  const [query, setQuery] = useState("");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [inStockOnly, setInStockOnly] = useState(false);
+  const [priceRange, setPriceRange] = useState<[number, number]>([absMin, absMax]);
   const [sort, setSort] = useState<SortOption>("relevance");
   const [gridCols, setGridCols] = useState<GridCols>(3);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
+  useEffect(() => {
+    setPriceRange([absMin, absMax]);
+  }, [absMin, absMax]);
+
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const min = minPrice ? Number(minPrice) : null;
-    const max = maxPrice ? Number(maxPrice) : null;
+    const [min, max] = priceRange;
 
     let list = products.filter((p) => {
-      if (inStockOnly && !p.inStock) return false;
-      if (min != null && !Number.isNaN(min) && p.priceRub < min) return false;
-      if (max != null && !Number.isNaN(max) && p.priceRub > max) return false;
-      if (q) {
-        const hay = `${p.name} ${p.shortDescription} ${p.category} ${p.tags.join(" ")}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
+      if (p.priceRub < min || p.priceRub > max) return false;
       return true;
     });
 
@@ -300,31 +294,18 @@ export function CatalogBrowser({
     if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, "ru"));
 
     return list;
-  }, [products, query, minPrice, maxPrice, inStockOnly, sort]);
+  }, [products, priceRange, sort]);
 
   function resetFilters() {
-    setQuery("");
-    setMinPrice("");
-    setMaxPrice("");
-    setInStockOnly(false);
+    setPriceRange([absMin, absMax]);
   }
 
-  const activeCount = [
-    query.trim() ? 1 : 0,
-    minPrice ? 1 : 0,
-    maxPrice ? 1 : 0,
-    inStockOnly ? 1 : 0,
-  ].reduce((a, b) => a + b, 0);
+  const activeCount =
+    priceRange[0] > absMin || priceRange[1] < absMax ? 1 : 0;
 
-  const filterProps: Omit<FilterPanelProps, "idPrefix"> = {
-    query,
-    setQuery,
-    minPrice,
-    setMinPrice,
-    maxPrice,
-    setMaxPrice,
-    inStockOnly,
-    setInStockOnly,
+  const filterProps: FilterPanelProps = {
+    priceRange,
+    setPriceRange,
     absMin,
     absMax,
     activeCount,
@@ -355,7 +336,7 @@ export function CatalogBrowser({
 
       <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="hidden h-fit rounded-xl border border-[#E5E7EB] bg-white p-5 lg:sticky lg:top-20 lg:block">
-          <FilterPanel {...filterProps} idPrefix="desktop" />
+          <FilterPanel {...filterProps} />
         </aside>
 
         <div className="min-w-0 space-y-4">
@@ -476,7 +457,7 @@ export function CatalogBrowser({
             <SheetDescription>Выберите раздел и уточните подборку</SheetDescription>
           </SheetHeader>
           <div className="overflow-y-auto p-4">
-            <FilterPanel {...filterProps} idPrefix="mobile" />
+            <FilterPanel {...filterProps} />
           </div>
           <div className="mt-auto border-t border-[#E5E7EB] p-4">
             <Button

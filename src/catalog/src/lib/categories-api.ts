@@ -46,17 +46,28 @@ export function findRootCategory(
   tree: ApiCategory[],
   slug: string,
 ): ApiCategory | undefined {
-  return tree.find((c) => c.slug === slug);
+  const key = safeDecode(slug);
+  return tree.find((c) => c.slug === key);
 }
 
 export function findChildCategory(
   root: ApiCategory,
   childSlug: string,
 ): ApiCategory | undefined {
-  return root.children.find((c) => c.slug === childSlug);
+  const key = safeDecode(childSlug);
+  return root.children.find((c) => c.slug === key);
+}
+
+export function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 export function categoryHref(rootSlug: string, childSlug?: string): string {
-  if (childSlug) return `/categories/${rootSlug}/${childSlug}`;
-  return `/categories/${rootSlug}`;
+  if (!childSlug) return `/categories/${rootSlug}`;
+  // Cyrillic path segments break on some proxies → keep sub in query string.
+  return `/categories/${rootSlug}?sub=${encodeURIComponent(childSlug)}`;
 }

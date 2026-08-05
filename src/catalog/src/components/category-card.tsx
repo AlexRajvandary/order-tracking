@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { CategoryItem } from "@/lib/categories";
+import { categoryHref } from "@/lib/categories-api";
 
 type CategoryCardProps = {
   item: CategoryItem;
@@ -10,7 +11,7 @@ type CategoryCardProps = {
 export function CategoryCard({ item, sectionId }: CategoryCardProps) {
   return (
     <Link
-      href={`/categories/${sectionId}/${item.slug}`}
+      href={categoryHref(sectionId, item.slug)}
       className={cn(
         "group flex h-full cursor-pointer flex-col items-center rounded-[14px] border border-[#EFEFEF] bg-white p-3",
         "shadow-[0_8px_30px_rgba(0,0,0,0.04)] sm:rounded-[18px] sm:p-6",

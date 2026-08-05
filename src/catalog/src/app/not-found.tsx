@@ -16,8 +16,8 @@ export default function NotFound() {
       <main className="mx-auto flex max-w-lg flex-1 items-center px-4 py-16">
         <Card className="w-full">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold">Товар не найден</CardTitle>
-            <CardDescription>В демо-каталоге нет такой позиции.</CardDescription>
+            <CardTitle className="text-2xl font-bold">Страница не найдена</CardTitle>
+            <CardDescription>Такой страницы в каталоге нет.</CardDescription>
           </CardHeader>
           <CardFooter>
             <Button render={<Link href="/" />}>Вернуться в каталог</Button>
