@@ -6,8 +6,10 @@ export type PopularCategory = {
   title: string;
   caption: string;
   href: string;
-  image: string;
+  /** Optional — cards without photo use a soft color orb */
+  image?: string;
   gradient: string;
+  accent?: string;
 };
 
 export const POPULAR_CATEGORIES: PopularCategory[] = [
@@ -56,6 +58,125 @@ export const POPULAR_CATEGORIES: PopularCategory[] = [
       "https://static.zenmarket.jp/images/common-landing-pages/2w2225qn.twv",
     gradient: "linear-gradient(135deg, #EEF9F6 0%, #F8FCFB 100%)",
   },
+  // --- добавлены из Popular Categories (без дублей одежда / сумки / TCG / аниме≈фигурки) ---
+  {
+    id: "fishing",
+    title: "Рыболовные снасти",
+    caption: "Снасти и экипировка",
+    href: "/categories/sports",
+    image:
+      "https://static.zenmarket.jp/images/common-landing-pages/hyuw1ivd.3wq",
+    gradient: "linear-gradient(135deg, #E8F4FC 0%, #F3F9FD 100%)",
+    accent: "#3B82A0",
+  },
+  {
+    id: "stationery",
+    title: "Интерьер и канцелярия",
+    caption: "Дом и бумага",
+    href: "/categories/stationery",
+    image:
+      "https://static.zenmarket.jp/images/misc/f6c6cb508ddb40bda9aebf81f3baa944/p1hr8dgot11nqc17ns2el1pplfcl5.png",
+    gradient: "linear-gradient(135deg, #F3F0E8 0%, #FAF8F3 100%)",
+    accent: "#A89B7A",
+  },
+  {
+    id: "matcha",
+    title: "Чай матча",
+    caption: "Порошок и чай",
+    href: "/categories/beauty",
+    gradient: "linear-gradient(135deg, #EAF5E4 0%, #F5FAF2 100%)",
+    accent: "#5F8F4A",
+  },
+  {
+    id: "retro-consoles",
+    title: "Ретро-консоли",
+    caption: "Классика игр",
+    href: "/categories/instruments",
+    gradient: "linear-gradient(135deg, #ECE8F7 0%, #F6F4FB 100%)",
+    accent: "#6B5B95",
+  },
+  {
+    id: "books",
+    title: "Манга и книги",
+    caption: "Манга, новеллы, журналы",
+    href: "/categories/books",
+    image:
+      "https://static.zenmarket.jp/images/common-landing-pages/ba5o0wae.4hs",
+    gradient: "linear-gradient(135deg, #FCEEE8 0%, #FFF7F4 100%)",
+    accent: "#C45C3E",
+  },
+  {
+    id: "vinyl",
+    title: "Пластинки",
+    caption: "LP и винил",
+    href: "/categories/instruments",
+    gradient: "linear-gradient(135deg, #F5E9EC 0%, #FBF4F6 100%)",
+    accent: "#9B4D6A",
+  },
+  {
+    id: "watches",
+    title: "Часы",
+    caption: "Seiko, Orient, Casio",
+    href: "/categories/watches",
+    image:
+      "https://static.zenmarket.jp/images/misc/f6beb9e93e1248aaa55695fa600283d5/p1hpsu3j9nsdfu1uhkvaac6v912.png",
+    gradient: "linear-gradient(135deg, #E8EEF5 0%, #F4F7FB 100%)",
+    accent: "#4A5D73",
+  },
+  {
+    id: "beauty",
+    title: "Косметика и уход",
+    caption: "Кожа, волосы, тело",
+    href: "/categories/beauty",
+    image:
+      "https://static.zenmarket.jp/images/common-landing-pages/zeec1wic.brs",
+    gradient: "linear-gradient(135deg, #FCE8F0 0%, #FFF5F9 100%)",
+    accent: "#C45A7A",
+  },
+  {
+    id: "supplements",
+    title: "БАДы и добавки",
+    caption: "Красота и здоровье",
+    href: "/categories/beauty",
+    image:
+      "https://static.zenmarket.jp/images/common-landing-pages/323axv11.1qt",
+    gradient: "linear-gradient(135deg, #E9F6F0 0%, #F4FBF7 100%)",
+    accent: "#3D8F6E",
+  },
+  {
+    id: "instruments",
+    title: "Инструменты",
+    caption: "Гитары, клавиши, DJ",
+    href: "/categories/instruments",
+    image:
+      "https://static.zenmarket.jp/images/common-landing-pages/noootdcm.esx",
+    gradient: "linear-gradient(135deg, #FFF0E5 0%, #FFF8F2 100%)",
+    accent: "#C67B3A",
+  },
+  {
+    id: "cameras",
+    title: "Камеры",
+    caption: "Фото и оптика",
+    href: "/categories/instruments",
+    gradient: "linear-gradient(135deg, #E9EDF2 0%, #F5F7FA 100%)",
+    accent: "#5A6A7A",
+  },
+  {
+    id: "snacks",
+    title: "Снеки и сладости",
+    caption: "KitKat и сладости",
+    href: "/categories/beauty",
+    gradient: "linear-gradient(135deg, #FFF0E8 0%, #FFF8F3 100%)",
+    accent: "#D4895A",
+  },
+  {
+    id: "games",
+    title: "Игры",
+    caption: "PC и консоли",
+    href: "/categories/tcg",
+    gradient: "linear-gradient(135deg, #E8F0FF 0%, #F3F7FF 100%)",
+    accent: "#4A6FA5",
+  },
 ];
 
 type PopularCategoryCardProps = {
@@ -80,22 +201,33 @@ export function PopularCategoryCard({ category }: PopularCategoryCardProps) {
         <p className="text-[13px] font-normal leading-[1.35] text-[rgba(17,17,17,0.70)] sm:text-sm">
           {category.caption}
         </p>
-        <h3 className="mt-2 max-w-[62%] text-[clamp(24px,2vw,30px)] font-bold leading-[1.05] tracking-[-0.025em] text-[#111111]">
+        <h3 className="mt-2 max-w-[70%] text-[clamp(22px,2vw,28px)] font-bold leading-[1.05] tracking-[-0.025em] text-[#111111]">
           {category.title}
         </h3>
       </div>
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={category.image}
-        alt=""
-        loading="lazy"
-        className={cn(
-          "pointer-events-none absolute right-[-4%] bottom-[-6%] z-0 h-[78%] w-[78%] object-contain object-right-bottom",
-          "[filter:drop-shadow(0_8px_14px_rgba(15,23,42,0.08))]",
-          "transition-transform duration-300 ease group-hover:scale-[1.025]",
-        )}
-      />
+      {category.image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={category.image}
+          alt=""
+          loading="lazy"
+          className={cn(
+            "pointer-events-none absolute right-[-4%] bottom-[-6%] z-0 h-[78%] w-[78%] object-contain object-right-bottom",
+            "[filter:drop-shadow(0_8px_14px_rgba(15,23,42,0.08))]",
+            "transition-transform duration-300 ease group-hover:scale-[1.025]",
+          )}
+        />
+      ) : (
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute -right-6 -bottom-10 z-0 size-[70%] rounded-full opacity-40 blur-2xl",
+            "transition-transform duration-300 ease group-hover:scale-110",
+          )}
+          style={{ background: category.accent ?? "#94A3B8" }}
+        />
+      )}
     </Link>
   );
 }
@@ -143,7 +275,7 @@ export function PopularCategories({ className }: PopularCategoriesProps) {
       </div>
 
       {/* Tablet / Desktop grid */}
-      <div className="hidden gap-5 sm:grid sm:grid-cols-3 lg:grid-cols-5 lg:gap-6">
+      <div className="hidden gap-4 sm:grid sm:grid-cols-3 md:gap-5 lg:grid-cols-4 xl:grid-cols-5 lg:gap-6">
         {POPULAR_CATEGORIES.map((category) => (
           <PopularCategoryCard key={category.id} category={category} />
         ))}

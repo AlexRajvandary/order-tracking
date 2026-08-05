@@ -13,27 +13,46 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { BAGS_COLLECTION } from "@/lib/bags-collection";
-import { findCatalogProductBySlug, listProductsForCategoryItem } from "@/lib/catalog-products";
+// Hardcoded Lamoda bags — unused; product pages load from Products API.
+// import { BAGS_COLLECTION } from "@/lib/bags-collection";
+import {
+  findCatalogProductBySlug,
+  listProductsForCategoryItem,
+  type CatalogProduct,
+} from "@/lib/catalog-products";
+import {
+  fetchBagsCatalogPage,
+  fetchProductBySlug,
+  mapApiProductToCatalog,
+} from "@/lib/products-api";
 import { formatPrice, getProductById, listProducts, type Product } from "@/lib/products";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-function resolveProduct(id: string): Product | undefined {
-  return getProductById(id) ?? findCatalogProductBySlug(id);
+async function resolveProduct(id: string): Promise<Product | CatalogProduct | undefined> {
+  const fromDemo = getProductById(id) ?? findCatalogProductBySlug(id);
+  if (fromDemo) return fromDemo;
+
+  try {
+    const api = await fetchProductBySlug(id);
+    if (api) return mapApiProductToCatalog(api);
+  } catch {
+    // fall through
+  }
+  return undefined;
 }
 
 export function generateStaticParams() {
-  const demo = listProducts().map((p) => ({ id: p.slug }));
-  const bags = BAGS_COLLECTION.map((p) => ({ id: p.slug }));
-  return [...demo, ...bags];
+  // Bags are dynamic from Products API — do not bake Lamoda collection into the build.
+  // const bags = BAGS_COLLECTION.map((p) => ({ id: p.slug }));
+  return listProducts().map((p) => ({ id: p.slug }));
 }
 
 export async function generateMetadata({ params }: PageProps) {
   const { id } = await params;
-  const product = resolveProduct(id);
+  const product = await resolveProduct(id);
   if (!product) {
     return { title: "Товар не найден" };
   }
@@ -45,19 +64,33 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function ProductPage({ params }: PageProps) {
   const { id } = await params;
-  const product = resolveProduct(id);
+  const product = await resolveProduct(id);
   if (!product) {
     notFound();
   }
 
-  const catalog = findCatalogProductBySlug(product.slug);
-  const related = catalog
-    ? listProductsForCategoryItem(catalog.sectionId, catalog.categorySlug)
-        .filter((p) => p.id !== product.id)
-        .slice(0, 3)
-    : listProducts()
-        .filter((p) => p.id !== product.id && p.category === product.category)
-        .slice(0, 3);
+  const catalog =
+    "sectionId" in product
+      ? (product as CatalogProduct)
+      : findCatalogProductBySlug(product.slug);
+
+  let related: Product[] = [];
+  if (catalog?.sectionId === "bags") {
+    try {
+      const bags = await fetchBagsCatalogPage({ page: 1, pageSize: 4 });
+      related = bags.products.filter((p) => p.id !== product.id).slice(0, 3);
+    } catch {
+      related = [];
+    }
+  } else if (catalog) {
+    related = listProductsForCategoryItem(catalog.sectionId, catalog.categorySlug)
+      .filter((p) => p.id !== product.id)
+      .slice(0, 3);
+  } else {
+    related = listProducts()
+      .filter((p) => p.id !== product.id && p.category === product.category)
+      .slice(0, 3);
+  }
 
   const oldPriceLabel = product.oldPriceRub
     ? new Intl.NumberFormat("ru-RU", {
@@ -75,7 +108,15 @@ export default async function ProductPage({ params }: PageProps) {
           variant="ghost"
           size="sm"
           className="mb-4 -ml-2"
-          render={<Link href={catalog ? `/categories/${catalog.sectionId}` : "/"} />}
+          render={
+            <Link
+              href={
+                catalog
+                  ? `/categories/${catalog.sectionId}`
+                  : "/"
+              }
+            />
+          }
         >
           ← {catalog ? "К категории" : "К каталогу"}
         </Button>
@@ -113,7 +154,7 @@ export default async function ProductPage({ params }: PageProps) {
                 {product.category}
               </p>
               <CardTitle className="text-2xl font-bold tracking-tight">{product.name}</CardTitle>
-              <CardDescription className="text-base leading-relaxed">
+              <CardDescription className="text-base leading-relaxed whitespace-pre-line">
                 {product.description}
               </CardDescription>
             </CardHeader>

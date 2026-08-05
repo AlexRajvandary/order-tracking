@@ -1,6 +1,7 @@
 import type { CategoryItem, CategorySection } from "@/lib/categories";
 import { categorySections } from "@/lib/categories";
-import { BAGS_COLLECTION } from "@/lib/bags-collection";
+// Hardcoded Lamoda bags — kept for reference, catalog now loads bags from Products API.
+// import { BAGS_COLLECTION } from "@/lib/bags-collection";
 import { formatPrice, type Product } from "@/lib/products";
 
 export type CatalogProduct = Product & {
@@ -75,8 +76,12 @@ export function listProductsForCategoryItem(
   sectionId: string,
   itemSlug: string,
 ): CatalogProduct[] {
+  // Bags come from Products API (see fetchBagsCatalogPage) — not the hardcoded collection.
+  // if (sectionId === "bags") {
+  //   return BAGS_COLLECTION.filter((p) => p.categorySlug === itemSlug);
+  // }
   if (sectionId === "bags") {
-    return BAGS_COLLECTION.filter((p) => p.categorySlug === itemSlug);
+    return [];
   }
   const section = categorySections.find((s) => s.id === sectionId);
   if (!section) return [];
@@ -88,8 +93,12 @@ export function listProductsForCategoryItem(
 }
 
 export function listProductsForSection(sectionId: string): CatalogProduct[] {
+  // Bags come from Products API (see fetchBagsCatalogPage) — not the hardcoded collection.
+  // if (sectionId === "bags") {
+  //   return [...BAGS_COLLECTION];
+  // }
   if (sectionId === "bags") {
-    return [...BAGS_COLLECTION];
+    return [];
   }
   const section = categorySections.find((s) => s.id === sectionId);
   if (!section) return [];
@@ -99,8 +108,8 @@ export function listProductsForSection(sectionId: string): CatalogProduct[] {
 }
 
 export function findCatalogProductBySlug(slug: string): CatalogProduct | undefined {
-  const fromBags = BAGS_COLLECTION.find((p) => p.slug === slug || p.id === slug);
-  if (fromBags) return fromBags;
+  // const fromBags = BAGS_COLLECTION.find((p) => p.slug === slug || p.id === slug);
+  // if (fromBags) return fromBags;
 
   for (const section of categorySections) {
     if (section.id === "bags") continue;

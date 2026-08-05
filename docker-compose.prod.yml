@@ -69,6 +69,10 @@ services:
     image: ghcr.io/alexrajvandary/order-tracking-catalog:latest
     container_name: order-tracking-catalog
     restart: unless-stopped
+    depends_on:
+      - products-api
+    environment:
+      PRODUCTS_API_BASE_URL: http://products-api:8080
     expose:
       - "3000"
 

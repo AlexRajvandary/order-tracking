@@ -15,6 +15,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { CatalogPagination } from "@/components/catalog-pagination";
 import type { CatalogProduct } from "@/lib/catalog-products";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,13 @@ type CatalogBrowserProps = {
   backLabel: string;
   /** Show subcategory filter chips when browsing a whole section */
   subcategoryOptions?: Array<{ slug: string; label: string }>;
+  /** Server-side pagination (Products API). When set, `products` is the current page. */
+  pagination?: {
+    page: number;
+    pageSize: number;
+    total: number;
+    basePath: string;
+  };
 };
 
 type FilterPanelProps = {
@@ -271,10 +279,12 @@ export function CatalogBrowser({
   backHref,
   backLabel,
   subcategoryOptions,
+  pagination,
 }: CatalogBrowserProps) {
   const prices = products.map((p) => p.priceRub);
   const absMin = prices.length ? Math.min(...prices) : 0;
   const absMax = prices.length ? Math.max(...prices) : 0;
+  const totalCount = pagination?.total ?? products.length;
 
   const [query, setQuery] = useState("");
   const [minPrice, setMinPrice] = useState("");
@@ -389,7 +399,13 @@ export function CatalogBrowser({
               <p className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{filtered.length}</span>
                 {" из "}
-                {products.length}
+                {totalCount}
+                {pagination ? (
+                  <span className="text-muted-foreground">
+                    {" · стр. "}
+                    {pagination.page}
+                  </span>
+                ) : null}
                 {activeCount > 0 ? (
                   <Badge variant="secondary" className="ml-2 align-middle">
                     фильтров: {activeCount}
@@ -449,15 +465,25 @@ export function CatalogBrowser({
               </Button>
             </div>
           ) : (
-            <div
-              className={cn(
-                "grid gap-4 sm:grid-cols-2 xl:grid-cols-3",
-                gridCols === 4 && "2xl:grid-cols-4",
-              )}
-            >
-              {filtered.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+            <div className="space-y-6">
+              <div
+                className={cn(
+                  "grid gap-4 sm:grid-cols-2 xl:grid-cols-3",
+                  gridCols === 4 && "2xl:grid-cols-4",
+                )}
+              >
+                {filtered.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+              {pagination ? (
+                <CatalogPagination
+                  page={pagination.page}
+                  pageSize={pagination.pageSize}
+                  total={pagination.total}
+                  basePath={pagination.basePath}
+                />
+              ) : null}
             </div>
           )}
         </div>

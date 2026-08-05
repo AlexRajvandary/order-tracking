@@ -51,6 +51,7 @@ public sealed class ProductRepository : IProductRepository
                 p.Name.ToLower().Contains(term)
                 || (p.Brand != null && p.Brand.ToLower().Contains(term))
                 || (p.Sku != null && p.Sku.ToLower().Contains(term))
+                || (p.Description != null && p.Description.ToLower().Contains(term))
                 || p.Slug.ToLower().Contains(term));
         }
 
