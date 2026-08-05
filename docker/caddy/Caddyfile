@@ -1,6 +1,11 @@
 {$SITE_ADDRESS} {
 	encode zstd gzip
 
+	# Products microservice (must be before /api*)
+	handle /api/products* {
+		reverse_proxy products-api:8080
+	}
+
 	# ASP.NET API + SignalR + health
 	handle /api* {
 		reverse_proxy api:8080

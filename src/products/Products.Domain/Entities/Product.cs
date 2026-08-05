@@ -1,0 +1,20 @@
+using Products.Domain.Common;
+
+namespace Products.Domain.Entities;
+
+public class Product : AuditableEntity
+{
+    public string Name { get; set; } = string.Empty;
+    public string Slug { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? Sku { get; set; }
+    public string? Brand { get; set; }
+    public decimal Price { get; set; }
+    public string CurrencyCode { get; set; } = "RUB";
+    /// <summary>Price as listed at the source (before conversion).</summary>
+    public decimal? OriginalPrice { get; set; }
+    public string? OriginalCurrencyCode { get; set; }
+    public string ImageUrl { get; set; } = string.Empty;
+    public string? SourceUrl { get; set; }
+    public bool IsActive { get; set; } = true;
+}

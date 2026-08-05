@@ -76,6 +76,51 @@ services:
       retries: 3
       start_period: 40s
 
+  products-postgres:
+    image: postgres:16-alpine
+    container_name: products-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PRODUCTS_DB:-products}
+      POSTGRES_USER: ${PRODUCTS_USER:-products}
+      POSTGRES_PASSWORD: ${PRODUCTS_PASSWORD:-products}
+    ports:
+      - "${PRODUCTS_POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - products_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PRODUCTS_USER:-products} -d ${PRODUCTS_DB:-products}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  products-api:
+    build:
+      context: .
+      dockerfile: docker/products/Dockerfile
+    container_name: products-api
+    restart: unless-stopped
+    depends_on:
+      products-postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__DefaultConnection: Host=products-postgres;Port=5432;Database=${PRODUCTS_DB:-products};Username=${PRODUCTS_USER:-products};Password=${PRODUCTS_PASSWORD:-products}
+      Jwt__Secret: ${JWT_SECRET:-CHANGE_ME_IN_PRODUCTION_MIN_32_CHARS_LONG}
+      Jwt__Issuer: ${JWT_ISSUER:-ordertracking}
+      Jwt__Audience: ${JWT_AUDIENCE:-ordertracking-admin}
+      Cors__Origins__0: ${CORS_ORIGIN:-http://localhost:5173}
+      Cors__Origins__1: http://localhost:3001
+    ports:
+      - "${PRODUCTS_API_PORT:-5281}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 volumes:
   postgres_data:
   minio_data:
+  products_postgres_data:

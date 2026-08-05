@@ -1,0 +1,70 @@
+using Microsoft.EntityFrameworkCore;
+using Products.Application.Common.Interfaces;
+using Products.Domain.Entities;
+
+namespace Products.Infrastructure.Persistence.Repositories;
+
+public sealed class ProductRepository : IProductRepository
+{
+    private readonly ProductsDbContext _db;
+
+    public ProductRepository(ProductsDbContext db) => _db = db;
+
+    public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        _db.Products.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+
+    public Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
+        _db.Products.FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
+
+    public Task<bool> IsSlugTakenAsync(
+        string slug,
+        Guid? excludeId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _db.Products.Where(p => p.Slug == slug);
+        if (excludeId is not null)
+        {
+            query = query.Where(p => p.Id != excludeId);
+        }
+
+        return query.AnyAsync(cancellationToken);
+    }
+
+    public async Task<(IReadOnlyList<Product> Items, int Total)> SearchAsync(
+        string? search,
+        bool? activeOnly,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _db.Products.AsQueryable();
+
+        if (activeOnly == true)
+        {
+            query = query.Where(p => p.IsActive);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(p =>
+                p.Name.ToLower().Contains(term)
+                || (p.Brand != null && p.Brand.ToLower().Contains(term))
+                || (p.Sku != null && p.Sku.ToLower().Contains(term))
+                || p.Slug.ToLower().Contains(term));
+        }
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, total);
+    }
+
+    public void Add(Product product) => _db.Products.Add(product);
+
+    public void Remove(Product product) => _db.Products.Remove(product);
+}

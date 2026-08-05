@@ -72,6 +72,39 @@ services:
     expose:
       - "3000"
 
+  products-postgres:
+    image: postgres:16-alpine
+    container_name: products-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PRODUCTS_DB}
+      POSTGRES_USER: ${PRODUCTS_USER}
+      POSTGRES_PASSWORD: ${PRODUCTS_PASSWORD}
+    volumes:
+      - products_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PRODUCTS_USER} -d ${PRODUCTS_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  products-api:
+    image: ghcr.io/alexrajvandary/order-tracking-products:latest
+    container_name: products-api
+    restart: unless-stopped
+    depends_on:
+      products-postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=products-postgres;Port=5432;Database=${PRODUCTS_DB};Username=${PRODUCTS_USER};Password=${PRODUCTS_PASSWORD}
+      Jwt__Secret: ${JWT_SECRET}
+      Jwt__Issuer: ordertracking
+      Jwt__Audience: ordertracking-admin
+      Cors__Origins__0: ${APP_BASE_URL}
+    expose:
+      - "8080"
+
   caddy:
     image: caddy:2-alpine
     container_name: order-tracking-caddy
@@ -79,6 +112,7 @@ services:
     depends_on:
       - api
       - catalog
+      - products-api
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS}
     ports:
@@ -92,5 +126,6 @@ services:
 volumes:
   postgres_data:
   minio_data:
+  products_postgres_data:
   caddy_data:
   caddy_config:
