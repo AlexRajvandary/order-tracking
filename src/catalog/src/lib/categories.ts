@@ -26,8 +26,8 @@ function item(label: string, imageUrl: string): CategoryItem {
   };
 }
 
-/** Category sections styled after ZenMarket / Rakuten landing cat-grids */
-export const categorySections: CategorySection[] = [
+/** Hardcoded ZenMarket grids — unused (same era as bags-collection). Do not use for UI. */
+export const LEGACY_CATEGORY_SECTIONS: CategorySection[] = [
   {
     id: "figures",
     title: "Фигурки",
@@ -281,6 +281,9 @@ export const categorySections: CategorySection[] = [
   },
 ];
 
+/** Active catalog sections — empty until Categories API. */
+export const categorySections: CategorySection[] = [];
+
 export function findCategoryItem(
   sectionId: string,
   slug: string,
@@ -288,13 +291,14 @@ export function findCategoryItem(
   section: CategorySection;
   item: CategoryItem;
 } | null {
-  const section = categorySections.find((s) => s.id === sectionId);
+  const section = LEGACY_CATEGORY_SECTIONS.find((x) => x.id === sectionId);
   if (!section) return null;
-  const found = section.items.find((i) => i.slug === slug);
+  const found = section.items.find((x) => x.slug === slug);
   if (!found) return null;
   return { section, item: found };
 }
 
-export function getCategorySection(id: string): CategorySection | undefined {
-  return categorySections.find((s) => s.id === id);
+export function getCategorySection(_id: string): CategorySection | undefined {
+  // Hardcoded grids disabled until Categories API.
+  return undefined;
 }

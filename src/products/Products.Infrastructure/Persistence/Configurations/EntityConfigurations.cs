@@ -50,3 +50,32 @@ public sealed class ProductAuditLogConfiguration : IEntityTypeConfiguration<Prod
         builder.HasIndex(x => x.CreatedAt);
     }
 }
+
+public sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
+{
+    public void Configure(EntityTypeBuilder<Category> builder)
+    {
+        builder.ToTable("categories");
+        builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.Slug).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.Description).HasMaxLength(1000);
+        builder.Property(x => x.ImageUrl).HasMaxLength(2000);
+
+        builder.HasOne(x => x.Parent)
+            .WithMany(x => x.Children)
+            .HasForeignKey(x => x.ParentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(x => x.ParentId);
+        builder.HasIndex(x => new { x.ParentId, x.Slug })
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false");
+
+        builder.HasIndex(x => x.IsPopular)
+            .HasFilter("\"IsDeleted\" = false AND \"IsPopular\" = true");
+
+        builder.HasQueryFilter(x => !x.IsDeleted);
+    }
+}

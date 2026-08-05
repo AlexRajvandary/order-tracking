@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { CatalogBrowser } from "@/components/catalog-browser";
 import { SiteHeader } from "@/components/site-header";
-import { findCategoryItem } from "@/lib/categories";
-import { listProductsForCategoryItem } from "@/lib/catalog-products";
+// Hardcoded categories.ts — disabled.
+// import { findCategoryItem } from "@/lib/categories";
+// import { listProductsForCategoryItem } from "@/lib/catalog-products";
 import {
   fetchBagsCatalogPage,
   PRODUCTS_PAGE_SIZE,
@@ -23,55 +24,35 @@ export default async function CategoryItemPage({
   searchParams,
 }: PageProps) {
   const { sectionId, slug } = await params;
-  const found = findCategoryItem(sectionId, slug);
-  if (!found) notFound();
-
-  const { section, item } = found;
   const { page: pageParam } = await searchParams;
   const page = parsePage(pageParam);
 
-  if (sectionId === "bags") {
-    const bags = await fetchBagsCatalogPage({
-      page,
-      pageSize: PRODUCTS_PAGE_SIZE,
-    });
-
-    return (
-      <div className="min-h-screen bg-background">
-        <SiteHeader />
-        <main className="mx-auto max-w-6xl flex-1 px-4 py-6">
-          <CatalogBrowser
-            products={bags.products}
-            title={item.label}
-            subtitle={`${section.title} · Products API`}
-            imageUrl={item.imageUrl}
-            backHref={`/categories/${section.id}`}
-            backLabel={section.title}
-            pagination={{
-              page: bags.page,
-              pageSize: bags.pageSize,
-              total: bags.total,
-              basePath: `/categories/${section.id}/${item.slug}`,
-            }}
-          />
-        </main>
-      </div>
-    );
+  // Hardcoded subcategory grids disabled; bags list lives at /categories/bags.
+  if (sectionId !== "bags") {
+    notFound();
   }
 
-  const products = listProductsForCategoryItem(sectionId, slug);
+  const bags = await fetchBagsCatalogPage({
+    page,
+    pageSize: PRODUCTS_PAGE_SIZE,
+  });
 
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <main className="mx-auto max-w-6xl flex-1 px-4 py-6">
         <CatalogBrowser
-          products={products}
-          title={item.label}
-          subtitle={`${section.title} · демо-каталог`}
-          imageUrl={item.imageUrl}
-          backHref={`/categories/${section.id}`}
-          backLabel={section.title}
+          products={bags.products}
+          title="Сумки"
+          subtitle="Products API"
+          backHref="/categories/bags"
+          backLabel="Сумки"
+          pagination={{
+            page: bags.page,
+            pageSize: bags.pageSize,
+            total: bags.total,
+            basePath: `/categories/bags/${slug}`,
+          }}
         />
       </main>
     </div>

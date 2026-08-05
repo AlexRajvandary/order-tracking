@@ -1,4 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type PopularCategory = {
@@ -58,7 +68,6 @@ export const POPULAR_CATEGORIES: PopularCategory[] = [
       "https://static.zenmarket.jp/images/common-landing-pages/2w2225qn.twv",
     gradient: "linear-gradient(135deg, #EEF9F6 0%, #F8FCFB 100%)",
   },
-  // --- добавлены из Popular Categories (без дублей одежда / сумки / TCG / аниме≈фигурки) ---
   {
     id: "fishing",
     title: "Рыболовные снасти",
@@ -181,19 +190,23 @@ export const POPULAR_CATEGORIES: PopularCategory[] = [
 
 type PopularCategoryCardProps = {
   category: PopularCategory;
+  className?: string;
 };
 
-export function PopularCategoryCard({ category }: PopularCategoryCardProps) {
+export function PopularCategoryCard({
+  category,
+  className,
+}: PopularCategoryCardProps) {
   return (
     <Link
       href={category.href}
       className={cn(
-        "group relative block h-[220px] min-w-[min(78vw,260px)] flex-none snap-start overflow-hidden rounded-[24px] sm:h-[240px] sm:min-w-[220px] sm:rounded-[28px]",
+        "group relative block h-full min-h-[200px] overflow-hidden rounded-[24px]",
         "border border-[rgba(15,23,42,0.05)]",
         "shadow-[0_8px_24px_rgba(15,23,42,0.05)]",
         "transition-[transform,box-shadow] duration-[250ms] ease",
         "hover:-translate-y-1 hover:shadow-[0_14px_32px_rgba(15,23,42,0.09)]",
-        "sm:min-w-0 sm:flex-auto",
+        className,
       )}
       style={{ background: category.gradient }}
     >
@@ -201,7 +214,7 @@ export function PopularCategoryCard({ category }: PopularCategoryCardProps) {
         <p className="text-[13px] font-normal leading-[1.35] text-[rgba(17,17,17,0.70)] sm:text-sm">
           {category.caption}
         </p>
-        <h3 className="mt-2 max-w-[70%] text-[clamp(22px,2vw,28px)] font-bold leading-[1.05] tracking-[-0.025em] text-[#111111]">
+        <h3 className="mt-2 max-w-[70%] text-[clamp(20px,1.8vw,26px)] font-bold leading-[1.05] tracking-[-0.025em] text-[#111111]">
           {category.title}
         </h3>
       </div>
@@ -229,6 +242,141 @@ export function PopularCategoryCard({ category }: PopularCategoryCardProps) {
         />
       )}
     </Link>
+  );
+}
+
+function DesktopTwoRowSlider({
+  categories,
+}: {
+  categories: PopularCategory[];
+}) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
+
+  const syncNav = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setCanPrev(el.scrollLeft > 4);
+    setCanNext(el.scrollLeft < max - 4);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    syncNav();
+    el.addEventListener("scroll", syncNav, { passive: true });
+    const ro = new ResizeObserver(syncNav);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", syncNav);
+      ro.disconnect();
+    };
+  }, [syncNav, categories.length]);
+
+  function scrollByPage(dir: -1 | 1) {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * el.clientWidth, behavior: "smooth" });
+  }
+
+  return (
+    <div className="relative hidden sm:block">
+      <div
+        ref={scrollerRef}
+        className={cn(
+          "grid grid-flow-col grid-rows-2 gap-4 overflow-x-auto scroll-smooth md:gap-5 lg:gap-6",
+          "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          "snap-x snap-mandatory",
+          // 5 columns visible: each auto-column is 1/5 of track minus gaps
+          "auto-cols-[calc((100%-1rem)/2)]",
+          "md:auto-cols-[calc((100%-2.5rem)/3)]",
+          "lg:auto-cols-[calc((100%-4.5rem)/4)]",
+          "xl:auto-cols-[calc((100%-6rem)/5)]",
+        )}
+        style={{ gridTemplateRows: "repeat(2, minmax(210px, 1fr))" }}
+      >
+        {categories.map((category) => (
+          <div key={category.id} className="min-w-0 snap-start">
+            <PopularCategoryCard category={category} className="min-h-[210px]" />
+          </div>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        aria-label="Предыдущие категории"
+        disabled={!canPrev}
+        onClick={() => scrollByPage(-1)}
+        className={cn(
+          "absolute top-1/2 left-0 z-10 flex size-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full",
+          "border border-[#E5E7EB] bg-white text-[#111] shadow-md transition",
+          "hover:bg-[#111] hover:text-white disabled:pointer-events-none disabled:opacity-0",
+        )}
+      >
+        <ChevronLeft className="size-5" />
+      </button>
+      <button
+        type="button"
+        aria-label="Следующие категории"
+        disabled={!canNext}
+        onClick={() => scrollByPage(1)}
+        className={cn(
+          "absolute top-1/2 right-0 z-10 flex size-10 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full",
+          "border border-[#E5E7EB] bg-white text-[#111] shadow-md transition",
+          "hover:bg-[#111] hover:text-white disabled:pointer-events-none disabled:opacity-0",
+        )}
+      >
+        <ChevronRight className="size-5" />
+      </button>
+
+      {/* Progress bar like ZenMarket scrollbar */}
+      <DesktopScrollProgress scrollerRef={scrollerRef} />
+    </div>
+  );
+}
+
+function DesktopScrollProgress({
+  scrollerRef,
+}: {
+  scrollerRef: RefObject<HTMLDivElement | null>;
+}) {
+  const [progress, setProgress] = useState({ left: 0, width: 100 });
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+
+    function update() {
+      if (!el) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 0) {
+        setProgress({ left: 0, width: 100 });
+        return;
+      }
+      const width = Math.max(12, (el.clientWidth / el.scrollWidth) * 100);
+      const left = (el.scrollLeft / max) * (100 - width);
+      setProgress({ left, width });
+    }
+
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, [scrollerRef]);
+
+  return (
+    <div className="relative mx-auto mt-5 h-1 max-w-md overflow-hidden rounded-full bg-[#E5E7EB]">
+      <div
+        className="absolute top-0 h-full rounded-full bg-[#111827] transition-[left,width] duration-150"
+        style={{ left: `${progress.left}%`, width: `${progress.width}%` }}
+      />
+    </div>
   );
 }
 
@@ -267,19 +415,19 @@ export function PopularCategories({ className }: PopularCategoriesProps) {
         </Link>
       </div>
 
-      {/* Mobile: horizontal scroll */}
-      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory sm:mx-0 sm:hidden sm:px-0 [&::-webkit-scrollbar]:hidden">
+      {/* Mobile: single-row horizontal scroll */}
+      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory sm:hidden [&::-webkit-scrollbar]:hidden">
         {POPULAR_CATEGORIES.map((category) => (
-          <PopularCategoryCard key={category.id} category={category} />
+          <PopularCategoryCard
+            key={category.id}
+            category={category}
+            className="h-[220px] min-w-[min(78vw,260px)] flex-none snap-start rounded-[24px]"
+          />
         ))}
       </div>
 
-      {/* Tablet / Desktop grid */}
-      <div className="hidden gap-4 sm:grid sm:grid-cols-3 md:gap-5 lg:grid-cols-4 xl:grid-cols-5 lg:gap-6">
-        {POPULAR_CATEGORIES.map((category) => (
-          <PopularCategoryCard key={category.id} category={category} />
-        ))}
-      </div>
+      {/* Desktop / tablet: 2-row slider */}
+      <DesktopTwoRowSlider categories={POPULAR_CATEGORIES} />
     </section>
   );
 }
