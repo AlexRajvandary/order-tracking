@@ -23,12 +23,42 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.ImageUrl).HasMaxLength(2000).IsRequired();
         builder.Property(x => x.SourceUrl).HasMaxLength(2000);
 
+        builder.HasOne(x => x.BrandEntity)
+            .WithMany(x => x.Products)
+            .HasForeignKey(x => x.BrandId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasIndex(x => x.BrandId);
+
         builder.HasIndex(x => x.Slug)
             .IsUnique()
             .HasFilter("\"IsDeleted\" = false");
 
         builder.HasIndex(x => x.Sku)
             .HasFilter("\"IsDeleted\" = false AND \"Sku\" IS NOT NULL");
+
+        builder.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
+public sealed class BrandConfiguration : IEntityTypeConfiguration<Brand>
+{
+    public void Configure(EntityTypeBuilder<Brand> builder)
+    {
+        builder.ToTable("brands");
+        builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.Slug).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.Description).HasMaxLength(1000);
+        builder.Property(x => x.LogoUrl).HasMaxLength(2000);
+
+        builder.HasIndex(x => x.Slug)
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false");
+
+        builder.HasIndex(x => x.Name)
+            .HasFilter("\"IsDeleted\" = false");
 
         builder.HasQueryFilter(x => !x.IsDeleted);
     }

@@ -10,6 +10,8 @@ public interface IProductRepository
     Task<(IReadOnlyList<Product> Items, int Total)> SearchAsync(
         string? search,
         bool? activeOnly,
+        IReadOnlyList<Guid>? brandIds,
+        IReadOnlyList<string>? brandSlugs,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);

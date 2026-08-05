@@ -23,10 +23,12 @@ public sealed class ProductsController : ControllerBase
     public Task<Products.Application.Products.Models.ProductListResult> List(
         [FromQuery] string? search,
         [FromQuery] bool? activeOnly,
+        [FromQuery] Guid? brandId,
+        [FromQuery] string? brand,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default) =>
-        _mediator.Send(new ListProductsQuery(search, activeOnly, page, pageSize), cancellationToken);
+        _mediator.Send(new ListProductsQuery(search, activeOnly, brandId, brand, page, pageSize), cancellationToken);
 
     [HttpGet("{id:guid}")]
     [AllowAnonymous]

@@ -33,6 +33,8 @@ public sealed class ProductRepository : IProductRepository
     public async Task<(IReadOnlyList<Product> Items, int Total)> SearchAsync(
         string? search,
         bool? activeOnly,
+        IReadOnlyList<Guid>? brandIds,
+        IReadOnlyList<string>? brandSlugs,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -42,6 +44,24 @@ public sealed class ProductRepository : IProductRepository
         if (activeOnly == true)
         {
             query = query.Where(p => p.IsActive);
+        }
+
+        if (brandIds is { Count: > 0 })
+        {
+            query = query.Where(p => p.BrandId != null && brandIds.Contains(p.BrandId.Value));
+        }
+        else if (brandSlugs is { Count: > 0 })
+        {
+            var slugs = brandSlugs
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim().ToLower())
+                .Distinct()
+                .ToList();
+            if (slugs.Count > 0)
+            {
+                query = query.Where(p =>
+                    p.BrandEntity != null && slugs.Contains(p.BrandEntity.Slug.ToLower()));
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(search))

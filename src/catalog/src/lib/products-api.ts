@@ -79,6 +79,8 @@ export async function fetchProductsPage(options?: {
   pageSize?: number;
   search?: string;
   activeOnly?: boolean;
+  /** Comma-separated or list of brand slugs */
+  brandSlugs?: string[];
 }): Promise<ApiProductListResult> {
   const page = options?.page && options.page > 0 ? options.page : 1;
   const pageSize =
@@ -93,6 +95,9 @@ export async function fetchProductsPage(options?: {
   if (options?.search) params.set("search", options.search);
   if (options?.activeOnly != null) {
     params.set("activeOnly", String(options.activeOnly));
+  }
+  if (options?.brandSlugs && options.brandSlugs.length > 0) {
+    params.set("brand", options.brandSlugs.join(","));
   }
 
   const url = `${productsApiBaseUrl()}/api/products?${params}`;
@@ -126,6 +131,7 @@ export async function fetchProductBySlug(
 export async function fetchBagsCatalogPage(options?: {
   page?: number;
   pageSize?: number;
+  brandSlugs?: string[];
 }): Promise<{
   products: CatalogProduct[];
   total: number;
@@ -136,6 +142,7 @@ export async function fetchBagsCatalogPage(options?: {
   const result = await fetchProductsPage({
     page: options?.page,
     pageSize,
+    brandSlugs: options?.brandSlugs,
     // Until Category exists on the API, bags are the only seeded products.
     // Prefer listing all active items over a brittle name search.
     activeOnly: true,

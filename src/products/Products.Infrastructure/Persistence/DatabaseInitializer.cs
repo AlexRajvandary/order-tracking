@@ -16,5 +16,7 @@ public static class DatabaseInitializer
         logger.LogInformation("Applying products database migrations...");
         await db.Database.MigrateAsync();
         logger.LogInformation("Products database migrations applied");
+
+        await BrandSeeder.SeedFromProductBrandNamesAsync(db, logger);
     }
 }

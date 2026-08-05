@@ -12,6 +12,7 @@ public sealed class ProductsDbContext : DbContext
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductAuditLog> ProductAuditLogs => Set<ProductAuditLog>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Brand> Brands => Set<Brand>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

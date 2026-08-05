@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { LayoutGrid, ListFilter, Rows3, ChevronDown, Check } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/sheet";
 import { CatalogPagination } from "@/components/catalog-pagination";
 import { CategoryTree } from "@/components/category-tree";
+import type { ApiBrand } from "@/lib/brands-api";
 import type { ApiCategory } from "@/lib/categories-api";
 import type { CatalogProduct } from "@/lib/catalog-products";
 import { cn } from "@/lib/utils";
@@ -61,6 +63,8 @@ type CatalogBrowserProps = {
   categoryTree?: ApiCategory[];
   activeRootSlug?: string;
   activeChildSlug?: string;
+  brands?: ApiBrand[];
+  selectedBrandSlugs?: string[];
   /** Server-side pagination (Products API). When set, `products` is the current page. */
   pagination?: {
     page: number;
@@ -80,6 +84,9 @@ type FilterPanelProps = {
   categoryTree?: ApiCategory[];
   activeRootSlug?: string;
   activeChildSlug?: string;
+  brands?: ApiBrand[];
+  selectedBrandSlugs: string[];
+  onToggleBrand: (slug: string) => void;
 };
 
 function FilterPanel({
@@ -92,9 +99,13 @@ function FilterPanel({
   categoryTree,
   activeRootSlug,
   activeChildSlug,
+  brands,
+  selectedBrandSlugs,
+  onToggleBrand,
 }: FilterPanelProps) {
   const canSlide = absMax > absMin;
   const step = priceStep(absMin, absMax);
+  const selected = new Set(selectedBrandSlugs);
 
   return (
     <div className="space-y-5">
@@ -167,6 +178,36 @@ function FilterPanel({
           </p>
         )}
       </div>
+
+      {brands && brands.length > 0 ? (
+        <div className="space-y-2.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Бренд
+          </p>
+          <div className="max-h-52 space-y-0.5 overflow-y-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
+            {brands.map((brand) => {
+              const checked = selected.has(brand.slug);
+              return (
+                <label
+                  key={brand.id}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition",
+                    checked ? "bg-[#F3F4F6] font-medium" : "hover:bg-[#F3F4F6]",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => onToggleBrand(brand.slug)}
+                    className="size-4 accent-[#111827]"
+                  />
+                  <span className="truncate">{brand.name}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -264,8 +305,14 @@ export function CatalogBrowser({
   categoryTree,
   activeRootSlug,
   activeChildSlug,
+  brands,
+  selectedBrandSlugs = [],
   pagination,
 }: CatalogBrowserProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const prices = products.map((p) => p.priceRub);
   const absMin = prices.length ? Math.min(...prices) : 0;
   const absMax = prices.length ? Math.max(...prices) : 0;
@@ -279,6 +326,28 @@ export function CatalogBrowser({
   useEffect(() => {
     setPriceRange([absMin, absMax]);
   }, [absMin, absMax]);
+
+  function replaceQuery(mutate: (params: URLSearchParams) => void) {
+    const params = new URLSearchParams(searchParams.toString());
+    mutate(params);
+    const qs = params.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname);
+  }
+
+  function onToggleBrand(slug: string) {
+    replaceQuery((params) => {
+      const current = (params.get("brands") ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const next = current.includes(slug)
+        ? current.filter((s) => s !== slug)
+        : [...current, slug];
+      if (next.length > 0) params.set("brands", next.join(","));
+      else params.delete("brands");
+      params.delete("page");
+    });
+  }
 
   const filtered = useMemo(() => {
     const [min, max] = priceRange;
@@ -298,10 +367,17 @@ export function CatalogBrowser({
 
   function resetFilters() {
     setPriceRange([absMin, absMax]);
+    if (selectedBrandSlugs.length > 0) {
+      replaceQuery((params) => {
+        params.delete("brands");
+        params.delete("page");
+      });
+    }
   }
 
+  const priceActive = priceRange[0] > absMin || priceRange[1] < absMax;
   const activeCount =
-    priceRange[0] > absMin || priceRange[1] < absMax ? 1 : 0;
+    (priceActive ? 1 : 0) + (selectedBrandSlugs.length > 0 ? 1 : 0);
 
   const filterProps: FilterPanelProps = {
     priceRange,
@@ -313,6 +389,9 @@ export function CatalogBrowser({
     categoryTree,
     activeRootSlug,
     activeChildSlug,
+    brands,
+    selectedBrandSlugs,
+    onToggleBrand,
   };
 
   return (
