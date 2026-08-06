@@ -50,6 +50,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-ordertracking};Username=${POSTGRES_USER:-ordertracking};Password=${POSTGRES_PASSWORD:-ordertracking}
+      ConnectionStrings__ProductsConnection: Host=products-postgres;Port=5432;Database=${PRODUCTS_DB:-products};Username=${PRODUCTS_USER:-products};Password=${PRODUCTS_PASSWORD:-products}
       Jwt__Secret: ${JWT_SECRET:-CHANGE_ME_IN_PRODUCTION_MIN_32_CHARS_LONG}
       Jwt__Issuer: ${JWT_ISSUER:-ordertracking}
       Jwt__Audience: ${JWT_AUDIENCE:-ordertracking-admin}

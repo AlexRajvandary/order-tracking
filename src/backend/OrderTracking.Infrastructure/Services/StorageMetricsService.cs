@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Minio;
 using Minio.DataModel.Args;
+using Npgsql;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Monitoring.Models;
 using OrderTracking.Infrastructure.Monitoring;
@@ -14,6 +16,7 @@ namespace OrderTracking.Infrastructure.Services;
 public sealed class StorageMetricsService : IStorageMetricsService
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly string? _productsConnectionString;
     private readonly IMinioClient _minioClient;
     private readonly MinioSettings _minioSettings;
     private readonly MonitoringSettings _monitoringSettings;
@@ -24,9 +27,11 @@ public sealed class StorageMetricsService : IStorageMetricsService
         IMinioClient minioClient,
         IOptions<MinioSettings> minioSettings,
         IOptions<MonitoringSettings> monitoringSettings,
+        IConfiguration configuration,
         ILogger<StorageMetricsService> logger)
     {
         _dbContext = dbContext;
+        _productsConnectionString = configuration.GetConnectionString("ProductsConnection");
         _minioClient = minioClient;
         _minioSettings = minioSettings.Value;
         _monitoringSettings = monitoringSettings.Value;
@@ -37,9 +42,10 @@ public sealed class StorageMetricsService : IStorageMetricsService
     {
         var disk = GetDiskMetrics();
         var database = await GetDatabaseMetricsAsync(cancellationToken);
+        var productsDatabase = await GetProductsDatabaseMetricsAsync(cancellationToken);
         var minio = await GetMinioMetricsAsync(cancellationToken);
 
-        return new StorageMetricsDto(disk, database, minio);
+        return new StorageMetricsDto(disk, database, productsDatabase, minio);
     }
 
     private DiskMetrics GetDiskMetrics()
@@ -114,6 +120,30 @@ public sealed class StorageMetricsService : IStorageMetricsService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to read PostgreSQL database size");
+            return new DatabaseMetrics(0, ex.Message);
+        }
+    }
+
+    private async Task<DatabaseMetrics> GetProductsDatabaseMetricsAsync(CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(_productsConnectionString))
+        {
+            return new DatabaseMetrics(0, "Products connection string is not configured.");
+        }
+
+        try
+        {
+            await using var connection = new NpgsqlConnection(_productsConnectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = new NpgsqlCommand(
+                "SELECT pg_database_size(current_database())",
+                connection);
+            var result = await command.ExecuteScalarAsync(cancellationToken);
+            return new DatabaseMetrics(Convert.ToInt64(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to read products PostgreSQL database size");
             return new DatabaseMetrics(0, ex.Message);
         }
     }

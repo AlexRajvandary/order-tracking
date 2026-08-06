@@ -114,6 +114,10 @@ function StorageCard() {
     data && !data.database.error
       ? formatBytes(data.database.sizeBytes, i18n.language)
       : unavailable
+  const productsDatabaseValue =
+    data?.productsDatabase && !data.productsDatabase.error
+      ? formatBytes(data.productsDatabase.sizeBytes, i18n.language)
+      : unavailable
   const minioValue =
     data && !data.minio.error
       ? formatBytes(data.minio.sizeBytes, i18n.language)
@@ -124,7 +128,7 @@ function StorageCard() {
       : null
 
   return (
-    <Card className="flex size-[150px] gap-0 overflow-hidden p-3">
+    <Card className="flex h-auto min-h-[150px] w-[170px] gap-0 overflow-hidden p-3">
       <CardContent className="flex h-full flex-col p-0">
         <div className="flex items-center gap-1.5">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground [&>svg]:size-3.5">
@@ -153,6 +157,10 @@ function StorageCard() {
             <div>
               <p className="text-muted-foreground">{t('metrics.database')}</p>
               <p className="font-semibold tabular-nums">{databaseValue}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">{t('metrics.databaseProducts')}</p>
+              <p className="font-semibold tabular-nums">{productsDatabaseValue}</p>
             </div>
             <div>
               <p className="text-muted-foreground">MinIO</p>

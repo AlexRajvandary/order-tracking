@@ -84,5 +84,6 @@ export type MinioMetrics = {
 export type StorageMetrics = {
   disk: DiskMetrics
   database: DatabaseMetrics
+  productsDatabase: DatabaseMetrics
   minio: MinioMetrics
 }

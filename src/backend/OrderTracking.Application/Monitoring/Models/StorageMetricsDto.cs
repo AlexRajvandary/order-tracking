@@ -3,6 +3,7 @@ namespace OrderTracking.Application.Monitoring.Models;
 public sealed record StorageMetricsDto(
     DiskMetrics Disk,
     DatabaseMetrics Database,
+    DatabaseMetrics ProductsDatabase,
     MinioMetrics Minio);
 
 public sealed record DiskMetrics(

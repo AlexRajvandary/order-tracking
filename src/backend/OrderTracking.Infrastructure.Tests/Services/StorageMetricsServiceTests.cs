@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Minio;
@@ -88,15 +89,38 @@ public sealed class StorageMetricsServiceTests
         Assert.Equal(expected, result.Disk.UsedPercentage);
     }
 
+    [Fact]
+    public async Task GetMetricsAsync_WhenProductsConnectionMissing_ReturnsErrorInProductsSection()
+    {
+        await using var dbContext = CreateDbContext();
+        var minio = new Mock<IMinioClient>();
+        minio
+            .Setup(c => c.ListObjectsEnumAsync(
+                It.IsAny<ListObjectsArgs>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(CreateItemsAsync());
+
+        var service = CreateService(dbContext, minio.Object);
+
+        var result = await service.GetMetricsAsync(CancellationToken.None);
+
+        Assert.NotNull(result.ProductsDatabase.Error);
+        Assert.Contains("not configured", result.ProductsDatabase.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, result.ProductsDatabase.SizeBytes);
+    }
+
     private static StorageMetricsService CreateService(
         ApplicationDbContext dbContext,
         IMinioClient minioClient)
     {
+        var configuration = new ConfigurationBuilder().Build();
+
         return new StorageMetricsService(
             dbContext,
             minioClient,
             Options.Create(new MinioSettings { Bucket = "order-tracking" }),
             Options.Create(new MonitoringSettings { HostDiskPath = "/host-that-does-not-exist" }),
+            configuration,
             NullLogger<StorageMetricsService>.Instance);
     }
 
