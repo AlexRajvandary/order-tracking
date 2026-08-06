@@ -7,6 +7,10 @@ export type ApiProduct = {
   description: string | null;
   sku: string | null;
   brand: string | null;
+  condition: string;
+  shopId: string | null;
+  shopSlug: string | null;
+  shopName: string | null;
   price: number;
   currencyCode: string;
   originalPrice: number | null;
@@ -69,6 +73,9 @@ export function mapApiProductToCatalog(
     inStock: p.isActive,
     imageUrl: p.imageUrl,
     brand: p.brand ?? undefined,
+    condition: p.condition === "used" ? "used" : "new",
+    shopSlug: p.shopSlug ?? undefined,
+    shopName: p.shopName ?? undefined,
     oldPriceRub: p.originalPrice != null ? Number(p.originalPrice) : undefined,
     discountPercent: discount,
   };
@@ -81,6 +88,8 @@ export async function fetchProductsPage(options?: {
   activeOnly?: boolean;
   /** Comma-separated or list of brand slugs */
   brandSlugs?: string[];
+  shopSlugs?: string[];
+  conditions?: Array<"new" | "used">;
 }): Promise<ApiProductListResult> {
   const page = options?.page && options.page > 0 ? options.page : 1;
   const pageSize =
@@ -98,6 +107,12 @@ export async function fetchProductsPage(options?: {
   }
   if (options?.brandSlugs && options.brandSlugs.length > 0) {
     params.set("brand", options.brandSlugs.join(","));
+  }
+  if (options?.shopSlugs && options.shopSlugs.length > 0) {
+    params.set("shop", options.shopSlugs.join(","));
+  }
+  if (options?.conditions && options.conditions.length > 0) {
+    params.set("condition", options.conditions.join(","));
   }
 
   const url = `${productsApiBaseUrl()}/api/products?${params}`;
@@ -132,6 +147,8 @@ export async function fetchBagsCatalogPage(options?: {
   page?: number;
   pageSize?: number;
   brandSlugs?: string[];
+  shopSlugs?: string[];
+  conditions?: Array<"new" | "used">;
 }): Promise<{
   products: CatalogProduct[];
   total: number;
@@ -143,6 +160,8 @@ export async function fetchBagsCatalogPage(options?: {
     page: options?.page,
     pageSize,
     brandSlugs: options?.brandSlugs,
+    shopSlugs: options?.shopSlugs,
+    conditions: options?.conditions,
     // Until Category exists on the API, bags are the only seeded products.
     // Prefer listing all active items over a brittle name search.
     activeOnly: true,

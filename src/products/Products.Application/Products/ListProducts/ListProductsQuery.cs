@@ -2,6 +2,7 @@ using FluentValidation;
 using MediatR;
 using Products.Application.Common.Interfaces;
 using Products.Application.Products.Models;
+using Products.Domain.Enums;
 
 namespace Products.Application.Products.ListProducts;
 
@@ -10,6 +11,9 @@ public sealed record ListProductsQuery(
     bool? ActiveOnly,
     Guid? BrandId = null,
     string? Brand = null,
+    Guid? ShopId = null,
+    string? Shop = null,
+    string? Condition = null,
     int Page = 1,
     int PageSize = 20) : IRequest<ProductListResult>;
 
@@ -21,6 +25,8 @@ public sealed class ListProductsQueryValidator : AbstractValidator<ListProductsQ
         RuleFor(x => x.PageSize).InclusiveBetween(1, 100);
         RuleFor(x => x.Search).MaximumLength(200).When(x => !string.IsNullOrWhiteSpace(x.Search));
         RuleFor(x => x.Brand).MaximumLength(200).When(x => !string.IsNullOrWhiteSpace(x.Brand));
+        RuleFor(x => x.Shop).MaximumLength(200).When(x => !string.IsNullOrWhiteSpace(x.Shop));
+        RuleFor(x => x.Condition).MaximumLength(64).When(x => !string.IsNullOrWhiteSpace(x.Condition));
     }
 }
 
@@ -35,7 +41,7 @@ public sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery
 
     public async Task<ProductListResult> Handle(ListProductsQuery request, CancellationToken cancellationToken)
     {
-        IReadOnlyList<Guid>? brandIds = request.BrandId is { } id ? [id] : null;
+        IReadOnlyList<Guid>? brandIds = request.BrandId is { } brandId ? [brandId] : null;
         IReadOnlyList<string>? brandSlugs = null;
         if (brandIds is null && !string.IsNullOrWhiteSpace(request.Brand))
         {
@@ -43,11 +49,35 @@ public sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
 
+        IReadOnlyList<Guid>? shopIds = request.ShopId is { } shopId ? [shopId] : null;
+        IReadOnlyList<string>? shopSlugs = null;
+        if (shopIds is null && !string.IsNullOrWhiteSpace(request.Shop))
+        {
+            shopSlugs = request.Shop
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
+
+        IReadOnlyList<ProductCondition>? conditions = null;
+        if (!string.IsNullOrWhiteSpace(request.Condition))
+        {
+            var parsed = new List<ProductCondition>();
+            foreach (var part in request.Condition.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (TryParseCondition(part, out var condition))
+                    parsed.Add(condition);
+            }
+            if (parsed.Count > 0)
+                conditions = parsed;
+        }
+
         var (items, total) = await _products.SearchAsync(
             request.Search,
             request.ActiveOnly,
             brandIds,
             brandSlugs,
+            shopIds,
+            shopSlugs,
+            conditions,
             request.Page,
             request.PageSize,
             cancellationToken);
@@ -57,5 +87,28 @@ public sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery
             total,
             request.Page,
             request.PageSize);
+    }
+
+    internal static bool TryParseCondition(string raw, out ProductCondition condition)
+    {
+        condition = ProductCondition.New;
+        var key = raw.Trim().ToLowerInvariant();
+        switch (key)
+        {
+            case "new":
+            case "новое":
+            case "novoe":
+                condition = ProductCondition.New;
+                return true;
+            case "used":
+            case "б/у":
+            case "бу":
+            case "bu":
+            case "б-у":
+                condition = ProductCondition.Used;
+                return true;
+            default:
+                return Enum.TryParse(raw, ignoreCase: true, out condition);
+        }
     }
 }

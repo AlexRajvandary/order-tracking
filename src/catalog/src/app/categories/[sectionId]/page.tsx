@@ -13,10 +13,21 @@ import {
   fetchBagsCatalogPage,
   PRODUCTS_PAGE_SIZE,
 } from "@/lib/products-api";
+import {
+  fetchShops,
+  parseConditionParam,
+  parseCsvParam,
+} from "@/lib/shops-api";
 
 type PageProps = {
   params: Promise<{ sectionId: string }>;
-  searchParams: Promise<{ page?: string; sub?: string; brands?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    sub?: string;
+    brands?: string;
+    shops?: string;
+    condition?: string;
+  }>;
 };
 
 function parsePage(raw: string | undefined): number {
@@ -24,10 +35,18 @@ function parsePage(raw: string | undefined): number {
   return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
 }
 
-function buildBasePath(rootSlug: string, subSlug?: string, brandSlugs?: string[]) {
+function buildBasePath(
+  rootSlug: string,
+  subSlug?: string,
+  brandSlugs?: string[],
+  shopSlugs?: string[],
+  conditions?: string[],
+) {
   const qs = new URLSearchParams();
   if (subSlug) qs.set("sub", subSlug);
   if (brandSlugs && brandSlugs.length > 0) qs.set("brands", brandSlugs.join(","));
+  if (shopSlugs && shopSlugs.length > 0) qs.set("shops", shopSlugs.join(","));
+  if (conditions && conditions.length > 0) qs.set("condition", conditions.join(","));
   const search = qs.toString();
   return search ? `/categories/${rootSlug}?${search}` : `/categories/${rootSlug}`;
 }
@@ -37,14 +56,23 @@ export default async function CategorySectionPage({
   searchParams,
 }: PageProps) {
   const { sectionId } = await params;
-  const { page: pageParam, sub: subParam, brands: brandsParam } = await searchParams;
+  const {
+    page: pageParam,
+    sub: subParam,
+    brands: brandsParam,
+    shops: shopsParam,
+    condition: conditionParam,
+  } = await searchParams;
   const page = parsePage(pageParam);
   const subSlug = subParam ? safeDecode(subParam) : undefined;
   const selectedBrandSlugs = parseBrandSlugs(brandsParam);
+  const selectedShopSlugs = parseCsvParam(shopsParam);
+  const selectedConditions = parseConditionParam(conditionParam);
 
-  const [categoryTree, brands] = await Promise.all([
+  const [categoryTree, brands, shops] = await Promise.all([
     fetchCategoryTree(),
     fetchBrands().catch(() => []),
+    fetchShops().catch(() => []),
   ]);
 
   const root = findRootCategory(categoryTree, sectionId);
@@ -58,6 +86,8 @@ export default async function CategorySectionPage({
           page,
           pageSize: PRODUCTS_PAGE_SIZE,
           brandSlugs: selectedBrandSlugs,
+          shopSlugs: selectedShopSlugs,
+          conditions: selectedConditions,
         })
       : { products: [], total: 0, page: 1, pageSize: PRODUCTS_PAGE_SIZE };
 
@@ -77,6 +107,9 @@ export default async function CategorySectionPage({
             activeChildSlug={child?.slug}
             brands={brands}
             selectedBrandSlugs={selectedBrandSlugs}
+            shops={shops}
+            selectedShopSlugs={selectedShopSlugs}
+            selectedConditions={selectedConditions}
             pagination={
               root.slug === "bags"
                 ? {
@@ -87,6 +120,8 @@ export default async function CategorySectionPage({
                       root.slug,
                       child?.slug,
                       selectedBrandSlugs,
+                      selectedShopSlugs,
+                      selectedConditions,
                     ),
                   }
                 : undefined

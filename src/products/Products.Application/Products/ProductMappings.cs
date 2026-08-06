@@ -1,5 +1,6 @@
 using Products.Application.Products.Models;
 using Products.Domain.Entities;
+using Products.Domain.Enums;
 
 namespace Products.Application.Products;
 
@@ -13,6 +14,10 @@ internal static class ProductMappings
             product.Description,
             product.Sku,
             product.Brand,
+            ToConditionSlug(product.Condition),
+            product.ShopId,
+            product.Shop?.Slug,
+            product.Shop?.Name,
             product.Price,
             product.CurrencyCode,
             product.OriginalPrice,
@@ -22,6 +27,13 @@ internal static class ProductMappings
             product.IsActive,
             product.CreatedAt,
             product.UpdatedAt);
+
+    public static string ToConditionSlug(ProductCondition condition) =>
+        condition switch
+        {
+            ProductCondition.Used => "used",
+            _ => "new",
+        };
 
     public static string Slugify(string name)
     {

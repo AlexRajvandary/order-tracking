@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Products.Application.Common.Interfaces;
 using Products.Domain.Entities;
+using Products.Domain.Enums;
 
 namespace Products.Infrastructure.Persistence.Repositories;
 
@@ -11,10 +12,10 @@ public sealed class ProductRepository : IProductRepository
     public ProductRepository(ProductsDbContext db) => _db = db;
 
     public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _db.Products.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+        _db.Products.Include(p => p.Shop).FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
     public Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
-        _db.Products.FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
+        _db.Products.Include(p => p.Shop).FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
 
     public Task<bool> IsSlugTakenAsync(
         string slug,
@@ -35,6 +36,9 @@ public sealed class ProductRepository : IProductRepository
         bool? activeOnly,
         IReadOnlyList<Guid>? brandIds,
         IReadOnlyList<string>? brandSlugs,
+        IReadOnlyList<Guid>? shopIds,
+        IReadOnlyList<string>? shopSlugs,
+        IReadOnlyList<ProductCondition>? conditions,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -64,6 +68,29 @@ public sealed class ProductRepository : IProductRepository
             }
         }
 
+        if (shopIds is { Count: > 0 })
+        {
+            query = query.Where(p => p.ShopId != null && shopIds.Contains(p.ShopId.Value));
+        }
+        else if (shopSlugs is { Count: > 0 })
+        {
+            var slugs = shopSlugs
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim().ToLower())
+                .Distinct()
+                .ToList();
+            if (slugs.Count > 0)
+            {
+                query = query.Where(p =>
+                    p.Shop != null && slugs.Contains(p.Shop.Slug.ToLower()));
+            }
+        }
+
+        if (conditions is { Count: > 0 })
+        {
+            query = query.Where(p => conditions.Contains(p.Condition));
+        }
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim().ToLower();
@@ -77,6 +104,7 @@ public sealed class ProductRepository : IProductRepository
 
         var total = await query.CountAsync(cancellationToken);
         var items = await query
+            .Include(p => p.Shop)
             .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)

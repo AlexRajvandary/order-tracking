@@ -13,6 +13,9 @@ export type Product = {
   inStock: boolean;
   imageUrl?: string;
   brand?: string;
+  condition?: "new" | "used";
+  shopSlug?: string;
+  shopName?: string;
   oldPriceRub?: number;
   discountPercent?: string;
   rating?: number;

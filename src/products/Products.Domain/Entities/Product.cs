@@ -1,4 +1,5 @@
 using Products.Domain.Common;
+using Products.Domain.Enums;
 
 namespace Products.Domain.Entities;
 
@@ -12,6 +13,9 @@ public class Product : AuditableEntity
     public string? Brand { get; set; }
     public Guid? BrandId { get; set; }
     public Brand? BrandEntity { get; set; }
+    public Guid? ShopId { get; set; }
+    public Shop? Shop { get; set; }
+    public ProductCondition Condition { get; set; } = ProductCondition.New;
     public decimal Price { get; set; }
     public string CurrencyCode { get; set; } = "RUB";
     /// <summary>Price as listed at the source (before conversion).</summary>

@@ -20,7 +20,9 @@ public sealed record UpdateProductCommand(
     string? OriginalCurrencyCode,
     string ImageUrl,
     string? SourceUrl,
-    bool IsActive) : IRequest<ProductDto>;
+    bool IsActive,
+    string? Condition = null,
+    Guid? ShopId = null) : IRequest<ProductDto>;
 
 public sealed class UpdateProductCommandValidator : AbstractValidator<UpdateProductCommand>
 {
@@ -93,6 +95,13 @@ public sealed class UpdateProductCommandHandler : IRequestHandler<UpdateProductC
         product.ImageUrl = request.ImageUrl.Trim();
         product.SourceUrl = string.IsNullOrWhiteSpace(request.SourceUrl) ? null : request.SourceUrl.Trim();
         product.IsActive = request.IsActive;
+        if (!string.IsNullOrWhiteSpace(request.Condition)
+            && ListProducts.ListProductsQueryHandler.TryParseCondition(request.Condition, out var condition))
+        {
+            product.Condition = condition;
+        }
+        if (request.ShopId.HasValue)
+            product.ShopId = request.ShopId;
 
         await _audit.WriteAsync(product.Id, ProductAuditActions.Updated, oldSnapshot, product, cancellationToken);
         await _uow.SaveChangesAsync(cancellationToken);
@@ -109,6 +118,9 @@ public sealed class UpdateProductCommandHandler : IRequestHandler<UpdateProductC
             Description = source.Description,
             Sku = source.Sku,
             Brand = source.Brand,
+            BrandId = source.BrandId,
+            ShopId = source.ShopId,
+            Condition = source.Condition,
             Price = source.Price,
             CurrencyCode = source.CurrencyCode,
             OriginalPrice = source.OriginalPrice,

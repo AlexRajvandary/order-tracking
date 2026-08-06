@@ -19,6 +19,8 @@ public sealed record CreateProductCommand(
     string? OriginalCurrencyCode,
     string ImageUrl,
     string? SourceUrl,
+    string? Condition = null,
+    Guid? ShopId = null,
     bool IsActive = true) : IRequest<ProductDto>;
 
 public sealed class CreateProductCommandValidator : AbstractValidator<CreateProductCommand>
@@ -88,6 +90,10 @@ public sealed class CreateProductCommandHandler : IRequestHandler<CreateProductC
                 : request.OriginalCurrencyCode.Trim().ToUpperInvariant(),
             ImageUrl = request.ImageUrl.Trim(),
             SourceUrl = string.IsNullOrWhiteSpace(request.SourceUrl) ? null : request.SourceUrl.Trim(),
+            Condition = ListProducts.ListProductsQueryHandler.TryParseCondition(request.Condition ?? "new", out var condition)
+                ? condition
+                : ProductCondition.New,
+            ShopId = request.ShopId,
             IsActive = request.IsActive,
         };
 

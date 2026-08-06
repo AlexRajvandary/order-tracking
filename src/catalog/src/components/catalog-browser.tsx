@@ -27,6 +27,7 @@ import { CategoryTree } from "@/components/category-tree";
 import type { ApiBrand } from "@/lib/brands-api";
 import type { ApiCategory } from "@/lib/categories-api";
 import type { CatalogProduct } from "@/lib/catalog-products";
+import type { ApiShop, ProductConditionFilter } from "@/lib/shops-api";
 import { cn } from "@/lib/utils";
 
 type SortOption = "relevance" | "price-asc" | "price-desc" | "name";
@@ -65,6 +66,9 @@ type CatalogBrowserProps = {
   activeChildSlug?: string;
   brands?: ApiBrand[];
   selectedBrandSlugs?: string[];
+  shops?: ApiShop[];
+  selectedShopSlugs?: string[];
+  selectedConditions?: ProductConditionFilter[];
   /** Server-side pagination (Products API). When set, `products` is the current page. */
   pagination?: {
     page: number;
@@ -87,7 +91,17 @@ type FilterPanelProps = {
   brands?: ApiBrand[];
   selectedBrandSlugs: string[];
   onToggleBrand: (slug: string) => void;
+  shops?: ApiShop[];
+  selectedShopSlugs: string[];
+  onToggleShop: (slug: string) => void;
+  selectedConditions: ProductConditionFilter[];
+  onToggleCondition: (value: ProductConditionFilter) => void;
 };
+
+const CONDITION_OPTIONS: Array<{ value: ProductConditionFilter; label: string }> = [
+  { value: "new", label: "Новое" },
+  { value: "used", label: "Б/У" },
+];
 
 function FilterPanel({
   priceRange,
@@ -102,10 +116,17 @@ function FilterPanel({
   brands,
   selectedBrandSlugs,
   onToggleBrand,
+  shops,
+  selectedShopSlugs,
+  onToggleShop,
+  selectedConditions,
+  onToggleCondition,
 }: FilterPanelProps) {
   const canSlide = absMax > absMin;
   const step = priceStep(absMin, absMax);
-  const selected = new Set(selectedBrandSlugs);
+  const selectedBrands = new Set(selectedBrandSlugs);
+  const selectedShops = new Set(selectedShopSlugs);
+  const selectedCond = new Set(selectedConditions);
 
   return (
     <div className="space-y-5">
@@ -179,6 +200,64 @@ function FilterPanel({
         )}
       </div>
 
+      <div className="space-y-2.5">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Состояние
+        </p>
+        <div className="flex flex-col gap-0.5">
+          {CONDITION_OPTIONS.map((opt) => {
+            const checked = selectedCond.has(opt.value);
+            return (
+              <label
+                key={opt.value}
+                className={cn(
+                  "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition",
+                  checked ? "bg-[#F3F4F6] font-medium" : "hover:bg-[#F3F4F6]",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => onToggleCondition(opt.value)}
+                  className="size-4 accent-[#111827]"
+                />
+                <span>{opt.label}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      {shops && shops.length > 0 ? (
+        <div className="space-y-2.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Магазин
+          </p>
+          <div className="max-h-52 space-y-0.5 overflow-y-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
+            {shops.map((shop) => {
+              const checked = selectedShops.has(shop.slug);
+              return (
+                <label
+                  key={shop.id}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition",
+                    checked ? "bg-[#F3F4F6] font-medium" : "hover:bg-[#F3F4F6]",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => onToggleShop(shop.slug)}
+                    className="size-4 accent-[#111827]"
+                  />
+                  <span className="truncate">{shop.name}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       {brands && brands.length > 0 ? (
         <div className="space-y-2.5">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -186,7 +265,7 @@ function FilterPanel({
           </p>
           <div className="max-h-52 space-y-0.5 overflow-y-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
             {brands.map((brand) => {
-              const checked = selected.has(brand.slug);
+              const checked = selectedBrands.has(brand.slug);
               return (
                 <label
                   key={brand.id}
@@ -307,6 +386,9 @@ export function CatalogBrowser({
   activeChildSlug,
   brands,
   selectedBrandSlugs = [],
+  shops,
+  selectedShopSlugs = [],
+  selectedConditions = [],
   pagination,
 }: CatalogBrowserProps) {
   const router = useRouter();
@@ -334,19 +416,31 @@ export function CatalogBrowser({
     router.push(qs ? `${pathname}?${qs}` : pathname);
   }
 
-  function onToggleBrand(slug: string) {
+  function toggleCsvParam(key: string, value: string) {
     replaceQuery((params) => {
-      const current = (params.get("brands") ?? "")
+      const current = (params.get(key) ?? "")
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
-      const next = current.includes(slug)
-        ? current.filter((s) => s !== slug)
-        : [...current, slug];
-      if (next.length > 0) params.set("brands", next.join(","));
-      else params.delete("brands");
+      const next = current.includes(value)
+        ? current.filter((s) => s !== value)
+        : [...current, value];
+      if (next.length > 0) params.set(key, next.join(","));
+      else params.delete(key);
       params.delete("page");
     });
+  }
+
+  function onToggleBrand(slug: string) {
+    toggleCsvParam("brands", slug);
+  }
+
+  function onToggleShop(slug: string) {
+    toggleCsvParam("shops", slug);
+  }
+
+  function onToggleCondition(value: ProductConditionFilter) {
+    toggleCsvParam("condition", value);
   }
 
   const filtered = useMemo(() => {
@@ -367,9 +461,15 @@ export function CatalogBrowser({
 
   function resetFilters() {
     setPriceRange([absMin, absMax]);
-    if (selectedBrandSlugs.length > 0) {
+    const hasQueryFilters =
+      selectedBrandSlugs.length > 0 ||
+      selectedShopSlugs.length > 0 ||
+      selectedConditions.length > 0;
+    if (hasQueryFilters) {
       replaceQuery((params) => {
         params.delete("brands");
+        params.delete("shops");
+        params.delete("condition");
         params.delete("page");
       });
     }
@@ -377,7 +477,10 @@ export function CatalogBrowser({
 
   const priceActive = priceRange[0] > absMin || priceRange[1] < absMax;
   const activeCount =
-    (priceActive ? 1 : 0) + (selectedBrandSlugs.length > 0 ? 1 : 0);
+    (priceActive ? 1 : 0) +
+    (selectedBrandSlugs.length > 0 ? 1 : 0) +
+    (selectedShopSlugs.length > 0 ? 1 : 0) +
+    (selectedConditions.length > 0 ? 1 : 0);
 
   const filterProps: FilterPanelProps = {
     priceRange,
@@ -392,6 +495,11 @@ export function CatalogBrowser({
     brands,
     selectedBrandSlugs,
     onToggleBrand,
+    shops,
+    selectedShopSlugs,
+    onToggleShop,
+    selectedConditions,
+    onToggleCondition,
   };
 
   return (

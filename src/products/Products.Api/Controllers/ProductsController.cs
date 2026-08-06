@@ -25,10 +25,15 @@ public sealed class ProductsController : ControllerBase
         [FromQuery] bool? activeOnly,
         [FromQuery] Guid? brandId,
         [FromQuery] string? brand,
+        [FromQuery] Guid? shopId,
+        [FromQuery] string? shop,
+        [FromQuery] string? condition,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default) =>
-        _mediator.Send(new ListProductsQuery(search, activeOnly, brandId, brand, page, pageSize), cancellationToken);
+        _mediator.Send(
+            new ListProductsQuery(search, activeOnly, brandId, brand, shopId, shop, condition, page, pageSize),
+            cancellationToken);
 
     [HttpGet("{id:guid}")]
     [AllowAnonymous]
@@ -83,7 +88,9 @@ public sealed class ProductsController : ControllerBase
                 body.OriginalCurrencyCode,
                 body.ImageUrl,
                 body.SourceUrl,
-                body.IsActive),
+                body.IsActive,
+                body.Condition,
+                body.ShopId),
             cancellationToken);
 
     [HttpDelete("{id:guid}")]
@@ -107,4 +114,6 @@ public sealed record UpdateProductRequest(
     string? OriginalCurrencyCode,
     string ImageUrl,
     string? SourceUrl,
-    bool IsActive);
+    bool IsActive,
+    string? Condition = null,
+    Guid? ShopId = null);

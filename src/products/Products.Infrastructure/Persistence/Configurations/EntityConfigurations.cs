@@ -16,6 +16,10 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.Description).HasColumnType("text");
         builder.Property(x => x.Sku).HasMaxLength(100);
         builder.Property(x => x.Brand).HasMaxLength(200);
+        builder.Property(x => x.Condition)
+            .HasConversion<string>()
+            .HasMaxLength(16)
+            .IsRequired();
         builder.Property(x => x.Price).HasPrecision(18, 2);
         builder.Property(x => x.CurrencyCode).HasMaxLength(3).IsFixedLength().IsRequired();
         builder.Property(x => x.OriginalPrice).HasPrecision(18, 2);
@@ -28,7 +32,14 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasForeignKey(x => x.BrandId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasOne(x => x.Shop)
+            .WithMany(x => x.Products)
+            .HasForeignKey(x => x.ShopId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasIndex(x => x.BrandId);
+        builder.HasIndex(x => x.ShopId);
+        builder.HasIndex(x => x.Condition);
 
         builder.HasIndex(x => x.Slug)
             .IsUnique()
@@ -52,6 +63,29 @@ public sealed class BrandConfiguration : IEntityTypeConfiguration<Brand>
         builder.Property(x => x.Slug).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Description).HasMaxLength(1000);
         builder.Property(x => x.LogoUrl).HasMaxLength(2000);
+
+        builder.HasIndex(x => x.Slug)
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false");
+
+        builder.HasIndex(x => x.Name)
+            .HasFilter("\"IsDeleted\" = false");
+
+        builder.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
+public sealed class ShopConfiguration : IEntityTypeConfiguration<Shop>
+{
+    public void Configure(EntityTypeBuilder<Shop> builder)
+    {
+        builder.ToTable("shops");
+        builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.Slug).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.WebsiteUrl).HasMaxLength(2000);
+        builder.Property(x => x.Description).HasMaxLength(1000);
 
         builder.HasIndex(x => x.Slug)
             .IsUnique()

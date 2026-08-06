@@ -1,4 +1,5 @@
 using Products.Domain.Entities;
+using Products.Domain.Enums;
 
 namespace Products.Application.Common.Interfaces;
 
@@ -12,6 +13,9 @@ public interface IProductRepository
         bool? activeOnly,
         IReadOnlyList<Guid>? brandIds,
         IReadOnlyList<string>? brandSlugs,
+        IReadOnlyList<Guid>? shopIds,
+        IReadOnlyList<string>? shopSlugs,
+        IReadOnlyList<ProductCondition>? conditions,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
