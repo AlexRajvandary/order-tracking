@@ -95,7 +95,7 @@ export default async function CategorySectionPage({
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <main className="mx-auto max-w-6xl flex-1 px-4 py-6">
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-6 sm:px-8 lg:px-10">
         <Suspense fallback={<p className="text-sm text-muted-foreground">Загрузка…</p>}>
           <CatalogBrowser
             products={catalog.products}

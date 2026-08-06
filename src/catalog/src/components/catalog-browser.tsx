@@ -513,41 +513,43 @@ export function CatalogBrowser({
   };
 
   return (
-    <div className="space-y-6">
-      <Button variant="ghost" size="sm" className="-ml-2" render={<Link href={backHref} />}>
-        ← {backLabel}
-      </Button>
+    <div>
+      <div className="mb-6 space-y-4 sm:mb-8">
+        <Button variant="ghost" size="sm" className="-ml-2" render={<Link href={backHref} />}>
+          ← {backLabel}
+        </Button>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        {imageUrl ? (
-          <div className="flex size-20 shrink-0 items-center justify-center border bg-muted/40 p-2 sm:size-24">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageUrl} alt="" className="max-h-full max-w-full object-contain" />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          {imageUrl ? (
+            <div className="flex size-20 shrink-0 items-center justify-center border bg-muted/40 p-2 sm:size-24">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imageUrl} alt="" className="max-h-full max-w-full object-contain" />
+            </div>
+          ) : null}
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+            {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
+            <p className="mt-1 text-sm text-muted-foreground">
+              {totalCount.toLocaleString("ru-RU")}{" "}
+              {pluralRu(totalCount, "позиция", "позиции", "позиций")}
+            </p>
           </div>
-        ) : null}
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-          {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
-          <p className="mt-1 text-sm text-muted-foreground">
-            {totalCount.toLocaleString("ru-RU")}{" "}
-            {pluralRu(totalCount, "позиция", "позиции", "позиций")}
-          </p>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="hidden h-fit rounded-xl border border-[#E5E7EB] bg-white p-5 lg:sticky lg:top-20 lg:block">
+      <div className="grid gap-x-6 gap-y-6 min-[992px]:grid-cols-[210px_minmax(0,1fr)] min-[1200px]:grid-cols-[220px_minmax(0,1fr)] min-[1200px]:gap-x-7">
+        <aside className="hidden h-fit rounded-xl border border-[#E5E7EB] bg-white p-5 min-[992px]:sticky min-[992px]:top-20 min-[992px]:block">
           <FilterPanel {...filterProps} />
         </aside>
 
-        <div className="min-w-0 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E7EB] pb-3">
+        <div className="min-w-0">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E7EB] pb-3 sm:mb-4">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="lg:hidden"
+                className="min-[992px]:hidden"
                 onClick={() => setMobileFiltersOpen(true)}
               >
                 <ListFilter className="size-4" />
@@ -636,10 +638,10 @@ export function CatalogBrowser({
             <div className="space-y-6">
               <div
                 className={cn(
-                  "grid gap-4",
+                  "grid gap-3",
                   gridDensity === "dense"
-                    ? "grid-cols-2 lg:grid-cols-4"
-                    : "grid-cols-1 lg:grid-cols-3",
+                    ? "grid-cols-2 md:grid-cols-3 min-[1200px]:grid-cols-4"
+                    : "grid-cols-1 md:grid-cols-2 min-[992px]:grid-cols-3",
                 )}
               >
                 {filtered.map((product) => (
