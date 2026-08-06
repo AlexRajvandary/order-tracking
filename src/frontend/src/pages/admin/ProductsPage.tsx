@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, LayoutGrid } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import {
+  CheckSquare,
+  ChevronLeft,
+  ChevronRight,
+  EyeOff,
+  LayoutGrid,
+  SquareCheck,
+  X,
+} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
 import type { Category, Product } from '@/features/products/types'
@@ -31,8 +39,14 @@ import {
 import { Switch } from '@/shared/ui/switch'
 
 const PAGE_SIZES = [20, 40, 60, 100] as const
+const BULK_ID_CHUNK = 500
 type Density = 'comfortable' | 'dense'
 type VisibilityFilter = 'all' | 'visible' | 'hidden'
+
+type ConfirmState =
+  | { kind: 'selected'; count: number }
+  | { kind: 'category'; slug: string; name: string }
+  | null
 
 function formatPrice(value: number, currency: string, locale: string) {
   try {
@@ -50,12 +64,51 @@ function CategoryTree({
   categories,
   selectedSlug,
   onSelect,
+  onHideCategory,
+  hidePendingSlug,
 }: {
   categories: Category[]
   selectedSlug: string | null
   onSelect: (slug: string | null) => void
+  onHideCategory: (category: Category) => void
+  hidePendingSlug: string | null
 }) {
   const { t } = useTranslation('products')
+
+  const row = (category: Category, nested: boolean) => (
+    <div key={category.id} className="flex items-center gap-0.5">
+      <button
+        type="button"
+        className={cn(
+          'min-w-0 flex-1 rounded-lg px-2 text-left transition-colors',
+          nested ? 'py-1 text-xs' : 'py-1.5 text-sm',
+          selectedSlug === category.slug
+            ? 'bg-primary/10 font-medium text-primary'
+            : nested
+              ? 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              : 'text-foreground hover:bg-muted',
+        )}
+        onClick={() => onSelect(category.slug)}
+      >
+        <span className="line-clamp-2">{category.name}</span>
+      </button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+        title={t('bulk.hideCategory')}
+        aria-label={t('bulk.hideCategory')}
+        disabled={hidePendingSlug === category.slug}
+        onClick={(event) => {
+          event.stopPropagation()
+          onHideCategory(category)
+        }}
+      >
+        <EyeOff />
+      </Button>
+    </div>
+  )
 
   return (
     <ul className="space-y-1 text-sm">
@@ -75,35 +128,11 @@ function CategoryTree({
       </li>
       {categories.map((root) => (
         <li key={root.id} className="space-y-0.5">
-          <button
-            type="button"
-            className={cn(
-              'w-full rounded-lg px-2 py-1.5 text-left transition-colors',
-              selectedSlug === root.slug
-                ? 'bg-primary/10 font-medium text-primary'
-                : 'text-foreground hover:bg-muted',
-            )}
-            onClick={() => onSelect(root.slug)}
-          >
-            {root.name}
-          </button>
+          {row(root, false)}
           {root.children.length > 0 ? (
-            <ul className="ml-2 space-y-0.5 border-l pl-2">
+            <ul className="ml-2 space-y-0.5 border-l pl-1.5">
               {root.children.map((child) => (
-                <li key={child.id}>
-                  <button
-                    type="button"
-                    className={cn(
-                      'w-full rounded-lg px-2 py-1 text-left text-xs transition-colors',
-                      selectedSlug === child.slug
-                        ? 'bg-primary/10 font-medium text-primary'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    )}
-                    onClick={() => onSelect(child.slug)}
-                  >
-                    {child.name}
-                  </button>
-                </li>
+                <li key={child.id}>{row(child, true)}</li>
               ))}
             </ul>
           ) : null}
@@ -169,9 +198,7 @@ function ProductEditDialog({
       onOpenChange(false)
     },
     onError: (err: unknown) => {
-      setError(
-        err instanceof ApiError ? err.message : t('edit.saveError'),
-      )
+      setError(err instanceof ApiError ? err.message : t('edit.saveError'))
     },
   })
 
@@ -312,8 +339,22 @@ function ProductsToolbarPagination({
   )
 }
 
+async function hideProductIds(ids: string[]) {
+  let updated = 0
+  for (let i = 0; i < ids.length; i += BULK_ID_CHUNK) {
+    const chunk = ids.slice(i, i + BULK_ID_CHUNK)
+    const result = await productsApi.setProductsVisibility({
+      isActive: false,
+      productIds: chunk,
+    })
+    updated += result.updatedCount
+  }
+  return updated
+}
+
 export function ProductsPage() {
   const { t, i18n } = useTranslation('products')
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search)
   const normalizedSearch = debouncedSearch.trim()
@@ -327,9 +368,19 @@ export function ProductsPage() {
   const [editing, setEditing] = useState<Product | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [confirm, setConfirm] = useState<ConfirmState>(null)
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null)
+  const [bulkError, setBulkError] = useState<string | null>(null)
+
   useEffect(() => {
     setPage(1)
   }, [activeSearch, categorySlug, visibility, pageSize])
+
+  useEffect(() => {
+    if (!selectMode) setSelectedIds(new Set())
+  }, [selectMode])
 
   const categoriesQuery = useQuery({
     queryKey: ['admin-product-categories'],
@@ -362,14 +413,70 @@ export function ProductsPage() {
       ),
   })
 
+  const pageItems = productsQuery.data?.items ?? []
   const totalPages = Math.max(
     1,
     Math.ceil((productsQuery.data?.total ?? 0) / pageSize),
   )
 
+  const pageSelectableIds = useMemo(
+    () => pageItems.filter((p) => p.isActive).map((p) => p.id),
+    [pageItems],
+  )
+
+  const allPageSelected =
+    pageSelectableIds.length > 0 &&
+    pageSelectableIds.every((id) => selectedIds.has(id))
+
+  const bulkMutation = useMutation({
+    mutationFn: async (state: Exclude<ConfirmState, null>) => {
+      if (state.kind === 'selected') {
+        return hideProductIds([...selectedIds])
+      }
+      const result = await productsApi.setProductsVisibility({
+        isActive: false,
+        category: state.slug,
+        includeCategoryChildren: true,
+      })
+      return result.updatedCount
+    },
+    onSuccess: async (updatedCount) => {
+      setConfirm(null)
+      setBulkError(null)
+      setBulkMessage(t('bulk.success', { count: updatedCount }))
+      setSelectedIds(new Set())
+      setSelectMode(false)
+      await queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+    },
+    onError: (err: unknown) => {
+      setBulkError(err instanceof ApiError ? err.message : t('bulk.error'))
+    },
+  })
+
   const openEdit = (product: Product) => {
     setEditing(product)
     setDialogOpen(true)
+  }
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const togglePageSelection = () => {
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      if (allPageSelected) {
+        for (const id of pageSelectableIds) next.delete(id)
+      } else {
+        for (const id of pageSelectableIds) next.add(id)
+      }
+      return next
+    })
   }
 
   return (
@@ -384,6 +491,23 @@ export function ProductsPage() {
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={selectMode ? 'secondary' : 'outline'}
+            onClick={() => {
+              setSelectMode((v) => !v)
+              setBulkMessage(null)
+              setBulkError(null)
+            }}
+            aria-label={selectMode ? t('bulk.exitSelect') : t('bulk.selectMode')}
+            title={selectMode ? t('bulk.exitSelect') : t('bulk.selectMode')}
+          >
+            {selectMode ? <SquareCheck /> : <CheckSquare />}
+            <span className="hidden sm:inline">
+              {selectMode ? t('bulk.exitSelect') : t('bulk.selectMode')}
+            </span>
+          </Button>
           <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -425,7 +549,60 @@ export function ProductsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+      {bulkMessage ? (
+        <Alert>
+          <AlertDescription>{bulkMessage}</AlertDescription>
+        </Alert>
+      ) : null}
+      {bulkError ? (
+        <Alert variant="destructive">
+          <AlertDescription>{bulkError}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {selectMode ? (
+        <Card size="sm">
+          <CardContent className="flex flex-wrap items-center gap-2 py-3">
+            <span className="text-sm font-medium">
+              {t('bulk.selected', { count: selectedIds.size })}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={pageSelectableIds.length === 0}
+              onClick={togglePageSelection}
+            >
+              {allPageSelected ? t('bulk.clear') : t('bulk.selectPage')}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={selectedIds.size === 0}
+              onClick={() => setSelectedIds(new Set())}
+            >
+              <X className="size-3.5" />
+              {t('bulk.clear')}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={selectedIds.size === 0 || bulkMutation.isPending}
+              onClick={() => {
+                setBulkMessage(null)
+                setBulkError(null)
+                setConfirm({ kind: 'selected', count: selectedIds.size })
+              }}
+            >
+              <EyeOff className="size-3.5" />
+              {t('bulk.hideSelected')}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
         <Card size="sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">{t('categories')}</CardTitle>
@@ -444,6 +621,18 @@ export function ProductsPage() {
                 categories={categoriesQuery.data?.items ?? []}
                 selectedSlug={categorySlug}
                 onSelect={setCategorySlug}
+                hidePendingSlug={
+                  confirm?.kind === 'category' ? confirm.slug : null
+                }
+                onHideCategory={(category) => {
+                  setBulkMessage(null)
+                  setBulkError(null)
+                  setConfirm({
+                    kind: 'category',
+                    slug: category.slug,
+                    name: category.name,
+                  })
+                }}
               />
             )}
           </CardContent>
@@ -473,7 +662,7 @@ export function ProductsPage() {
                 {t('retry', { ns: 'common' })}
               </Button>
             </div>
-          ) : !(productsQuery.data?.items.length ?? 0) ? (
+          ) : !pageItems.length ? (
             <Card size="sm">
               <CardContent className="py-8 text-center text-sm text-muted-foreground">
                 {t('empty')}
@@ -486,49 +675,83 @@ export function ProductsPage() {
                 density === 'dense' ? 'lg:grid-cols-5' : 'lg:grid-cols-4',
               )}
             >
-              {productsQuery.data?.items.map((product) => (
-                <button
-                  key={product.id}
-                  type="button"
-                  onClick={() => openEdit(product)}
-                  className="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                >
-                  <Card
-                    size="sm"
-                    className="h-full gap-0 overflow-hidden pt-0 transition-colors hover:border-primary/40 hover:bg-muted/40"
+              {pageItems.map((product) => {
+                const selected = selectedIds.has(product.id)
+                return (
+                  <button
+                    key={product.id}
+                    type="button"
+                    onClick={() => {
+                      if (selectMode) {
+                        if (product.isActive) toggleSelected(product.id)
+                        return
+                      }
+                      openEdit(product)
+                    }}
+                    className="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                   >
-                    <div className="relative aspect-square bg-muted">
-                      <img
-                        src={product.imageUrl}
-                        alt=""
-                        referrerPolicy="no-referrer"
-                        className="size-full object-cover"
-                        loading="lazy"
-                      />
-                      {!product.isActive ? (
-                        <Badge
-                          variant="secondary"
-                          className="absolute left-2 top-2"
-                        >
-                          {t('hidden')}
-                        </Badge>
-                      ) : null}
-                    </div>
-                    <CardContent className="space-y-1 p-2.5">
-                      <p className="line-clamp-2 text-xs font-medium leading-snug">
-                        {product.name}
-                      </p>
-                      <p className="text-sm font-semibold tabular-nums">
-                        {formatPrice(product.price, product.currencyCode, i18n.language)}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </button>
-              ))}
+                    <Card
+                      size="sm"
+                      className={cn(
+                        'h-full gap-0 overflow-hidden pt-0 transition-colors hover:border-primary/40 hover:bg-muted/40',
+                        selectMode && selected && 'border-primary ring-2 ring-primary/30',
+                        selectMode && !product.isActive && 'opacity-60',
+                      )}
+                    >
+                      <div className="relative aspect-square bg-muted">
+                        <img
+                          src={product.imageUrl}
+                          alt=""
+                          referrerPolicy="no-referrer"
+                          className="size-full object-cover"
+                          loading="lazy"
+                        />
+                        {selectMode ? (
+                          <span
+                            className={cn(
+                              'absolute right-2 top-2 flex size-6 items-center justify-center rounded-md border bg-background/90',
+                              selected
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-border text-muted-foreground',
+                              !product.isActive && 'opacity-40',
+                            )}
+                          >
+                            {selected ? (
+                              <CheckSquare className="size-3.5" />
+                            ) : (
+                              <span className="size-3.5 rounded-sm border border-current" />
+                            )}
+                          </span>
+                        ) : null}
+                        {!product.isActive ? (
+                          <Badge
+                            variant="secondary"
+                            className="absolute left-2 top-2"
+                          >
+                            {t('hidden')}
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <CardContent className="space-y-1 p-2.5">
+                        <p className="line-clamp-2 text-xs font-medium leading-snug">
+                          {product.name}
+                        </p>
+                        <p className="text-sm font-semibold tabular-nums">
+                          {formatPrice(
+                            product.price,
+                            product.currencyCode,
+                            i18n.language,
+                          )}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </button>
+                )
+              })}
             </div>
           )}
 
-          {(productsQuery.data?.items.length ?? 0) > 0 ? (
+          {pageItems.length > 0 ? (
             <div className="flex justify-end">
               <ProductsToolbarPagination
                 page={page}
@@ -550,6 +773,47 @@ export function ProductsPage() {
           if (!open) setEditing(null)
         }}
       />
+
+      <Dialog
+        open={confirm != null}
+        onOpenChange={(open) => {
+          if (!open && !bulkMutation.isPending) setConfirm(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirm?.kind === 'category'
+                ? t('bulk.hideCategoryConfirmTitle')
+                : t('bulk.hideSelectedConfirmTitle')}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {confirm?.kind === 'category'
+              ? t('bulk.hideCategoryConfirm', { name: confirm.name })
+              : t('bulk.hideSelectedConfirm', { count: confirm?.count ?? 0 })}
+          </p>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={bulkMutation.isPending}
+              onClick={() => setConfirm(null)}
+            >
+              {t('cancel', { ns: 'common' })}
+            </Button>
+            <Button
+              type="button"
+              disabled={bulkMutation.isPending || confirm == null}
+              onClick={() => {
+                if (confirm) bulkMutation.mutate(confirm)
+              }}
+            >
+              {t('bulk.confirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

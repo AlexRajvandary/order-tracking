@@ -7,6 +7,7 @@ using Products.Application.Products.GetProduct;
 using Products.Application.Products.GetProductAudit;
 using Products.Application.Products.ListProducts;
 using Products.Application.Products.PatchProduct;
+using Products.Application.Products.SetProductsVisibility;
 using Products.Application.Products.UpdateProduct;
 
 namespace Products.Api.Controllers;
@@ -127,6 +128,20 @@ public sealed class ProductsController : ControllerBase
                 body.IsActive),
             cancellationToken);
 
+    [HttpPost("bulk-visibility")]
+    [Authorize]
+    public Task<SetProductsVisibilityResult> SetVisibility(
+        [FromBody] SetProductsVisibilityRequest body,
+        CancellationToken cancellationToken) =>
+        _mediator.Send(
+            new SetProductsVisibilityCommand(
+                body.IsActive,
+                body.ProductIds,
+                body.CategoryId,
+                body.Category,
+                body.IncludeCategoryChildren),
+            cancellationToken);
+
     [HttpDelete("{id:guid}")]
     [Authorize]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
@@ -160,3 +175,10 @@ public sealed record PatchProductRequest(
     decimal? OriginalPrice = null,
     bool? ClearOriginalPrice = null,
     bool? IsActive = null);
+
+public sealed record SetProductsVisibilityRequest(
+    bool IsActive,
+    IReadOnlyList<Guid>? ProductIds = null,
+    Guid? CategoryId = null,
+    string? Category = null,
+    bool IncludeCategoryChildren = true);

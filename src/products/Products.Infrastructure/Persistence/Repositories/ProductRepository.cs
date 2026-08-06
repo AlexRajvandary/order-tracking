@@ -169,6 +169,70 @@ public sealed class ProductRepository : IProductRepository
         return (items, total);
     }
 
+    public async Task<int> SetIsActiveAsync(
+        bool isActive,
+        IReadOnlyList<Guid>? productIds,
+        Guid? categoryId,
+        string? categorySlug,
+        bool includeCategoryChildren,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _db.Products.AsQueryable().Where(p => p.IsActive != isActive);
+
+        if (productIds is { Count: > 0 })
+        {
+            var ids = productIds.Distinct().ToList();
+            query = query.Where(p => ids.Contains(p.Id));
+        }
+
+        Guid? resolvedCategoryId = categoryId;
+        bool? resolvedIsRoot = null;
+
+        if (resolvedCategoryId is null && !string.IsNullOrWhiteSpace(categorySlug))
+        {
+            var slug = categorySlug.Trim().ToLower();
+            var matched = await _db.Categories
+                .AsNoTracking()
+                .Where(c => c.Slug.ToLower() == slug)
+                .Select(c => new { c.Id, c.ParentId })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (matched is null)
+            {
+                return 0;
+            }
+
+            resolvedCategoryId = matched.Id;
+            resolvedIsRoot = matched.ParentId is null;
+        }
+
+        if (resolvedCategoryId is { } catId)
+        {
+            var expandChildren = includeCategoryChildren || resolvedIsRoot == true;
+            if (expandChildren)
+            {
+                var categoryIds = await _db.Categories
+                    .AsNoTracking()
+                    .Where(c => c.Id == catId || c.ParentId == catId)
+                    .Select(c => c.Id)
+                    .ToListAsync(cancellationToken);
+                query = query.Where(p =>
+                    p.CategoryId != null && categoryIds.Contains(p.CategoryId.Value));
+            }
+            else
+            {
+                query = query.Where(p => p.CategoryId == catId);
+            }
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        return await query.ExecuteUpdateAsync(
+            setters => setters
+                .SetProperty(p => p.IsActive, isActive)
+                .SetProperty(p => p.UpdatedAt, now),
+            cancellationToken);
+    }
+
     public void Add(Product product) => _db.Products.Add(product);
 
     public void Remove(Product product) => _db.Products.Remove(product);

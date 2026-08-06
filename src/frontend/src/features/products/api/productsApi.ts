@@ -5,6 +5,8 @@ import type {
   PatchProductRequest,
   Product,
   ProductListResult,
+  SetProductsVisibilityRequest,
+  SetProductsVisibilityResult,
 } from '../types'
 
 const PRODUCTS_API_BASE = '/api/products'
@@ -38,4 +40,14 @@ export function patchProduct(id: string, body: PatchProductRequest) {
     method: 'PATCH',
     body: JSON.stringify(body),
   })
+}
+
+export function setProductsVisibility(body: SetProductsVisibilityRequest) {
+  return authorizedJsonFromUrl<SetProductsVisibilityResult>(
+    `${PRODUCTS_API_BASE}/bulk-visibility`,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+  )
 }

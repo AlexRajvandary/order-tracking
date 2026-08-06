@@ -22,6 +22,13 @@ public interface IProductRepository
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
+    Task<int> SetIsActiveAsync(
+        bool isActive,
+        IReadOnlyList<Guid>? productIds,
+        Guid? categoryId,
+        string? categorySlug,
+        bool includeCategoryChildren,
+        CancellationToken cancellationToken = default);
     void Add(Product product);
     void Remove(Product product);
 }

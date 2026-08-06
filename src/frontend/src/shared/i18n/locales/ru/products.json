@@ -29,5 +29,21 @@
     "inCatalog": "Показывать в каталоге",
     "saveError": "Не удалось сохранить"
   },
-  "count": "{{count}} позиций"
+  "count": "{{count}} позиций",
+  "bulk": {
+    "selectMode": "Выбрать товары",
+    "exitSelect": "Отменить выбор",
+    "selected": "Выбрано: {{count}}",
+    "selectPage": "Страница",
+    "clear": "Сбросить",
+    "hideSelected": "Скрыть выбранные",
+    "hideCategory": "Скрыть категорию",
+    "hideCategoryConfirmTitle": "Скрыть категорию?",
+    "hideCategoryConfirm": "Все товары в «{{name}}» (включая подкатегории) будут скрыты из каталога.",
+    "hideSelectedConfirmTitle": "Скрыть выбранные?",
+    "hideSelectedConfirm": "Будет скрыто товаров: {{count}}.",
+    "confirm": "Скрыть",
+    "success": "Скрыто: {{count}}",
+    "error": "Не удалось скрыть товары"
+  }
 }

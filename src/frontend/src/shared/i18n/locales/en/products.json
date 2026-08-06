@@ -29,5 +29,21 @@
     "inCatalog": "Show in catalog",
     "saveError": "Failed to save"
   },
-  "count": "{{count}} items"
+  "count": "{{count}} items",
+  "bulk": {
+    "selectMode": "Select products",
+    "exitSelect": "Cancel selection",
+    "selected": "Selected: {{count}}",
+    "selectPage": "Page",
+    "clear": "Clear",
+    "hideSelected": "Hide selected",
+    "hideCategory": "Hide category",
+    "hideCategoryConfirmTitle": "Hide category?",
+    "hideCategoryConfirm": "All products in “{{name}}” (including subcategories) will be hidden from the catalog.",
+    "hideSelectedConfirmTitle": "Hide selected?",
+    "hideSelectedConfirm": "Products to hide: {{count}}.",
+    "confirm": "Hide",
+    "success": "Hidden: {{count}}",
+    "error": "Failed to hide products"
+  }
 }

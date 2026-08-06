@@ -66,3 +66,15 @@ export type PatchProductRequest = {
   clearOriginalPrice?: boolean
   isActive?: boolean
 }
+
+export type SetProductsVisibilityRequest = {
+  isActive: boolean
+  productIds?: string[]
+  categoryId?: string
+  category?: string
+  includeCategoryChildren?: boolean
+}
+
+export type SetProductsVisibilityResult = {
+  updatedCount: number
+}
