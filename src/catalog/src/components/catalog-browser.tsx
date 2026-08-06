@@ -31,7 +31,8 @@ import type { ApiShop, ProductConditionFilter } from "@/lib/shops-api";
 import { cn } from "@/lib/utils";
 
 type SortOption = "relevance" | "price-asc" | "price-desc" | "name";
-type GridCols = 3 | 4;
+/** dense: 2 cols mobile / 4 desktop; comfortable: 1 col mobile / 3 desktop */
+type GridDensity = "dense" | "comfortable";
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "relevance", label: "По умолчанию" },
@@ -402,7 +403,7 @@ export function CatalogBrowser({
 
   const [priceRange, setPriceRange] = useState<[number, number]>([absMin, absMax]);
   const [sort, setSort] = useState<SortOption>("relevance");
-  const [gridCols, setGridCols] = useState<GridCols>(3);
+  const [gridDensity, setGridDensity] = useState<GridDensity>("dense");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   useEffect(() => {
@@ -564,37 +565,39 @@ export function CatalogBrowser({
 
             <div className="ml-auto flex items-center gap-2">
               <div
-                className="hidden items-center rounded-lg border border-[#E5E7EB] p-0.5 sm:flex"
+                className="flex items-center rounded-lg border border-[#E5E7EB] p-0.5"
                 role="group"
                 aria-label="Сетка товаров"
               >
                 <button
                   type="button"
-                  aria-label="3 колонки"
-                  aria-pressed={gridCols === 3}
+                  aria-label="Плотная сетка"
+                  aria-pressed={gridDensity === "dense"}
+                  title="Плотная сетка"
                   className={cn(
                     "flex size-8 items-center justify-center rounded-md transition",
-                    gridCols === 3
+                    gridDensity === "dense"
                       ? "bg-[#111827] text-white"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
-                  onClick={() => setGridCols(3)}
+                  onClick={() => setGridDensity("dense")}
                 >
-                  <Rows3 className="size-4" />
+                  <LayoutGrid className="size-4" />
                 </button>
                 <button
                   type="button"
-                  aria-label="4 колонки"
-                  aria-pressed={gridCols === 4}
+                  aria-label="Крупные карточки"
+                  aria-pressed={gridDensity === "comfortable"}
+                  title="Крупные карточки"
                   className={cn(
-                    "hidden size-8 items-center justify-center rounded-md transition 2xl:flex",
-                    gridCols === 4
+                    "flex size-8 items-center justify-center rounded-md transition",
+                    gridDensity === "comfortable"
                       ? "bg-[#111827] text-white"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
-                  onClick={() => setGridCols(4)}
+                  onClick={() => setGridDensity("comfortable")}
                 >
-                  <LayoutGrid className="size-4" />
+                  <Rows3 className="size-4" />
                 </button>
               </div>
 
@@ -616,8 +619,10 @@ export function CatalogBrowser({
             <div className="space-y-6">
               <div
                 className={cn(
-                  "grid gap-4 sm:grid-cols-2 xl:grid-cols-3",
-                  gridCols === 4 && "2xl:grid-cols-4",
+                  "grid gap-4",
+                  gridDensity === "dense"
+                    ? "grid-cols-2 lg:grid-cols-4"
+                    : "grid-cols-1 lg:grid-cols-3",
                 )}
               >
                 {filtered.map((product) => (
