@@ -18,6 +18,8 @@ import ruDashboard from './locales/ru/dashboard.json'
 import enDashboard from './locales/en/dashboard.json'
 import ruHelp from './locales/ru/help.json'
 import enHelp from './locales/en/help.json'
+import ruProducts from './locales/ru/products.json'
+import enProducts from './locales/en/products.json'
 
 function detectSystemLocale(): 'ru' | 'en' {
   const candidates = [...(navigator.languages ?? []), navigator.language]
@@ -45,6 +47,7 @@ void i18n.use(initReactI18next).init({
       dashboard: ruDashboard,
       admins: ruAdmins,
       help: ruHelp,
+      products: ruProducts,
     },
     en: {
       common: enCommon,
@@ -56,6 +59,7 @@ void i18n.use(initReactI18next).init({
       dashboard: enDashboard,
       admins: enAdmins,
       help: enHelp,
+      products: enProducts,
     },
   },
   lng: defaultLocale,

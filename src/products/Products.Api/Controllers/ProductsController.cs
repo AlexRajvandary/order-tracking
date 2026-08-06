@@ -6,6 +6,7 @@ using Products.Application.Products.DeleteProduct;
 using Products.Application.Products.GetProduct;
 using Products.Application.Products.GetProductAudit;
 using Products.Application.Products.ListProducts;
+using Products.Application.Products.PatchProduct;
 using Products.Application.Products.UpdateProduct;
 
 namespace Products.Api.Controllers;
@@ -110,6 +111,22 @@ public sealed class ProductsController : ControllerBase
                 body.CategoryId),
             cancellationToken);
 
+    [HttpPatch("{id:guid}")]
+    [Authorize]
+    public Task<Products.Application.Products.Models.ProductDto> Patch(
+        Guid id,
+        [FromBody] PatchProductRequest body,
+        CancellationToken cancellationToken) =>
+        _mediator.Send(
+            new PatchProductCommand(
+                id,
+                body.Name,
+                body.Price,
+                body.OriginalPrice,
+                body.ClearOriginalPrice,
+                body.IsActive),
+            cancellationToken);
+
     [HttpDelete("{id:guid}")]
     [Authorize]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
@@ -136,3 +153,10 @@ public sealed record UpdateProductRequest(
     string? Condition = null,
     Guid? ShopId = null,
     Guid? CategoryId = null);
+
+public sealed record PatchProductRequest(
+    string? Name = null,
+    decimal? Price = null,
+    decimal? OriginalPrice = null,
+    bool? ClearOriginalPrice = null,
+    bool? IsActive = null);

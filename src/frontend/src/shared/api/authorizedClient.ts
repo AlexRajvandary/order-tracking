@@ -51,6 +51,14 @@ export async function authorizedFetch(
   path: string,
   init?: RequestInit,
 ): Promise<Response> {
+  return authorizedRequest(`${API_BASE_URL}${path}`, init)
+}
+
+/** Absolute path from site origin (e.g. `/api/products?...`). Supports refresh like authorizedFetch. */
+export async function authorizedRequest(
+  url: string,
+  init?: RequestInit,
+): Promise<Response> {
   const headers = new Headers(init?.headers)
   const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData
   if (!isFormData && init?.body != null && !headers.has('Content-Type')) {
@@ -62,7 +70,7 @@ export async function authorizedFetch(
     headers.set('Authorization', `Bearer ${accessToken}`)
   }
 
-  let response = await fetch(`${API_BASE_URL}${path}`, {
+  let response = await fetch(url, {
     ...init,
     headers,
     credentials: 'include',
@@ -72,7 +80,7 @@ export async function authorizedFetch(
     const newToken = await refreshAccessToken()
     if (newToken) {
       headers.set('Authorization', `Bearer ${newToken}`)
-      response = await fetch(`${API_BASE_URL}${path}`, {
+      response = await fetch(url, {
         ...init,
         headers,
         credentials: 'include',
@@ -84,7 +92,11 @@ export async function authorizedFetch(
 }
 
 export async function authorizedJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await authorizedFetch(path, init)
+  return authorizedJsonFromUrl(`${API_BASE_URL}${path}`, init)
+}
+
+export async function authorizedJsonFromUrl<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await authorizedRequest(url, init)
 
   if (!response.ok) {
     let detail: string | undefined

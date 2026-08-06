@@ -60,6 +60,10 @@ public sealed class ProductRepository : IProductRepository
         {
             query = query.Where(p => p.IsActive);
         }
+        else if (activeOnly == false)
+        {
+            query = query.Where(p => !p.IsActive);
+        }
 
         if (brandIds is { Count: > 0 })
         {

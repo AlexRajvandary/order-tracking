@@ -1,0 +1,33 @@
+{
+  "title": "Товары",
+  "searchPlaceholder": "Поиск товаров…",
+  "categories": "Категории",
+  "allCategories": "Все категории",
+  "empty": "Товаров не найдено",
+  "hidden": "Скрыт",
+  "visible": "В каталоге",
+  "density": {
+    "label": "Сетка",
+    "comfortable": "4 в ряд",
+    "dense": "5 в ряд"
+  },
+  "visibility": {
+    "label": "Видимость",
+    "all": "Все",
+    "visible": "Только видимые",
+    "hidden": "Только скрытые"
+  },
+  "pageSize": "На странице",
+  "page": "Стр. {{page}} / {{total}}",
+  "prev": "Назад",
+  "next": "Вперёд",
+  "edit": {
+    "title": "Редактировать товар",
+    "name": "Название",
+    "price": "Цена",
+    "originalPrice": "Старая цена",
+    "inCatalog": "Показывать в каталоге",
+    "saveError": "Не удалось сохранить"
+  },
+  "count": "{{count}} позиций"
+}

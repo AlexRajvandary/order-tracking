@@ -20,6 +20,11 @@ public sealed class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQ
     {
         var product = await _products.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new NotFoundException($"Product {request.Id} was not found.");
+        if (!product.IsActive)
+        {
+            throw new NotFoundException($"Product {request.Id} was not found.");
+        }
+
         return product.ToDto();
     }
 }
@@ -39,6 +44,11 @@ public sealed class GetProductBySlugQueryHandler : IRequestHandler<GetProductByS
     {
         var product = await _products.GetBySlugAsync(request.Slug, cancellationToken)
             ?? throw new NotFoundException($"Product slug '{request.Slug}' was not found.");
+        if (!product.IsActive)
+        {
+            throw new NotFoundException($"Product slug '{request.Slug}' was not found.");
+        }
+
         return product.ToDto();
     }
 }

@@ -12,6 +12,7 @@ import { HelpPage } from '@/pages/admin/HelpPage'
 import { OrdersListPage } from '@/pages/admin/OrdersListPage'
 import { CreateOrderPage } from '@/pages/admin/CreateOrderPage'
 import { OrderDetailsPage } from '@/pages/admin/OrderDetailsPage'
+import { ProductsPage } from '@/pages/admin/ProductsPage'
 import { TrackingPage } from '@/pages/public/TrackingPage'
 import { AdminShell } from '@/widgets/admin-shell/AdminShell'
 import { AuthProvider } from '@/features/auth/model/AuthContext'
@@ -41,6 +42,7 @@ export function AppRouter() {
               <Route path="orders/:id" element={<OrderDetailsPage />} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="customers/:id" element={<CustomerDetailsPage />} />
+              <Route path="products" element={<ProductsPage />} />
               <Route path="admins" element={<AdminsPage />} />
               <Route path="statuses" element={<StatusManagementPage />} />
               <Route path="help" element={<HelpPage />} />

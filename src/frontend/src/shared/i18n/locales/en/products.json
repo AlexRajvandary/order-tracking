@@ -1,0 +1,33 @@
+{
+  "title": "Products",
+  "searchPlaceholder": "Search products…",
+  "categories": "Categories",
+  "allCategories": "All categories",
+  "empty": "No products found",
+  "hidden": "Hidden",
+  "visible": "In catalog",
+  "density": {
+    "label": "Grid",
+    "comfortable": "4 per row",
+    "dense": "5 per row"
+  },
+  "visibility": {
+    "label": "Visibility",
+    "all": "All",
+    "visible": "Visible only",
+    "hidden": "Hidden only"
+  },
+  "pageSize": "Per page",
+  "page": "Page {{page}} / {{total}}",
+  "prev": "Previous",
+  "next": "Next",
+  "edit": {
+    "title": "Edit product",
+    "name": "Name",
+    "price": "Price",
+    "originalPrice": "Original price",
+    "inCatalog": "Show in catalog",
+    "saveError": "Failed to save"
+  },
+  "count": "{{count}} items"
+}
