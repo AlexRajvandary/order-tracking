@@ -18,6 +18,5 @@ public static class DatabaseInitializer
         logger.LogInformation("Products database migrations applied");
 
         await BrandSeeder.SeedFromProductBrandNamesAsync(db, logger);
-        await ShopSeeder.SeedAsync(db, logger);
     }
 }
