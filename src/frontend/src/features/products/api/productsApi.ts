@@ -1,5 +1,6 @@
 import { authorizedJsonFromUrl } from '@/shared/api/authorizedClient'
 import type {
+  BrandListResult,
   CategoryListResult,
   ListProductsParams,
   PatchProductRequest,
@@ -7,6 +8,7 @@ import type {
   ProductListResult,
   SetProductsVisibilityRequest,
   SetProductsVisibilityResult,
+  ShopListResult,
 } from '../types'
 
 const PRODUCTS_API_BASE = '/api/products'
@@ -18,6 +20,9 @@ function buildListUrl(params: ListProductsParams = {}) {
   if (params.category) search.set('category', params.category)
   if (params.categoryId) search.set('categoryId', params.categoryId)
   if (params.includeCategoryChildren) search.set('includeCategoryChildren', 'true')
+  if (params.brand) search.set('brand', params.brand)
+  if (params.shop) search.set('shop', params.shop)
+  if (params.condition) search.set('condition', params.condition)
   search.set('page', String(params.page ?? 1))
   search.set('pageSize', String(params.pageSize ?? 20))
   const qs = search.toString()
@@ -31,6 +36,20 @@ export function listProducts(params?: ListProductsParams, signal?: AbortSignal) 
 export function listCategories(signal?: AbortSignal) {
   return authorizedJsonFromUrl<CategoryListResult>(
     `${PRODUCTS_API_BASE}/categories?activeOnly=true`,
+    { signal },
+  )
+}
+
+export function listBrands(signal?: AbortSignal) {
+  return authorizedJsonFromUrl<BrandListResult>(
+    `${PRODUCTS_API_BASE}/brands?activeOnly=true`,
+    { signal },
+  )
+}
+
+export function listShops(signal?: AbortSignal) {
+  return authorizedJsonFromUrl<ShopListResult>(
+    `${PRODUCTS_API_BASE}/shops?activeOnly=true`,
     { signal },
   )
 }

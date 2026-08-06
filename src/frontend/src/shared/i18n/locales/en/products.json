@@ -3,9 +3,26 @@
   "searchPlaceholder": "Search products…",
   "categories": "Categories",
   "allCategories": "All categories",
+  "filters": "Filters",
+  "resetFilters": "Reset",
   "empty": "No products found",
   "hidden": "Hidden",
   "visible": "In catalog",
+  "price": "Price",
+  "priceFrom": "From",
+  "priceTo": "To",
+  "condition": "Condition",
+  "conditionNew": "New",
+  "conditionUsed": "Used",
+  "shops": "Shop",
+  "brands": "Brand",
+  "sort": {
+    "label": "Sort",
+    "relevance": "Default",
+    "priceAsc": "Price: low to high",
+    "priceDesc": "Price: high to low",
+    "name": "Name"
+  },
   "density": {
     "label": "Grid",
     "comfortable": "4 per row",
@@ -30,6 +47,7 @@
     "saveError": "Failed to save"
   },
   "count": "{{count}} items",
+  "showing": "Showing {{count}}",
   "bulk": {
     "selectMode": "Select products",
     "exitSelect": "Cancel selection",

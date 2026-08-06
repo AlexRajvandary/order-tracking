@@ -1,17 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  CheckSquare,
-  ChevronLeft,
-  ChevronRight,
-  EyeOff,
-  LayoutGrid,
-  SquareCheck,
-  X,
-} from 'lucide-react'
+import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, LayoutGrid, SquareCheck, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
-import type { Category, Product } from '@/features/products/types'
+import type {
+  Brand,
+  Category,
+  Product,
+  ProductConditionFilter,
+  Shop,
+} from '@/features/products/types'
 import { ApiError } from '@/shared/api/client'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
 import { cn } from '@/shared/lib/utils'
@@ -36,17 +34,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/ui/select'
+import { Separator } from '@/shared/ui/separator'
 import { Switch } from '@/shared/ui/switch'
 
 const PAGE_SIZES = [20, 40, 60, 100] as const
 const BULK_ID_CHUNK = 500
+const CONDITION_OPTIONS: ProductConditionFilter[] = ['new', 'used']
 type Density = 'comfortable' | 'dense'
 type VisibilityFilter = 'all' | 'visible' | 'hidden'
+type SortOption = 'relevance' | 'price-asc' | 'price-desc' | 'name'
 
 type ConfirmState =
   | { kind: 'selected'; count: number }
   | { kind: 'category'; slug: string; name: string }
   | null
+
+function toggleInSet(current: Set<string>, value: string): Set<string> {
+  const next = new Set(current)
+  if (next.has(value)) next.delete(value)
+  else next.add(value)
+  return next
+}
 
 function formatPrice(value: number, currency: string, locale: string) {
   try {
@@ -139,6 +147,54 @@ function CategoryTree({
         </li>
       ))}
     </ul>
+  )
+}
+
+function FilterOptionList({
+  title,
+  options,
+  selected,
+  onToggle,
+  maxHeightClass = 'max-h-40',
+}: {
+  title: string
+  options: Array<{ value: string; label: string }>
+  selected: Set<string>
+  onToggle: (value: string) => void
+  maxHeightClass?: string
+}) {
+  if (options.length === 0) return null
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {title}
+      </p>
+      <div className={cn('space-y-0.5 overflow-y-auto pr-1', maxHeightClass)}>
+        {options.map((option) => {
+          const checked = selected.has(option.value)
+          return (
+            <label
+              key={option.value}
+              className={cn(
+                'flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors',
+                checked
+                  ? 'bg-primary/10 font-medium text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => onToggle(option.value)}
+                className="size-3.5 accent-primary"
+              />
+              <span className="truncate">{option.label}</span>
+            </label>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -368,15 +424,34 @@ export function ProductsPage() {
   const [editing, setEditing] = useState<Product | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
+  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(() => new Set())
+  const [selectedShops, setSelectedShops] = useState<Set<string>>(() => new Set())
+  const [selectedConditions, setSelectedConditions] = useState<Set<ProductConditionFilter>>(
+    () => new Set(),
+  )
+  const [priceFrom, setPriceFrom] = useState('')
+  const [priceTo, setPriceTo] = useState('')
+  const [sort, setSort] = useState<SortOption>('relevance')
+
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [confirm, setConfirm] = useState<ConfirmState>(null)
   const [bulkMessage, setBulkMessage] = useState<string | null>(null)
   const [bulkError, setBulkError] = useState<string | null>(null)
 
+  const brandKey = useMemo(
+    () => [...selectedBrands].sort().join(','),
+    [selectedBrands],
+  )
+  const shopKey = useMemo(() => [...selectedShops].sort().join(','), [selectedShops])
+  const conditionKey = useMemo(
+    () => [...selectedConditions].sort().join(','),
+    [selectedConditions],
+  )
+
   useEffect(() => {
     setPage(1)
-  }, [activeSearch, categorySlug, visibility, pageSize])
+  }, [activeSearch, categorySlug, visibility, pageSize, brandKey, shopKey, conditionKey])
 
   useEffect(() => {
     if (!selectMode) setSelectedIds(new Set())
@@ -385,6 +460,16 @@ export function ProductsPage() {
   const categoriesQuery = useQuery({
     queryKey: ['admin-product-categories'],
     queryFn: ({ signal }) => productsApi.listCategories(signal),
+  })
+
+  const brandsQuery = useQuery({
+    queryKey: ['admin-product-brands'],
+    queryFn: ({ signal }) => productsApi.listBrands(signal),
+  })
+
+  const shopsQuery = useQuery({
+    queryKey: ['admin-product-shops'],
+    queryFn: ({ signal }) => productsApi.listShops(signal),
   })
 
   const activeOnly =
@@ -396,6 +481,9 @@ export function ProductsPage() {
       activeSearch,
       categorySlug,
       activeOnly,
+      brandKey,
+      shopKey,
+      conditionKey,
       page,
       pageSize,
     ],
@@ -406,6 +494,9 @@ export function ProductsPage() {
           activeOnly,
           category: categorySlug,
           includeCategoryChildren: categorySlug != null,
+          brand: brandKey || null,
+          shop: shopKey || null,
+          condition: conditionKey || null,
           page,
           pageSize,
         },
@@ -414,14 +505,47 @@ export function ProductsPage() {
   })
 
   const pageItems = productsQuery.data?.items ?? []
+
+  const displayItems = useMemo(() => {
+    const min = priceFrom.trim() === '' ? null : Number(priceFrom.replace(',', '.'))
+    const max = priceTo.trim() === '' ? null : Number(priceTo.replace(',', '.'))
+    let list = [...pageItems]
+    if (min != null && Number.isFinite(min)) {
+      list = list.filter((p) => p.price >= min)
+    }
+    if (max != null && Number.isFinite(max)) {
+      list = list.filter((p) => p.price <= max)
+    }
+    if (sort === 'price-asc') list.sort((a, b) => a.price - b.price)
+    if (sort === 'price-desc') list.sort((a, b) => b.price - a.price)
+    if (sort === 'name') list.sort((a, b) => a.name.localeCompare(b.name, i18n.language))
+    return list
+  }, [pageItems, priceFrom, priceTo, sort, i18n.language])
+
   const totalPages = Math.max(
     1,
     Math.ceil((productsQuery.data?.total ?? 0) / pageSize),
   )
 
+  const filterActiveCount =
+    selectedBrands.size +
+    selectedShops.size +
+    selectedConditions.size +
+    (priceFrom.trim() ? 1 : 0) +
+    (priceTo.trim() ? 1 : 0)
+
+  const resetCatalogFilters = () => {
+    setSelectedBrands(new Set())
+    setSelectedShops(new Set())
+    setSelectedConditions(new Set())
+    setPriceFrom('')
+    setPriceTo('')
+    setSort('relevance')
+  }
+
   const pageSelectableIds = useMemo(
-    () => pageItems.filter((p) => p.isActive).map((p) => p.id),
-    [pageItems],
+    () => displayItems.filter((p) => p.isActive).map((p) => p.id),
+    [displayItems],
   )
 
   const allPageSelected =
@@ -602,12 +726,12 @@ export function ProductsPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
-        <Card size="sm">
+      <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <Card size="sm" className="h-fit">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">{t('categories')}</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {categoriesQuery.isLoading ? (
               <p className="text-sm text-muted-foreground">
                 {t('loading', { ns: 'common' })}
@@ -635,18 +759,121 @@ export function ProductsPage() {
                 }}
               />
             )}
+
+            <Separator />
+
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold">{t('filters')}</p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                disabled={filterActiveCount === 0 && sort === 'relevance'}
+                onClick={resetCatalogFilters}
+              >
+                {t('resetFilters')}
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {t('price')}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="price-from" className="text-xs text-muted-foreground">
+                    {t('priceFrom')}
+                  </Label>
+                  <Input
+                    id="price-from"
+                    inputMode="decimal"
+                    value={priceFrom}
+                    placeholder="0"
+                    onChange={(e) => setPriceFrom(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="price-to" className="text-xs text-muted-foreground">
+                    {t('priceTo')}
+                  </Label>
+                  <Input
+                    id="price-to"
+                    inputMode="decimal"
+                    value={priceTo}
+                    placeholder="∞"
+                    onChange={(e) => setPriceTo(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <FilterOptionList
+              title={t('condition')}
+              options={CONDITION_OPTIONS.map((value) => ({
+                value,
+                label: value === 'new' ? t('conditionNew') : t('conditionUsed'),
+              }))}
+              selected={selectedConditions as Set<string>}
+              onToggle={(value) =>
+                setSelectedConditions((current) =>
+                  toggleInSet(current, value) as Set<ProductConditionFilter>,
+                )
+              }
+            />
+
+            <FilterOptionList
+              title={t('shops')}
+              options={(shopsQuery.data?.items ?? []).map((shop: Shop) => ({
+                value: shop.slug,
+                label: shop.name,
+              }))}
+              selected={selectedShops}
+              onToggle={(value) => setSelectedShops((current) => toggleInSet(current, value))}
+            />
+
+            <FilterOptionList
+              title={t('brands')}
+              options={(brandsQuery.data?.items ?? []).map((brand: Brand) => ({
+                value: brand.slug,
+                label: brand.name,
+              }))}
+              selected={selectedBrands}
+              onToggle={(value) => setSelectedBrands((current) => toggleInSet(current, value))}
+            />
           </CardContent>
         </Card>
 
         <div className="space-y-3">
-          <div className="flex justify-end">
-            <ProductsToolbarPagination
-              page={page}
-              totalPages={totalPages}
-              pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-            />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              {productsQuery.data
+                ? t('showing', { count: displayItems.length })
+                : null}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={sort}
+                onValueChange={(value) => setSort(value as SortOption)}
+              >
+                <SelectTrigger className="w-[12.5rem]" size="sm">
+                  <ArrowUpDown className="size-3.5 opacity-60" />
+                  <SelectValue placeholder={t('sort.label')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="relevance">{t('sort.relevance')}</SelectItem>
+                  <SelectItem value="price-asc">{t('sort.priceAsc')}</SelectItem>
+                  <SelectItem value="price-desc">{t('sort.priceDesc')}</SelectItem>
+                  <SelectItem value="name">{t('sort.name')}</SelectItem>
+                </SelectContent>
+              </Select>
+              <ProductsToolbarPagination
+                page={page}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
+            </div>
           </div>
 
           {productsQuery.isLoading ? (
@@ -662,7 +889,7 @@ export function ProductsPage() {
                 {t('retry', { ns: 'common' })}
               </Button>
             </div>
-          ) : !pageItems.length ? (
+          ) : !displayItems.length ? (
             <Card size="sm">
               <CardContent className="py-8 text-center text-sm text-muted-foreground">
                 {t('empty')}
@@ -675,7 +902,7 @@ export function ProductsPage() {
                 density === 'dense' ? 'lg:grid-cols-5' : 'lg:grid-cols-4',
               )}
             >
-              {pageItems.map((product) => {
+              {displayItems.map((product) => {
                 const selected = selectedIds.has(product.id)
                 return (
                   <button
@@ -751,7 +978,7 @@ export function ProductsPage() {
             </div>
           )}
 
-          {pageItems.length > 0 ? (
+          {displayItems.length > 0 ? (
             <div className="flex justify-end">
               <ProductsToolbarPagination
                 page={page}

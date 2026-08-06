@@ -49,12 +49,45 @@ export type CategoryListResult = {
   items: Category[]
 }
 
+export type Brand = {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  logoUrl: string | null
+  sortOrder: number
+  isActive: boolean
+}
+
+export type BrandListResult = {
+  items: Brand[]
+}
+
+export type Shop = {
+  id: string
+  name: string
+  slug: string
+  websiteUrl: string | null
+  description: string | null
+  sortOrder: number
+  isActive: boolean
+}
+
+export type ShopListResult = {
+  items: Shop[]
+}
+
+export type ProductConditionFilter = 'new' | 'used'
+
 export type ListProductsParams = {
   search?: string | null
   activeOnly?: boolean | null
   category?: string | null
   categoryId?: string | null
   includeCategoryChildren?: boolean
+  brand?: string | null
+  shop?: string | null
+  condition?: string | null
   page?: number
   pageSize?: number
 }

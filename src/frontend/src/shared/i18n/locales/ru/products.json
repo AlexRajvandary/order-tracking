@@ -3,9 +3,26 @@
   "searchPlaceholder": "Поиск товаров…",
   "categories": "Категории",
   "allCategories": "Все категории",
+  "filters": "Фильтры",
+  "resetFilters": "Сбросить",
   "empty": "Товаров не найдено",
   "hidden": "Скрыт",
   "visible": "В каталоге",
+  "price": "Цена",
+  "priceFrom": "От",
+  "priceTo": "До",
+  "condition": "Состояние",
+  "conditionNew": "Новое",
+  "conditionUsed": "Б/У",
+  "shops": "Магазин",
+  "brands": "Бренд",
+  "sort": {
+    "label": "Сортировка",
+    "relevance": "По умолчанию",
+    "priceAsc": "Цена: по возрастанию",
+    "priceDesc": "Цена: по убыванию",
+    "name": "По названию"
+  },
   "density": {
     "label": "Сетка",
     "comfortable": "4 в ряд",
@@ -30,6 +47,7 @@
     "saveError": "Не удалось сохранить"
   },
   "count": "{{count}} позиций",
+  "showing": "Показано {{count}}",
   "bulk": {
     "selectMode": "Выбрать товары",
     "exitSelect": "Отменить выбор",
