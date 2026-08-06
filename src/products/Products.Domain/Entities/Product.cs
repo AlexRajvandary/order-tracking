@@ -15,6 +15,8 @@ public class Product : AuditableEntity
     public Brand? BrandEntity { get; set; }
     public Guid? ShopId { get; set; }
     public Shop? Shop { get; set; }
+    public Guid? CategoryId { get; set; }
+    public Category? Category { get; set; }
     /// <summary>New or used (Б/У).</summary>
     public ProductCondition Condition { get; set; } = ProductCondition.New;
     public decimal Price { get; set; }

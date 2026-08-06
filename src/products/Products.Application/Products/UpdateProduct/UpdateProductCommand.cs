@@ -23,7 +23,8 @@ public sealed record UpdateProductCommand(
     string? SourceUrl,
     bool IsActive,
     string? Condition = null,
-    Guid? ShopId = null) : IRequest<ProductDto>;
+    Guid? ShopId = null,
+    Guid? CategoryId = null) : IRequest<ProductDto>;
 
 public sealed class UpdateProductCommandValidator : AbstractValidator<UpdateProductCommand>
 {
@@ -103,6 +104,7 @@ public sealed class UpdateProductCommandHandler : IRequestHandler<UpdateProductC
             product.Condition = condition;
         }
         product.ShopId = request.ShopId;
+        product.CategoryId = request.CategoryId;
 
         await _audit.WriteAsync(product.Id, ProductAuditActions.Updated, oldSnapshot, product, cancellationToken);
         await _uow.SaveChangesAsync(cancellationToken);
@@ -121,6 +123,7 @@ public sealed class UpdateProductCommandHandler : IRequestHandler<UpdateProductC
             Brand = source.Brand,
             BrandId = source.BrandId,
             ShopId = source.ShopId,
+            CategoryId = source.CategoryId,
             Condition = source.Condition,
             Price = source.Price,
             CurrencyCode = source.CurrencyCode,

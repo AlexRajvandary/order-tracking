@@ -205,6 +205,9 @@ namespace Products.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("BrandId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Condition")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -277,6 +280,8 @@ namespace Products.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("BrandId");
 
+                    b.HasIndex("CategoryId");
+
                     b.HasIndex("Condition");
 
                     b.HasIndex("ShopId");
@@ -347,12 +352,19 @@ namespace Products.Infrastructure.Persistence.Migrations
                         .HasForeignKey("BrandId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Products.Domain.Entities.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Products.Domain.Entities.Shop", "Shop")
                         .WithMany("Products")
                         .HasForeignKey("ShopId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("BrandEntity");
+
+                    b.Navigation("Category");
 
                     b.Navigation("Shop");
                 });

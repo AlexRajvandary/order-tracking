@@ -88,6 +88,7 @@ export default async function CategorySectionPage({
           brandSlugs: selectedBrandSlugs,
           shopSlugs: selectedShopSlugs,
           conditions: selectedConditions,
+          categorySlug: child?.slug,
         })
       : { products: [], total: 0, page: 1, pageSize: PRODUCTS_PAGE_SIZE };
 

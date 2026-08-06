@@ -77,6 +77,7 @@ public sealed class ProductAuditWriter : IProductAuditWriter
         p.Brand,
         p.BrandId,
         p.ShopId,
+        p.CategoryId,
         Condition = p.Condition.ToString(),
         p.Price,
         p.CurrencyCode,

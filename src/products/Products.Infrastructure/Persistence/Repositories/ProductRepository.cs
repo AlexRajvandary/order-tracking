@@ -15,12 +15,14 @@ public sealed class ProductRepository : IProductRepository
         _db.Products
             .Include(p => p.Shop)
             .Include(p => p.BrandEntity)
+            .Include(p => p.Category)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
     public Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
         _db.Products
             .Include(p => p.Shop)
             .Include(p => p.BrandEntity)
+            .Include(p => p.Category)
             .FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
 
     public Task<bool> IsSlugTakenAsync(
@@ -45,6 +47,9 @@ public sealed class ProductRepository : IProductRepository
         IReadOnlyList<Guid>? shopIds,
         IReadOnlyList<string>? shopSlugs,
         IReadOnlyList<ProductCondition>? conditions,
+        Guid? categoryId,
+        string? categorySlug,
+        bool includeCategoryChildren,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -97,6 +102,45 @@ public sealed class ProductRepository : IProductRepository
             query = query.Where(p => conditions.Contains(p.Condition));
         }
 
+        if (categoryId is { } catId)
+        {
+            if (includeCategoryChildren)
+            {
+                query = query.Where(p =>
+                    p.CategoryId == catId
+                    || (p.Category != null && p.Category.ParentId == catId));
+            }
+            else
+            {
+                query = query.Where(p => p.CategoryId == catId);
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(categorySlug))
+        {
+            var slug = categorySlug.Trim().ToLower();
+            var matched = await _db.Categories
+                .AsNoTracking()
+                .Where(c => c.Slug.ToLower() == slug)
+                .Select(c => new { c.Id, c.ParentId })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (matched is null)
+            {
+                query = query.Where(_ => false);
+            }
+            else if (includeCategoryChildren || matched.ParentId is null)
+            {
+                var rootId = matched.Id;
+                query = query.Where(p =>
+                    p.CategoryId == rootId
+                    || (p.Category != null && p.Category.ParentId == rootId));
+            }
+            else
+            {
+                query = query.Where(p => p.CategoryId == matched.Id);
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim().ToLower();
@@ -112,6 +156,7 @@ public sealed class ProductRepository : IProductRepository
         var items = await query
             .Include(p => p.Shop)
             .Include(p => p.BrandEntity)
+            .Include(p => p.Category)
             .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)

@@ -13,6 +13,9 @@ export type ApiProduct = {
   shopId: string | null;
   shopSlug: string | null;
   shopName: string | null;
+  categoryId: string | null;
+  categorySlug: string | null;
+  categoryName: string | null;
   price: number;
   currencyCode: string;
   originalPrice: number | null;
@@ -66,7 +69,7 @@ export function mapApiProductToCatalog(
     name: p.name,
     category: "Сумки",
     sectionId,
-    categorySlug,
+    categorySlug: p.categorySlug ?? categorySlug,
     priceRub: Number(p.price),
     currency: "RUB",
     shortDescription,
@@ -96,6 +99,8 @@ export async function fetchProductsPage(options?: {
   brandSlugs?: string[];
   shopSlugs?: string[];
   conditions?: Array<"new" | "used">;
+  categorySlug?: string;
+  includeCategoryChildren?: boolean;
 }): Promise<ApiProductListResult> {
   const page = options?.page && options.page > 0 ? options.page : 1;
   const pageSize =
@@ -119,6 +124,12 @@ export async function fetchProductsPage(options?: {
   }
   if (options?.conditions && options.conditions.length > 0) {
     params.set("condition", options.conditions.join(","));
+  }
+  if (options?.categorySlug) {
+    params.set("category", options.categorySlug);
+  }
+  if (options?.includeCategoryChildren) {
+    params.set("includeCategoryChildren", "true");
   }
 
   const url = `${productsApiBaseUrl()}/api/products?${params}`;
@@ -155,6 +166,8 @@ export async function fetchBagsCatalogPage(options?: {
   brandSlugs?: string[];
   shopSlugs?: string[];
   conditions?: Array<"new" | "used">;
+  /** Child subcategory slug, or omit for whole bags tree */
+  categorySlug?: string;
 }): Promise<{
   products: CatalogProduct[];
   total: number;
@@ -162,14 +175,17 @@ export async function fetchBagsCatalogPage(options?: {
   pageSize: number;
 }> {
   const pageSize = options?.pageSize ?? DEFAULT_PAGE_SIZE;
+  const categorySlug = options?.categorySlug || "bags";
+  const includeCategoryChildren = !options?.categorySlug;
+
   const result = await fetchProductsPage({
     page: options?.page,
     pageSize,
     brandSlugs: options?.brandSlugs,
     shopSlugs: options?.shopSlugs,
     conditions: options?.conditions,
-    // Until Category exists on the API, bags are the only seeded products.
-    // Prefer listing all active items over a brittle name search.
+    categorySlug,
+    includeCategoryChildren,
     activeOnly: true,
   });
 

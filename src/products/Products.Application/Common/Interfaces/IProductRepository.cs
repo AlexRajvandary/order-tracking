@@ -16,6 +16,9 @@ public interface IProductRepository
         IReadOnlyList<Guid>? shopIds,
         IReadOnlyList<string>? shopSlugs,
         IReadOnlyList<ProductCondition>? conditions,
+        Guid? categoryId,
+        string? categorySlug,
+        bool includeCategoryChildren,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);

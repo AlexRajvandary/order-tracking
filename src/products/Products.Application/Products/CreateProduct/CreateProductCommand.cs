@@ -22,6 +22,7 @@ public sealed record CreateProductCommand(
     string? SourceUrl,
     string? Condition = null,
     Guid? ShopId = null,
+    Guid? CategoryId = null,
     bool IsActive = true) : IRequest<ProductDto>;
 
 public sealed class CreateProductCommandValidator : AbstractValidator<CreateProductCommand>
@@ -96,6 +97,7 @@ public sealed class CreateProductCommandHandler : IRequestHandler<CreateProductC
                 ? condition
                 : ProductCondition.New,
             ShopId = request.ShopId,
+            CategoryId = request.CategoryId,
             IsActive = request.IsActive,
         };
 

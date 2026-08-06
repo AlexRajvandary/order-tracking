@@ -20,6 +20,7 @@ export type Product = {
   shopName?: string;
   /** URL of this product on the source shop website */
   sourceUrl?: string;
+  categorySlug?: string;
   oldPriceRub?: number;
   discountPercent?: string;
   rating?: number;

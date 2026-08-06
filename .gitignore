@@ -40,3 +40,4 @@ out/
 vps-backup*/
 *.dump
 *.sql.bak
+scripts/data/
