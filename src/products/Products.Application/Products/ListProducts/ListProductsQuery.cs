@@ -17,6 +17,8 @@ public sealed record ListProductsQuery(
     Guid? CategoryId = null,
     string? Category = null,
     bool IncludeCategoryChildren = false,
+    decimal? PriceMin = null,
+    decimal? PriceMax = null,
     int Page = 1,
     int PageSize = 20) : IRequest<ProductListResult>;
 
@@ -31,6 +33,8 @@ public sealed class ListProductsQueryValidator : AbstractValidator<ListProductsQ
         RuleFor(x => x.Shop).MaximumLength(200).When(x => !string.IsNullOrWhiteSpace(x.Shop));
         RuleFor(x => x.Condition).MaximumLength(64).When(x => !string.IsNullOrWhiteSpace(x.Condition));
         RuleFor(x => x.Category).MaximumLength(200).When(x => !string.IsNullOrWhiteSpace(x.Category));
+        RuleFor(x => x.PriceMin).GreaterThanOrEqualTo(0).When(x => x.PriceMin.HasValue);
+        RuleFor(x => x.PriceMax).GreaterThanOrEqualTo(0).When(x => x.PriceMax.HasValue);
     }
 }
 
@@ -85,6 +89,8 @@ public sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery
             request.CategoryId,
             request.Category,
             request.IncludeCategoryChildren,
+            request.PriceMin,
+            request.PriceMax,
             request.Page,
             request.PageSize,
             cancellationToken);

@@ -23,6 +23,8 @@ function buildListUrl(params: ListProductsParams = {}) {
   if (params.brand) search.set('brand', params.brand)
   if (params.shop) search.set('shop', params.shop)
   if (params.condition) search.set('condition', params.condition)
+  if (params.priceMin != null) search.set('priceMin', String(params.priceMin))
+  if (params.priceMax != null) search.set('priceMax', String(params.priceMax))
   search.set('page', String(params.page ?? 1))
   search.set('pageSize', String(params.pageSize ?? 20))
   const qs = search.toString()

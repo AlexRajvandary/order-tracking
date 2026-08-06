@@ -19,15 +19,25 @@ public interface IProductRepository
         Guid? categoryId,
         string? categorySlug,
         bool includeCategoryChildren,
+        decimal? priceMin,
+        decimal? priceMax,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
     Task<int> SetIsActiveAsync(
         bool isActive,
         IReadOnlyList<Guid>? productIds,
+        string? search,
+        bool? activeOnly,
+        IReadOnlyList<string>? brandSlugs,
+        IReadOnlyList<string>? shopSlugs,
+        IReadOnlyList<ProductCondition>? conditions,
         Guid? categoryId,
         string? categorySlug,
         bool includeCategoryChildren,
+        decimal? priceMin,
+        decimal? priceMax,
+        bool matchFilters,
         CancellationToken cancellationToken = default);
     void Add(Product product);
     void Remove(Product product);

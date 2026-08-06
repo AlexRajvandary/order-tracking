@@ -33,6 +33,8 @@ public sealed class ProductsController : ControllerBase
         [FromQuery] Guid? categoryId,
         [FromQuery] string? category,
         [FromQuery] bool includeCategoryChildren = false,
+        [FromQuery] decimal? priceMin = null,
+        [FromQuery] decimal? priceMax = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default) =>
@@ -48,6 +50,8 @@ public sealed class ProductsController : ControllerBase
                 categoryId,
                 category,
                 includeCategoryChildren,
+                priceMin,
+                priceMax,
                 page,
                 pageSize),
             cancellationToken);
@@ -137,9 +141,17 @@ public sealed class ProductsController : ControllerBase
             new SetProductsVisibilityCommand(
                 body.IsActive,
                 body.ProductIds,
+                body.Search,
+                body.ActiveOnly,
+                body.Brand,
+                body.Shop,
+                body.Condition,
                 body.CategoryId,
                 body.Category,
-                body.IncludeCategoryChildren),
+                body.IncludeCategoryChildren,
+                body.PriceMin,
+                body.PriceMax,
+                body.MatchFilters),
             cancellationToken);
 
     [HttpDelete("{id:guid}")]
@@ -179,6 +191,14 @@ public sealed record PatchProductRequest(
 public sealed record SetProductsVisibilityRequest(
     bool IsActive,
     IReadOnlyList<Guid>? ProductIds = null,
+    string? Search = null,
+    bool? ActiveOnly = null,
+    string? Brand = null,
+    string? Shop = null,
+    string? Condition = null,
     Guid? CategoryId = null,
     string? Category = null,
-    bool IncludeCategoryChildren = true);
+    bool IncludeCategoryChildren = true,
+    decimal? PriceMin = null,
+    decimal? PriceMax = null,
+    bool MatchFilters = false);

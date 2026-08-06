@@ -88,6 +88,8 @@ export type ListProductsParams = {
   brand?: string | null
   shop?: string | null
   condition?: string | null
+  priceMin?: number | null
+  priceMax?: number | null
   page?: number
   pageSize?: number
 }
@@ -103,9 +105,17 @@ export type PatchProductRequest = {
 export type SetProductsVisibilityRequest = {
   isActive: boolean
   productIds?: string[]
+  search?: string | null
+  activeOnly?: boolean | null
+  brand?: string | null
+  shop?: string | null
+  condition?: string | null
   categoryId?: string
   category?: string
   includeCategoryChildren?: boolean
+  priceMin?: number | null
+  priceMax?: number | null
+  matchFilters?: boolean
 }
 
 export type SetProductsVisibilityResult = {

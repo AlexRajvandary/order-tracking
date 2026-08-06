@@ -46,8 +46,16 @@ type SortOption = 'relevance' | 'price-asc' | 'price-desc' | 'name'
 
 type ConfirmState =
   | { kind: 'selected'; count: number }
+  | { kind: 'filtered'; count: number }
   | { kind: 'category'; slug: string; name: string }
   | null
+
+function parseOptionalPrice(raw: string): number | null {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  const value = Number(trimmed.replace(',', '.'))
+  return Number.isFinite(value) ? value : null
+}
 
 function toggleInSet(current: Set<string>, value: string): Set<string> {
   const next = new Set(current)
@@ -435,6 +443,7 @@ export function ProductsPage() {
 
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [selectAllFiltered, setSelectAllFiltered] = useState(false)
   const [confirm, setConfirm] = useState<ConfirmState>(null)
   const [bulkMessage, setBulkMessage] = useState<string | null>(null)
   const [bulkError, setBulkError] = useState<string | null>(null)
@@ -448,14 +457,24 @@ export function ProductsPage() {
     () => [...selectedConditions].sort().join(','),
     [selectedConditions],
   )
+  const priceMin = parseOptionalPrice(priceFrom)
+  const priceMax = parseOptionalPrice(priceTo)
 
   useEffect(() => {
     setPage(1)
-  }, [activeSearch, categorySlug, visibility, pageSize, brandKey, shopKey, conditionKey])
+  }, [activeSearch, categorySlug, visibility, pageSize, brandKey, shopKey, conditionKey, priceMin, priceMax])
 
   useEffect(() => {
-    if (!selectMode) setSelectedIds(new Set())
+    if (!selectMode) {
+      setSelectedIds(new Set())
+      setSelectAllFiltered(false)
+    }
   }, [selectMode])
+
+  useEffect(() => {
+    setSelectAllFiltered(false)
+    setSelectedIds(new Set())
+  }, [activeSearch, categorySlug, brandKey, shopKey, conditionKey, priceMin, priceMax])
 
   const categoriesQuery = useQuery({
     queryKey: ['admin-product-categories'],
@@ -475,6 +494,30 @@ export function ProductsPage() {
   const activeOnly =
     visibility === 'visible' ? true : visibility === 'hidden' ? false : null
 
+  const listFilters = useMemo(
+    () => ({
+      search: activeSearch,
+      activeOnly,
+      category: categorySlug,
+      includeCategoryChildren: categorySlug != null,
+      brand: brandKey || null,
+      shop: shopKey || null,
+      condition: conditionKey || null,
+      priceMin,
+      priceMax,
+    }),
+    [
+      activeSearch,
+      activeOnly,
+      categorySlug,
+      brandKey,
+      shopKey,
+      conditionKey,
+      priceMin,
+      priceMax,
+    ],
+  )
+
   const productsQuery = useQuery({
     queryKey: [
       'admin-products',
@@ -484,19 +527,15 @@ export function ProductsPage() {
       brandKey,
       shopKey,
       conditionKey,
+      priceMin,
+      priceMax,
       page,
       pageSize,
     ],
     queryFn: ({ signal }) =>
       productsApi.listProducts(
         {
-          search: activeSearch,
-          activeOnly,
-          category: categorySlug,
-          includeCategoryChildren: categorySlug != null,
-          brand: brandKey || null,
-          shop: shopKey || null,
-          condition: conditionKey || null,
+          ...listFilters,
           page,
           pageSize,
         },
@@ -507,20 +546,12 @@ export function ProductsPage() {
   const pageItems = productsQuery.data?.items ?? []
 
   const displayItems = useMemo(() => {
-    const min = priceFrom.trim() === '' ? null : Number(priceFrom.replace(',', '.'))
-    const max = priceTo.trim() === '' ? null : Number(priceTo.replace(',', '.'))
     let list = [...pageItems]
-    if (min != null && Number.isFinite(min)) {
-      list = list.filter((p) => p.price >= min)
-    }
-    if (max != null && Number.isFinite(max)) {
-      list = list.filter((p) => p.price <= max)
-    }
     if (sort === 'price-asc') list.sort((a, b) => a.price - b.price)
     if (sort === 'price-desc') list.sort((a, b) => b.price - a.price)
     if (sort === 'name') list.sort((a, b) => a.name.localeCompare(b.name, i18n.language))
     return list
-  }, [pageItems, priceFrom, priceTo, sort, i18n.language])
+  }, [pageItems, sort, i18n.language])
 
   const totalPages = Math.max(
     1,
@@ -549,18 +580,40 @@ export function ProductsPage() {
   )
 
   const allPageSelected =
+    !selectAllFiltered &&
     pageSelectableIds.length > 0 &&
     pageSelectableIds.every((id) => selectedIds.has(id))
+
+  const selectedCount = selectAllFiltered
+    ? (productsQuery.data?.total ?? 0)
+    : selectedIds.size
 
   const bulkMutation = useMutation({
     mutationFn: async (state: Exclude<ConfirmState, null>) => {
       if (state.kind === 'selected') {
         return hideProductIds([...selectedIds])
       }
+      if (state.kind === 'filtered') {
+        const result = await productsApi.setProductsVisibility({
+          isActive: false,
+          matchFilters: true,
+          search: listFilters.search,
+          activeOnly: true,
+          brand: listFilters.brand,
+          shop: listFilters.shop,
+          condition: listFilters.condition,
+          category: listFilters.category ?? undefined,
+          includeCategoryChildren: listFilters.includeCategoryChildren,
+          priceMin: listFilters.priceMin,
+          priceMax: listFilters.priceMax,
+        })
+        return result.updatedCount
+      }
       const result = await productsApi.setProductsVisibility({
         isActive: false,
         category: state.slug,
         includeCategoryChildren: true,
+        activeOnly: true,
       })
       return result.updatedCount
     },
@@ -569,6 +622,7 @@ export function ProductsPage() {
       setBulkError(null)
       setBulkMessage(t('bulk.success', { count: updatedCount }))
       setSelectedIds(new Set())
+      setSelectAllFiltered(false)
       setSelectMode(false)
       await queryClient.invalidateQueries({ queryKey: ['admin-products'] })
     },
@@ -583,6 +637,7 @@ export function ProductsPage() {
   }
 
   const toggleSelected = (id: string) => {
+    setSelectAllFiltered(false)
     setSelectedIds((current) => {
       const next = new Set(current)
       if (next.has(id)) next.delete(id)
@@ -592,6 +647,7 @@ export function ProductsPage() {
   }
 
   const togglePageSelection = () => {
+    setSelectAllFiltered(false)
     setSelectedIds((current) => {
       const next = new Set(current)
       if (allPageSelected) {
@@ -601,6 +657,19 @@ export function ProductsPage() {
       }
       return next
     })
+  }
+
+  const selectAllMatchingFilters = () => {
+    if (visibility !== 'visible') {
+      setVisibility('visible')
+    }
+    setSelectedIds(new Set())
+    setSelectAllFiltered(true)
+  }
+
+  const clearSelection = () => {
+    setSelectedIds(new Set())
+    setSelectAllFiltered(false)
   }
 
   return (
@@ -688,8 +757,23 @@ export function ProductsPage() {
         <Card size="sm">
           <CardContent className="flex flex-wrap items-center gap-2 py-3">
             <span className="text-sm font-medium">
-              {t('bulk.selected', { count: selectedIds.size })}
+              {selectAllFiltered
+                ? t('bulk.selectedAll', { count: selectedCount })
+                : t('bulk.selected', { count: selectedCount })}
             </span>
+            <Button
+              type="button"
+              size="sm"
+              variant={selectAllFiltered ? 'secondary' : 'outline'}
+              disabled={
+                visibility === 'hidden' ||
+                (productsQuery.data?.total ?? 0) === 0 ||
+                productsQuery.isLoading
+              }
+              onClick={selectAllMatchingFilters}
+            >
+              {t('bulk.selectAll')}
+            </Button>
             <Button
               type="button"
               size="sm"
@@ -697,14 +781,14 @@ export function ProductsPage() {
               disabled={pageSelectableIds.length === 0}
               onClick={togglePageSelection}
             >
-              {allPageSelected ? t('bulk.clear') : t('bulk.selectPage')}
+              {allPageSelected ? t('bulk.clearPage') : t('bulk.selectPage')}
             </Button>
             <Button
               type="button"
               size="sm"
               variant="outline"
-              disabled={selectedIds.size === 0}
-              onClick={() => setSelectedIds(new Set())}
+              disabled={selectedCount === 0}
+              onClick={clearSelection}
             >
               <X className="size-3.5" />
               {t('bulk.clear')}
@@ -712,11 +796,15 @@ export function ProductsPage() {
             <Button
               type="button"
               size="sm"
-              disabled={selectedIds.size === 0 || bulkMutation.isPending}
+              disabled={selectedCount === 0 || bulkMutation.isPending}
               onClick={() => {
                 setBulkMessage(null)
                 setBulkError(null)
-                setConfirm({ kind: 'selected', count: selectedIds.size })
+                if (selectAllFiltered) {
+                  setConfirm({ kind: 'filtered', count: selectedCount })
+                } else {
+                  setConfirm({ kind: 'selected', count: selectedIds.size })
+                }
               }}
             >
               <EyeOff className="size-3.5" />
@@ -903,7 +991,8 @@ export function ProductsPage() {
               )}
             >
               {displayItems.map((product) => {
-                const selected = selectedIds.has(product.id)
+                const selected =
+                  (selectAllFiltered && product.isActive) || selectedIds.has(product.id)
                 return (
                   <button
                     key={product.id}
@@ -1012,13 +1101,17 @@ export function ProductsPage() {
             <DialogTitle>
               {confirm?.kind === 'category'
                 ? t('bulk.hideCategoryConfirmTitle')
-                : t('bulk.hideSelectedConfirmTitle')}
+                : confirm?.kind === 'filtered'
+                  ? t('bulk.hideFilteredConfirmTitle')
+                  : t('bulk.hideSelectedConfirmTitle')}
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             {confirm?.kind === 'category'
               ? t('bulk.hideCategoryConfirm', { name: confirm.name })
-              : t('bulk.hideSelectedConfirm', { count: confirm?.count ?? 0 })}
+              : confirm?.kind === 'filtered'
+                ? t('bulk.hideFilteredConfirm', { count: confirm.count })
+                : t('bulk.hideSelectedConfirm', { count: confirm?.count ?? 0 })}
           </p>
           <DialogFooter>
             <Button

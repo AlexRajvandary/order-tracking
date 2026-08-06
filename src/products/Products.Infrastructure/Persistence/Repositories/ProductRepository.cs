@@ -50,9 +50,110 @@ public sealed class ProductRepository : IProductRepository
         Guid? categoryId,
         string? categorySlug,
         bool includeCategoryChildren,
+        decimal? priceMin,
+        decimal? priceMax,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
+    {
+        var query = await BuildFilterQueryAsync(
+            search,
+            activeOnly,
+            brandIds,
+            brandSlugs,
+            shopIds,
+            shopSlugs,
+            conditions,
+            categoryId,
+            categorySlug,
+            includeCategoryChildren,
+            priceMin,
+            priceMax,
+            cancellationToken);
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Include(p => p.Shop)
+            .Include(p => p.BrandEntity)
+            .Include(p => p.Category)
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, total);
+    }
+
+    public async Task<int> SetIsActiveAsync(
+        bool isActive,
+        IReadOnlyList<Guid>? productIds,
+        string? search,
+        bool? activeOnly,
+        IReadOnlyList<string>? brandSlugs,
+        IReadOnlyList<string>? shopSlugs,
+        IReadOnlyList<ProductCondition>? conditions,
+        Guid? categoryId,
+        string? categorySlug,
+        bool includeCategoryChildren,
+        decimal? priceMin,
+        decimal? priceMax,
+        bool matchFilters,
+        CancellationToken cancellationToken = default)
+    {
+        IQueryable<Product> query;
+        if (productIds is { Count: > 0 })
+        {
+            var ids = productIds.Distinct().ToList();
+            query = _db.Products.Where(p => ids.Contains(p.Id));
+        }
+        else if (matchFilters
+                 || categoryId.HasValue
+                 || !string.IsNullOrWhiteSpace(categorySlug))
+        {
+            query = await BuildFilterQueryAsync(
+                search,
+                activeOnly,
+                brandIds: null,
+                brandSlugs,
+                shopIds: null,
+                shopSlugs,
+                conditions,
+                categoryId,
+                categorySlug,
+                includeCategoryChildren,
+                priceMin,
+                priceMax,
+                cancellationToken);
+        }
+        else
+        {
+            return 0;
+        }
+
+        query = query.Where(p => p.IsActive != isActive);
+
+        var now = DateTimeOffset.UtcNow;
+        return await query.ExecuteUpdateAsync(
+            setters => setters
+                .SetProperty(p => p.IsActive, isActive)
+                .SetProperty(p => p.UpdatedAt, now),
+            cancellationToken);
+    }
+
+    private async Task<IQueryable<Product>> BuildFilterQueryAsync(
+        string? search,
+        bool? activeOnly,
+        IReadOnlyList<Guid>? brandIds,
+        IReadOnlyList<string>? brandSlugs,
+        IReadOnlyList<Guid>? shopIds,
+        IReadOnlyList<string>? shopSlugs,
+        IReadOnlyList<ProductCondition>? conditions,
+        Guid? categoryId,
+        string? categorySlug,
+        bool includeCategoryChildren,
+        decimal? priceMin,
+        decimal? priceMax,
+        CancellationToken cancellationToken)
     {
         var query = _db.Products.AsQueryable();
 
@@ -110,9 +211,13 @@ public sealed class ProductRepository : IProductRepository
         {
             if (includeCategoryChildren)
             {
+                var categoryIds = await _db.Categories
+                    .AsNoTracking()
+                    .Where(c => c.Id == catId || c.ParentId == catId)
+                    .Select(c => c.Id)
+                    .ToListAsync(cancellationToken);
                 query = query.Where(p =>
-                    p.CategoryId == catId
-                    || (p.Category != null && p.Category.ParentId == catId));
+                    p.CategoryId != null && categoryIds.Contains(p.CategoryId.Value));
             }
             else
             {
@@ -132,16 +237,23 @@ public sealed class ProductRepository : IProductRepository
             {
                 query = query.Where(_ => false);
             }
-            else if (includeCategoryChildren || matched.ParentId is null)
-            {
-                var rootId = matched.Id;
-                query = query.Where(p =>
-                    p.CategoryId == rootId
-                    || (p.Category != null && p.Category.ParentId == rootId));
-            }
             else
             {
-                query = query.Where(p => p.CategoryId == matched.Id);
+                var expandChildren = includeCategoryChildren || matched.ParentId is null;
+                if (expandChildren)
+                {
+                    var categoryIds = await _db.Categories
+                        .AsNoTracking()
+                        .Where(c => c.Id == matched.Id || c.ParentId == matched.Id)
+                        .Select(c => c.Id)
+                        .ToListAsync(cancellationToken);
+                    query = query.Where(p =>
+                        p.CategoryId != null && categoryIds.Contains(p.CategoryId.Value));
+                }
+                else
+                {
+                    query = query.Where(p => p.CategoryId == matched.Id);
+                }
             }
         }
 
@@ -156,81 +268,17 @@ public sealed class ProductRepository : IProductRepository
                 || p.Slug.ToLower().Contains(term));
         }
 
-        var total = await query.CountAsync(cancellationToken);
-        var items = await query
-            .Include(p => p.Shop)
-            .Include(p => p.BrandEntity)
-            .Include(p => p.Category)
-            .OrderByDescending(p => p.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(cancellationToken);
-
-        return (items, total);
-    }
-
-    public async Task<int> SetIsActiveAsync(
-        bool isActive,
-        IReadOnlyList<Guid>? productIds,
-        Guid? categoryId,
-        string? categorySlug,
-        bool includeCategoryChildren,
-        CancellationToken cancellationToken = default)
-    {
-        var query = _db.Products.AsQueryable().Where(p => p.IsActive != isActive);
-
-        if (productIds is { Count: > 0 })
+        if (priceMin is { } min)
         {
-            var ids = productIds.Distinct().ToList();
-            query = query.Where(p => ids.Contains(p.Id));
+            query = query.Where(p => p.Price >= min);
         }
 
-        Guid? resolvedCategoryId = categoryId;
-        bool? resolvedIsRoot = null;
-
-        if (resolvedCategoryId is null && !string.IsNullOrWhiteSpace(categorySlug))
+        if (priceMax is { } max)
         {
-            var slug = categorySlug.Trim().ToLower();
-            var matched = await _db.Categories
-                .AsNoTracking()
-                .Where(c => c.Slug.ToLower() == slug)
-                .Select(c => new { c.Id, c.ParentId })
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (matched is null)
-            {
-                return 0;
-            }
-
-            resolvedCategoryId = matched.Id;
-            resolvedIsRoot = matched.ParentId is null;
+            query = query.Where(p => p.Price <= max);
         }
 
-        if (resolvedCategoryId is { } catId)
-        {
-            var expandChildren = includeCategoryChildren || resolvedIsRoot == true;
-            if (expandChildren)
-            {
-                var categoryIds = await _db.Categories
-                    .AsNoTracking()
-                    .Where(c => c.Id == catId || c.ParentId == catId)
-                    .Select(c => c.Id)
-                    .ToListAsync(cancellationToken);
-                query = query.Where(p =>
-                    p.CategoryId != null && categoryIds.Contains(p.CategoryId.Value));
-            }
-            else
-            {
-                query = query.Where(p => p.CategoryId == catId);
-            }
-        }
-
-        var now = DateTimeOffset.UtcNow;
-        return await query.ExecuteUpdateAsync(
-            setters => setters
-                .SetProperty(p => p.IsActive, isActive)
-                .SetProperty(p => p.UpdatedAt, now),
-            cancellationToken);
+        return query;
     }
 
     public void Add(Product product) => _db.Products.Add(product);
