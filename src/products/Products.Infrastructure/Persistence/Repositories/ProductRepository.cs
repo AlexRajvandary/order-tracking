@@ -12,10 +12,16 @@ public sealed class ProductRepository : IProductRepository
     public ProductRepository(ProductsDbContext db) => _db = db;
 
     public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _db.Products.Include(p => p.Shop).FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+        _db.Products
+            .Include(p => p.Shop)
+            .Include(p => p.BrandEntity)
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
     public Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
-        _db.Products.Include(p => p.Shop).FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
+        _db.Products
+            .Include(p => p.Shop)
+            .Include(p => p.BrandEntity)
+            .FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
 
     public Task<bool> IsSlugTakenAsync(
         string slug,
@@ -105,6 +111,7 @@ public sealed class ProductRepository : IProductRepository
         var total = await query.CountAsync(cancellationToken);
         var items = await query
             .Include(p => p.Shop)
+            .Include(p => p.BrandEntity)
             .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)

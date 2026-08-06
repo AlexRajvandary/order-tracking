@@ -7,6 +7,8 @@ export type ApiProduct = {
   description: string | null;
   sku: string | null;
   brand: string | null;
+  brandId: string | null;
+  brandSlug: string | null;
   condition: string;
   shopId: string | null;
   shopSlug: string | null;
@@ -16,6 +18,7 @@ export type ApiProduct = {
   originalPrice: number | null;
   originalCurrencyCode: string | null;
   imageUrl: string;
+  /** URL of this product on the source shop website */
   sourceUrl: string | null;
   isActive: boolean;
   createdAt: string;
@@ -73,9 +76,12 @@ export function mapApiProductToCatalog(
     inStock: p.isActive,
     imageUrl: p.imageUrl,
     brand: p.brand ?? undefined,
+    brandId: p.brandId ?? undefined,
+    brandSlug: p.brandSlug ?? undefined,
     condition: p.condition === "used" ? "used" : "new",
     shopSlug: p.shopSlug ?? undefined,
     shopName: p.shopName ?? undefined,
+    sourceUrl: p.sourceUrl ?? undefined,
     oldPriceRub: p.originalPrice != null ? Number(p.originalPrice) : undefined,
     discountPercent: discount,
   };

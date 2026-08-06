@@ -13,6 +13,7 @@ public sealed record CreateProductCommand(
     string? Description,
     string? Sku,
     string? Brand,
+    Guid? BrandId,
     decimal Price,
     string? CurrencyCode,
     decimal? OriginalPrice,
@@ -80,6 +81,7 @@ public sealed class CreateProductCommandHandler : IRequestHandler<CreateProductC
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             Sku = string.IsNullOrWhiteSpace(request.Sku) ? null : request.Sku.Trim(),
             Brand = string.IsNullOrWhiteSpace(request.Brand) ? null : request.Brand.Trim(),
+            BrandId = request.BrandId,
             Price = request.Price,
             CurrencyCode = string.IsNullOrWhiteSpace(request.CurrencyCode)
                 ? "RUB"

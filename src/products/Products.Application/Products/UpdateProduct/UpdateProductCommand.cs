@@ -14,6 +14,7 @@ public sealed record UpdateProductCommand(
     string? Description,
     string? Sku,
     string? Brand,
+    Guid? BrandId,
     decimal Price,
     string? CurrencyCode,
     decimal? OriginalPrice,
@@ -84,6 +85,7 @@ public sealed class UpdateProductCommandHandler : IRequestHandler<UpdateProductC
         product.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
         product.Sku = string.IsNullOrWhiteSpace(request.Sku) ? null : request.Sku.Trim();
         product.Brand = string.IsNullOrWhiteSpace(request.Brand) ? null : request.Brand.Trim();
+        product.BrandId = request.BrandId;
         product.Price = request.Price;
         product.CurrencyCode = string.IsNullOrWhiteSpace(request.CurrencyCode)
             ? product.CurrencyCode
@@ -100,8 +102,7 @@ public sealed class UpdateProductCommandHandler : IRequestHandler<UpdateProductC
         {
             product.Condition = condition;
         }
-        if (request.ShopId.HasValue)
-            product.ShopId = request.ShopId;
+        product.ShopId = request.ShopId;
 
         await _audit.WriteAsync(product.Id, ProductAuditActions.Updated, oldSnapshot, product, cancellationToken);
         await _uow.SaveChangesAsync(cancellationToken);

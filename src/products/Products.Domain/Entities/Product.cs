@@ -15,6 +15,7 @@ public class Product : AuditableEntity
     public Brand? BrandEntity { get; set; }
     public Guid? ShopId { get; set; }
     public Shop? Shop { get; set; }
+    /// <summary>New or used (Б/У).</summary>
     public ProductCondition Condition { get; set; } = ProductCondition.New;
     public decimal Price { get; set; }
     public string CurrencyCode { get; set; } = "RUB";
@@ -22,6 +23,7 @@ public class Product : AuditableEntity
     public decimal? OriginalPrice { get; set; }
     public string? OriginalCurrencyCode { get; set; }
     public string ImageUrl { get; set; } = string.Empty;
+    /// <summary>URL of this product on the source shop website.</summary>
     public string? SourceUrl { get; set; }
     public bool IsActive { get; set; } = true;
 }

@@ -14,6 +14,8 @@ internal static class ProductMappings
             product.Description,
             product.Sku,
             product.Brand,
+            product.BrandId,
+            product.BrandEntity?.Slug,
             ToConditionSlug(product.Condition),
             product.ShopId,
             product.Shop?.Slug,

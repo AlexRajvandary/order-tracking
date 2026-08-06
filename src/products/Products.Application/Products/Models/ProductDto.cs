@@ -7,6 +7,8 @@ public sealed record ProductDto(
     string? Description,
     string? Sku,
     string? Brand,
+    Guid? BrandId,
+    string? BrandSlug,
     string Condition,
     Guid? ShopId,
     string? ShopSlug,

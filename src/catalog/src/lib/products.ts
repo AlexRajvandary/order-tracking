@@ -13,9 +13,13 @@ export type Product = {
   inStock: boolean;
   imageUrl?: string;
   brand?: string;
+  brandId?: string;
+  brandSlug?: string;
   condition?: "new" | "used";
   shopSlug?: string;
   shopName?: string;
+  /** URL of this product on the source shop website */
+  sourceUrl?: string;
   oldPriceRub?: number;
   discountPercent?: string;
   rating?: number;
