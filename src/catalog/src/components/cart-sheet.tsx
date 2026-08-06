@@ -78,7 +78,7 @@ export function CartSheet({ trigger }: CartSheetProps) {
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <Link
-                          href={`/products/${item.slug}`}
+                          href={`/products/${item.id}`}
                           className="text-sm font-semibold leading-snug hover:underline"
                         >
                           {item.name}

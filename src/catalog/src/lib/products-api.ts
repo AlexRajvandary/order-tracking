@@ -144,6 +144,22 @@ export async function fetchProductsPage(options?: {
   return (await res.json()) as ApiProductListResult;
 }
 
+export async function fetchProductById(
+  id: string,
+): Promise<ApiProduct | null> {
+  const url = `${productsApiBaseUrl()}/api/products/${encodeURIComponent(id)}`;
+  const res = await fetch(url, {
+    next: { revalidate: 60 },
+  });
+
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`Products API ${res.status}: ${url}`);
+  }
+
+  return (await res.json()) as ApiProduct;
+}
+
 export async function fetchProductBySlug(
   slug: string,
 ): Promise<ApiProduct | null> {

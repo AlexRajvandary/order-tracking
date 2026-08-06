@@ -1,53 +1,57 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCartButton } from "@/components/add-to-cart-button";
+import { ProductCard } from "@/components/product-card";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-// Hardcoded Lamoda bags — unused; product pages load from Products API.
-// import { BAGS_COLLECTION } from "@/lib/bags-collection";
-import {
   findCatalogProductBySlug,
-  listProductsForCategoryItem,
   type CatalogProduct,
 } from "@/lib/catalog-products";
 import {
   fetchBagsCatalogPage,
+  fetchProductById,
   fetchProductBySlug,
   mapApiProductToCatalog,
 } from "@/lib/products-api";
-import { formatPrice, getProductById, listProducts, type Product } from "@/lib/products";
+import { formatPrice, getProductById, type Product } from "@/lib/products";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-async function resolveProduct(id: string): Promise<Product | CatalogProduct | undefined> {
-  const fromDemo = getProductById(id) ?? findCatalogProductBySlug(id);
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
+async function resolveProduct(
+  idOrSlug: string,
+): Promise<CatalogProduct | Product | undefined> {
+  const decoded = decodeURIComponent(idOrSlug);
+
+  const fromDemo = getProductById(decoded) ?? findCatalogProductBySlug(decoded);
   if (fromDemo) return fromDemo;
 
   try {
-    const api = await fetchProductBySlug(id);
-    if (api) return mapApiProductToCatalog(api);
+    if (isUuid(decoded)) {
+      const byId = await fetchProductById(decoded);
+      if (byId) return mapApiProductToCatalog(byId);
+    }
+
+    const bySlug = await fetchProductBySlug(decoded);
+    if (bySlug) return mapApiProductToCatalog(bySlug);
   } catch {
-    // fall through
+    // fall through to notFound
   }
+
   return undefined;
 }
 
-export function generateStaticParams() {
-  // Bags are dynamic from Products API — do not bake Lamoda collection into the build.
-  // const bags = BAGS_COLLECTION.map((p) => ({ id: p.slug }));
-  return listProducts().map((p) => ({ id: p.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PageProps) {
   const { id } = await params;
@@ -71,24 +75,25 @@ export default async function ProductPage({ params }: PageProps) {
   const catalog =
     "sectionId" in product
       ? (product as CatalogProduct)
-      : findCatalogProductBySlug(product.slug);
+      : undefined;
 
-  let related: Product[] = [];
-  if (catalog?.sectionId === "bags") {
-    try {
-      const bags = await fetchBagsCatalogPage({ page: 1, pageSize: 4 });
-      related = bags.products.filter((p) => p.id !== product.id).slice(0, 3);
-    } catch {
-      related = [];
-    }
-  } else if (catalog) {
-    related = listProductsForCategoryItem(catalog.sectionId, catalog.categorySlug)
+  const categorySlug =
+    ("categorySlug" in product && product.categorySlug) ||
+    catalog?.categorySlug;
+
+  let related: CatalogProduct[] = [];
+  try {
+    const bags = await fetchBagsCatalogPage({
+      page: 1,
+      pageSize: 12,
+      categorySlug:
+        categorySlug && categorySlug !== "bags" ? categorySlug : undefined,
+    });
+    related = bags.products
       .filter((p) => p.id !== product.id)
-      .slice(0, 3);
-  } else {
-    related = listProducts()
-      .filter((p) => p.id !== product.id && p.category === product.category)
-      .slice(0, 3);
+      .slice(0, 8) as CatalogProduct[];
+  } catch {
+    related = [];
   }
 
   const oldPriceLabel = product.oldPriceRub
@@ -99,6 +104,21 @@ export default async function ProductPage({ params }: PageProps) {
       }).format(product.oldPriceRub)
     : null;
 
+  const backHref = catalog?.sectionId
+    ? `/categories/${catalog.sectionId}${
+        categorySlug && categorySlug !== "bags"
+          ? `?sub=${encodeURIComponent(categorySlug)}`
+          : ""
+      }`
+    : "/categories/bags";
+
+  const conditionLabel =
+    product.condition === "used"
+      ? "Б/У"
+      : product.condition === "new"
+        ? "Новое"
+        : null;
+
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
@@ -107,21 +127,13 @@ export default async function ProductPage({ params }: PageProps) {
           variant="ghost"
           size="sm"
           className="mb-4 -ml-2"
-          render={
-            <Link
-              href={
-                catalog
-                  ? `/categories/${catalog.sectionId}`
-                  : "/"
-              }
-            />
-          }
+          render={<Link href={backHref} />}
         >
-          ← {catalog ? "К категории" : "К каталогу"}
+          ← Назад к каталогу
         </Button>
 
-        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-8">
-          <div className="relative min-h-[280px] overflow-hidden rounded-xl border bg-muted sm:min-h-[400px]">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+          <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl border bg-muted sm:aspect-[3/4] lg:min-h-[36rem] lg:aspect-auto">
             {product.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -129,7 +141,7 @@ export default async function ProductPage({ params }: PageProps) {
                 alt={product.name}
                 decoding="async"
                 referrerPolicy="no-referrer"
-                className="absolute inset-0 h-full w-full object-cover"
+                className="absolute inset-0 h-full w-full object-contain bg-white"
               />
             ) : (
               <div
@@ -139,99 +151,61 @@ export default async function ProductPage({ params }: PageProps) {
                 }}
               />
             )}
-            {!product.imageUrl ? (
-              <div className="absolute inset-x-0 bottom-0 p-6">
-                <p className="text-3xl font-bold text-white/95 sm:text-4xl">{product.name}</p>
-              </div>
-            ) : null}
           </div>
 
-          <Card className="h-fit">
-            <CardHeader>
-              <p className="text-xs text-muted-foreground">
-                {product.brand ? `${product.brand} · ` : ""}
-                {product.category}
+          <div className="flex flex-col gap-5">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                {[product.brand, conditionLabel].filter(Boolean).join(" · ")}
               </p>
-              <CardTitle className="text-2xl font-bold tracking-tight">{product.name}</CardTitle>
-              <CardDescription className="text-base leading-relaxed whitespace-pre-line">
-                {product.description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="flex flex-wrap items-baseline gap-3">
-                <p className="text-2xl font-bold">{formatPrice(product)}</p>
-                {oldPriceLabel ? (
-                  <p className="text-base text-muted-foreground line-through">{oldPriceLabel}</p>
-                ) : null}
-                {product.discountPercent ? (
-                  <Badge variant="destructive">{product.discountPercent}</Badge>
-                ) : null}
-              </div>
-              {product.rating != null ? (
-                <p className="text-sm text-muted-foreground">
-                  ★ {product.rating.toFixed(1)}
-                  {product.reviewsCount != null ? ` · ${product.reviewsCount} отзывов` : ""}
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                {product.name}
+              </h1>
+            </div>
+
+            <div className="flex flex-wrap items-baseline gap-3">
+              <p className="text-3xl font-bold tracking-tight">
+                {formatPrice(product)}
+              </p>
+              {oldPriceLabel ? (
+                <p className="text-lg text-muted-foreground line-through">
+                  {oldPriceLabel}
                 </p>
               ) : null}
-              <div className="flex flex-wrap gap-2">
-                {product.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary">
-                    {tag}
-                  </Badge>
-                ))}
-                {product.isPremium ? <Badge>premium</Badge> : null}
-              </div>
-              <Badge variant={product.inStock ? "default" : "outline"}>
-                {product.inStock ? "В наличии" : "Нет в наличии"}
-              </Badge>
-              <Separator />
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <AddToCartButton product={product} size="lg" className="flex-1" />
-                <Button size="lg" variant="outline" className="flex-1" render={<Link href="/cart" />}>
-                  Перейти в корзину
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+              {product.discountPercent ? (
+                <Badge variant="destructive">{product.discountPercent}</Badge>
+              ) : null}
+            </div>
+
+            {product.shopName ? (
+              <p className="text-sm text-muted-foreground">
+                Магазин: {product.shopName}
+              </p>
+            ) : null}
+
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+              <Button type="button" size="lg" className="flex-1">
+                Купить
+              </Button>
+              <AddToCartButton
+                product={product}
+                size="lg"
+                className="flex-1"
+              />
+            </div>
+          </div>
         </div>
 
-        {related.length > 0 && (
-          <section className="mt-10 space-y-4">
-            <h2 className="text-xl font-bold">Ещё из категории «{product.category}»</h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {related.length > 0 ? (
+          <section className="mt-12 space-y-4">
+            <h2 className="text-xl font-bold tracking-tight">Похожие товары</h2>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
               {related.map((item) => (
-                <Card key={item.id} className="gap-0 overflow-hidden py-0">
-                  <Link href={`/products/${item.slug}`} className="block">
-                    <div className="relative aspect-[3/4] bg-muted">
-                      {item.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          loading="lazy"
-                          decoding="async"
-                          referrerPolicy="no-referrer"
-                          className="absolute inset-0 h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div
-                          className="h-full w-full"
-                          style={{
-                            background: `linear-gradient(145deg, ${item.tint}, oklch(0.25 0 0) 85%)`,
-                          }}
-                        />
-                      )}
-                    </div>
-                    <CardHeader>
-                      <CardTitle className="text-base">{item.name}</CardTitle>
-                      <CardDescription>{formatPrice(item)}</CardDescription>
-                    </CardHeader>
-                  </Link>
-                </Card>
+                <ProductCard key={item.id} product={item} />
               ))}
             </div>
           </section>
-        )}
+        ) : null}
       </main>
     </div>
   );

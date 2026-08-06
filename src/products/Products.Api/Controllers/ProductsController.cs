@@ -57,7 +57,7 @@ public sealed class ProductsController : ControllerBase
         CancellationToken cancellationToken) =>
         _mediator.Send(new GetProductByIdQuery(id), cancellationToken);
 
-    [HttpGet("by-slug/{slug}")]
+    [HttpGet("by-slug/{*slug}")]
     [AllowAnonymous]
     public Task<Products.Application.Products.Models.ProductDto> GetBySlug(
         string slug,
