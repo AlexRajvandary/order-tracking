@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { LayoutGrid, ListFilter, Rows3, ChevronDown, Check } from "lucide-react";
+import { LayoutGrid, ListFilter, Rows3, ArrowUpDown, Check } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,15 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
 
 function formatRub(value: number): string {
   return value.toLocaleString("ru-RU");
+}
+
+function pluralRu(n: number, one: string, few: string, many: string): string {
+  const abs = Math.abs(n) % 100;
+  const last = abs % 10;
+  if (abs > 10 && abs < 20) return many;
+  if (last === 1) return one;
+  if (last >= 2 && last <= 4) return few;
+  return many;
 }
 
 function priceStep(min: number, max: number): number {
@@ -330,15 +339,15 @@ function SortDropdown({
       <Button
         type="button"
         variant="outline"
-        size="sm"
+        size="icon-sm"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
-        className="min-w-[11.5rem] justify-between gap-2"
+        aria-label={`Сортировка: ${current.label}`}
+        title={current.label}
         onClick={() => setOpen((prev) => !prev)}
       >
-        <span className="truncate">{current.label}</span>
-        <ChevronDown className={cn("size-4 shrink-0 opacity-60 transition", open && "rotate-180")} />
+        <ArrowUpDown className="size-4" />
       </Button>
 
       {open ? (
@@ -519,6 +528,10 @@ export function CatalogBrowser({
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
           {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
+          <p className="mt-1 text-sm text-muted-foreground">
+            {totalCount.toLocaleString("ru-RU")}{" "}
+            {pluralRu(totalCount, "позиция", "позиции", "позиций")}
+          </p>
         </div>
       </div>
 
@@ -529,7 +542,7 @@ export function CatalogBrowser({
 
         <div className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E7EB] pb-3">
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -545,22 +558,26 @@ export function CatalogBrowser({
                   </Badge>
                 ) : null}
               </Button>
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">{filtered.length}</span>
-                {" из "}
-                {totalCount}
-                {pagination ? (
-                  <span className="text-muted-foreground">
-                    {" · стр. "}
-                    {pagination.page}
-                  </span>
-                ) : null}
-                {activeCount > 0 ? (
-                  <Badge variant="secondary" className="ml-2 align-middle">
-                    фильтров: {activeCount}
-                  </Badge>
-                ) : null}
-              </p>
+              {pagination ? (
+                <CatalogPagination
+                  page={pagination.page}
+                  pageSize={pagination.pageSize}
+                  total={pagination.total}
+                  basePath={pagination.basePath}
+                  className="mx-0 w-auto justify-start pt-0"
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{filtered.length}</span>
+                  {" из "}
+                  {totalCount}
+                </p>
+              )}
+              {activeCount > 0 ? (
+                <Badge variant="secondary" className="align-middle">
+                  фильтров: {activeCount}
+                </Badge>
+              ) : null}
             </div>
 
             <div className="ml-auto flex items-center gap-2">
@@ -617,14 +634,6 @@ export function CatalogBrowser({
             </div>
           ) : (
             <div className="space-y-6">
-              {pagination ? (
-                <CatalogPagination
-                  page={pagination.page}
-                  pageSize={pagination.pageSize}
-                  total={pagination.total}
-                  basePath={pagination.basePath}
-                />
-              ) : null}
               <div
                 className={cn(
                   "grid gap-4",

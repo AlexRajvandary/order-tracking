@@ -16,6 +16,7 @@ type CatalogPaginationProps = {
   total: number;
   /** Path without query, e.g. /categories/bags */
   basePath: string;
+  className?: string;
 };
 
 function buildHref(basePath: string, page: number): string {
@@ -47,6 +48,7 @@ export function CatalogPagination({
   pageSize,
   total,
   basePath,
+  className,
 }: CatalogPaginationProps) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   if (totalPages <= 1) return null;
@@ -55,12 +57,11 @@ export function CatalogPagination({
   const items = pageItems(current, totalPages);
 
   return (
-    <Pagination className="pt-2">
+    <Pagination className={className ?? "pt-2"}>
       <PaginationContent>
         <PaginationItem>
           <PaginationPrevious
             href={current > 1 ? buildHref(basePath, current - 1) : undefined}
-            text="Назад"
             aria-disabled={current <= 1}
             className={current <= 1 ? "pointer-events-none opacity-50" : undefined}
           />
@@ -86,7 +87,6 @@ export function CatalogPagination({
         <PaginationItem>
           <PaginationNext
             href={current < totalPages ? buildHref(basePath, current + 1) : undefined}
-            text="Вперёд"
             aria-disabled={current >= totalPages}
             className={
               current >= totalPages ? "pointer-events-none opacity-50" : undefined
