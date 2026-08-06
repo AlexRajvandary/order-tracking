@@ -95,7 +95,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#ECECEC] bg-white/95 backdrop-blur-md supports-backdrop-filter:bg-white/90">
-      <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4 sm:h-[78px] sm:gap-6 sm:px-5 lg:px-6">
+      <div className="mx-auto flex h-14 w-full max-w-[1440px] items-center gap-3 px-6 sm:h-[78px] sm:gap-6 sm:px-8 lg:px-10">
         <button
           type="button"
           className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg text-[#111] transition-colors hover:bg-black/5 md:hidden"

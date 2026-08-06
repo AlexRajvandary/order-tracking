@@ -640,8 +640,8 @@ export function CatalogBrowser({
                 className={cn(
                   "grid gap-3",
                   gridDensity === "dense"
-                    ? "grid-cols-2 md:grid-cols-3 min-[1200px]:grid-cols-4"
-                    : "grid-cols-1 md:grid-cols-2 min-[992px]:grid-cols-3",
+                    ? "grid-cols-2 lg:grid-cols-4"
+                    : "grid-cols-1 lg:grid-cols-3",
                 )}
               >
                 {filtered.map((product) => (
