@@ -617,6 +617,14 @@ export function CatalogBrowser({
             </div>
           ) : (
             <div className="space-y-6">
+              {pagination ? (
+                <CatalogPagination
+                  page={pagination.page}
+                  pageSize={pagination.pageSize}
+                  total={pagination.total}
+                  basePath={pagination.basePath}
+                />
+              ) : null}
               <div
                 className={cn(
                   "grid gap-4",
