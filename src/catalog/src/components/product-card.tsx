@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Card, CardTitle } from "@/components/ui/card";
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import { FavoriteButton } from "@/components/favorite-button";
@@ -16,12 +15,15 @@ export function ProductCard({ product }: ProductCardProps) {
       <Link href={`/products/${product.slug}`} className="flex min-h-0 flex-1 flex-col">
         <div className="relative aspect-[3/4] shrink-0 overflow-hidden bg-muted">
           {product.imageUrl ? (
-            <Image
+            // External marketplace URLs — load directly, no Next.js image proxy.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={product.imageUrl}
               alt={product.name}
-              fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              className="object-cover"
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+              className="absolute inset-0 h-full w-full object-cover"
             />
           ) : (
             <div

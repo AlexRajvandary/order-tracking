@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCartButton } from "@/components/add-to-cart-button";
@@ -124,13 +123,13 @@ export default async function ProductPage({ params }: PageProps) {
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-8">
           <div className="relative min-h-[280px] overflow-hidden rounded-xl border bg-muted sm:min-h-[400px]">
             {product.imageUrl ? (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={product.imageUrl}
                 alt={product.name}
-                fill
-                sizes="(max-width: 1024px) 100vw, 55vw"
-                className="object-cover"
-                priority
+                decoding="async"
+                referrerPolicy="no-referrer"
+                className="absolute inset-0 h-full w-full object-cover"
               />
             ) : (
               <div
@@ -205,12 +204,14 @@ export default async function ProductPage({ params }: PageProps) {
                   <Link href={`/products/${item.slug}`} className="block">
                     <div className="relative aspect-[3/4] bg-muted">
                       {item.imageUrl ? (
-                        <Image
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
                           src={item.imageUrl}
                           alt={item.name}
-                          fill
-                          sizes="(max-width: 640px) 50vw, 33vw"
-                          className="object-cover"
+                          loading="lazy"
+                          decoding="async"
+                          referrerPolicy="no-referrer"
+                          className="absolute inset-0 h-full w-full object-cover"
                         />
                       ) : (
                         <div

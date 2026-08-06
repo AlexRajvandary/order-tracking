@@ -159,10 +159,9 @@ lines.push("");
 
 let inserted = 0;
 for (const p of products) {
-  if (!p.name || !p.imageUrl) continue;
-
+  const sku = p.sku ? String(p.sku).slice(0, 100) : null;
   const id = randomUUID();
-  const slug = productSlug(p.name, p.sku);
+  const slug = productSlug(p.name, sku);
   const condition = p.condition === "new" ? "New" : "Used";
   const shopSlug = p.shopSlug || (p.shopName ? slugify(p.shopName) : null);
   const cat = p._category;
@@ -207,7 +206,7 @@ SELECT
   ${esc(p.name)},
   ${esc(slug)},
   ${esc(description)},
-  ${esc(p.sku)},
+  ${esc(sku)},
   ${esc(p.brand || brandName)},
   (SELECT "Id" FROM brands WHERE "Slug" = ${esc(brandSlug)} AND "IsDeleted" = FALSE LIMIT 1),
   ${
@@ -232,7 +231,7 @@ WHERE NOT EXISTS (
   SELECT 1 FROM products
   WHERE "IsDeleted" = FALSE
     AND (
-      (${esc(p.sku)} IS NOT NULL AND "Sku" = ${esc(p.sku)})
+      (${esc(sku)} IS NOT NULL AND "Sku" = ${esc(sku)})
       OR "Slug" = ${esc(slug)}
     )
 );`);
