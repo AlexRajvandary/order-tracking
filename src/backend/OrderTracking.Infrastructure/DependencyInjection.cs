@@ -101,6 +101,7 @@ public static class DependencyInjection
                 sp.GetRequiredService<IServiceScopeFactory>());
         });
         services.AddSingleton<TelegramBot.Auth.TelegramBotAdminResolver>();
+        services.AddSingleton<TelegramBot.Ui.TelegramUiService>();
         services.AddSingleton<TelegramBot.Screens.TelegramBotMenuScreen>();
         services.AddSingleton<TelegramBot.Screens.TelegramBotOrdersScreen>();
         services.AddSingleton<TelegramBot.Screens.TelegramBotCustomersScreen>();

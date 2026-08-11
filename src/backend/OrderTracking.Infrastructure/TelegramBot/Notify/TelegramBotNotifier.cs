@@ -47,7 +47,7 @@ internal sealed class TelegramBotNotifier
         var keyboard = new InlineKeyboardMarkup(
             InlineKeyboardButton.WithCallbackData(
                 "Открыть заказ",
-                TelegramBotCallback.OrderOpenPrefix + TelegramBotCallback.EncodeGuid(orderId)));
+                TelegramBotCallback.OrderOpen(orderId)));
 
         foreach (var chatId in recipients)
         {
@@ -119,7 +119,7 @@ internal sealed class TelegramBotNotifier
             var keyboard = new InlineKeyboardMarkup(
                 InlineKeyboardButton.WithCallbackData(
                     "Открыть заказ",
-                    TelegramBotCallback.OrderOpenPrefix + TelegramBotCallback.EncodeGuid(item.OrderId)));
+                    TelegramBotCallback.OrderOpen(item.OrderId)));
 
             var delivered = 0;
             foreach (var chatId in recipients)

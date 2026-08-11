@@ -1,8 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Infrastructure.TelegramBot.Ui;
-using Telegram.Bot;
-using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace OrderTracking.Infrastructure.TelegramBot.Screens;
@@ -10,15 +8,20 @@ namespace OrderTracking.Infrastructure.TelegramBot.Screens;
 internal sealed class TelegramBotAdminsScreen
 {
     private readonly TelegramBotRuntime _runtime;
+    private readonly TelegramUiService _ui;
 
-    public TelegramBotAdminsScreen(TelegramBotRuntime runtime)
+    public TelegramBotAdminsScreen(TelegramBotRuntime runtime, TelegramUiService ui)
     {
         _runtime = runtime;
+        _ui = ui;
     }
 
-    public async Task SendPageAsync(long chatId, int page, CancellationToken cancellationToken)
+    public async Task RenderPageAsync(
+        long chatId,
+        int? messageId,
+        int page,
+        CancellationToken cancellationToken)
     {
-        var bot = _runtime.RequireClient();
         using var scope = _runtime.ScopeFactory.CreateScope();
         var admins = await scope.ServiceProvider
             .GetRequiredService<IAdminUserRepository>()
@@ -37,7 +40,7 @@ internal sealed class TelegramBotAdminsScreen
         var buttons = new List<InlineKeyboardButton[]>
         {
             TelegramBotKeyboards.BuildPagerRow(TelegramBotCallback.AdminsPagePrefix, page, totalPages),
-            new[] { InlineKeyboardButton.WithCallbackData("« В меню", TelegramBotCallback.Main) },
+            new[] { InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main) },
         };
 
         var lines = items.Select((a, idx) =>
@@ -47,11 +50,10 @@ internal sealed class TelegramBotAdminsScreen
             return $"{(page - 1) * TelegramBotKeyboards.PageSize + idx + 1}. <code>{TelegramBotText.Escape(a.Login)}</code> ({TelegramBotText.RoleLabel(a.Role)}, {active}, {TelegramBotText.Escape(tg)})";
         });
 
-        await bot.SendMessage(
-            chatId,
-            $"🛡 Админы (стр. {page}/{totalPages}, всего {total})\n\n{string.Join('\n', lines)}",
-            ParseMode.Html,
-            replyMarkup: new InlineKeyboardMarkup(buttons),
-            cancellationToken: cancellationToken);
+        var text =
+            $"🛡 Админы (стр. {page}/{totalPages}, всего {total})\n\n" +
+            (items.Count == 0 ? "Админов пока нет." : string.Join('\n', lines));
+
+        await _ui.RenderAsync(chatId, messageId, text, new InlineKeyboardMarkup(buttons), cancellationToken);
     }
 }

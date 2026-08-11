@@ -1,8 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Common.Persistence;
-using Telegram.Bot;
-using Telegram.Bot.Types.Enums;
+using OrderTracking.Infrastructure.TelegramBot.Ui;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace OrderTracking.Infrastructure.TelegramBot.Screens;
@@ -10,19 +9,21 @@ namespace OrderTracking.Infrastructure.TelegramBot.Screens;
 internal sealed class TelegramBotSettingsScreen
 {
     private readonly TelegramBotRuntime _runtime;
+    private readonly TelegramUiService _ui;
 
-    public TelegramBotSettingsScreen(TelegramBotRuntime runtime)
+    public TelegramBotSettingsScreen(TelegramBotRuntime runtime, TelegramUiService ui)
     {
         _runtime = runtime;
+        _ui = ui;
     }
 
     public async Task HandleAsync(
         long chatId,
+        int? messageId,
         TelegramBotAdminContext admin,
         string data,
         CancellationToken cancellationToken)
     {
-        var bot = _runtime.RequireClient();
         using var scope = _runtime.ScopeFactory.CreateScope();
         var admins = scope.ServiceProvider.GetRequiredService<IAdminUserRepository>();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -48,25 +49,23 @@ internal sealed class TelegramBotSettingsScreen
         }
 
         settings = TelegramBotUserSettings.FromJson(user.SettingsJson);
-        var status = settings.DailyOrdersCsvEnabled
-            ? $"включена (каждый день в {settings.DailyOrdersCsvHourUtc:00}:00 UTC)"
-            : "выключена";
+        var enabled = settings.DailyOrdersCsvEnabled;
+        var status = enabled ? "включён" : "выключен";
+        var text =
+            "⚙️ <b>Ежедневный CSV</b>\n\n" +
+            $"Статус: <b>{status}</b>\n" +
+            $"Время отправки: {settings.DailyOrdersCsvHourUtc:00}:00 UTC";
 
         var keyboard = new InlineKeyboardMarkup(
         [
             [
-                settings.DailyOrdersCsvEnabled
-                    ? InlineKeyboardButton.WithCallbackData("Выключить ежедневный CSV", TelegramBotCallback.SettingsCsvOff)
-                    : InlineKeyboardButton.WithCallbackData("Включить ежедневный CSV", TelegramBotCallback.SettingsCsvOn)
+                enabled
+                    ? InlineKeyboardButton.WithCallbackData("Выключить", TelegramBotCallback.SettingsCsvOff)
+                    : InlineKeyboardButton.WithCallbackData("Включить", TelegramBotCallback.SettingsCsvOn)
             ],
-            [InlineKeyboardButton.WithCallbackData("« В меню", TelegramBotCallback.Main)],
+            [InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)],
         ]);
 
-        await bot.SendMessage(
-            chatId,
-            $"⚙️ Настройки бота\nЕжедневная CSV-выгрузка всех заказов: <b>{status}</b>",
-            ParseMode.Html,
-            replyMarkup: keyboard,
-            cancellationToken: cancellationToken);
+        await _ui.RenderAsync(chatId, messageId, text, keyboard, cancellationToken);
     }
 }

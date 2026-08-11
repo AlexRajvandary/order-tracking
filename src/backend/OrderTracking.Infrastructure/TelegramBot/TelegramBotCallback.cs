@@ -42,4 +42,37 @@ internal static class TelegramBotCallback
             .Replace('/', '_');
         return raw;
     }
+
+    /// <summary>Format: oi:{guid}[:{page}] — page optional for legacy notification buttons.</summary>
+    public static string OrderOpen(Guid orderId, int page = 1) =>
+        OrderOpenPrefix + EncodeGuid(orderId) + ":" + Math.Max(1, page);
+
+    /// <summary>Format: ci:{guid}[:{page}]</summary>
+    public static string CustomerOpen(Guid customerId, int page = 1) =>
+        CustomerOpenPrefix + EncodeGuid(customerId) + ":" + Math.Max(1, page);
+
+    public static bool TryParseEntityOpen(string payload, out Guid id, out int page)
+    {
+        id = default;
+        page = 1;
+        if (string.IsNullOrWhiteSpace(payload))
+        {
+            return false;
+        }
+
+        var parts = payload.Split(':', 2, StringSplitOptions.None);
+        var parsed = DecodeGuid(parts[0]);
+        if (parsed is null)
+        {
+            return false;
+        }
+
+        id = parsed.Value;
+        if (parts.Length > 1 && int.TryParse(parts[1], out var p) && p >= 1)
+        {
+            page = p;
+        }
+
+        return true;
+    }
 }
