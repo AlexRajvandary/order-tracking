@@ -65,6 +65,8 @@ services:
       Minio__SecretKey: ${MINIO_ROOT_PASSWORD:-minioadmin}
       Minio__Bucket: ${MINIO_BUCKET:-order-tracking}
       Minio__UseSsl: "false"
+      OpenAI__ApiKey: ${OPENAI_API_KEY:-}
+      OpenAI__Model: ${OPENAI_MODEL:-gpt-4o-mini}
       Monitoring__HostDiskPath: /host
     volumes:
       - /:/host:ro

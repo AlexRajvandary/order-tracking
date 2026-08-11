@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as customersApi from '@/features/customers/api/customersApi'
 import * as ordersApi from '@/features/orders/api/ordersApi'
+import { AiOrderAssistPanel } from '@/features/orders/components/AiOrderAssistPanel'
 import type {
+  AiOrderDraft,
   CreateOrderDeliveryAddress,
   CreateOrderItemInput,
   CurrencyCode,
@@ -53,6 +55,7 @@ type DeliveryForm = {
   building: string
   apartment: string
   postalCode: string
+  note: string
 }
 
 type CustomerOption = {
@@ -70,6 +73,7 @@ type AddressOption = {
 
 const NO_CUSTOMER = '__none__'
 const NO_ADDRESS = '__none__'
+const SUPPORTED_CURRENCIES = new Set(['RUB', 'USD', 'EUR', 'GBP', 'JPY'])
 
 const emptyNewCustomer: NewCustomerForm = {
   lastName: '',
@@ -86,6 +90,7 @@ const emptyDelivery: DeliveryForm = {
   building: '',
   apartment: '',
   postalCode: '',
+  note: '',
 }
 
 function hasNewCustomerData(customer: NewCustomerForm) {
@@ -105,12 +110,68 @@ function hasDeliveryData(delivery: DeliveryForm) {
       delivery.street.trim() ||
       delivery.building.trim() ||
       delivery.apartment.trim() ||
-      delivery.postalCode.trim(),
+      delivery.postalCode.trim() ||
+      delivery.note.trim(),
   )
 }
 
 function formatAddressLabel(parts: Array<string | null | undefined>) {
   return parts.filter(Boolean).join(', ')
+}
+
+function isUncertain(fields: string[], path: string) {
+  const needle = path.toLowerCase()
+  return fields.some((field) => {
+    const f = field.toLowerCase()
+    return f === needle || f.endsWith(`.${needle}`) || f.includes(needle)
+  })
+}
+
+function uncertainClass(active: boolean) {
+  return active ? 'ring-2 ring-amber-400/70 border-amber-400' : undefined
+}
+
+function toCurrency(code: string | null | undefined): CurrencyCode {
+  const normalized = (code ?? 'RUB').trim().toUpperCase()
+  return (SUPPORTED_CURRENCIES.has(normalized) ? normalized : 'RUB') as CurrencyCode
+}
+
+function buildAdminNotesFromAi(draft: AiOrderDraft): string {
+  const parts: string[] = []
+  if (draft.comment?.trim()) {
+    parts.push(draft.comment.trim())
+  }
+  if (draft.payment?.prepayment != null) {
+    const currency = draft.payment.currencyCode?.trim().toUpperCase() || ''
+    parts.push(`Предоплата: ${draft.payment.prepayment}${currency ? ` ${currency}` : ''}`)
+  }
+  return parts.join('\n')
+}
+
+function mapAiItems(draft: AiOrderDraft): DraftItem[] {
+  return (draft.items ?? [])
+    .filter((item) => item.name?.trim() || item.url?.trim() || item.description?.trim())
+    .map((item) => {
+      const url = item.url?.trim() || ''
+      const descriptionParts = [item.description?.trim(), url].filter(Boolean)
+      const itemType =
+        item.itemType?.toLowerCase() === 'service' ? ('Service' as const) : ('Product' as const)
+      const quantity =
+        item.quantity != null && Number.isFinite(item.quantity) && item.quantity >= 1
+          ? String(item.quantity)
+          : '1'
+
+      return {
+        key: crypto.randomUUID(),
+        itemType,
+        name: (item.name?.trim() || url || item.description?.trim() || '').slice(0, 500),
+        description: descriptionParts.join('\n') || null,
+        quantity,
+        unitPrice:
+          item.unitPrice != null && Number.isFinite(item.unitPrice) ? item.unitPrice : null,
+        currencyCode: toCurrency(item.currencyCode),
+      }
+    })
 }
 
 export function CreateOrderPage() {
@@ -125,8 +186,19 @@ export function CreateOrderPage() {
   const [deliveryMode, setDeliveryMode] = useState<'new' | 'existing'>('new')
   const [deliveryAddressId, setDeliveryAddressId] = useState(NO_ADDRESS)
   const [delivery, setDelivery] = useState<DeliveryForm>(emptyDelivery)
+  const [adminNotes, setAdminNotes] = useState('')
   const [items, setItems] = useState<DraftItem[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [aiRecognized, setAiRecognized] = useState(false)
+  const [missingFields, setMissingFields] = useState<string[]>([])
+  const [uncertainFields, setUncertainFields] = useState<Array<{ field: string; reason: string }>>(
+    [],
+  )
+
+  const uncertainPaths = useMemo(
+    () => uncertainFields.map((u) => u.field),
+    [uncertainFields],
+  )
 
   const selectedExistingCustomerId =
     customerMode === 'existing' && customerId !== NO_CUSTOMER ? customerId : null
@@ -251,6 +323,65 @@ export function CreateOrderPage() {
     setDelivery((prev) => ({ ...prev, ...patch }))
   }
 
+  const applyAiDraft = (draft: AiOrderDraft) => {
+    setError(null)
+    setAiRecognized(true)
+    setMissingFields(draft.missingFields ?? [])
+    setUncertainFields(draft.uncertainFields ?? [])
+
+    // TODO: suggest matching existing customer by phone/telegram when unambiguous.
+    const customer = draft.customer
+    if (
+      customer &&
+      (customer.lastName ||
+        customer.firstName ||
+        customer.patronymic ||
+        customer.telegram ||
+        customer.phone ||
+        customer.email)
+    ) {
+      setCustomerMode('new')
+      setCustomerId(NO_CUSTOMER)
+      setNewCustomer({
+        lastName: capitalizeNamePart(customer.lastName ?? ''),
+        firstName: capitalizeNamePart(customer.firstName ?? ''),
+        patronymic: capitalizeNamePart(customer.patronymic ?? ''),
+        telegram: customer.telegram ?? '',
+        phone: customer.phone ?? '',
+        email: customer.email ?? '',
+      })
+    }
+
+    const nextDelivery = draft.delivery
+    if (
+      nextDelivery &&
+      (nextDelivery.city ||
+        nextDelivery.street ||
+        nextDelivery.building ||
+        nextDelivery.apartment ||
+        nextDelivery.postalCode ||
+        nextDelivery.note)
+    ) {
+      setDeliveryMode('new')
+      setDeliveryAddressId(NO_ADDRESS)
+      setDelivery({
+        city: nextDelivery.city ?? '',
+        street: nextDelivery.street ?? '',
+        building: nextDelivery.building ?? '',
+        apartment: nextDelivery.apartment ?? '',
+        postalCode: nextDelivery.postalCode ?? '',
+        note: nextDelivery.note ?? '',
+      })
+    }
+
+    const mappedItems = mapAiItems(draft)
+    if (mappedItems.length > 0) {
+      setItems(mappedItems)
+    }
+
+    setAdminNotes(buildAdminNotesFromAi(draft))
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
@@ -259,6 +390,38 @@ export function CreateOrderPage() {
         </Link>
         <h1 className="mt-2 text-2xl font-bold">{t('form.title')}</h1>
       </div>
+
+      <AiOrderAssistPanel disabled={createMutation.isPending} onParsed={applyAiDraft} />
+
+      {aiRecognized ? (
+        <Alert>
+          <AlertDescription className="space-y-2">
+            <p className="font-medium">{t('form.ai.recognized')}</p>
+            {missingFields.length > 0 ? (
+              <div>
+                <p>⚠ {t('form.ai.missingTitle')}</p>
+                <ul className="list-disc pl-5 text-sm">
+                  {missingFields.map((field) => (
+                    <li key={field}>{field}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {uncertainFields.length > 0 ? (
+              <div>
+                <p>⚠ {t('form.ai.uncertainTitle')}</p>
+                <ul className="list-disc pl-5 text-sm">
+                  {uncertainFields.map((item) => (
+                    <li key={`${item.field}-${item.reason}`}>
+                      {item.field}: {item.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <Card>
         <CardContent className="space-y-4">
@@ -298,6 +461,7 @@ export function CreateOrderPage() {
                 <div className="space-y-1.5">
                   <Label>{t('form.lastName')}</Label>
                   <Input
+                    className={uncertainClass(isUncertain(uncertainPaths, 'customer.lastName'))}
                     value={newCustomer.lastName}
                     onChange={(e) =>
                       patchNewCustomer({ lastName: capitalizeNamePart(e.target.value) })
@@ -307,6 +471,7 @@ export function CreateOrderPage() {
                 <div className="space-y-1.5">
                   <Label>{t('form.firstName')}</Label>
                   <Input
+                    className={uncertainClass(isUncertain(uncertainPaths, 'customer.firstName'))}
                     value={newCustomer.firstName}
                     onChange={(e) =>
                       patchNewCustomer({ firstName: capitalizeNamePart(e.target.value) })
@@ -316,6 +481,7 @@ export function CreateOrderPage() {
                 <div className="space-y-1.5">
                   <Label>{t('form.patronymic')}</Label>
                   <Input
+                    className={uncertainClass(isUncertain(uncertainPaths, 'customer.patronymic'))}
                     value={newCustomer.patronymic}
                     onChange={(e) =>
                       patchNewCustomer({ patronymic: capitalizeNamePart(e.target.value) })
@@ -325,6 +491,7 @@ export function CreateOrderPage() {
                 <div className="space-y-1.5">
                   <Label>{t('form.telegram')}</Label>
                   <Input
+                    className={uncertainClass(isUncertain(uncertainPaths, 'customer.telegram'))}
                     value={newCustomer.telegram}
                     onChange={(e) => patchNewCustomer({ telegram: e.target.value })}
                     placeholder={t('form.telegramPlaceholder')}
@@ -333,6 +500,7 @@ export function CreateOrderPage() {
                 <div className="space-y-1.5">
                   <Label>{t('form.phone')}</Label>
                   <Input
+                    className={uncertainClass(isUncertain(uncertainPaths, 'customer.phone'))}
                     value={newCustomer.phone}
                     onChange={(e) => patchNewCustomer({ phone: e.target.value })}
                   />
@@ -341,6 +509,7 @@ export function CreateOrderPage() {
                   <Label>{t('form.email')}</Label>
                   <Input
                     type="email"
+                    className={uncertainClass(isUncertain(uncertainPaths, 'customer.email'))}
                     value={newCustomer.email}
                     onChange={(e) => patchNewCustomer({ email: e.target.value })}
                   />
@@ -371,6 +540,7 @@ export function CreateOrderPage() {
                   <div className="space-y-1.5">
                     <Label>{t('form.delivery.building')}</Label>
                     <Input
+                      className={uncertainClass(isUncertain(uncertainPaths, 'delivery.building'))}
                       value={delivery.building}
                       onChange={(e) => patchDelivery({ building: e.target.value })}
                     />
@@ -378,6 +548,7 @@ export function CreateOrderPage() {
                   <div className="space-y-1.5">
                     <Label>{t('form.delivery.apartment')}</Label>
                     <Input
+                      className={uncertainClass(isUncertain(uncertainPaths, 'delivery.apartment'))}
                       value={delivery.apartment}
                       onChange={(e) => patchDelivery({ apartment: e.target.value })}
                     />
@@ -385,6 +556,7 @@ export function CreateOrderPage() {
                   <div className="space-y-1.5">
                     <Label>{t('form.delivery.street')}</Label>
                     <Input
+                      className={uncertainClass(isUncertain(uncertainPaths, 'delivery.street'))}
                       value={delivery.street}
                       onChange={(e) => patchDelivery({ street: e.target.value })}
                     />
@@ -392,6 +564,7 @@ export function CreateOrderPage() {
                   <div className="space-y-1.5">
                     <Label>{t('form.delivery.city')}</Label>
                     <Input
+                      className={uncertainClass(isUncertain(uncertainPaths, 'delivery.city'))}
                       value={delivery.city}
                       onChange={(e) => patchDelivery({ city: e.target.value })}
                     />
@@ -399,8 +572,17 @@ export function CreateOrderPage() {
                   <div className="space-y-1.5">
                     <Label>{t('form.delivery.postalCode')}</Label>
                     <Input
+                      className={uncertainClass(isUncertain(uncertainPaths, 'delivery.postalCode'))}
                       value={delivery.postalCode}
                       onChange={(e) => patchDelivery({ postalCode: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>{t('form.delivery.note')}</Label>
+                    <Input
+                      className={uncertainClass(isUncertain(uncertainPaths, 'delivery.note'))}
+                      value={delivery.note}
+                      onChange={(e) => patchDelivery({ note: e.target.value })}
                     />
                   </div>
                 </div>
@@ -453,11 +635,21 @@ export function CreateOrderPage() {
             </div>
 
             {items.map((item, index) => (
-              <div key={item.key} className="space-y-2 rounded-xl border p-3">
+              <div
+                key={item.key}
+                className={`space-y-2 rounded-xl border p-3 ${
+                  isUncertain(uncertainPaths, `items[${index}]`) ? 'border-amber-400' : ''
+                }`}
+              >
                 <div className="flex items-center justify-between">
-                  <Badge variant="secondary">
-                    {item.itemType === 'Product' ? t('form.product') : t('form.service')}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      {item.itemType === 'Product' ? t('form.product') : t('form.service')}
+                    </Badge>
+                    {isUncertain(uncertainPaths, `items[${index}]`) ? (
+                      <Badge variant="outline">{t('form.ai.uncertainBadge')}</Badge>
+                    ) : null}
+                  </div>
                   <Button
                     type="button"
                     variant="ghost"
@@ -468,6 +660,7 @@ export function CreateOrderPage() {
                   </Button>
                 </div>
                 <Input
+                  className={uncertainClass(isUncertain(uncertainPaths, `items[${index}].name`))}
                   placeholder={t('form.itemName')}
                   value={item.name}
                   onChange={(e) =>
@@ -477,6 +670,10 @@ export function CreateOrderPage() {
                   }
                 />
                 <Textarea
+                  className={uncertainClass(
+                    isUncertain(uncertainPaths, `items[${index}].description`) ||
+                      isUncertain(uncertainPaths, `items[${index}].url`),
+                  )}
                   rows={2}
                   placeholder={t('form.itemDescription')}
                   value={item.description ?? ''}
@@ -493,6 +690,9 @@ export function CreateOrderPage() {
                     type="number"
                     min={0}
                     step={item.currencyCode === 'JPY' ? 1 : 0.01}
+                    className={uncertainClass(
+                      isUncertain(uncertainPaths, `items[${index}].unitPrice`),
+                    )}
                     placeholder={t('form.unitPrice')}
                     value={item.unitPrice ?? ''}
                     onChange={(e) =>
@@ -519,7 +719,9 @@ export function CreateOrderPage() {
                       )
                     }
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger
+                      className={`w-full ${uncertainClass(isUncertain(uncertainPaths, `items[${index}].currencyCode`)) ?? ''}`}
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -535,6 +737,9 @@ export function CreateOrderPage() {
                   <Input
                     type="number"
                     min={1}
+                    className={uncertainClass(
+                      isUncertain(uncertainPaths, `items[${index}].quantity`),
+                    )}
                     placeholder={t('form.quantity')}
                     value={item.quantity}
                     onChange={(e) =>
@@ -560,6 +765,20 @@ export function CreateOrderPage() {
                 ) : null}
               </div>
             ))}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t('form.adminNotes')}</Label>
+            <Textarea
+              rows={3}
+              className={uncertainClass(
+                isUncertain(uncertainPaths, 'comment') ||
+                  isUncertain(uncertainPaths, 'payment') ||
+                  isUncertain(uncertainPaths, 'payment.prepayment'),
+              )}
+              value={adminNotes}
+              onChange={(e) => setAdminNotes(e.target.value)}
+            />
           </div>
 
           {error ? (
@@ -606,7 +825,7 @@ export function CreateOrderPage() {
                       building: delivery.building.trim() || null,
                       apartment: delivery.apartment.trim() || null,
                       postalCode: delivery.postalCode.trim() || null,
-                      note: null,
+                      note: delivery.note.trim() || null,
                     }
                   : null
 
@@ -627,7 +846,7 @@ export function CreateOrderPage() {
                   : null,
                 deliveryAddressId: selectedAddress,
                 deliveryAddress: selectedAddress ? null : manualAddress,
-                adminNotes: null,
+                adminNotes: adminNotes.trim() || null,
                 items: validItems,
               })
             }}

@@ -1,5 +1,6 @@
-import { authorizedBlob, authorizedJson } from '@/shared/api/authorizedClient'
+import { authorizedBlob, authorizedJson, authorizedUpload } from '@/shared/api/authorizedClient'
 import type {
+  AiOrderDraft,
   CreateOrderRequest,
   OrderDetails,
   OrderItem,
@@ -45,6 +46,18 @@ export function createOrder(request: CreateOrderRequest) {
     method: 'POST',
     body: JSON.stringify(request),
   })
+}
+
+/** AI parse → order draft for autofill. Does not create an order. */
+export function parseOrderWithAi(input: { text?: string; image?: File }) {
+  const form = new FormData()
+  if (input.text?.trim()) {
+    form.append('text', input.text.trim())
+  }
+  if (input.image) {
+    form.append('image', input.image, input.image.name || 'screenshot.png')
+  }
+  return authorizedUpload<AiOrderDraft>('/orders/ai/parse', form)
 }
 
 export function updateOrder(id: string, request: UpdateOrderRequest) {

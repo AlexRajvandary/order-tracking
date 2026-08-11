@@ -63,6 +63,10 @@ public sealed class ExceptionHandlingMiddleware
                 HttpStatusCode.Conflict,
                 "Conflict",
                 exception.Message),
+            AiServiceException => (
+                HttpStatusCode.BadGateway,
+                "AI service error",
+                exception.Message),
             _ => (
                 HttpStatusCode.InternalServerError,
                 "Internal server error",

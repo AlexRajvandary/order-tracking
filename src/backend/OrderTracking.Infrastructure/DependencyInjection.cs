@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Minio;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Common.Persistence;
+using OrderTracking.Infrastructure.Ai;
 using OrderTracking.Infrastructure.Identity;
 using OrderTracking.Infrastructure.Monitoring;
 using OrderTracking.Infrastructure.Persistence;
@@ -28,6 +29,20 @@ public static class DependencyInjection
         services.Configure<TelegramSettings>(configuration.GetSection(TelegramSettings.SectionName));
         services.Configure<MinioSettings>(configuration.GetSection(MinioSettings.SectionName));
         services.Configure<MonitoringSettings>(configuration.GetSection(MonitoringSettings.SectionName));
+        services.Configure<OpenAiSettings>(options =>
+        {
+            configuration.GetSection(OpenAiSettings.SectionName).Bind(options);
+            if (string.IsNullOrWhiteSpace(options.ApiKey))
+            {
+                options.ApiKey = configuration["OPENAI_API_KEY"] ?? string.Empty;
+            }
+
+            var model = configuration["OPENAI_MODEL"];
+            if (!string.IsNullOrWhiteSpace(model))
+            {
+                options.Model = model;
+            }
+        });
 
         var minio = configuration.GetSection(MinioSettings.SectionName).Get<MinioSettings>()
             ?? new MinioSettings();
@@ -53,6 +68,7 @@ public static class DependencyInjection
         services.AddSingleton<IObjectStorage, MinioObjectStorage>();
         services.AddSingleton<IImageCompressor, ImageSharpCompressor>();
         services.AddScoped<IStorageMetricsService, StorageMetricsService>();
+        services.AddSingleton<IAiOrderParser, OpenAiOrderParser>();
 
         services.AddDbContext<ApplicationDbContext>((sp, options) =>
         {

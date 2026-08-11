@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OrderTracking.Application.Common.Models;
 using OrderTracking.Application.Orders.AddOrderItem;
+using OrderTracking.Application.Orders.AiParse;
 using OrderTracking.Application.Orders.CreateOrder;
 using OrderTracking.Application.Orders.DeleteOrder;
 using OrderTracking.Application.Orders.DeleteOrderItem;
@@ -83,6 +84,42 @@ public sealed class OrdersController : ControllerBase
             cancellationToken);
 
         return CreatedAtAction(nameof(GetOrderById), new { id = result.Id }, result);
+    }
+
+    /// <summary>
+    /// AI-assisted parse of free-form text and/or screenshot into an order draft.
+    /// Does not create an order — result is for autofilling the create form.
+    /// </summary>
+    [HttpPost("ai/parse")]
+    [RequestSizeLimit(AiOrderParseLimits.MaxImageBytes + 1_048_576)]
+    [RequestFormLimits(MultipartBodyLengthLimit = AiOrderParseLimits.MaxImageBytes + 1_048_576)]
+    public async Task<ActionResult<AiOrderDraft>> ParseOrderWithAi(
+        [FromForm] string? text,
+        IFormFile? image,
+        CancellationToken cancellationToken)
+    {
+        Stream? imageStream = null;
+        string? contentType = null;
+        string? fileName = null;
+        long? length = null;
+
+        if (image is { Length: > 0 })
+        {
+            imageStream = image.OpenReadStream();
+            contentType = image.ContentType;
+            // Filename is untrusted — used only for diagnostics in validator context, never for storage path.
+            fileName = Path.GetFileName(image.FileName);
+            length = image.Length;
+        }
+
+        await using (imageStream)
+        {
+            var result = await _mediator.Send(
+                new ParseOrderWithAiCommand(text, imageStream, contentType, fileName, length),
+                cancellationToken);
+
+            return Ok(result);
+        }
     }
 
     [HttpGet("{id:guid}")]

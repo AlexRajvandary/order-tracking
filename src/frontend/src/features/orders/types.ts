@@ -104,6 +104,54 @@ export type CreateOrderRequest = {
   items?: CreateOrderItemInput[]
 }
 
+export type AiOrderCustomerDraft = {
+  lastName?: string | null
+  firstName?: string | null
+  patronymic?: string | null
+  telegram?: string | null
+  phone?: string | null
+  email?: string | null
+}
+
+export type AiOrderItemDraft = {
+  itemType?: string | null
+  name?: string | null
+  url?: string | null
+  description?: string | null
+  quantity?: number | null
+  unitPrice?: number | null
+  currencyCode?: string | null
+}
+
+export type AiOrderDeliveryDraft = {
+  city?: string | null
+  street?: string | null
+  building?: string | null
+  apartment?: string | null
+  postalCode?: string | null
+  note?: string | null
+}
+
+export type AiOrderPaymentDraft = {
+  prepayment?: number | null
+  currencyCode?: string | null
+}
+
+export type AiUncertainField = {
+  field: string
+  reason: string
+}
+
+export type AiOrderDraft = {
+  customer?: AiOrderCustomerDraft | null
+  items: AiOrderItemDraft[]
+  delivery?: AiOrderDeliveryDraft | null
+  payment?: AiOrderPaymentDraft | null
+  comment?: string | null
+  missingFields: string[]
+  uncertainFields: AiUncertainField[]
+}
+
 export type UpdateOrderRequest = {
   customerId?: string | null
   adminNotes?: string | null

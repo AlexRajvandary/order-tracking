@@ -651,6 +651,41 @@ flowchart TB
 
 See [.env.example](.env.example).
 
+## AI-assisted order creation
+
+On **New order** (`/admin/orders/new`) an admin can paste free-form text and/or a screenshot (drag-and-drop, file picker, or Ctrl+V). Backend calls OpenAI Responses API (vision + Structured Outputs) and returns an `AiOrderDraft` that autofills the existing create form. The order is created only after the admin reviews and clicks **Create order**.
+
+### Setup
+
+1. Create an API key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys) (OpenAI **API billing**, not ChatGPT Plus).
+2. Local (user secrets, preferred):
+
+```powershell
+cd src/backend/OrderTracking.Api
+dotnet user-secrets set "OpenAI:ApiKey" "sk-..."
+dotnet user-secrets set "OpenAI:Model" "gpt-4o-mini"
+```
+
+Or environment variables:
+
+```powershell
+$env:OPENAI_API_KEY="sk-..."
+$env:OPENAI_MODEL="gpt-4o-mini"
+```
+
+3. Production / VPS: set in the server `.env` used by Docker Compose:
+
+```env
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
+```
+
+Compose maps these to `OpenAI__ApiKey` / `OpenAI__Model` for the API container.
+
+4. Never commit real keys. `.env` is gitignored; `appsettings*.json` keep `ApiKey` empty.
+
+Endpoint: `POST /api/v1/orders/ai/parse` (multipart `text` + optional `image`; admin JWT required).
+
 ## License
 
 Private / internal use.
