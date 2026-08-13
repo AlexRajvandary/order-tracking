@@ -35,7 +35,7 @@ coverage/
 *.tsbuildinfo
 .next/
 out/
-src/frontend/src/generated/git-history.json
+src/frontend/src/generated/*.json
 
 # Local ops dumps / VPS backups (never commit production data)
 vps-backup*/

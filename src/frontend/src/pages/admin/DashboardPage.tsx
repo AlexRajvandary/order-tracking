@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ClipboardList, GitCommitHorizontal, HardDrive, ListFilter, Plus, ShieldCheck, Users } from 'lucide-react'
+import { ClipboardList, HardDrive, History, ListFilter, Plus, ShieldCheck, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import * as dashboardApi from '@/features/dashboard/api/dashboardApi'
 import { useStorageMetrics } from '@/features/dashboard/api/useStorageMetrics'
 import * as adminsApi from '@/features/admins/api/adminsApi'
 import { useAuth } from '@/features/auth/model/AuthContext'
-import { gitHistory } from '@/features/changes/gitHistory'
+import { changeHistory } from '@/features/changes/changeHistory'
 import type { OrderStatus } from '@/features/orders/types'
 import { orderStatusStyles } from '@/features/orders/ui/OrderStatusBadge'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
@@ -300,9 +300,9 @@ export function DashboardPage() {
           </CarouselItem>
           <CarouselItem className="basis-auto">
             <StatCard
-              icon={<GitCommitHorizontal />}
-              value={gitHistory.count}
-              label={t('metrics.commits')}
+              icon={<History />}
+              value={changeHistory.count}
+              label={t('metrics.changes')}
               onClick={() => navigate('/admin/changes')}
             />
           </CarouselItem>

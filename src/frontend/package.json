@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "generate:history": "node ../../scripts/generate-git-history.mjs",
+    "generate:history": "node ../../scripts/generate-change-history.mjs",
     "predev": "npm run generate:history",
     "dev": "vite",
     "prebuild": "npm run generate:history",

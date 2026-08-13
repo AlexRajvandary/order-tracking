@@ -8,6 +8,7 @@ import {
   type HtmlProductParserId,
 } from '@/features/products/lib/htmlProductParsers'
 import type {
+  Category,
   ImportProductIssue,
   ImportProductItem,
   ImportProductsResult,
@@ -30,6 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/dialog'
+import { Input } from '@/shared/ui/input'
 import { Progress } from '@/shared/ui/progress'
 import {
   Select,
@@ -43,6 +45,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import { Textarea } from '@/shared/ui/textarea'
 
 const IMPORT_BATCH_SIZE = 100
+const CATEGORY_FROM_SOURCE = '__category_from_source__'
+const CATEGORY_NEW = '__category_new__'
 const EXAMPLE_JSON = `[
   {
     "name": "Example product",
@@ -65,6 +69,11 @@ type ImportSummary = Omit<ImportProductsResult, 'total' | 'issues'> & {
 }
 
 type ImportSource = 'json' | 'html'
+
+type CategoryOption = {
+  id: string
+  label: string
+}
 
 const emptySummary = (): ImportSummary => ({
   total: 0,
@@ -91,6 +100,53 @@ function parseProducts(json: string): ImportProductItem[] {
     throw new Error('items')
   }
   return products as ImportProductItem[]
+}
+
+function flattenCategoryOptions(
+  categories: Category[],
+  depth = 0,
+): CategoryOption[] {
+  return categories.flatMap((category) => [
+    {
+      id: category.id,
+      label: `${depth > 0 ? `${'— '.repeat(depth)}` : ''}${category.name}`,
+    },
+    ...flattenCategoryOptions(category.children, depth + 1),
+  ])
+}
+
+function assignCategory(
+  product: ImportProductItem,
+  selection: string,
+  newCategoryName: string,
+): ImportProductItem {
+  if (selection === CATEGORY_FROM_SOURCE) return product
+
+  const categoryFields = {
+    categories: null,
+    category: null,
+    categorySlug: null,
+    parentCategoryId: null,
+    parentCategory: null,
+    parentCategoryName: null,
+    parentCategorySlug: null,
+  }
+
+  if (selection === CATEGORY_NEW) {
+    return {
+      ...product,
+      ...categoryFields,
+      categoryId: null,
+      categoryName: newCategoryName.trim(),
+    }
+  }
+
+  return {
+    ...product,
+    ...categoryFields,
+    categoryId: selection,
+    categoryName: null,
+  }
 }
 
 function mergeSummary(
@@ -136,10 +192,12 @@ export function ProductsImportDialog({
   open,
   onOpenChange,
   onImported,
+  categories,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onImported: () => Promise<void> | void
+  categories: Category[]
 }) {
   const { t, i18n } = useTranslation('products')
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -147,6 +205,8 @@ export function ProductsImportDialog({
   const [input, setInput] = useState('')
   const [htmlParser, setHtmlParser] = useState<HtmlProductParserId>('zenplus')
   const [fileName, setFileName] = useState<string | null>(null)
+  const [categorySelection, setCategorySelection] = useState(CATEGORY_FROM_SOURCE)
+  const [newCategoryName, setNewCategoryName] = useState('')
   const [createMissingCategories, setCreateMissingCategories] = useState(true)
   const [isImporting, setIsImporting] = useState(false)
   const [processed, setProcessed] = useState(0)
@@ -165,6 +225,10 @@ export function ProductsImportDialog({
       return null
     }
   }, [htmlParser, input, source])
+  const categoryOptions = useMemo(
+    () => flattenCategoryOptions(categories),
+    [categories],
+  )
 
   const resetResult = () => {
     setProcessed(0)
@@ -200,6 +264,15 @@ export function ProductsImportDialog({
       return
     }
 
+    if (categorySelection === CATEGORY_NEW && !newCategoryName.trim()) {
+      setError(t('import.categoryNameRequired'))
+      return
+    }
+
+    products = products.map((product) =>
+      assignCategory(product, categorySelection, newCategoryName),
+    )
+
     setIsImporting(true)
     setError(null)
     setNotificationError(null)
@@ -213,7 +286,8 @@ export function ProductsImportDialog({
         const batch = products.slice(offset, offset + IMPORT_BATCH_SIZE)
         const result = await productsApi.importProducts({
           products: batch,
-          createMissingCategories,
+          createMissingCategories:
+            categorySelection === CATEGORY_NEW || createMissingCategories,
         })
         nextSummary = mergeSummary(nextSummary, result, offset)
         setSummary(nextSummary)
@@ -354,6 +428,53 @@ export function ProductsImportDialog({
             }}
           />
 
+          <div className="space-y-2 rounded-lg border p-3">
+            <div>
+              <p className="text-sm font-medium">{t('import.categoryLabel')}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('import.categoryHint')}
+              </p>
+            </div>
+            <Select
+              value={categorySelection}
+              disabled={isImporting}
+              onValueChange={(value) => {
+                setCategorySelection(value)
+                if (value === CATEGORY_NEW) setCreateMissingCategories(true)
+                resetResult()
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={CATEGORY_FROM_SOURCE}>
+                  {t('import.categoryFromSource')}
+                </SelectItem>
+                {categoryOptions.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.label}
+                  </SelectItem>
+                ))}
+                <SelectItem value={CATEGORY_NEW}>
+                  {t('import.categoryNew')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {categorySelection === CATEGORY_NEW ? (
+              <Input
+                value={newCategoryName}
+                disabled={isImporting}
+                maxLength={200}
+                placeholder={t('import.categoryNamePlaceholder')}
+                onChange={(event) => {
+                  setNewCategoryName(event.target.value)
+                  resetResult()
+                }}
+              />
+            ) : null}
+          </div>
+
           {parsedProducts ? (
             <div className="space-y-2 rounded-lg border p-3">
               <div className="flex items-center justify-between gap-3">
@@ -437,8 +558,8 @@ export function ProductsImportDialog({
               </p>
             </div>
             <Switch
-              checked={createMissingCategories}
-              disabled={isImporting}
+              checked={categorySelection === CATEGORY_NEW || createMissingCategories}
+              disabled={isImporting || categorySelection === CATEGORY_NEW}
               onCheckedChange={setCreateMissingCategories}
             />
           </div>

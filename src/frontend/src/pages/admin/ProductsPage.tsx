@@ -1145,6 +1145,7 @@ export function ProductsPage() {
       <ProductsImportDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
+        categories={categoriesQuery.data?.items ?? []}
         onImported={async () => {
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: ['admin-products'] }),
