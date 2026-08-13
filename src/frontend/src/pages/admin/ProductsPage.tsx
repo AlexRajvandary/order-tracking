@@ -53,6 +53,9 @@ type VisibilityFilter = 'all' | 'visible' | 'hidden'
 type SortOption = 'relevance' | 'price-asc' | 'price-desc' | 'name'
 
 const ALL_CATEGORIES_VALUE = '__all_categories__'
+const NO_PRODUCT_CATEGORY = '__no_product_category__'
+const NO_PRODUCT_SUBCATEGORY = '__no_product_subcategory__'
+const NO_PRODUCT_SHOP = '__no_product_shop__'
 
 type ConfirmState =
   | { kind: 'selected'; count: number }
@@ -84,6 +87,28 @@ function flattenCategoryOptions(
       label: `${depth > 0 ? `${'— '.repeat(depth)}` : ''}${category.name}`,
     },
     ...flattenCategoryOptions(category.children, depth + 1),
+  ])
+}
+
+function findCategoryPath(categories: Category[], id: string): Category[] | null {
+  for (const category of categories) {
+    if (category.id === id) return [category]
+    const childPath = findCategoryPath(category.children, id)
+    if (childPath) return [category, ...childPath]
+  }
+  return null
+}
+
+function flattenCategoryChildren(
+  categories: Category[],
+  depth = 0,
+): Array<{ value: string; label: string }> {
+  return categories.flatMap((category) => [
+    {
+      value: category.id,
+      label: `${depth > 0 ? `${'— '.repeat(depth)}` : ''}${category.name}`,
+    },
+    ...flattenCategoryChildren(category.children, depth + 1),
   ])
 }
 
@@ -233,10 +258,14 @@ function ProductEditDialog({
   product,
   open,
   onOpenChange,
+  categories,
+  shops,
 }: {
   product: Product | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  categories: Category[]
+  shops: Shop[]
 }) {
   const { t } = useTranslation('products')
   const queryClient = useQueryClient()
@@ -244,7 +273,16 @@ function ProductEditDialog({
   const [price, setPrice] = useState('')
   const [originalPrice, setOriginalPrice] = useState('')
   const [isActive, setIsActive] = useState(true)
+  const [categoryId, setCategoryId] = useState(NO_PRODUCT_CATEGORY)
+  const [subcategoryId, setSubcategoryId] = useState(NO_PRODUCT_SUBCATEGORY)
+  const [shopId, setShopId] = useState(NO_PRODUCT_SHOP)
   const [error, setError] = useState<string | null>(null)
+
+  const selectedRootCategory = categories.find((category) => category.id === categoryId)
+  const subcategoryOptions = useMemo(
+    () => flattenCategoryChildren(selectedRootCategory?.children ?? []),
+    [selectedRootCategory?.children],
+  )
 
   useEffect(() => {
     if (!product || !open) return
@@ -252,8 +290,18 @@ function ProductEditDialog({
     setPrice(String(product.price))
     setOriginalPrice(product.originalPrice != null ? String(product.originalPrice) : '')
     setIsActive(product.isActive)
+    const categoryPath = product.categoryId
+      ? findCategoryPath(categories, product.categoryId)
+      : null
+    setCategoryId(categoryPath?.[0]?.id ?? NO_PRODUCT_CATEGORY)
+    setSubcategoryId(
+      categoryPath && categoryPath.length > 1
+        ? categoryPath.at(-1)!.id
+        : NO_PRODUCT_SUBCATEGORY,
+    )
+    setShopId(product.shopId ?? NO_PRODUCT_SHOP)
     setError(null)
-  }, [product, open])
+  }, [categories, product, open])
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -270,6 +318,11 @@ function ProductEditDialog({
       if (parsedOriginal != null && (!Number.isFinite(parsedOriginal) || parsedOriginal < 0)) {
         throw new ApiError('Invalid original price', 400)
       }
+      const selectedCategoryId = subcategoryId !== NO_PRODUCT_SUBCATEGORY
+        ? subcategoryId
+        : categoryId !== NO_PRODUCT_CATEGORY
+          ? categoryId
+          : null
 
       return productsApi.patchProduct(product.id, {
         name: name.trim(),
@@ -278,6 +331,12 @@ function ProductEditDialog({
           ? { clearOriginalPrice: true }
           : { originalPrice: parsedOriginal }),
         isActive,
+        ...(selectedCategoryId
+          ? { categoryId: selectedCategoryId }
+          : { clearCategory: true }),
+        ...(shopId !== NO_PRODUCT_SHOP
+          ? { shopId }
+          : { clearShop: true }),
       })
     },
     onSuccess: async () => {
@@ -331,6 +390,72 @@ function ProductEditDialog({
                 onChange={(e) => setOriginalPrice(e.target.value)}
               />
             </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>{t('edit.category')}</Label>
+              <Select
+                value={categoryId}
+                onValueChange={(value) => {
+                  setCategoryId(value)
+                  setSubcategoryId(NO_PRODUCT_SUBCATEGORY)
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_PRODUCT_CATEGORY}>
+                    {t('edit.noCategory')}
+                  </SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t('edit.subcategory')}</Label>
+              <Select
+                value={subcategoryId}
+                disabled={categoryId === NO_PRODUCT_CATEGORY || subcategoryOptions.length === 0}
+                onValueChange={setSubcategoryId}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_PRODUCT_SUBCATEGORY}>
+                    {t('edit.noSubcategory')}
+                  </SelectItem>
+                  {subcategoryOptions.map((category) => (
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t('edit.shop')}</Label>
+            <Select value={shopId} onValueChange={setShopId}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_PRODUCT_SHOP}>
+                  {t('edit.noShop')}
+                </SelectItem>
+                {shops.map((shop) => (
+                  <SelectItem key={shop.id} value={shop.id}>
+                    {shop.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2">
             <Label htmlFor="product-active" className="cursor-pointer">
@@ -1136,6 +1261,8 @@ export function ProductsPage() {
       <ProductEditDialog
         product={editing}
         open={dialogOpen}
+        categories={categoriesQuery.data?.items ?? []}
+        shops={shopsQuery.data?.items ?? []}
         onOpenChange={(open) => {
           setDialogOpen(open)
           if (!open) setEditing(null)

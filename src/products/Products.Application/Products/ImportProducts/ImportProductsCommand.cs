@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using System.Text.RegularExpressions;
 using Products.Application.Common.Interfaces;
 using Products.Domain.Entities;
 using Products.Domain.Enums;
@@ -63,6 +64,10 @@ public sealed class ImportProductsCommandValidator : AbstractValidator<ImportPro
 public sealed class ImportProductsCommandHandler
     : IRequestHandler<ImportProductsCommand, ImportProductsResult>
 {
+    private static readonly Regex UsedInNamePattern = new(
+        @"(?<![\p{L}\p{N}])б\s*(?:/|-)\s*у(?![\p{L}\p{N}])",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
     private readonly IProductRepository _products;
     private readonly ICategoryRepository _categories;
     private readonly IBrandRepository _brands;
@@ -189,10 +194,12 @@ public sealed class ImportProductsCommandHandler
                 OriginalCurrencyCode = Clean(item.OriginalCurrencyCode)?.ToUpperInvariant(),
                 ImageUrl = item.ImageUrl!.Trim(),
                 SourceUrl = Clean(item.SourceUrl),
-                Condition = ListProducts.ListProductsQueryHandler.TryParseCondition(
-                    item.Condition ?? "new", out var condition)
-                    ? condition
-                    : ProductCondition.New,
+                Condition = UsedInNamePattern.IsMatch(name)
+                    ? ProductCondition.Used
+                    : ListProducts.ListProductsQueryHandler.TryParseCondition(
+                        item.Condition ?? "new", out var condition)
+                        ? condition
+                        : ProductCondition.New,
                 ShopId = shopResult.Shop?.Id,
                 CategoryId = categoryResult.Category?.Id,
                 IsActive = item.IsActive,

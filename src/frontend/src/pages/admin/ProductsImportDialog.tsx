@@ -47,6 +47,7 @@ import { Textarea } from '@/shared/ui/textarea'
 const IMPORT_BATCH_SIZE = 100
 const CATEGORY_FROM_SOURCE = '__category_from_source__'
 const CATEGORY_NEW = '__category_new__'
+const CATEGORY_ROOT = '__category_root__'
 const EXAMPLE_JSON = `[
   {
     "name": "Example product",
@@ -119,6 +120,7 @@ function assignCategory(
   product: ImportProductItem,
   selection: string,
   newCategoryName: string,
+  newCategoryParentId: string,
 ): ImportProductItem {
   if (selection === CATEGORY_FROM_SOURCE) return product
 
@@ -138,6 +140,8 @@ function assignCategory(
       ...categoryFields,
       categoryId: null,
       categoryName: newCategoryName.trim(),
+      parentCategoryId:
+        newCategoryParentId === CATEGORY_ROOT ? null : newCategoryParentId,
     }
   }
 
@@ -147,6 +151,13 @@ function assignCategory(
     categoryId: selection,
     categoryName: null,
   }
+}
+
+function markUsedFromName(product: ImportProductItem): ImportProductItem {
+  if (typeof product.name !== 'string') return product
+  return /(^|[^\p{L}\p{N}])б\s*(?:\/|-)\s*у(?![\p{L}\p{N}])/iu.test(product.name)
+    ? { ...product, condition: 'used' }
+    : product
 }
 
 function mergeSummary(
@@ -207,6 +218,7 @@ export function ProductsImportDialog({
   const [fileName, setFileName] = useState<string | null>(null)
   const [categorySelection, setCategorySelection] = useState(CATEGORY_FROM_SOURCE)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [newCategoryParentId, setNewCategoryParentId] = useState(CATEGORY_ROOT)
   const [createMissingCategories, setCreateMissingCategories] = useState(true)
   const [isImporting, setIsImporting] = useState(false)
   const [processed, setProcessed] = useState(0)
@@ -270,7 +282,13 @@ export function ProductsImportDialog({
     }
 
     products = products.map((product) =>
-      assignCategory(product, categorySelection, newCategoryName),
+      markUsedFromName(assignCategory(
+          product,
+          categorySelection,
+          newCategoryName,
+          newCategoryParentId,
+        ),
+      ),
     )
 
     setIsImporting(true)
@@ -321,12 +339,12 @@ export function ProductsImportDialog({
         if (!isImporting) onOpenChange(nextOpen)
       }}
     >
-      <DialogContent className="max-h-[94vh] overflow-y-auto sm:max-w-4xl">
+      <DialogContent className="max-h-[94vh] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>{t('import.title')}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <Tabs
             value={source}
             onValueChange={(value) => {
@@ -418,7 +436,8 @@ export function ProductsImportDialog({
           <Textarea
             value={input}
             disabled={isImporting}
-            className="min-h-64 resize-y font-mono text-xs"
+            wrap="off"
+            className="h-64 min-h-64 max-h-64 min-w-0 max-w-full resize-none overflow-auto whitespace-pre [field-sizing:fixed] font-mono text-xs"
             placeholder={t(source === 'json' ? 'import.placeholder' : 'import.htmlPlaceholder')}
             spellCheck={false}
             onChange={(event) => {
@@ -462,16 +481,45 @@ export function ProductsImportDialog({
               </SelectContent>
             </Select>
             {categorySelection === CATEGORY_NEW ? (
-              <Input
-                value={newCategoryName}
-                disabled={isImporting}
-                maxLength={200}
-                placeholder={t('import.categoryNamePlaceholder')}
-                onChange={(event) => {
-                  setNewCategoryName(event.target.value)
-                  resetResult()
-                }}
-              />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Input
+                  value={newCategoryName}
+                  disabled={isImporting}
+                  maxLength={200}
+                  placeholder={t('import.categoryNamePlaceholder')}
+                  onChange={(event) => {
+                    setNewCategoryName(event.target.value)
+                    resetResult()
+                  }}
+                />
+                <Select
+                  value={newCategoryParentId}
+                  disabled={isImporting}
+                  onValueChange={(value) => {
+                    setNewCategoryParentId(value)
+                    resetResult()
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={CATEGORY_ROOT}>
+                      {t('import.categoryRoot')}
+                    </SelectItem>
+                    {categoryOptions.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground sm:col-span-2">
+                  {newCategoryParentId === CATEGORY_ROOT
+                    ? t('import.categoryRootHint')
+                    : t('import.subcategoryHint')}
+                </p>
+              </div>
             ) : null}
           </div>
 

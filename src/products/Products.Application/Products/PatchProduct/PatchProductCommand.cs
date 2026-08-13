@@ -13,7 +13,11 @@ public sealed record PatchProductCommand(
     decimal? Price,
     decimal? OriginalPrice,
     bool? ClearOriginalPrice,
-    bool? IsActive) : IRequest<ProductDto>;
+    bool? IsActive,
+    Guid? CategoryId,
+    bool? ClearCategory,
+    Guid? ShopId,
+    bool? ClearShop) : IRequest<ProductDto>;
 
 public sealed class PatchProductCommandValidator : AbstractValidator<PatchProductCommand>
 {
@@ -29,15 +33,21 @@ public sealed class PatchProductCommandValidator : AbstractValidator<PatchProduc
 public sealed class PatchProductCommandHandler : IRequestHandler<PatchProductCommand, ProductDto>
 {
     private readonly IProductRepository _products;
+    private readonly ICategoryRepository _categories;
+    private readonly IShopRepository _shops;
     private readonly IProductAuditWriter _audit;
     private readonly IUnitOfWork _uow;
 
     public PatchProductCommandHandler(
         IProductRepository products,
+        ICategoryRepository categories,
+        IShopRepository shops,
         IProductAuditWriter audit,
         IUnitOfWork uow)
     {
         _products = products;
+        _categories = categories;
+        _shops = shops;
         _audit = audit;
         _uow = uow;
     }
@@ -94,6 +104,46 @@ public sealed class PatchProductCommandHandler : IRequestHandler<PatchProductCom
         {
             product.IsActive = isActive;
             changed = true;
+        }
+
+        if (request.ClearCategory == true)
+        {
+            if (product.CategoryId is not null)
+            {
+                product.CategoryId = null;
+                changed = true;
+            }
+        }
+        else if (request.CategoryId is { } categoryId)
+        {
+            _ = await _categories.GetByIdAsync(categoryId, cancellationToken)
+                ?? throw new NotFoundException($"Category {categoryId} was not found.");
+
+            if (product.CategoryId != categoryId)
+            {
+                product.CategoryId = categoryId;
+                changed = true;
+            }
+        }
+
+        if (request.ClearShop == true)
+        {
+            if (product.ShopId is not null)
+            {
+                product.ShopId = null;
+                changed = true;
+            }
+        }
+        else if (request.ShopId is { } shopId)
+        {
+            _ = await _shops.GetByIdAsync(shopId, cancellationToken)
+                ?? throw new NotFoundException($"Shop {shopId} was not found.");
+
+            if (product.ShopId != shopId)
+            {
+                product.ShopId = shopId;
+                changed = true;
+            }
         }
 
         if (!changed)

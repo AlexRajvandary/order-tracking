@@ -100,6 +100,10 @@ export type PatchProductRequest = {
   originalPrice?: number | null
   clearOriginalPrice?: boolean
   isActive?: boolean
+  categoryId?: string
+  clearCategory?: boolean
+  shopId?: string
+  clearShop?: boolean
 }
 
 export type SetProductsVisibilityRequest = {

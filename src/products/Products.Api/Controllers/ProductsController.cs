@@ -137,7 +137,11 @@ public sealed class ProductsController : ControllerBase
                 body.Price,
                 body.OriginalPrice,
                 body.ClearOriginalPrice,
-                body.IsActive),
+                body.IsActive,
+                body.CategoryId,
+                body.ClearCategory,
+                body.ShopId,
+                body.ClearShop),
             cancellationToken);
 
     [HttpPost("bulk-visibility")]
@@ -194,7 +198,11 @@ public sealed record PatchProductRequest(
     decimal? Price = null,
     decimal? OriginalPrice = null,
     bool? ClearOriginalPrice = null,
-    bool? IsActive = null);
+    bool? IsActive = null,
+    Guid? CategoryId = null,
+    bool? ClearCategory = null,
+    Guid? ShopId = null,
+    bool? ClearShop = null);
 
 public sealed record SetProductsVisibilityRequest(
     bool IsActive,
