@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ListFilter, ArrowUpDown, Check } from "lucide-react";
+import { ArrowUpDown, Check, ChevronDown, ListTree } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
@@ -21,7 +21,7 @@ import { CategoryTree } from "@/components/category-tree";
 import type { ApiBrand } from "@/lib/brands-api";
 import type { ApiCategory } from "@/lib/categories-api";
 import type { CatalogProduct } from "@/lib/catalog-products";
-import type { ApiShop, ProductConditionFilter } from "@/lib/shops-api";
+import type { ApiShop } from "@/lib/shops-api";
 import { cn } from "@/lib/utils";
 
 type SortOption = "relevance" | "price-asc" | "price-desc" | "name";
@@ -57,7 +57,6 @@ type CatalogBrowserProps = {
   selectedBrandSlugs?: string[];
   shops?: ApiShop[];
   selectedShopSlugs?: string[];
-  selectedConditions?: ProductConditionFilter[];
   /** Server-side pagination (Products API). When set, `products` is the current page. */
   pagination?: {
     page: number;
@@ -67,210 +66,110 @@ type CatalogBrowserProps = {
   };
 };
 
-type FilterPanelProps = {
-  priceFrom: string;
-  priceTo: string;
-  setPriceFrom: (value: string) => void;
-  setPriceTo: (value: string) => void;
-  absMin: number;
-  absMax: number;
-  activeCount: number;
-  resetFilters: () => void;
-  categoryTree?: ApiCategory[];
-  activeRootSlug?: string;
-  activeChildSlug?: string;
-  brands?: ApiBrand[];
-  selectedBrandSlugs: string[];
-  onToggleBrand: (slug: string) => void;
-  shops?: ApiShop[];
-  selectedShopSlugs: string[];
-  onToggleShop: (slug: string) => void;
-  selectedConditions: ProductConditionFilter[];
-  onToggleCondition: (value: ProductConditionFilter) => void;
-};
+function FilterDropdown({
+  label,
+  activeCount = 0,
+  children,
+}: {
+  label: string;
+  activeCount?: number;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const contentId = useId();
 
-const CONDITION_OPTIONS: Array<{ value: ProductConditionFilter; label: string }> = [
-  { value: "new", label: "Новое" },
-  { value: "used", label: "Б/У" },
-];
+  useEffect(() => {
+    if (!open) return;
 
-function FilterPanel({
-  priceFrom,
-  priceTo,
-  setPriceFrom,
-  setPriceTo,
-  absMin,
-  absMax,
-  activeCount,
-  resetFilters,
-  categoryTree,
-  activeRootSlug,
-  activeChildSlug,
-  brands,
-  selectedBrandSlugs,
-  onToggleBrand,
-  shops,
-  selectedShopSlugs,
-  onToggleShop,
-  selectedConditions,
-  onToggleCondition,
-}: FilterPanelProps) {
-  const selectedBrands = new Set(selectedBrandSlugs);
-  const selectedShops = new Set(selectedShopSlugs);
-  const selectedCond = new Set(selectedConditions);
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
   return (
-    <div className="space-y-5">
-      {categoryTree && categoryTree.length > 0 ? (
-        <div className="space-y-2.5">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Категории
-          </p>
-          <div className="max-h-[min(52vh,28rem)] overflow-y-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
-            <CategoryTree
-              categories={categoryTree}
-              activeRootSlug={activeRootSlug}
-              activeChildSlug={activeChildSlug}
-            />
-          </div>
+    <div ref={rootRef} className="relative shrink-0">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        aria-expanded={open}
+        aria-controls={contentId}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {label}
+        {activeCount > 0 ? (
+          <Badge variant="secondary" className="ml-0.5 h-5 min-w-5 px-1.5 tabular-nums">
+            {activeCount}
+          </Badge>
+        ) : null}
+        <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+      </Button>
+      {open ? (
+        <div
+          id={contentId}
+          className="absolute right-0 z-30 mt-1.5 w-64 rounded-lg border border-[#E5E7EB] bg-white p-3 shadow-lg"
+        >
+          {children}
         </div>
       ) : null}
+    </div>
+  );
+}
 
-      {categoryTree && categoryTree.length > 0 ? <Separator /> : null}
+function MultiSelectFilter({
+  label,
+  options,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  options: Array<{ id: string; slug: string; name: string }>;
+  selected: string[];
+  onToggle: (slug: string) => void;
+}) {
+  const selectedSet = new Set(selected);
 
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold tracking-tight">Фильтры</h2>
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          disabled={activeCount === 0}
-          onClick={resetFilters}
-        >
-          Сбросить
-        </Button>
-      </div>
-
-      <div className="space-y-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Цена, ₽
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <label className="space-y-1">
-            <span className="text-xs text-muted-foreground">От</span>
-            <Input
-              type="number"
-              min="0"
-              inputMode="decimal"
-              value={priceFrom}
-              placeholder={String(absMin)}
-              aria-label="Минимальная цена"
-              onChange={(event) => setPriceFrom(event.target.value)}
-            />
-          </label>
-          <label className="space-y-1">
-            <span className="text-xs text-muted-foreground">До</span>
-            <Input
-              type="number"
-              min="0"
-              inputMode="decimal"
-              value={priceTo}
-              placeholder={String(absMax)}
-              aria-label="Максимальная цена"
-              onChange={(event) => setPriceTo(event.target.value)}
-            />
-          </label>
-        </div>
-      </div>
-
-      <div className="space-y-2.5">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Состояние
-        </p>
-        <div className="flex flex-col gap-0.5">
-          {CONDITION_OPTIONS.map((opt) => {
-            const checked = selectedCond.has(opt.value);
+  return (
+    <FilterDropdown label={label} activeCount={selected.length}>
+      <div className="max-h-64 space-y-0.5 overflow-y-auto pr-1 [scrollbar-width:thin]">
+        {options.length > 0 ? (
+          options.map((option) => {
+            const checked = selectedSet.has(option.slug);
             return (
               <label
-                key={opt.value}
+                key={option.id}
                 className={cn(
                   "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition",
-                  checked ? "bg-[#F3F4F6] font-medium" : "hover:bg-[#F3F4F6]",
+                  checked ? "bg-muted font-medium" : "hover:bg-muted",
                 )}
               >
                 <input
                   type="checkbox"
                   checked={checked}
-                  onChange={() => onToggleCondition(opt.value)}
+                  onChange={() => onToggle(option.slug)}
                   className="size-4 accent-[#111827]"
                 />
-                <span>{opt.label}</span>
+                <span className="truncate">{option.name}</span>
               </label>
             );
-          })}
-        </div>
+          })
+        ) : (
+          <p className="px-2 py-1.5 text-sm text-muted-foreground">Нет вариантов</p>
+        )}
       </div>
-
-      {shops && shops.length > 0 ? (
-        <div className="space-y-2.5">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Магазин
-          </p>
-          <div className="max-h-52 space-y-0.5 overflow-y-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
-            {shops.map((shop) => {
-              const checked = selectedShops.has(shop.slug);
-              return (
-                <label
-                  key={shop.id}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition",
-                    checked ? "bg-[#F3F4F6] font-medium" : "hover:bg-[#F3F4F6]",
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => onToggleShop(shop.slug)}
-                    className="size-4 accent-[#111827]"
-                  />
-                  <span className="truncate">{shop.name}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-
-      {brands && brands.length > 0 ? (
-        <div className="space-y-2.5">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Бренд
-          </p>
-          <div className="max-h-52 space-y-0.5 overflow-y-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
-            {brands.map((brand) => {
-              const checked = selectedBrands.has(brand.slug);
-              return (
-                <label
-                  key={brand.id}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition",
-                    checked ? "bg-[#F3F4F6] font-medium" : "hover:bg-[#F3F4F6]",
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => onToggleBrand(brand.slug)}
-                    className="size-4 accent-[#111827]"
-                  />
-                  <span className="truncate">{brand.name}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-    </div>
+    </FilterDropdown>
   );
 }
 
@@ -371,7 +270,6 @@ export function CatalogBrowser({
   selectedBrandSlugs = [],
   shops,
   selectedShopSlugs = [],
-  selectedConditions = [],
   pagination,
 }: CatalogBrowserProps) {
   const router = useRouter();
@@ -386,12 +284,7 @@ export function CatalogBrowser({
   const [priceFrom, setPriceFrom] = useState("");
   const [priceTo, setPriceTo] = useState("");
   const [sort, setSort] = useState<SortOption>("relevance");
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-
-  useEffect(() => {
-    setPriceFrom("");
-    setPriceTo("");
-  }, [absMin, absMax]);
+  const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
 
   function replaceQuery(mutate: (params: URLSearchParams) => void) {
     const params = new URLSearchParams(searchParams.toString());
@@ -423,10 +316,6 @@ export function CatalogBrowser({
     toggleCsvParam("shops", slug);
   }
 
-  function onToggleCondition(value: ProductConditionFilter) {
-    toggleCsvParam("condition", value);
-  }
-
   const filtered = useMemo(() => {
     const parsedMin = Number(priceFrom);
     const parsedMax = Number(priceTo);
@@ -452,13 +341,11 @@ export function CatalogBrowser({
     setPriceTo("");
     const hasQueryFilters =
       selectedBrandSlugs.length > 0 ||
-      selectedShopSlugs.length > 0 ||
-      selectedConditions.length > 0;
+      selectedShopSlugs.length > 0;
     if (hasQueryFilters) {
       replaceQuery((params) => {
         params.delete("brands");
         params.delete("shops");
-        params.delete("condition");
         params.delete("page");
       });
     }
@@ -468,30 +355,7 @@ export function CatalogBrowser({
   const activeCount =
     (priceActive ? 1 : 0) +
     (selectedBrandSlugs.length > 0 ? 1 : 0) +
-    (selectedShopSlugs.length > 0 ? 1 : 0) +
-    (selectedConditions.length > 0 ? 1 : 0);
-
-  const filterProps: FilterPanelProps = {
-    priceFrom,
-    priceTo,
-    setPriceFrom,
-    setPriceTo,
-    absMin,
-    absMax,
-    activeCount,
-    resetFilters,
-    categoryTree,
-    activeRootSlug,
-    activeChildSlug,
-    brands,
-    selectedBrandSlugs,
-    onToggleBrand,
-    shops,
-    selectedShopSlugs,
-    onToggleShop,
-    selectedConditions,
-    onToggleCondition,
-  };
+    (selectedShopSlugs.length > 0 ? 1 : 0);
 
   return (
     <div>
@@ -520,26 +384,32 @@ export function CatalogBrowser({
 
       <div className="grid gap-x-6 gap-y-6 min-[992px]:grid-cols-[210px_minmax(0,1fr)] min-[1200px]:grid-cols-[220px_minmax(0,1fr)] min-[1200px]:gap-x-7">
         <aside className="hidden h-fit rounded-xl border border-[#E5E7EB] bg-white p-5 min-[992px]:sticky min-[992px]:top-20 min-[992px]:block">
-          <FilterPanel {...filterProps} />
+          <div className="space-y-2.5">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Категории
+            </p>
+            <div className="max-h-[min(72vh,42rem)] overflow-y-auto pr-1 [scrollbar-width:thin]">
+              <CategoryTree
+                categories={categoryTree ?? []}
+                activeRootSlug={activeRootSlug}
+                activeChildSlug={activeChildSlug}
+              />
+            </div>
+          </div>
         </aside>
 
         <div className="min-w-0">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E7EB] pb-3 sm:mb-4">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 className="min-[992px]:hidden"
-                onClick={() => setMobileFiltersOpen(true)}
+                onClick={() => setMobileCategoriesOpen(true)}
               >
-                <ListFilter className="size-4" />
-                Фильтры
-                {activeCount > 0 ? (
-                  <Badge variant="secondary" className="ml-0.5">
-                    {activeCount}
-                  </Badge>
-                ) : null}
+                <ListTree className="size-4" />
+                Категории
               </Button>
               {pagination ? (
                 <CatalogPagination
@@ -556,15 +426,58 @@ export function CatalogBrowser({
                   {totalCount}
                 </p>
               )}
-              {activeCount > 0 ? (
-                <Badge variant="secondary" className="align-middle">
-                  фильтров: {activeCount}
-                </Badge>
-              ) : null}
             </div>
 
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
+              <FilterDropdown label="Цена" activeCount={priceActive ? 1 : 0}>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Цена, ₽
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="space-y-1">
+                    <span className="text-xs text-muted-foreground">От</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      inputMode="decimal"
+                      value={priceFrom}
+                      placeholder={String(absMin)}
+                      aria-label="Минимальная цена"
+                      onChange={(event) => setPriceFrom(event.target.value)}
+                    />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-xs text-muted-foreground">До</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      inputMode="decimal"
+                      value={priceTo}
+                      placeholder={String(absMax)}
+                      aria-label="Максимальная цена"
+                      onChange={(event) => setPriceTo(event.target.value)}
+                    />
+                  </label>
+                </div>
+              </FilterDropdown>
+              <MultiSelectFilter
+                label="Магазин"
+                options={shops ?? []}
+                selected={selectedShopSlugs}
+                onToggle={onToggleShop}
+              />
+              <MultiSelectFilter
+                label="Бренд"
+                options={brands ?? []}
+                selected={selectedBrandSlugs}
+                onToggle={onToggleBrand}
+              />
               <SortDropdown value={sort} onChange={setSort} />
+              {activeCount > 0 ? (
+                <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
+                  Сбросить
+                </Button>
+              ) : null}
             </div>
           </div>
 
@@ -598,23 +511,18 @@ export function CatalogBrowser({
         </div>
       </div>
 
-      <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+      <Sheet open={mobileCategoriesOpen} onOpenChange={setMobileCategoriesOpen}>
         <SheetContent side="left" className="w-[min(100%,20rem)] gap-0 p-0">
           <SheetHeader className="border-b border-[#E5E7EB]">
-            <SheetTitle>Категории и фильтры</SheetTitle>
-            <SheetDescription>Выберите раздел и уточните подборку</SheetDescription>
+            <SheetTitle>Категории</SheetTitle>
+            <SheetDescription>Выберите нужный раздел каталога</SheetDescription>
           </SheetHeader>
           <div className="overflow-y-auto p-4">
-            <FilterPanel {...filterProps} />
-          </div>
-          <div className="mt-auto border-t border-[#E5E7EB] p-4">
-            <Button
-              type="button"
-              className="w-full"
-              onClick={() => setMobileFiltersOpen(false)}
-            >
-              Показать {filtered.length}
-            </Button>
+            <CategoryTree
+              categories={categoryTree ?? []}
+              activeRootSlug={activeRootSlug}
+              activeChildSlug={activeChildSlug}
+            />
           </div>
         </SheetContent>
       </Sheet>

@@ -27,9 +27,15 @@ function productsApiBaseUrl(): string {
 
 export async function fetchCategoryTree(options?: {
   popularOnly?: boolean;
+  includeProductCounts?: boolean;
+  productsActiveOnly?: boolean;
 }): Promise<ApiCategory[]> {
   const params = new URLSearchParams({ activeOnly: "true" });
   if (options?.popularOnly) params.set("popularOnly", "true");
+  if (options?.includeProductCounts) params.set("includeProductCounts", "true");
+  if (options?.productsActiveOnly != null) {
+    params.set("productsActiveOnly", String(options.productsActiveOnly));
+  }
 
   const url = `${productsApiBaseUrl()}/api/products/categories?${params}`;
   const res = await fetch(url, {

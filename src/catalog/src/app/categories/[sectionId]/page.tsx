@@ -15,7 +15,6 @@ import {
 } from "@/lib/products-api";
 import {
   fetchShops,
-  parseConditionParam,
   parseCsvParam,
 } from "@/lib/shops-api";
 
@@ -26,7 +25,6 @@ type PageProps = {
     sub?: string;
     brands?: string;
     shops?: string;
-    condition?: string;
   }>;
 };
 
@@ -40,13 +38,11 @@ function buildBasePath(
   subSlug?: string,
   brandSlugs?: string[],
   shopSlugs?: string[],
-  conditions?: string[],
 ) {
   const qs = new URLSearchParams();
   if (subSlug) qs.set("sub", subSlug);
   if (brandSlugs && brandSlugs.length > 0) qs.set("brands", brandSlugs.join(","));
   if (shopSlugs && shopSlugs.length > 0) qs.set("shops", shopSlugs.join(","));
-  if (conditions && conditions.length > 0) qs.set("condition", conditions.join(","));
   const search = qs.toString();
   return search ? `/categories/${rootSlug}?${search}` : `/categories/${rootSlug}`;
 }
@@ -61,16 +57,14 @@ export default async function CategorySectionPage({
     sub: subParam,
     brands: brandsParam,
     shops: shopsParam,
-    condition: conditionParam,
   } = await searchParams;
   const page = parsePage(pageParam);
   const subSlug = subParam ? safeDecode(subParam) : undefined;
   const selectedBrandSlugs = parseBrandSlugs(brandsParam);
   const selectedShopSlugs = parseCsvParam(shopsParam);
-  const selectedConditions = parseConditionParam(conditionParam);
 
   const [categoryTree, brands, shops] = await Promise.all([
-    fetchCategoryTree(),
+    fetchCategoryTree({ includeProductCounts: true, productsActiveOnly: true }),
     fetchBrands().catch(() => []),
     fetchShops().catch(() => []),
   ]);
@@ -87,7 +81,6 @@ export default async function CategorySectionPage({
     pageSize: PRODUCTS_PAGE_SIZE,
     brandSlugs: selectedBrandSlugs,
     shopSlugs: selectedShopSlugs,
-    conditions: selectedConditions,
     categorySlug: child?.slug,
     categoryName: child?.name,
   });
@@ -110,7 +103,6 @@ export default async function CategorySectionPage({
             selectedBrandSlugs={selectedBrandSlugs}
             shops={shops}
             selectedShopSlugs={selectedShopSlugs}
-            selectedConditions={selectedConditions}
             pagination={{
               page: catalog.page,
               pageSize: catalog.pageSize,
@@ -120,7 +112,6 @@ export default async function CategorySectionPage({
                 child?.slug,
                 selectedBrandSlugs,
                 selectedShopSlugs,
-                selectedConditions,
               ),
             }}
           />
