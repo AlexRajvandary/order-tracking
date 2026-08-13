@@ -4,7 +4,7 @@ RUN apk add --no-cache git
 WORKDIR /src
 COPY .git ./.git
 COPY scripts/generate-git-history.mjs ./scripts/generate-git-history.mjs
-WORKDIR /src/frontend
+WORKDIR /src/src/frontend
 COPY src/frontend/package*.json ./
 RUN npm ci
 COPY src/frontend/ ./
@@ -19,7 +19,7 @@ RUN dotnet restore OrderTracking.slnx
 RUN dotnet publish OrderTracking.Api/OrderTracking.Api.csproj -c Release -o /app/publish --no-restore
 
 # Copy frontend into wwwroot
-COPY --from=frontend-build /src/frontend/dist /app/publish/wwwroot
+COPY --from=frontend-build /src/src/frontend/dist /app/publish/wwwroot
 
 # Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final

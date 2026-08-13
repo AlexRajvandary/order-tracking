@@ -1,4 +1,4 @@
-import { FileCode2, FileJson, Upload } from 'lucide-react'
+import { ExternalLink, FileCode2, FileJson, ImageOff, Upload } from 'lucide-react'
 import { type ChangeEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
@@ -15,6 +15,14 @@ import type {
 import { ApiError } from '@/shared/api/client'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
+import { Card, CardContent } from '@/shared/ui/card'
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/shared/ui/carousel'
 import {
   Dialog,
   DialogContent,
@@ -41,6 +49,7 @@ const EXAMPLE_JSON = `[
     "price": 12990,
     "currencyCode": "RUB",
     "imageUrl": "https://example.com/product.jpg",
+    "sourceUrl": "https://example.com/product",
     "sku": "EXAMPLE-001",
     "brand": "Example brand",
     "categoryName": "Crossbody bags",
@@ -105,6 +114,24 @@ function mergeSummary(
   }
 }
 
+function formatPreviewPrice(product: ImportProductItem, locale: string) {
+  if (typeof product.price !== 'number' || !Number.isFinite(product.price)) return null
+
+  const currency = typeof product.currencyCode === 'string'
+    ? product.currencyCode.trim().toUpperCase()
+    : 'RUB'
+
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currency.length === 3 ? currency : 'RUB',
+      maximumFractionDigits: 2,
+    }).format(product.price)
+  } catch {
+    return `${product.price} ${currency || 'RUB'}`
+  }
+}
+
 export function ProductsImportDialog({
   open,
   onOpenChange,
@@ -114,7 +141,7 @@ export function ProductsImportDialog({
   onOpenChange: (open: boolean) => void
   onImported: () => Promise<void> | void
 }) {
-  const { t } = useTranslation('products')
+  const { t, i18n } = useTranslation('products')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [source, setSource] = useState<ImportSource>('json')
   const [input, setInput] = useState('')
@@ -128,12 +155,12 @@ export function ProductsImportDialog({
   const [error, setError] = useState<string | null>(null)
   const [notificationError, setNotificationError] = useState<string | null>(null)
 
-  const parsedCount = useMemo(() => {
+  const parsedProducts = useMemo(() => {
     if (!input.trim()) return null
     try {
       return source === 'json'
-        ? parseProducts(input).length
-        : parseProductsHtml(htmlParser, input).length
+        ? parseProducts(input)
+        : parseProductsHtml(htmlParser, input)
     } catch {
       return null
     }
@@ -327,6 +354,81 @@ export function ProductsImportDialog({
             }}
           />
 
+          {parsedProducts ? (
+            <div className="space-y-2 rounded-lg border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium">{t('import.preview')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('import.recognized', { count: parsedProducts.length })}
+                </p>
+              </div>
+
+              <Carousel opts={{ align: 'start', dragFree: true }} className="px-9">
+                <CarouselContent className="-ml-3">
+                  {parsedProducts.map((product, index) => {
+                    const imageUrl = typeof product.imageUrl === 'string'
+                      ? product.imageUrl.trim()
+                      : ''
+                    const sourceUrl = typeof product.sourceUrl === 'string'
+                      ? product.sourceUrl.trim()
+                      : ''
+                    const name = typeof product.name === 'string' && product.name.trim()
+                      ? product.name.trim()
+                      : t('import.unnamedProduct')
+                    const price = formatPreviewPrice(product, i18n.language)
+
+                    return (
+                      <CarouselItem
+                        key={`${product.sku ?? product.slug ?? name}-${index}`}
+                        className="basis-[160px] pl-3 sm:basis-[180px]"
+                      >
+                        <Card className="h-full gap-0 overflow-hidden py-0">
+                          <div className="flex aspect-square items-center justify-center bg-muted">
+                            {imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt=""
+                                referrerPolicy="no-referrer"
+                                loading="lazy"
+                                className="size-full object-cover"
+                              />
+                            ) : (
+                              <ImageOff className="size-8 text-muted-foreground" />
+                            )}
+                          </div>
+                          <CardContent className="space-y-1.5 p-2.5">
+                            <p className="line-clamp-2 min-h-8 text-xs font-medium leading-4">
+                              {name}
+                            </p>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="truncate text-sm font-semibold tabular-nums">
+                                {price ?? t('import.priceMissing')}
+                              </p>
+                              {sourceUrl ? (
+                                <a
+                                  href={sourceUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="shrink-0 rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                                  aria-label={t('import.openSource')}
+                                  title={t('import.openSource')}
+                                >
+                                  <ExternalLink className="size-3.5" />
+                                </a>
+                              ) : null}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </CarouselItem>
+                    )
+                  })}
+                </CarouselContent>
+                <CarouselPrevious className="left-0" />
+                <CarouselNext className="right-0" />
+              </Carousel>
+            </div>
+          ) : null}
+
           <div className="flex items-center justify-between gap-4 rounded-lg border px-3 py-2.5">
             <div>
               <p className="text-sm font-medium">{t('import.createCategories')}</p>
@@ -340,12 +442,6 @@ export function ProductsImportDialog({
               onCheckedChange={setCreateMissingCategories}
             />
           </div>
-
-          {parsedCount != null && total === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t('import.recognized', { count: parsedCount })}
-            </p>
-          ) : null}
 
           {total > 0 ? (
             <div className="space-y-2 rounded-lg border p-3">
