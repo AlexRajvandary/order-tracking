@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -21,6 +21,10 @@ import { CategoryTree } from "@/components/category-tree";
 import type { ApiBrand } from "@/lib/brands-api";
 import type { ApiCategory } from "@/lib/categories-api";
 import type { CatalogProduct } from "@/lib/catalog-products";
+import {
+  mapApiProductToCatalog,
+  type ApiProductListResult,
+} from "@/lib/products-api";
 import type { ApiShop } from "@/lib/shops-api";
 import { cn } from "@/lib/utils";
 
@@ -289,6 +293,25 @@ export function CatalogBrowser({
   const [priceTo, setPriceTo] = useState("");
   const [sort, setSort] = useState<SortOption>("relevance");
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
+  const mobileDatasetKey = [
+    pathname,
+    activeRootSlug ?? "all",
+    activeChildSlug ?? "",
+    selectedBrandSlugs.join(","),
+    selectedShopSlugs.join(","),
+    pagination?.page ?? 1,
+  ].join("|");
+  const [mobilePages, setMobilePages] = useState<{
+    key: string;
+    products: CatalogProduct[];
+    loadedPage: number;
+  }>({ key: mobileDatasetKey, products: [], loadedPage: pagination?.page ?? 1 });
+  const [mobileLoading, setMobileLoading] = useState(false);
+  const [mobileLoadError, setMobileLoadError] = useState(false);
+  const activeMobilePages =
+    mobilePages.key === mobileDatasetKey
+      ? mobilePages
+      : { key: mobileDatasetKey, products: [], loadedPage: pagination?.page ?? 1 };
 
   function replaceQuery(mutate: (params: URLSearchParams) => void) {
     const params = new URLSearchParams(searchParams.toString());
@@ -320,13 +343,13 @@ export function CatalogBrowser({
     toggleCsvParam("shops", slug);
   }
 
-  const filtered = useMemo(() => {
+  const filterAndSort = useCallback((items: CatalogProduct[]) => {
     const parsedMin = Number(priceFrom);
     const parsedMax = Number(priceTo);
     const min = priceFrom.trim() && Number.isFinite(parsedMin) ? parsedMin : null;
     const max = priceTo.trim() && Number.isFinite(parsedMax) ? parsedMax : null;
 
-    let list = products.filter((p) => {
+    let list = items.filter((p) => {
       if (min != null && p.priceRub < min) return false;
       if (max != null && p.priceRub > max) return false;
       return true;
@@ -338,7 +361,56 @@ export function CatalogBrowser({
     if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, "ru"));
 
     return list;
-  }, [products, priceFrom, priceTo, sort]);
+  }, [priceFrom, priceTo, sort]);
+
+  const filtered = useMemo(
+    () => filterAndSort(products),
+    [products, filterAndSort],
+  );
+  const mobileProducts = useMemo(() => {
+    const byId = new Map(products.map((product) => [product.id, product]));
+    activeMobilePages.products.forEach((product) => byId.set(product.id, product));
+    return filterAndSort([...byId.values()]);
+  }, [products, activeMobilePages.products, filterAndSort]);
+  const mobileHasMore = Boolean(
+    pagination && products.length + activeMobilePages.products.length < pagination.total,
+  );
+
+  async function loadMoreProducts() {
+    if (!pagination || mobileLoading || !mobileHasMore) return;
+
+    setMobileLoading(true);
+    setMobileLoadError(false);
+    const nextPage = activeMobilePages.loadedPage + 1;
+    const params = new URLSearchParams({
+      page: String(nextPage),
+      pageSize: String(pagination.pageSize),
+    });
+    const categorySlug = activeChildSlug ?? activeRootSlug;
+    if (categorySlug) params.set("category", categorySlug);
+    if (activeRootSlug && !activeChildSlug) params.set("includeCategoryChildren", "true");
+    if (selectedBrandSlugs.length > 0) params.set("brands", selectedBrandSlugs.join(","));
+    if (selectedShopSlugs.length > 0) params.set("shops", selectedShopSlugs.join(","));
+
+    try {
+      const response = await fetch(`/api/catalog-products?${params}`);
+      if (!response.ok) throw new Error(`Catalog API ${response.status}`);
+      const result = (await response.json()) as ApiProductListResult;
+      const nextProducts = result.items.map((product) => mapApiProductToCatalog(product));
+      setMobilePages((current) => ({
+        key: mobileDatasetKey,
+        products:
+          current.key === mobileDatasetKey
+            ? [...current.products, ...nextProducts]
+            : nextProducts,
+        loadedPage: nextPage,
+      }));
+    } catch {
+      setMobileLoadError(true);
+    } finally {
+      setMobileLoading(false);
+    }
+  }
 
   function resetFilters() {
     setPriceFrom("");
@@ -422,7 +494,7 @@ export function CatalogBrowser({
                   pageSize={pagination.pageSize}
                   total={pagination.total}
                   basePath={pagination.basePath}
-                  className="mx-0 w-auto justify-start pt-0"
+                  className="mx-0 hidden w-auto justify-start pt-0 sm:flex"
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">
@@ -498,18 +570,47 @@ export function CatalogBrowser({
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid grid-cols-2 gap-3 sm:hidden">
+                {mobileProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+              <div className="hidden grid-cols-2 gap-3 sm:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {filtered.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
+              {pagination && mobileHasMore ? (
+                <div className="sm:hidden">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={mobileLoading}
+                    onClick={() => void loadMoreProducts()}
+                  >
+                    {mobileLoading
+                      ? "Загрузка…"
+                      : mobileLoadError
+                        ? "Повторить загрузку"
+                        : "Загрузить ещё"}
+                  </Button>
+                  {mobileLoadError ? (
+                    <p className="mt-2 text-center text-xs text-destructive">
+                      Не удалось загрузить товары
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {pagination ? (
-                <CatalogPagination
-                  page={pagination.page}
-                  pageSize={pagination.pageSize}
-                  total={pagination.total}
-                  basePath={pagination.basePath}
-                />
+                <div className="hidden sm:block">
+                  <CatalogPagination
+                    page={pagination.page}
+                    pageSize={pagination.pageSize}
+                    total={pagination.total}
+                    basePath={pagination.basePath}
+                  />
+                </div>
               ) : null}
             </div>
           )}

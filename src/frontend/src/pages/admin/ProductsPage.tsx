@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, MoreHorizontal, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
 import type {
@@ -59,6 +59,21 @@ const NO_PRODUCT_SUBCATEGORY = '__no_product_subcategory__'
 const NO_PRODUCT_SHOP = '__no_product_shop__'
 const BULK_UNCHANGED = '__bulk_unchanged__'
 const BULK_CLEAR = '__bulk_clear__'
+const MOBILE_PRODUCTS_QUERY = '(max-width: 639px)'
+
+function subscribeToMobileProducts(callback: () => void) {
+  const media = window.matchMedia(MOBILE_PRODUCTS_QUERY)
+  media.addEventListener('change', callback)
+  return () => media.removeEventListener('change', callback)
+}
+
+function getMobileProductsSnapshot() {
+  return window.matchMedia(MOBILE_PRODUCTS_QUERY).matches
+}
+
+function useMobileProductsLayout() {
+  return useSyncExternalStore(subscribeToMobileProducts, getMobileProductsSnapshot, () => false)
+}
 
 type CategoryAction =
   | { kind: 'create'; parent: Category | null }
@@ -606,6 +621,77 @@ function ProductsToolbarPagination({
   )
 }
 
+function ProductGridItem({
+  product,
+  selected,
+  selectMode,
+  hiddenLabel,
+  locale,
+  onClick,
+}: {
+  product: Product
+  selected: boolean
+  selectMode: boolean
+  hiddenLabel: string
+  locale: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+    >
+      <Card
+        size="sm"
+        className={cn(
+          'h-full gap-0 overflow-hidden pt-0 transition-colors hover:border-primary/40 hover:bg-muted/40',
+          selectMode && selected && 'border-primary ring-2 ring-primary/30',
+        )}
+      >
+        <div className="relative aspect-square bg-muted">
+          <img
+            src={product.imageUrl}
+            alt=""
+            referrerPolicy="no-referrer"
+            className="size-full object-cover"
+            loading="lazy"
+          />
+          {selectMode ? (
+            <span
+              className={cn(
+                'absolute right-2 top-2 flex size-6 items-center justify-center rounded-md border bg-background/90',
+                selected
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border text-muted-foreground',
+              )}
+            >
+              {selected ? (
+                <CheckSquare className="size-3.5" />
+              ) : (
+                <span className="size-3.5 rounded-sm border border-current" />
+              )}
+            </span>
+          ) : null}
+          {!product.isActive ? (
+            <Badge variant="secondary" className="absolute left-2 top-2">
+              {hiddenLabel}
+            </Badge>
+          ) : null}
+        </div>
+        <CardContent className="space-y-1 p-2.5">
+          <p className="line-clamp-2 text-xs font-medium leading-snug">
+            {product.name}
+          </p>
+          <p className="text-sm font-semibold tabular-nums">
+            {formatPrice(product.price, product.currencyCode, locale)}
+          </p>
+        </CardContent>
+      </Card>
+    </button>
+  )
+}
+
 async function hideProductIds(ids: string[]) {
   let updated = 0
   for (let i = 0; i < ids.length; i += BULK_ID_CHUNK) {
@@ -622,6 +708,7 @@ async function hideProductIds(ids: string[]) {
 export function ProductsPage() {
   const { t, i18n } = useTranslation('products')
   const queryClient = useQueryClient()
+  const isMobileProductsLayout = useMobileProductsLayout()
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search)
   const normalizedSearch = debouncedSearch.trim()
@@ -758,7 +845,51 @@ export function ProductsPage() {
       ),
   })
 
-  const pageItems = productsQuery.data?.items ?? []
+  const pageItems = useMemo(
+    () => productsQuery.data?.items ?? [],
+    [productsQuery.data?.items],
+  )
+  const mobileDatasetKey = [
+    activeSearch ?? '',
+    categorySlug ?? '',
+    visibility,
+    brandKey,
+    shopKey,
+    conditionKey,
+    priceMin ?? '',
+    priceMax ?? '',
+    page,
+    pageSize,
+    productsQuery.dataUpdatedAt,
+  ].join('|')
+  const [mobilePages, setMobilePages] = useState<{
+    key: string
+    items: Product[]
+    loadedPage: number
+  }>({ key: mobileDatasetKey, items: [], loadedPage: page })
+  const activeMobilePages =
+    mobilePages.key === mobileDatasetKey
+      ? mobilePages
+      : { key: mobileDatasetKey, items: [], loadedPage: page }
+
+  const mobileLoadMutation = useMutation({
+    mutationFn: ({ nextPage }: { key: string; nextPage: number }) =>
+      productsApi.listProducts({
+        ...listFilters,
+        page: nextPage,
+        pageSize,
+      }),
+    onSuccess: (result, variables) => {
+      setMobilePages((current) => ({
+        key: variables.key,
+        items:
+          current.key === variables.key
+            ? [...current.items, ...result.items]
+            : result.items,
+        loadedPage: variables.nextPage,
+      }))
+    },
+  })
 
   const displayItems = useMemo(() => {
     let list = [...pageItems]
@@ -767,6 +898,18 @@ export function ProductsPage() {
     if (sort === 'name') list.sort((a, b) => a.name.localeCompare(b.name, i18n.language))
     return list
   }, [pageItems, sort, i18n.language])
+
+  const mobileDisplayItems = useMemo(() => {
+    const byId = new Map(pageItems.map((product) => [product.id, product]))
+    activeMobilePages.items.forEach((product) => byId.set(product.id, product))
+    const list = [...byId.values()]
+    if (sort === 'price-asc') list.sort((a, b) => a.price - b.price)
+    if (sort === 'price-desc') list.sort((a, b) => b.price - a.price)
+    if (sort === 'name') list.sort((a, b) => a.name.localeCompare(b.name, i18n.language))
+    return list
+  }, [pageItems, activeMobilePages.items, sort, i18n.language])
+
+  const activeDisplayItems = isMobileProductsLayout ? mobileDisplayItems : displayItems
 
   const totalPages = Math.max(
     1,
@@ -790,8 +933,8 @@ export function ProductsPage() {
   }
 
   const pageSelectableIds = useMemo(
-    () => displayItems.map((p) => p.id),
-    [displayItems],
+    () => activeDisplayItems.map((p) => p.id),
+    [activeDisplayItems],
   )
 
   const allPageSelected =
@@ -1105,16 +1248,18 @@ export function ProductsPage() {
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <p className="text-sm text-muted-foreground">
             {productsQuery.data
-              ? t('showing', { count: displayItems.length })
+              ? t('showing', { count: activeDisplayItems.length })
               : null}
           </p>
-          <ProductsToolbarPagination
-            page={page}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-          />
+          <div className="hidden sm:block">
+            <ProductsToolbarPagination
+              page={page}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
         </div>
       </div>
 
@@ -1354,97 +1499,78 @@ export function ProductsPage() {
                 {t('retry', { ns: 'common' })}
               </Button>
             </div>
-          ) : !displayItems.length ? (
+          ) : !activeDisplayItems.length ? (
             <Card size="sm">
               <CardContent className="py-8 text-center text-sm text-muted-foreground">
                 {t('empty')}
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {displayItems.map((product) => {
-                const selected = selectAllFiltered || selectedIds.has(product.id)
-                return (
-                  <button
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:hidden">
+                {activeDisplayItems.map((product) => (
+                  <ProductGridItem
                     key={product.id}
-                    type="button"
+                    product={product}
+                    selected={selectAllFiltered || selectedIds.has(product.id)}
+                    selectMode={selectMode}
+                    hiddenLabel={t('hidden')}
+                    locale={i18n.language}
                     onClick={() => {
-                      if (selectMode) {
-                        toggleSelected(product.id)
-                        return
-                      }
-                      openEdit(product)
+                      if (selectMode) toggleSelected(product.id)
+                      else openEdit(product)
                     }}
-                    className="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                  >
-                    <Card
-                      size="sm"
-                      className={cn(
-                        'h-full gap-0 overflow-hidden pt-0 transition-colors hover:border-primary/40 hover:bg-muted/40',
-                        selectMode && selected && 'border-primary ring-2 ring-primary/30',
-                      )}
-                    >
-                      <div className="relative aspect-square bg-muted">
-                        <img
-                          src={product.imageUrl}
-                          alt=""
-                          referrerPolicy="no-referrer"
-                          className="size-full object-cover"
-                          loading="lazy"
-                        />
-                        {selectMode ? (
-                          <span
-                            className={cn(
-                              'absolute right-2 top-2 flex size-6 items-center justify-center rounded-md border bg-background/90',
-                              selected
-                                ? 'border-primary bg-primary text-primary-foreground'
-                                : 'border-border text-muted-foreground',
-                            )}
-                          >
-                            {selected ? (
-                              <CheckSquare className="size-3.5" />
-                            ) : (
-                              <span className="size-3.5 rounded-sm border border-current" />
-                            )}
-                          </span>
-                        ) : null}
-                        {!product.isActive ? (
-                          <Badge
-                            variant="secondary"
-                            className="absolute left-2 top-2"
-                          >
-                            {t('hidden')}
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <CardContent className="space-y-1 p-2.5">
-                        <p className="line-clamp-2 text-xs font-medium leading-snug">
-                          {product.name}
-                        </p>
-                        <p className="text-sm font-semibold tabular-nums">
-                          {formatPrice(
-                            product.price,
-                            product.currencyCode,
-                            i18n.language,
-                          )}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </button>
-                )
-              })}
-            </div>
+                  />
+                ))}
+              </div>
+              <div className="hidden grid-cols-2 gap-3 sm:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {displayItems.map((product) => (
+                  <ProductGridItem
+                    key={product.id}
+                    product={product}
+                    selected={selectAllFiltered || selectedIds.has(product.id)}
+                    selectMode={selectMode}
+                    hiddenLabel={t('hidden')}
+                    locale={i18n.language}
+                    onClick={() => {
+                      if (selectMode) toggleSelected(product.id)
+                      else openEdit(product)
+                    }}
+                  />
+                ))}
+              </div>
+            </>
           )}
 
-          {displayItems.length > 0 ? (
-            <div className="flex justify-end">
-              <ProductsToolbarPagination
-                page={page}
-                totalPages={totalPages}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
+          {activeDisplayItems.length > 0 ? (
+            <div className="flex justify-center sm:justify-end">
+              {activeMobilePages.loadedPage < totalPages ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:hidden"
+                  disabled={mobileLoadMutation.isPending}
+                  onClick={() => mobileLoadMutation.mutate({
+                    key: mobileDatasetKey,
+                    nextPage: activeMobilePages.loadedPage + 1,
+                  })}
+                >
+                  {mobileLoadMutation.isPending
+                    ? t('loading', { ns: 'common' })
+                    : mobileLoadMutation.isError
+                      ? t('retry', { ns: 'common' })
+                      : t('loadMore')}
+                </Button>
+              ) : null}
+              <div className="hidden sm:block">
+                <ProductsToolbarPagination
+                  page={page}
+                  totalPages={totalPages}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={setPageSize}
+                />
+              </div>
             </div>
           ) : null}
         </div>

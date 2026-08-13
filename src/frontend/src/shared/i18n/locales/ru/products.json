@@ -1,5 +1,6 @@
 {
   "title": "Товары",
+  "loadMore": "Загрузить ещё",
   "searchPlaceholder": "Поиск товаров…",
   "categories": "Категории",
   "allCategories": "Все категории",
