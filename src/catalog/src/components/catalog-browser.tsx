@@ -392,7 +392,7 @@ export function CatalogBrowser({
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Категории
             </p>
-            <div className="max-h-[min(72vh,42rem)] overflow-y-auto pr-1 [scrollbar-width:thin]">
+            <div>
               <CategoryTree
                 categories={categoryTree ?? []}
                 totalProductCount={allCategoriesProductCount}
