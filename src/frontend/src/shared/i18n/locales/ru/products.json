@@ -53,14 +53,16 @@
       "html": "HTML"
     },
     "parserLabel": "Парсер HTML",
-    "parsers": {
-      "zenplus": "ZenPlus / LuiBags",
-      "lamoda": "Lamoda / Bags"
-    },
-    "parserHints": {
-      "zenplus": "Для карточек product-item product-link из выгрузок ZenPlus.",
-      "lamoda": "Для карточек x-product-card__card из каталога Lamoda."
-    },
+      "parsers": {
+        "zenplus": "ZenPlus / LuiBags",
+        "lamoda": "Lamoda / Bags",
+        "maketto": "Maketto.jp"
+      },
+      "parserHints": {
+        "zenplus": "Для карточек product-item product-link из выгрузок ZenPlus.",
+        "lamoda": "Для карточек x-product-card__card из каталога Lamoda.",
+        "maketto": "Для HTML страницы каталога Maketto.jp со встроенными данными товаров."
+      },
     "chooseFile": "Выбрать JSON-файл",
     "chooseHtmlFile": "Выбрать HTML-файл",
     "showExample": "Показать пример",

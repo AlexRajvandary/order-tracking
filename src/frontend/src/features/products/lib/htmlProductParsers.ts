@@ -1,14 +1,16 @@
 import type { ImportProductItem } from '../types'
 
-export type HtmlProductParserId = 'zenplus' | 'lamoda'
+export type HtmlProductParserId = 'zenplus' | 'lamoda' | 'maketto'
 
 export const HTML_PRODUCT_PARSERS: ReadonlyArray<{ id: HtmlProductParserId }> = [
   { id: 'zenplus' },
   { id: 'lamoda' },
+  { id: 'maketto' },
 ]
 
 const ZENPLUS_ORIGIN = 'https://www.zenplus.jp'
 const LAMODA_ORIGIN = 'https://www.lamoda.ru'
+const MAKETTO_ORIGIN = 'https://maketto.jp'
 
 function decodeHtmlEntities(value: string): string {
   const textarea = document.createElement('textarea')
@@ -230,6 +232,157 @@ function parseLamodaHtml(source: string): ImportProductItem[] {
   return products
 }
 
+type MakettoProduct = {
+  shop?: unknown
+  id?: unknown
+  title?: unknown
+  price?: unknown
+  image?: unknown
+  url?: unknown
+}
+
+type MakettoNextData = {
+  locale?: unknown
+  props?: {
+    pageProps?: {
+      initialReduxState?: {
+        currency?: { code?: unknown }
+        activeCategory?: { category?: { label?: unknown } }
+        globalPages?: { queries?: Record<string, unknown> }
+      }
+    }
+  }
+}
+
+function makettoMarketplaceName(value: string): string {
+  const normalized = value.trim().toLowerCase()
+  const names: Record<string, string> = {
+    rakuten: 'Rakuten',
+    mercari: 'Mercari',
+    yauction: 'Yahoo Auctions',
+    yahooauction: 'Yahoo Auctions',
+    yshopping: 'Yahoo Shopping',
+    uniqlo: 'Uniqlo',
+  }
+  return names[normalized] ?? value.trim()
+}
+
+function findMakettoProducts(queries: Record<string, unknown>): MakettoProduct[] {
+  let result: MakettoProduct[] = []
+
+  for (const query of Object.values(queries)) {
+    if (!query || typeof query !== 'object') continue
+    const data = (query as { data?: unknown }).data
+    if (!data || typeof data !== 'object') continue
+    const products = (data as { products?: unknown }).products
+    if (!Array.isArray(products) || products.length <= result.length) continue
+    result = products.filter(
+      (product): product is MakettoProduct =>
+        product != null && typeof product === 'object' && !Array.isArray(product),
+    )
+  }
+
+  return result
+}
+
+function findMakettoProductUrl(
+  html: string,
+  shop: string,
+  id: string,
+  locale: string,
+): string {
+  const escapedShop = shop.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = html.match(
+    new RegExp(`href="([^"]*/product/shopping/${escapedShop}/${escapedId})"`, 'i'),
+  )
+  if (match?.[1]) return absoluteUrl(match[1], MAKETTO_ORIGIN)
+
+  const localePrefix = locale.toLowerCase() === 'ru' ? '/ru' : ''
+  return absoluteUrl(
+    `${localePrefix}/product/shopping/${encodeURIComponent(shop)}/${encodeURIComponent(id)}`,
+    MAKETTO_ORIGIN,
+  )
+}
+
+function parseMakettoHtml(html: string): ImportProductItem[] {
+  const nextDataText = html.match(
+    /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i,
+  )?.[1]
+  if (!nextDataText) return []
+
+  let nextData: MakettoNextData
+  try {
+    nextData = JSON.parse(nextDataText) as MakettoNextData
+  } catch {
+    return []
+  }
+
+  const state = nextData.props?.pageProps?.initialReduxState
+  const queries = state?.globalPages?.queries
+  if (!queries) return []
+
+  const currencyValue = state.currency?.code
+  const currencyCode = typeof currencyValue === 'string' && currencyValue.trim().length === 3
+    ? currencyValue.trim().toUpperCase()
+    : 'RUB'
+  const categoryValue = state.activeCategory?.category?.label
+  const categoryName = typeof categoryValue === 'string' && categoryValue.trim()
+    ? categoryValue.trim().slice(0, 200)
+    : null
+  const locale = typeof nextData.locale === 'string' ? nextData.locale : 'ru'
+  const products: ImportProductItem[] = []
+  const seen = new Set<string>()
+
+  for (const product of findMakettoProducts(queries)) {
+    const shop = typeof product.shop === 'string' ? product.shop.trim() : ''
+    const id = typeof product.id === 'string' || typeof product.id === 'number'
+      ? String(product.id).trim()
+      : ''
+    const name = typeof product.title === 'string'
+      ? product.title.trim().slice(0, 500)
+      : ''
+    const price = typeof product.price === 'number'
+      ? product.price
+      : parsePositiveNumber(typeof product.price === 'string' ? product.price : undefined)
+    const imageUrl = typeof product.image === 'string'
+      ? absoluteUrl(product.image, MAKETTO_ORIGIN)
+      : ''
+    if (!shop || !id || !name || price == null || !imageUrl) continue
+
+    const sku = `maketto-${slugify(shop)}-${id}`.slice(0, 100)
+    if (seen.has(sku)) continue
+    seen.add(sku)
+
+    const originalUrl = typeof product.url === 'string'
+      ? absoluteUrl(product.url, MAKETTO_ORIGIN)
+      : ''
+    const makettoUrl = findMakettoProductUrl(html, shop, id, locale)
+    const shopName = makettoMarketplaceName(shop)
+    const normalizedShop = shop.toLowerCase()
+    const condition = normalizedShop.includes('auction') || normalizedShop === 'mercari'
+      ? 'used'
+      : 'new'
+
+    products.push({
+      name,
+      sku,
+      price,
+      currencyCode,
+      imageUrl,
+      sourceUrl: originalUrl || makettoUrl,
+      condition,
+      shopName,
+      shopSlug: slugify(shopName),
+      categoryName,
+      categorySlug: categoryName ? slugify(categoryName) : null,
+      isActive: true,
+    })
+  }
+
+  return products
+}
+
 export function parseProductsHtml(
   parserId: HtmlProductParserId,
   html: string,
@@ -237,7 +390,9 @@ export function parseProductsHtml(
   if (!html.trim()) throw new Error('htmlEmpty')
   const products = parserId === 'zenplus'
     ? parseZenPlusHtml(html)
-    : parseLamodaHtml(html)
+    : parserId === 'lamoda'
+      ? parseLamodaHtml(html)
+      : parseMakettoHtml(html)
   if (products.length === 0) throw new Error('htmlNoProducts')
   return products
 }

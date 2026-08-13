@@ -56,11 +56,11 @@ function StatCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'block size-[150px] rounded-xl text-left',
+        'block h-[150px] w-[170px] rounded-xl text-left',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
       )}
     >
-      <Card className="flex size-[150px] gap-0 p-3 transition-colors hover:border-primary/40 hover:bg-muted/50 sm:p-4">
+      <Card className="flex h-[150px] w-[170px] gap-0 p-3 transition-colors hover:border-primary/40 hover:bg-muted/50 sm:p-4">
         <CardContent className="flex h-full flex-col justify-between p-0">
           <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground sm:size-9 [&>svg]:size-4 sm:[&>svg]:size-5">
             {icon}
