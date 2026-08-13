@@ -10,6 +10,9 @@ public sealed record CategoryDto(
     int SortOrder,
     bool IsPopular,
     bool IsActive,
+    int ProductCount,
     IReadOnlyList<CategoryDto> Children);
 
-public sealed record CategoryListResult(IReadOnlyList<CategoryDto> Items);
+public sealed record CategoryListResult(
+    IReadOnlyList<CategoryDto> Items,
+    int TotalProductCount);

@@ -8,11 +8,13 @@ export type ApiCategory = {
   sortOrder: number;
   isPopular: boolean;
   isActive: boolean;
+  productCount: number;
   children: ApiCategory[];
 };
 
 export type ApiCategoryListResult = {
   items: ApiCategory[];
+  totalProductCount: number;
 };
 
 function productsApiBaseUrl(): string {

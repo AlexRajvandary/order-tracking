@@ -42,11 +42,13 @@ export type Category = {
   sortOrder: number
   isPopular: boolean
   isActive: boolean
+  productCount: number
   children: Category[]
 }
 
 export type CategoryListResult = {
   items: Category[]
+  totalProductCount: number
 }
 
 export type Brand = {

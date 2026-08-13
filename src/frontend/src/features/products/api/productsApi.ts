@@ -38,9 +38,16 @@ export function listProducts(params?: ListProductsParams, signal?: AbortSignal) 
   return authorizedJsonFromUrl<ProductListResult>(buildListUrl(params), { signal })
 }
 
-export function listCategories(signal?: AbortSignal) {
+export function listCategories(productsActiveOnly?: boolean | null, signal?: AbortSignal) {
+  const search = new URLSearchParams({
+    activeOnly: 'true',
+    includeProductCounts: 'true',
+  })
+  if (productsActiveOnly != null) {
+    search.set('productsActiveOnly', String(productsActiveOnly))
+  }
   return authorizedJsonFromUrl<CategoryListResult>(
-    `${PRODUCTS_API_BASE}/categories?activeOnly=true`,
+    `${PRODUCTS_API_BASE}/categories?${search}`,
     { signal },
   )
 }

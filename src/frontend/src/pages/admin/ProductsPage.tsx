@@ -126,12 +126,14 @@ function formatPrice(value: number, currency: string, locale: string) {
 
 function CategoryTree({
   categories,
+  totalProductCount,
   selectedSlug,
   onSelect,
   onHideCategory,
   hidePendingSlug,
 }: {
   categories: Category[]
+  totalProductCount: number
   selectedSlug: string | null
   onSelect: (slug: string | null) => void
   onHideCategory: (category: Category) => void
@@ -154,7 +156,12 @@ function CategoryTree({
         )}
         onClick={() => onSelect(category.slug)}
       >
-        <span className="line-clamp-2">{category.name}</span>
+        <span className="flex items-start justify-between gap-2">
+          <span className="line-clamp-2">{category.name}</span>
+          <span className="shrink-0 tabular-nums text-muted-foreground">
+            {category.productCount}
+          </span>
+        </span>
       </button>
       <Button
         type="button"
@@ -187,7 +194,12 @@ function CategoryTree({
           )}
           onClick={() => onSelect(null)}
         >
-          {t('allCategories')}
+          <span className="flex items-center justify-between gap-2">
+            <span>{t('allCategories')}</span>
+            <span className="shrink-0 tabular-nums text-muted-foreground">
+              {totalProductCount}
+            </span>
+          </span>
         </button>
       </li>
       {categories.map((root) => (
@@ -340,7 +352,10 @@ function ProductEditDialog({
       })
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin-products'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-product-categories'] }),
+      ])
       onOpenChange(false)
     },
     onError: (err: unknown) => {
@@ -624,11 +639,6 @@ export function ProductsPage() {
     setSelectedIds(new Set())
   }, [activeSearch, categorySlug, brandKey, shopKey, conditionKey, priceMin, priceMax])
 
-  const categoriesQuery = useQuery({
-    queryKey: ['admin-product-categories'],
-    queryFn: ({ signal }) => productsApi.listCategories(signal),
-  })
-
   const brandsQuery = useQuery({
     queryKey: ['admin-product-brands'],
     queryFn: ({ signal }) => productsApi.listBrands(signal),
@@ -639,13 +649,18 @@ export function ProductsPage() {
     queryFn: ({ signal }) => productsApi.listShops(signal),
   })
 
+  const activeOnly =
+    visibility === 'visible' ? true : visibility === 'hidden' ? false : null
+
+  const categoriesQuery = useQuery({
+    queryKey: ['admin-product-categories', activeOnly],
+    queryFn: ({ signal }) => productsApi.listCategories(activeOnly, signal),
+  })
+
   const categoryOptions = useMemo(
     () => flattenCategoryOptions(categoriesQuery.data?.items ?? []),
     [categoriesQuery.data?.items],
   )
-
-  const activeOnly =
-    visibility === 'visible' ? true : visibility === 'hidden' ? false : null
 
   const listFilters = useMemo(
     () => ({
@@ -777,7 +792,10 @@ export function ProductsPage() {
       setSelectedIds(new Set())
       setSelectAllFiltered(false)
       setSelectMode(false)
-      await queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin-products'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-product-categories'] }),
+      ])
     },
     onError: (err: unknown) => {
       setBulkError(err instanceof ApiError ? err.message : t('bulk.error'))
@@ -1045,6 +1063,7 @@ export function ProductsPage() {
             ) : (
               <CategoryTree
                 categories={categoriesQuery.data?.items ?? []}
+                totalProductCount={categoriesQuery.data?.totalProductCount ?? 0}
                 selectedSlug={categorySlug}
                 onSelect={setCategorySlug}
                 hidePendingSlug={

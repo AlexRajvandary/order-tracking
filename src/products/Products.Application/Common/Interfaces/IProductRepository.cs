@@ -5,6 +5,9 @@ namespace Products.Application.Common.Interfaces;
 
 public interface IProductRepository
 {
+    Task<(IReadOnlyDictionary<Guid, int> ByCategory, int Total)> CountByCategoryAsync(
+        bool? activeOnly,
+        CancellationToken cancellationToken = default);
     Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default);
     Task<bool> IsSlugTakenAsync(string slug, Guid? excludeId = null, CancellationToken cancellationToken = default);

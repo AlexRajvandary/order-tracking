@@ -11,6 +11,28 @@ public sealed class ProductRepository : IProductRepository
 
     public ProductRepository(ProductsDbContext db) => _db = db;
 
+    public async Task<(IReadOnlyDictionary<Guid, int> ByCategory, int Total)> CountByCategoryAsync(
+        bool? activeOnly,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _db.Products.AsNoTracking().AsQueryable();
+        if (activeOnly.HasValue)
+        {
+            query = query.Where(product => product.IsActive == activeOnly.Value);
+        }
+
+        var groups = await query
+            .GroupBy(product => product.CategoryId)
+            .Select(group => new { CategoryId = group.Key, Count = group.Count() })
+            .ToListAsync(cancellationToken);
+
+        var byCategory = groups
+            .Where(item => item.CategoryId.HasValue)
+            .ToDictionary(item => item.CategoryId!.Value, item => item.Count);
+
+        return (byCategory, groups.Sum(item => item.Count));
+    }
+
     public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         _db.Products
             .Include(p => p.Shop)

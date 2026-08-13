@@ -19,6 +19,15 @@ public sealed class CategoriesController : ControllerBase
         [FromQuery] bool rootsOnly = false,
         [FromQuery] bool popularOnly = false,
         [FromQuery] bool activeOnly = true,
+        [FromQuery] bool includeProductCounts = false,
+        [FromQuery] bool? productsActiveOnly = null,
         CancellationToken cancellationToken = default) =>
-        _mediator.Send(new ListCategoriesQuery(rootsOnly, popularOnly, activeOnly), cancellationToken);
+        _mediator.Send(
+            new ListCategoriesQuery(
+                rootsOnly,
+                popularOnly,
+                activeOnly,
+                includeProductCounts,
+                productsActiveOnly),
+            cancellationToken);
 }
