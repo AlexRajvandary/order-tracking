@@ -280,6 +280,10 @@ export function CatalogBrowser({
   const absMin = prices.length ? Math.min(...prices) : 0;
   const absMax = prices.length ? Math.max(...prices) : 0;
   const totalCount = pagination?.total ?? products.length;
+  const allCategoriesProductCount = (categoryTree ?? []).reduce(
+    (sum, category) => sum + category.productCount,
+    0,
+  );
 
   const [priceFrom, setPriceFrom] = useState("");
   const [priceTo, setPriceTo] = useState("");
@@ -382,7 +386,7 @@ export function CatalogBrowser({
         </div>
       </div>
 
-      <div className="grid gap-x-6 gap-y-6 min-[992px]:grid-cols-[210px_minmax(0,1fr)] min-[1200px]:grid-cols-[220px_minmax(0,1fr)] min-[1200px]:gap-x-7">
+      <div className="grid gap-x-6 gap-y-6 min-[992px]:grid-cols-[240px_minmax(0,1fr)] min-[1200px]:grid-cols-[260px_minmax(0,1fr)] min-[1200px]:gap-x-7">
         <aside className="hidden h-fit rounded-xl border border-[#E5E7EB] bg-white p-5 min-[992px]:sticky min-[992px]:top-20 min-[992px]:block">
           <div className="space-y-2.5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -391,6 +395,7 @@ export function CatalogBrowser({
             <div className="max-h-[min(72vh,42rem)] overflow-y-auto pr-1 [scrollbar-width:thin]">
               <CategoryTree
                 categories={categoryTree ?? []}
+                totalProductCount={allCategoriesProductCount}
                 activeRootSlug={activeRootSlug}
                 activeChildSlug={activeChildSlug}
               />
@@ -520,6 +525,7 @@ export function CatalogBrowser({
           <div className="overflow-y-auto p-4">
             <CategoryTree
               categories={categoryTree ?? []}
+              totalProductCount={allCategoriesProductCount}
               activeRootSlug={activeRootSlug}
               activeChildSlug={activeChildSlug}
             />

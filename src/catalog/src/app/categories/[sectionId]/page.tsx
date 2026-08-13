@@ -10,6 +10,7 @@ import {
   safeDecode,
 } from "@/lib/categories-api";
 import {
+  fetchAllCatalogPage,
   fetchCatalogPage,
   PRODUCTS_PAGE_SIZE,
 } from "@/lib/products-api";
@@ -62,6 +63,7 @@ export default async function CategorySectionPage({
   const subSlug = subParam ? safeDecode(subParam) : undefined;
   const selectedBrandSlugs = parseBrandSlugs(brandsParam);
   const selectedShopSlugs = parseCsvParam(shopsParam);
+  const isAllCategories = safeDecode(sectionId) === "all";
 
   const [categoryTree, brands, shops] = await Promise.all([
     fetchCategoryTree({ includeProductCounts: true, productsActiveOnly: true }),
@@ -69,21 +71,28 @@ export default async function CategorySectionPage({
     fetchShops().catch(() => []),
   ]);
 
-  const root = findRootCategory(categoryTree, sectionId);
-  if (!root) notFound();
+  const root = isAllCategories ? undefined : findRootCategory(categoryTree, sectionId);
+  if (!isAllCategories && !root) notFound();
 
-  const child = subSlug ? findChildCategory(root, subSlug) : undefined;
+  const child = root && subSlug ? findChildCategory(root, subSlug) : undefined;
 
-  const catalog = await fetchCatalogPage({
-    rootCategorySlug: root.slug,
-    rootCategoryName: root.name,
-    page,
-    pageSize: PRODUCTS_PAGE_SIZE,
-    brandSlugs: selectedBrandSlugs,
-    shopSlugs: selectedShopSlugs,
-    categorySlug: child?.slug,
-    categoryName: child?.name,
-  });
+  const catalog = isAllCategories
+    ? await fetchAllCatalogPage({
+        page,
+        pageSize: PRODUCTS_PAGE_SIZE,
+        brandSlugs: selectedBrandSlugs,
+        shopSlugs: selectedShopSlugs,
+      })
+    : await fetchCatalogPage({
+        rootCategorySlug: root!.slug,
+        rootCategoryName: root!.name,
+        page,
+        pageSize: PRODUCTS_PAGE_SIZE,
+        brandSlugs: selectedBrandSlugs,
+        shopSlugs: selectedShopSlugs,
+        categorySlug: child?.slug,
+        categoryName: child?.name,
+      });
 
   return (
     <div className="min-h-screen bg-background">
@@ -92,12 +101,12 @@ export default async function CategorySectionPage({
         <Suspense fallback={<p className="text-sm text-muted-foreground">Загрузка…</p>}>
           <CatalogBrowser
             products={catalog.products}
-            title={child?.name ?? root.name}
-            subtitle={child ? root.name : undefined}
+            title={isAllCategories ? "Все товары" : (child?.name ?? root!.name)}
+            subtitle={child ? root!.name : undefined}
             backHref="/"
             backLabel="На главную"
             categoryTree={categoryTree}
-            activeRootSlug={root.slug}
+            activeRootSlug={root?.slug}
             activeChildSlug={child?.slug}
             brands={brands}
             selectedBrandSlugs={selectedBrandSlugs}
@@ -108,7 +117,7 @@ export default async function CategorySectionPage({
               pageSize: catalog.pageSize,
               total: catalog.total,
               basePath: buildBasePath(
-                root.slug,
+                root?.slug ?? "all",
                 child?.slug,
                 selectedBrandSlugs,
                 selectedShopSlugs,

@@ -225,6 +225,33 @@ export async function fetchCatalogPage(options: {
   };
 }
 
+export async function fetchAllCatalogPage(options?: {
+  page?: number;
+  pageSize?: number;
+  brandSlugs?: string[];
+  shopSlugs?: string[];
+}): Promise<{
+  products: CatalogProduct[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
+  const result = await fetchProductsPage({
+    page: options?.page,
+    pageSize: options?.pageSize ?? DEFAULT_PAGE_SIZE,
+    brandSlugs: options?.brandSlugs,
+    shopSlugs: options?.shopSlugs,
+    activeOnly: true,
+  });
+
+  return {
+    products: result.items.map((product) => mapApiProductToCatalog(product)),
+    total: result.total,
+    page: result.page,
+    pageSize: result.pageSize,
+  };
+}
+
 /** Compatibility wrapper for older imports. */
 export function fetchBagsCatalogPage(options?: Omit<
   Parameters<typeof fetchCatalogPage>[0],

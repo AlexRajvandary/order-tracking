@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 
 type CategoryTreeProps = {
   categories: ApiCategory[];
+  totalProductCount?: number;
   activeRootSlug?: string;
   activeChildSlug?: string;
   className?: string;
@@ -44,6 +45,7 @@ function CategoryLink({
 
 export function CategoryTree({
   categories,
+  totalProductCount,
   activeRootSlug,
   activeChildSlug,
   className,
@@ -57,6 +59,24 @@ export function CategoryTree({
   return (
     <nav aria-label="Категории" className={className}>
       <ul className="space-y-1 text-sm">
+        <li>
+          <Link
+            href="/categories/all"
+            className={cn(
+              "flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 transition-colors",
+              !activeRootSlug
+                ? "bg-primary/10 font-medium text-primary"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <span>Все категории</span>
+            {totalProductCount != null ? (
+              <span className="shrink-0 tabular-nums text-muted-foreground">
+                {totalProductCount}
+              </span>
+            ) : null}
+          </Link>
+        </li>
         {categories.map((category) => (
           <li key={category.id} className="space-y-0.5">
             <CategoryLink
