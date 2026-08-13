@@ -6,6 +6,7 @@
     "customers": "Клиентов",
     "admins": "Админов",
     "storage": "Хранилище",
+    "commits": "Коммитов",
     "disk": "Диск",
     "database": "БД заказов",
     "databaseProducts": "БД товаров",

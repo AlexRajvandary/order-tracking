@@ -17,7 +17,8 @@
     "audit": "Audit",
     "help": "Help",
     "logout": "Log out",
-    "menu": "Menu"
+    "menu": "Menu",
+    "changes": "Change history: {{count}} commits"
   },
   "notFound": {
     "title": "Page not found",

@@ -1,0 +1,5 @@
+{
+  "title": "Change history",
+  "count_one": "{{count}} commit",
+  "count_other": "{{count}} commits"
+}

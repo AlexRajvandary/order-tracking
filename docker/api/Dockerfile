@@ -1,5 +1,9 @@
 # Build frontend
 FROM node:22-alpine AS frontend-build
+RUN apk add --no-cache git
+WORKDIR /src
+COPY .git ./.git
+COPY scripts/generate-git-history.mjs ./scripts/generate-git-history.mjs
 WORKDIR /src/frontend
 COPY src/frontend/package*.json ./
 RUN npm ci

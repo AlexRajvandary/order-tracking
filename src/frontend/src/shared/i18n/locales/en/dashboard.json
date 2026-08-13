@@ -6,6 +6,7 @@
     "customers": "Customers",
     "admins": "Admins",
     "storage": "Storage",
+    "commits": "Commits",
     "disk": "Disk",
     "database": "Orders DB",
     "databaseProducts": "Products DB",

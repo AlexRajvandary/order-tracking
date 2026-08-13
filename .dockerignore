@@ -4,7 +4,6 @@
 **/dist
 **/.next
 **/out
-**/.git
 **/.vs
 **/.idea
 **/TestResults

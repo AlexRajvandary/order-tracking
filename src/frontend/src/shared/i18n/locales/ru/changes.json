@@ -1,0 +1,6 @@
+{
+  "title": "История изменений",
+  "count_one": "{{count}} коммит",
+  "count_few": "{{count}} коммита",
+  "count_many": "{{count}} коммитов"
+}
