@@ -3,18 +3,12 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { LayoutGrid, ListFilter, Rows3, ArrowUpDown, Check } from "lucide-react";
+import { ListFilter, ArrowUpDown, Check } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import {
-  Slider,
-  SliderControl,
-  SliderIndicator,
-  SliderThumb,
-  SliderTrack,
-} from "@/components/ui/slider";
 import {
   Sheet,
   SheetContent,
@@ -31,8 +25,6 @@ import type { ApiShop, ProductConditionFilter } from "@/lib/shops-api";
 import { cn } from "@/lib/utils";
 
 type SortOption = "relevance" | "price-asc" | "price-desc" | "name";
-/** dense: 2 cols mobile / 4 desktop; comfortable: 1 col mobile / 3 desktop */
-type GridDensity = "dense" | "comfortable";
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "relevance", label: "По умолчанию" },
@@ -41,10 +33,6 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "name", label: "По названию" },
 ];
 
-function formatRub(value: number): string {
-  return value.toLocaleString("ru-RU");
-}
-
 function pluralRu(n: number, one: string, few: string, many: string): string {
   const abs = Math.abs(n) % 100;
   const last = abs % 10;
@@ -52,15 +40,6 @@ function pluralRu(n: number, one: string, few: string, many: string): string {
   if (last === 1) return one;
   if (last >= 2 && last <= 4) return few;
   return many;
-}
-
-function priceStep(min: number, max: number): number {
-  const span = max - min;
-  if (span <= 0) return 1;
-  if (span > 50_000) return 500;
-  if (span > 10_000) return 100;
-  if (span > 1_000) return 10;
-  return 1;
 }
 
 type CatalogBrowserProps = {
@@ -89,8 +68,10 @@ type CatalogBrowserProps = {
 };
 
 type FilterPanelProps = {
-  priceRange: [number, number];
-  setPriceRange: (value: [number, number]) => void;
+  priceFrom: string;
+  priceTo: string;
+  setPriceFrom: (value: string) => void;
+  setPriceTo: (value: string) => void;
   absMin: number;
   absMax: number;
   activeCount: number;
@@ -114,8 +95,10 @@ const CONDITION_OPTIONS: Array<{ value: ProductConditionFilter; label: string }>
 ];
 
 function FilterPanel({
-  priceRange,
-  setPriceRange,
+  priceFrom,
+  priceTo,
+  setPriceFrom,
+  setPriceTo,
   absMin,
   absMax,
   activeCount,
@@ -132,8 +115,6 @@ function FilterPanel({
   selectedConditions,
   onToggleCondition,
 }: FilterPanelProps) {
-  const canSlide = absMax > absMin;
-  const step = priceStep(absMin, absMax);
   const selectedBrands = new Set(selectedBrandSlugs);
   const selectedShops = new Set(selectedShopSlugs);
   const selectedCond = new Set(selectedConditions);
@@ -171,43 +152,35 @@ function FilterPanel({
       </div>
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Цена, ₽
-          </p>
-          <p className="text-xs tabular-nums text-muted-foreground">
-            {formatRub(priceRange[0])} – {formatRub(priceRange[1])}
-          </p>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Цена, ₽
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="space-y-1">
+            <span className="text-xs text-muted-foreground">От</span>
+            <Input
+              type="number"
+              min="0"
+              inputMode="decimal"
+              value={priceFrom}
+              placeholder={String(absMin)}
+              aria-label="Минимальная цена"
+              onChange={(event) => setPriceFrom(event.target.value)}
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-muted-foreground">До</span>
+            <Input
+              type="number"
+              min="0"
+              inputMode="decimal"
+              value={priceTo}
+              placeholder={String(absMax)}
+              aria-label="Максимальная цена"
+              onChange={(event) => setPriceTo(event.target.value)}
+            />
+          </label>
         </div>
-
-        {canSlide ? (
-          <Slider
-            value={priceRange}
-            onValueChange={(value) => {
-              if (Array.isArray(value) && value.length >= 2) {
-                setPriceRange([value[0], value[1]]);
-              }
-            }}
-            min={absMin}
-            max={absMax}
-            step={step}
-            minStepsBetweenValues={1}
-            thumbCollisionBehavior="none"
-            thumbAlignment="edge"
-          >
-            <SliderControl>
-              <SliderTrack>
-                <SliderIndicator />
-                <SliderThumb index={0} aria-label="Цена от" />
-                <SliderThumb index={1} aria-label="Цена до" />
-              </SliderTrack>
-            </SliderControl>
-          </Slider>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {absMax > 0 ? `${formatRub(absMin)} ₽` : "Нет товаров для фильтра"}
-          </p>
-        )}
       </div>
 
       <div className="space-y-2.5">
@@ -410,13 +383,14 @@ export function CatalogBrowser({
   const absMax = prices.length ? Math.max(...prices) : 0;
   const totalCount = pagination?.total ?? products.length;
 
-  const [priceRange, setPriceRange] = useState<[number, number]>([absMin, absMax]);
+  const [priceFrom, setPriceFrom] = useState("");
+  const [priceTo, setPriceTo] = useState("");
   const [sort, setSort] = useState<SortOption>("relevance");
-  const [gridDensity, setGridDensity] = useState<GridDensity>("dense");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   useEffect(() => {
-    setPriceRange([absMin, absMax]);
+    setPriceFrom("");
+    setPriceTo("");
   }, [absMin, absMax]);
 
   function replaceQuery(mutate: (params: URLSearchParams) => void) {
@@ -454,10 +428,14 @@ export function CatalogBrowser({
   }
 
   const filtered = useMemo(() => {
-    const [min, max] = priceRange;
+    const parsedMin = Number(priceFrom);
+    const parsedMax = Number(priceTo);
+    const min = priceFrom.trim() && Number.isFinite(parsedMin) ? parsedMin : null;
+    const max = priceTo.trim() && Number.isFinite(parsedMax) ? parsedMax : null;
 
     let list = products.filter((p) => {
-      if (p.priceRub < min || p.priceRub > max) return false;
+      if (min != null && p.priceRub < min) return false;
+      if (max != null && p.priceRub > max) return false;
       return true;
     });
 
@@ -467,10 +445,11 @@ export function CatalogBrowser({
     if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, "ru"));
 
     return list;
-  }, [products, priceRange, sort]);
+  }, [products, priceFrom, priceTo, sort]);
 
   function resetFilters() {
-    setPriceRange([absMin, absMax]);
+    setPriceFrom("");
+    setPriceTo("");
     const hasQueryFilters =
       selectedBrandSlugs.length > 0 ||
       selectedShopSlugs.length > 0 ||
@@ -485,7 +464,7 @@ export function CatalogBrowser({
     }
   }
 
-  const priceActive = priceRange[0] > absMin || priceRange[1] < absMax;
+  const priceActive = priceFrom.trim() !== "" || priceTo.trim() !== "";
   const activeCount =
     (priceActive ? 1 : 0) +
     (selectedBrandSlugs.length > 0 ? 1 : 0) +
@@ -493,8 +472,10 @@ export function CatalogBrowser({
     (selectedConditions.length > 0 ? 1 : 0);
 
   const filterProps: FilterPanelProps = {
-    priceRange,
-    setPriceRange,
+    priceFrom,
+    priceTo,
+    setPriceFrom,
+    setPriceTo,
     absMin,
     absMax,
     activeCount,
@@ -583,43 +564,6 @@ export function CatalogBrowser({
             </div>
 
             <div className="ml-auto flex items-center gap-2">
-              <div
-                className="flex items-center rounded-lg border border-[#E5E7EB] p-0.5"
-                role="group"
-                aria-label="Сетка товаров"
-              >
-                <button
-                  type="button"
-                  aria-label="Плотная сетка"
-                  aria-pressed={gridDensity === "dense"}
-                  title="Плотная сетка"
-                  className={cn(
-                    "flex size-8 items-center justify-center rounded-md transition",
-                    gridDensity === "dense"
-                      ? "bg-[#111827] text-white"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                  onClick={() => setGridDensity("dense")}
-                >
-                  <LayoutGrid className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Крупные карточки"
-                  aria-pressed={gridDensity === "comfortable"}
-                  title="Крупные карточки"
-                  className={cn(
-                    "flex size-8 items-center justify-center rounded-md transition",
-                    gridDensity === "comfortable"
-                      ? "bg-[#111827] text-white"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                  onClick={() => setGridDensity("comfortable")}
-                >
-                  <Rows3 className="size-4" />
-                </button>
-              </div>
-
               <SortDropdown value={sort} onChange={setSort} />
             </div>
           </div>
@@ -636,14 +580,7 @@ export function CatalogBrowser({
             </div>
           ) : (
             <div className="space-y-6">
-              <div
-                className={cn(
-                  "grid gap-3",
-                  gridDensity === "dense"
-                    ? "grid-cols-2 lg:grid-cols-4"
-                    : "grid-cols-1 lg:grid-cols-3",
-                )}
-              >
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {filtered.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}

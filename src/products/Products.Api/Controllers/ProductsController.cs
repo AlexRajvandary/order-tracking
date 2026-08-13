@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Products.Application.Products.CreateProduct;
+using Products.Application.Products.BulkUpdateProducts;
 using Products.Application.Products.DeleteProduct;
 using Products.Application.Products.GetProduct;
 using Products.Application.Products.GetProductAudit;
@@ -166,6 +167,18 @@ public sealed class ProductsController : ControllerBase
                 body.MatchFilters),
             cancellationToken);
 
+    [HttpPatch("bulk")]
+    [Authorize]
+    public Task<BulkUpdateProductsResult> BulkUpdate(
+        [FromBody] BulkUpdateProductsRequest body,
+        CancellationToken cancellationToken) =>
+        _mediator.Send(new BulkUpdateProductsCommand(
+            body.ProductIds, body.MatchFilters, body.Search, body.ActiveOnly,
+            body.Brand, body.Shop, body.Condition, body.Category,
+            body.IncludeCategoryChildren, body.PriceMin, body.PriceMax,
+            body.UpdateCategory, body.NewCategoryId,
+            body.UpdateShop, body.NewShopId), cancellationToken);
+
     [HttpDelete("{id:guid}")]
     [Authorize]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
@@ -218,3 +231,20 @@ public sealed record SetProductsVisibilityRequest(
     decimal? PriceMin = null,
     decimal? PriceMax = null,
     bool MatchFilters = false);
+
+public sealed record BulkUpdateProductsRequest(
+    IReadOnlyList<Guid>? ProductIds = null,
+    bool MatchFilters = false,
+    string? Search = null,
+    bool? ActiveOnly = null,
+    string? Brand = null,
+    string? Shop = null,
+    string? Condition = null,
+    string? Category = null,
+    bool IncludeCategoryChildren = true,
+    decimal? PriceMin = null,
+    decimal? PriceMax = null,
+    bool UpdateCategory = false,
+    Guid? NewCategoryId = null,
+    bool UpdateShop = false,
+    Guid? NewShopId = null);

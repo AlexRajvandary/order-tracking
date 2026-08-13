@@ -51,6 +51,13 @@ export type CategoryListResult = {
   totalProductCount: number
 }
 
+export type CreateCategoryRequest = { name: string; parentId?: string | null }
+export type RenameCategoryRequest = { name: string }
+export type DeleteCategoryResult = {
+  deletedCategoriesCount: number
+  unassignedProductsCount: number
+}
+
 export type Brand = {
   id: string
   name: string
@@ -127,6 +134,26 @@ export type SetProductsVisibilityRequest = {
 export type SetProductsVisibilityResult = {
   updatedCount: number
 }
+
+export type BulkUpdateProductsRequest = {
+  productIds?: string[]
+  matchFilters?: boolean
+  search?: string | null
+  activeOnly?: boolean | null
+  brand?: string | null
+  shop?: string | null
+  condition?: string | null
+  category?: string | null
+  includeCategoryChildren?: boolean
+  priceMin?: number | null
+  priceMax?: number | null
+  updateCategory?: boolean
+  newCategoryId?: string | null
+  updateShop?: boolean
+  newShopId?: string | null
+}
+
+export type BulkUpdateProductsResult = { updatedCount: number }
 
 export type ImportProductItem = {
   name?: string | null

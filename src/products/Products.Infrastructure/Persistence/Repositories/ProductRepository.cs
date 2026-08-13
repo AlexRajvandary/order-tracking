@@ -167,6 +167,75 @@ public sealed class ProductRepository : IProductRepository
             cancellationToken);
     }
 
+    public async Task<int> BulkUpdateRelationsAsync(
+        IReadOnlyList<Guid>? productIds,
+        string? search,
+        bool? activeOnly,
+        IReadOnlyList<string>? brandSlugs,
+        IReadOnlyList<string>? shopSlugs,
+        IReadOnlyList<ProductCondition>? conditions,
+        Guid? categoryId,
+        string? categorySlug,
+        bool includeCategoryChildren,
+        decimal? priceMin,
+        decimal? priceMax,
+        bool matchFilters,
+        bool updateCategory,
+        Guid? newCategoryId,
+        bool updateShop,
+        Guid? newShopId,
+        CancellationToken cancellationToken = default)
+    {
+        IQueryable<Product> query;
+        if (productIds is { Count: > 0 })
+        {
+            var ids = productIds.Distinct().ToList();
+            query = _db.Products.Where(p => ids.Contains(p.Id));
+        }
+        else if (matchFilters)
+        {
+            query = await BuildFilterQueryAsync(
+                search, activeOnly, null, brandSlugs, null, shopSlugs, conditions,
+                categoryId, categorySlug, includeCategoryChildren, priceMin, priceMax,
+                cancellationToken);
+        }
+        else
+        {
+            return 0;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        if (updateCategory && updateShop)
+        {
+            return await query.ExecuteUpdateAsync(setters => setters
+                .SetProperty(p => p.CategoryId, newCategoryId)
+                .SetProperty(p => p.ShopId, newShopId)
+                .SetProperty(p => p.UpdatedAt, now), cancellationToken);
+        }
+        if (updateCategory)
+        {
+            return await query.ExecuteUpdateAsync(setters => setters
+                .SetProperty(p => p.CategoryId, newCategoryId)
+                .SetProperty(p => p.UpdatedAt, now), cancellationToken);
+        }
+        return await query.ExecuteUpdateAsync(setters => setters
+            .SetProperty(p => p.ShopId, newShopId)
+            .SetProperty(p => p.UpdatedAt, now), cancellationToken);
+    }
+
+    public Task<int> ClearCategoryAsync(
+        IReadOnlyCollection<Guid> categoryIds,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = categoryIds.Distinct().ToList();
+        var now = DateTimeOffset.UtcNow;
+        return _db.Products
+            .Where(product => product.CategoryId.HasValue && ids.Contains(product.CategoryId.Value))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(product => product.CategoryId, (Guid?)null)
+                .SetProperty(product => product.UpdatedAt, now), cancellationToken);
+    }
+
     private async Task<IQueryable<Product>> BuildFilterQueryAsync(
         string? search,
         bool? activeOnly,

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, Pencil, Upload, X } from 'lucide-react'
+import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, MoreHorizontal, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
@@ -27,6 +27,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -56,6 +57,14 @@ const ALL_CATEGORIES_VALUE = '__all_categories__'
 const NO_PRODUCT_CATEGORY = '__no_product_category__'
 const NO_PRODUCT_SUBCATEGORY = '__no_product_subcategory__'
 const NO_PRODUCT_SHOP = '__no_product_shop__'
+const BULK_UNCHANGED = '__bulk_unchanged__'
+const BULK_CLEAR = '__bulk_clear__'
+
+type CategoryAction =
+  | { kind: 'create'; parent: Category | null }
+  | { kind: 'rename'; category: Category }
+  | { kind: 'delete'; category: Category }
+  | null
 
 type ConfirmState =
   | { kind: 'selected'; count: number }
@@ -130,6 +139,9 @@ function CategoryTree({
   selectedSlug,
   onSelect,
   onHideCategory,
+  onAddSubcategory,
+  onRenameCategory,
+  onDeleteCategory,
   hidePendingSlug,
 }: {
   categories: Category[]
@@ -137,6 +149,9 @@ function CategoryTree({
   selectedSlug: string | null
   onSelect: (slug: string | null) => void
   onHideCategory: (category: Category) => void
+  onAddSubcategory: (category: Category) => void
+  onRenameCategory: (category: Category) => void
+  onDeleteCategory: (category: Category) => void
   hidePendingSlug: string | null
 }) {
   const { t } = useTranslation('products')
@@ -163,21 +178,46 @@ function CategoryTree({
           </span>
         </span>
       </button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-xs"
-        className="shrink-0 text-muted-foreground hover:text-foreground"
-        title={t('bulk.hideCategory')}
-        aria-label={t('bulk.hideCategory')}
-        disabled={hidePendingSlug === category.slug}
-        onClick={(event) => {
-          event.stopPropagation()
-          onHideCategory(category)
-        }}
-      >
-        <EyeOff />
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+            aria-label={t('categoryManagement.actions')}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          {!nested ? (
+            <DropdownMenuItem onSelect={() => onAddSubcategory(category)}>
+              <Plus />
+              {t('categoryManagement.addSubcategory')}
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem onSelect={() => onRenameCategory(category)}>
+            <Pencil />
+            {t('categoryManagement.rename')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={hidePendingSlug === category.slug}
+            onSelect={() => onHideCategory(category)}
+          >
+            <EyeOff />
+            {t('bulk.hideCategory')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => onDeleteCategory(category)}
+          >
+            <Trash2 />
+            {t('categoryManagement.delete')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 
@@ -610,6 +650,13 @@ export function ProductsPage() {
   const [confirm, setConfirm] = useState<ConfirmState>(null)
   const [bulkMessage, setBulkMessage] = useState<string | null>(null)
   const [bulkError, setBulkError] = useState<string | null>(null)
+  const [categoryAction, setCategoryAction] = useState<CategoryAction>(null)
+  const [categoryName, setCategoryName] = useState('')
+  const [categoryError, setCategoryError] = useState<string | null>(null)
+  const [bulkEditOpen, setBulkEditOpen] = useState(false)
+  const [bulkCategory, setBulkCategory] = useState(BULK_UNCHANGED)
+  const [bulkShop, setBulkShop] = useState(BULK_UNCHANGED)
+  const [bulkEditError, setBulkEditError] = useState<string | null>(null)
 
   const brandKey = useMemo(
     () => [...selectedBrands].sort().join(','),
@@ -637,7 +684,7 @@ export function ProductsPage() {
   useEffect(() => {
     setSelectAllFiltered(false)
     setSelectedIds(new Set())
-  }, [activeSearch, categorySlug, brandKey, shopKey, conditionKey, priceMin, priceMax])
+  }, [activeSearch, categorySlug, visibility, brandKey, shopKey, conditionKey, priceMin, priceMax])
 
   const brandsQuery = useQuery({
     queryKey: ['admin-product-brands'],
@@ -743,7 +790,7 @@ export function ProductsPage() {
   }
 
   const pageSelectableIds = useMemo(
-    () => displayItems.filter((p) => p.isActive).map((p) => p.id),
+    () => displayItems.map((p) => p.id),
     [displayItems],
   )
 
@@ -802,6 +849,106 @@ export function ProductsPage() {
     },
   })
 
+  const categoryMutation = useMutation({
+    mutationFn: async (action: Exclude<CategoryAction, null>) => {
+      if (action.kind === 'delete') {
+        return productsApi.deleteCategory(action.category.id)
+      }
+      const name = categoryName.trim()
+      if (!name) throw new Error(t('categoryManagement.nameRequired'))
+      if (action.kind === 'rename') {
+        return productsApi.renameCategory(action.category.id, { name })
+      }
+      return productsApi.createCategory({
+        name,
+        parentId: action.parent?.id ?? null,
+      })
+    },
+    onSuccess: async () => {
+      setCategoryAction(null)
+      setCategoryName('')
+      setCategoryError(null)
+      setCategorySlug(null)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin-products'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-product-categories'] }),
+      ])
+    },
+    onError: (err: unknown) => {
+      setCategoryError(
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : t('categoryManagement.error'),
+      )
+    },
+  })
+
+  const bulkEditMutation = useMutation({
+    mutationFn: async () => {
+      const updateCategory = bulkCategory !== BULK_UNCHANGED
+      const updateShop = bulkShop !== BULK_UNCHANGED
+      const selection = selectAllFiltered
+        ? {
+            matchFilters: true,
+            search: listFilters.search,
+            activeOnly: listFilters.activeOnly,
+            brand: listFilters.brand,
+            shop: listFilters.shop,
+            condition: listFilters.condition,
+            category: listFilters.category,
+            includeCategoryChildren: listFilters.includeCategoryChildren,
+            priceMin: listFilters.priceMin,
+            priceMax: listFilters.priceMax,
+          }
+        : { productIds: [...selectedIds] }
+
+      const request = {
+        ...selection,
+        updateCategory,
+        newCategoryId:
+          updateCategory && bulkCategory !== BULK_CLEAR ? bulkCategory : null,
+        updateShop,
+        newShopId: updateShop && bulkShop !== BULK_CLEAR ? bulkShop : null,
+      }
+
+      if (selectAllFiltered) return productsApi.bulkUpdateProducts(request)
+
+      let updatedCount = 0
+      const ids = [...selectedIds]
+      for (let index = 0; index < ids.length; index += BULK_ID_CHUNK) {
+        const result = await productsApi.bulkUpdateProducts({
+          ...request,
+          productIds: ids.slice(index, index + BULK_ID_CHUNK),
+        })
+        updatedCount += result.updatedCount
+      }
+      return { updatedCount }
+    },
+    onSuccess: async (result) => {
+      setBulkEditOpen(false)
+      setBulkCategory(BULK_UNCHANGED)
+      setBulkShop(BULK_UNCHANGED)
+      setBulkEditError(null)
+      setBulkMessage(t('bulk.editSuccess', { count: result.updatedCount }))
+      setSelectedIds(new Set())
+      setSelectAllFiltered(false)
+      setSelectMode(false)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin-products'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-product-categories'] }),
+      ])
+    },
+    onError: (err: unknown) => {
+      setBulkEditError(err instanceof ApiError ? err.message : t('bulk.editError'))
+    },
+  })
+
+  const openCategoryAction = (action: Exclude<CategoryAction, null>) => {
+    setCategoryError(null)
+    setCategoryName(action.kind === 'rename' ? action.category.name : '')
+    setCategoryAction(action)
+  }
+
   const openEdit = (product: Product) => {
     setEditing(product)
     setDialogOpen(true)
@@ -831,9 +978,6 @@ export function ProductsPage() {
   }
 
   const selectAllMatchingFilters = () => {
-    if (visibility !== 'visible') {
-      setVisibility('visible')
-    }
     setSelectedIds(new Set())
     setSelectAllFiltered(true)
   }
@@ -997,11 +1141,7 @@ export function ProductsPage() {
               type="button"
               size="sm"
               variant={selectAllFiltered ? 'secondary' : 'outline'}
-              disabled={
-                visibility === 'hidden' ||
-                (productsQuery.data?.total ?? 0) === 0 ||
-                productsQuery.isLoading
-              }
+              disabled={(productsQuery.data?.total ?? 0) === 0 || productsQuery.isLoading}
               onClick={selectAllMatchingFilters}
             >
               {t('bulk.selectAll')}
@@ -1028,6 +1168,21 @@ export function ProductsPage() {
             <Button
               type="button"
               size="sm"
+              variant="outline"
+              disabled={selectedCount === 0}
+              onClick={() => {
+                setBulkEditError(null)
+                setBulkCategory(BULK_UNCHANGED)
+                setBulkShop(BULK_UNCHANGED)
+                setBulkEditOpen(true)
+              }}
+            >
+              <Pencil className="size-3.5" />
+              {t('bulk.editSelected')}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
               disabled={selectedCount === 0 || bulkMutation.isPending}
               onClick={() => {
                 setBulkMessage(null)
@@ -1049,7 +1204,19 @@ export function ProductsPage() {
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <Card size="sm" className="h-fit">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">{t('categories')}</CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-sm">{t('categories')}</CardTitle>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                title={t('categoryManagement.addCategory')}
+                aria-label={t('categoryManagement.addCategory')}
+                onClick={() => openCategoryAction({ kind: 'create', parent: null })}
+              >
+                <Plus />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {categoriesQuery.isLoading ? (
@@ -1078,6 +1245,15 @@ export function ProductsPage() {
                     name: category.name,
                   })
                 }}
+                onAddSubcategory={(category) =>
+                  openCategoryAction({ kind: 'create', parent: category })
+                }
+                onRenameCategory={(category) =>
+                  openCategoryAction({ kind: 'rename', category })
+                }
+                onDeleteCategory={(category) =>
+                  openCategoryAction({ kind: 'delete', category })
+                }
               />
             )}
 
@@ -1187,15 +1363,14 @@ export function ProductsPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {displayItems.map((product) => {
-                const selected =
-                  (selectAllFiltered && product.isActive) || selectedIds.has(product.id)
+                const selected = selectAllFiltered || selectedIds.has(product.id)
                 return (
                   <button
                     key={product.id}
                     type="button"
                     onClick={() => {
                       if (selectMode) {
-                        if (product.isActive) toggleSelected(product.id)
+                        toggleSelected(product.id)
                         return
                       }
                       openEdit(product)
@@ -1207,7 +1382,6 @@ export function ProductsPage() {
                       className={cn(
                         'h-full gap-0 overflow-hidden pt-0 transition-colors hover:border-primary/40 hover:bg-muted/40',
                         selectMode && selected && 'border-primary ring-2 ring-primary/30',
-                        selectMode && !product.isActive && 'opacity-60',
                       )}
                     >
                       <div className="relative aspect-square bg-muted">
@@ -1225,7 +1399,6 @@ export function ProductsPage() {
                               selected
                                 ? 'border-primary bg-primary text-primary-foreground'
                                 : 'border-border text-muted-foreground',
-                              !product.isActive && 'opacity-40',
                             )}
                           >
                             {selected ? (
@@ -1301,6 +1474,123 @@ export function ProductsPage() {
           ])
         }}
       />
+
+      <Dialog
+        open={categoryAction != null}
+        onOpenChange={(open) => {
+          if (!open && !categoryMutation.isPending) {
+            setCategoryAction(null)
+            setCategoryError(null)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {categoryAction?.kind === 'delete'
+                ? t('categoryManagement.deleteTitle')
+                : categoryAction?.kind === 'rename'
+                  ? t('categoryManagement.renameTitle')
+                  : categoryAction?.parent
+                    ? t('categoryManagement.addSubcategoryTitle')
+                    : t('categoryManagement.addCategoryTitle')}
+            </DialogTitle>
+          </DialogHeader>
+          {categoryAction?.kind === 'delete' ? (
+            <p className="text-sm text-muted-foreground">
+              {t('categoryManagement.deleteDescription', {
+                name: categoryAction.category.name,
+              })}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {categoryAction?.kind === 'create' && categoryAction.parent ? (
+                <p className="text-sm text-muted-foreground">
+                  {t('categoryManagement.parent', { name: categoryAction.parent.name })}
+                </p>
+              ) : null}
+              <Label htmlFor="category-name">{t('categoryManagement.name')}</Label>
+              <Input
+                id="category-name"
+                value={categoryName}
+                autoFocus
+                maxLength={200}
+                onChange={(event) => setCategoryName(event.target.value)}
+              />
+            </div>
+          )}
+          {categoryError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{categoryError}</AlertDescription>
+            </Alert>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={categoryMutation.isPending} onClick={() => setCategoryAction(null)}>
+              {t('cancel', { ns: 'common' })}
+            </Button>
+            <Button
+              type="button"
+              variant={categoryAction?.kind === 'delete' ? 'destructive' : 'default'}
+              disabled={categoryMutation.isPending || !categoryAction || (categoryAction.kind !== 'delete' && !categoryName.trim())}
+              onClick={() => { if (categoryAction) categoryMutation.mutate(categoryAction) }}
+            >
+              {categoryAction?.kind === 'delete' ? t('categoryManagement.delete') : t('categoryManagement.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{t('bulk.editTitle')}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {selectAllFiltered
+              ? t('bulk.editAllDescription', { count: selectedCount })
+              : t('bulk.editDescription', { count: selectedCount })}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>{t('bulk.newCategory')}</Label>
+              <Select value={bulkCategory} onValueChange={setBulkCategory}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={BULK_UNCHANGED}>{t('bulk.doNotChange')}</SelectItem>
+                  <SelectItem value={BULK_CLEAR}>{t('bulk.clearCategory')}</SelectItem>
+                  {flattenCategoryChildren(categoriesQuery.data?.items ?? []).map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t('bulk.newShop')}</Label>
+              <Select value={bulkShop} onValueChange={setBulkShop}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={BULK_UNCHANGED}>{t('bulk.doNotChange')}</SelectItem>
+                  <SelectItem value={BULK_CLEAR}>{t('bulk.clearShop')}</SelectItem>
+                  {(shopsQuery.data?.items ?? []).map((shop) => (
+                    <SelectItem key={shop.id} value={shop.id}>{shop.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {bulkEditError ? <Alert variant="destructive"><AlertDescription>{bulkEditError}</AlertDescription></Alert> : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={bulkEditMutation.isPending} onClick={() => setBulkEditOpen(false)}>
+              {t('cancel', { ns: 'common' })}
+            </Button>
+            <Button
+              type="button"
+              disabled={bulkEditMutation.isPending || (bulkCategory === BULK_UNCHANGED && bulkShop === BULK_UNCHANGED)}
+              onClick={() => bulkEditMutation.mutate()}
+            >
+              {t('bulk.applyChanges')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={confirm != null}

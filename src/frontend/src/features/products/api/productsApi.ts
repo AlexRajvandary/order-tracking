@@ -1,7 +1,12 @@
 import { authorizedJson, authorizedJsonFromUrl } from '@/shared/api/authorizedClient'
 import type {
   BrandListResult,
+  BulkUpdateProductsRequest,
+  BulkUpdateProductsResult,
+  Category,
   CategoryListResult,
+  CreateCategoryRequest,
+  DeleteCategoryResult,
   ImportProductsRequest,
   ImportProductsResult,
   ListProductsParams,
@@ -9,6 +14,7 @@ import type {
   PatchProductRequest,
   Product,
   ProductListResult,
+  RenameCategoryRequest,
   SetProductsVisibilityRequest,
   SetProductsVisibilityResult,
   ShopListResult,
@@ -49,6 +55,27 @@ export function listCategories(productsActiveOnly?: boolean | null, signal?: Abo
   return authorizedJsonFromUrl<CategoryListResult>(
     `${PRODUCTS_API_BASE}/categories?${search}`,
     { signal },
+  )
+}
+
+export function createCategory(body: CreateCategoryRequest) {
+  return authorizedJsonFromUrl<Category>(`${PRODUCTS_API_BASE}/categories`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+export function renameCategory(id: string, body: RenameCategoryRequest) {
+  return authorizedJsonFromUrl<Category>(`${PRODUCTS_API_BASE}/categories/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  })
+}
+
+export function deleteCategory(id: string) {
+  return authorizedJsonFromUrl<DeleteCategoryResult>(
+    `${PRODUCTS_API_BASE}/categories/${id}`,
+    { method: 'DELETE' },
   )
 }
 
@@ -95,4 +122,11 @@ export function setProductsVisibility(body: SetProductsVisibilityRequest) {
       body: JSON.stringify(body),
     },
   )
+}
+
+export function bulkUpdateProducts(body: BulkUpdateProductsRequest) {
+  return authorizedJsonFromUrl<BulkUpdateProductsResult>(`${PRODUCTS_API_BASE}/bulk`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  })
 }

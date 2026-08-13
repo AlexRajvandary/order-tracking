@@ -43,6 +43,27 @@ public interface IProductRepository
         decimal? priceMax,
         bool matchFilters,
         CancellationToken cancellationToken = default);
+    Task<int> BulkUpdateRelationsAsync(
+        IReadOnlyList<Guid>? productIds,
+        string? search,
+        bool? activeOnly,
+        IReadOnlyList<string>? brandSlugs,
+        IReadOnlyList<string>? shopSlugs,
+        IReadOnlyList<ProductCondition>? conditions,
+        Guid? categoryId,
+        string? categorySlug,
+        bool includeCategoryChildren,
+        decimal? priceMin,
+        decimal? priceMax,
+        bool matchFilters,
+        bool updateCategory,
+        Guid? newCategoryId,
+        bool updateShop,
+        Guid? newShopId,
+        CancellationToken cancellationToken = default);
+    Task<int> ClearCategoryAsync(
+        IReadOnlyCollection<Guid> categoryIds,
+        CancellationToken cancellationToken = default);
     void Add(Product product);
     void Remove(Product product);
 }
