@@ -175,3 +175,8 @@ export type ImportProductsResult = {
   shopsCreatedCount: number
   issues: ImportProductIssue[]
 }
+
+export type NotifyProductImportRequest = {
+  importId: string
+  insertedCount: number
+}

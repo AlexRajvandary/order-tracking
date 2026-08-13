@@ -144,6 +144,17 @@ public sealed class TelegramOutboxProcessorHostedService : BackgroundService
                 await bot.SendDailyOrdersCsvToAdminAsync(payload.TelegramId, cancellationToken);
                 break;
             }
+            case TelegramOutboxKinds.ProductImportCompleted:
+            {
+                var payload = JsonSerializer.Deserialize<TelegramProductImportCompletedPayload>(
+                    message.PayloadJson,
+                    JsonOptions)
+                    ?? throw new InvalidOperationException("Invalid product_import_completed payload");
+                await bot.SendProductImportCompletedNotifyAsync(
+                    payload.InsertedCount,
+                    cancellationToken);
+                break;
+            }
             default:
                 throw new InvalidOperationException($"Unknown outbox kind '{message.Kind}'");
         }

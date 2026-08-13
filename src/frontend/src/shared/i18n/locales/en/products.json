@@ -23,11 +23,6 @@
     "priceDesc": "Price: high to low",
     "name": "Name"
   },
-  "density": {
-    "label": "Grid",
-    "comfortable": "4 per row",
-    "dense": "5 per row"
-  },
   "visibility": {
     "label": "Visibility",
     "all": "All",
@@ -49,12 +44,28 @@
   "count": "{{count}} items",
   "showing": "Showing {{count}}",
   "import": {
-    "button": "Import JSON",
-    "title": "Import products from JSON",
+    "button": "Import products",
+    "title": "Import products",
     "description": "Paste JSON or choose a .json file. Use an array of products or an object with a products array.",
+    "htmlDescription": "Paste catalog HTML or choose a file, then select the matching existing parser.",
+    "sources": {
+      "json": "JSON",
+      "html": "HTML"
+    },
+    "parserLabel": "HTML parser",
+    "parsers": {
+      "zenplus": "ZenPlus / LuiBags",
+      "lamoda": "Lamoda / Bags"
+    },
+    "parserHints": {
+      "zenplus": "For product-item product-link cards from ZenPlus exports.",
+      "lamoda": "For x-product-card__card cards from the Lamoda catalog."
+    },
     "chooseFile": "Choose JSON file",
+    "chooseHtmlFile": "Choose HTML file",
     "showExample": "Show example",
     "placeholder": "Paste a JSON array or { \"products\": [...] }",
+    "htmlPlaceholder": "Paste catalog page HTML…",
     "createCategories": "Create missing categories",
     "createCategoriesHint": "category/parentCategory or a categories path are resolved by slug and created when missing.",
     "recognized": "Recognized products: {{count}}",
@@ -70,11 +81,14 @@
     "importing": "Importing…",
     "fileReadError": "Could not read this file.",
     "requestError": "Import request failed.",
+    "notificationError": "Products were imported, but the Telegram notification could not be queued.",
     "parseErrors": {
       "json": "JSON is invalid.",
       "root": "Expected a product array or an object with a products array.",
       "empty": "The product list is empty.",
-      "items": "Every product must be a JSON object."
+      "items": "Every product must be a JSON object.",
+      "htmlEmpty": "HTML is empty.",
+      "htmlNoProducts": "The selected parser found no products in this HTML. Check the page type and parser."
     }
   },
   "bulk": {

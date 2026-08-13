@@ -148,6 +148,48 @@ internal sealed class TelegramBotNotifier
         }
     }
 
+    public async Task SendProductImportCompletedAsync(
+        int insertedCount,
+        CancellationToken cancellationToken)
+    {
+        if (!_runtime.IsEnabled || _runtime.Client is null)
+        {
+            return;
+        }
+
+        var recipients = await GetRecipientTelegramIdsAsync(cancellationToken);
+        if (recipients.Count == 0)
+        {
+            return;
+        }
+
+        var text = $"📦 Загружено новых товаров: <b>{insertedCount}</b>";
+
+        var delivered = 0;
+        foreach (var chatId in recipients)
+        {
+            try
+            {
+                await _runtime.Client.SendMessage(
+                    chatId,
+                    text,
+                    ParseMode.Html,
+                    cancellationToken: cancellationToken);
+                delivered++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to notify Telegram chat {ChatId} about product import", chatId);
+            }
+        }
+
+        if (delivered == 0)
+        {
+            throw new InvalidOperationException(
+                $"Telegram product import notify delivered to 0 of {recipients.Count} recipients");
+        }
+    }
+
     private async Task<IReadOnlyList<long>> GetRecipientTelegramIdsAsync(CancellationToken cancellationToken)
     {
         using var scope = _runtime.ScopeFactory.CreateScope();

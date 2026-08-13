@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, LayoutGrid, SquareCheck, Upload, X } from 'lucide-react'
+import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, Pencil, Upload, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
@@ -24,6 +24,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { SearchInput } from '@/shared/ui/search-input'
@@ -41,9 +49,10 @@ import { ProductsImportDialog } from './ProductsImportDialog'
 const PAGE_SIZES = [20, 40, 60, 100] as const
 const BULK_ID_CHUNK = 500
 const CONDITION_OPTIONS: ProductConditionFilter[] = ['new', 'used']
-type Density = 'comfortable' | 'dense'
 type VisibilityFilter = 'all' | 'visible' | 'hidden'
 type SortOption = 'relevance' | 'price-asc' | 'price-desc' | 'name'
+
+const ALL_CATEGORIES_VALUE = '__all_categories__'
 
 type ConfirmState =
   | { kind: 'selected'; count: number }
@@ -63,6 +72,19 @@ function toggleInSet(current: Set<string>, value: string): Set<string> {
   if (next.has(value)) next.delete(value)
   else next.add(value)
   return next
+}
+
+function flattenCategoryOptions(
+  categories: Category[],
+  depth = 0,
+): Array<{ value: string; label: string }> {
+  return categories.flatMap((category) => [
+    {
+      value: category.slug,
+      label: `${depth > 0 ? `${'— '.repeat(depth)}` : ''}${category.name}`,
+    },
+    ...flattenCategoryOptions(category.children, depth + 1),
+  ])
 }
 
 function formatPrice(value: number, currency: string, locale: string) {
@@ -364,7 +386,7 @@ function ProductsToolbarPagination({
         value={String(pageSize)}
         onValueChange={(value) => onPageSizeChange(Number(value))}
       >
-        <SelectTrigger className="w-[7.5rem]" size="sm">
+        <SelectTrigger className="w-16" size="sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -427,7 +449,6 @@ export function ProductsPage() {
 
   const [categorySlug, setCategorySlug] = useState<string | null>(null)
   const [visibility, setVisibility] = useState<VisibilityFilter>('all')
-  const [density, setDensity] = useState<Density>('dense')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(40)
   const [editing, setEditing] = useState<Product | null>(null)
@@ -492,6 +513,11 @@ export function ProductsPage() {
     queryKey: ['admin-product-shops'],
     queryFn: ({ signal }) => productsApi.listShops(signal),
   })
+
+  const categoryOptions = useMemo(
+    () => flattenCategoryOptions(categoriesQuery.data?.items ?? []),
+    [categoriesQuery.data?.items],
+  )
 
   const activeOnly =
     visibility === 'visible' ? true : visibility === 'hidden' ? false : null
@@ -676,8 +702,8 @@ export function ProductsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="shrink-0 lg:w-44">
           <h1 className="text-2xl font-bold">{t('title')}</h1>
           {productsQuery.data ? (
             <p className="text-sm text-muted-foreground">
@@ -685,7 +711,34 @@ export function ProductsPage() {
             </p>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+
+        <SearchInput
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label={t('searchPlaceholder')}
+          className="w-full min-w-0 lg:max-w-xl lg:flex-1"
+        />
+
+        <Select
+          value={categorySlug ?? ALL_CATEGORIES_VALUE}
+          onValueChange={(value) =>
+            setCategorySlug(value === ALL_CATEGORIES_VALUE ? null : value)
+          }
+        >
+          <SelectTrigger className="w-full lg:w-56" size="sm">
+            <SelectValue placeholder={t('allCategories')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_CATEGORIES_VALUE}>{t('allCategories')}</SelectItem>
+            {categoryOptions.map((category) => (
+              <SelectItem key={category.value} value={category.value}>
+                {category.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div className="flex shrink-0 flex-wrap items-center gap-2 lg:ml-auto lg:flex-nowrap">
           <Button
             type="button"
             size="sm"
@@ -696,7 +749,7 @@ export function ProductsPage() {
           </Button>
           <Button
             type="button"
-            size="sm"
+            size="icon-sm"
             variant={selectMode ? 'secondary' : 'outline'}
             onClick={() => {
               setSelectMode((v) => !v)
@@ -706,17 +759,13 @@ export function ProductsPage() {
             aria-label={selectMode ? t('bulk.exitSelect') : t('bulk.selectMode')}
             title={selectMode ? t('bulk.exitSelect') : t('bulk.selectMode')}
           >
-            {selectMode ? <SquareCheck /> : <CheckSquare />}
-            <span className="hidden sm:inline">
-              {selectMode ? t('bulk.exitSelect') : t('bulk.selectMode')}
-            </span>
+            <Pencil />
           </Button>
-          <SearchInput
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label={t('searchPlaceholder')}
-            className="w-full sm:w-56"
-          />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
           <Select
             value={visibility}
             onValueChange={(value) => setVisibility(value as VisibilityFilter)}
@@ -730,25 +779,55 @@ export function ProductsPage() {
               <SelectItem value="hidden">{t('visibility.hidden')}</SelectItem>
             </SelectContent>
           </Select>
-          <div className="flex items-center gap-1 rounded-lg border p-0.5">
-            <Button
-              type="button"
-              size="sm"
-              variant={density === 'comfortable' ? 'secondary' : 'ghost'}
-              onClick={() => setDensity('comfortable')}
-            >
-              {t('density.comfortable')}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={density === 'dense' ? 'secondary' : 'ghost'}
-              onClick={() => setDensity('dense')}
-            >
-              <LayoutGrid className="size-3.5" />
-              {t('density.dense')}
-            </Button>
-          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant={sort === 'relevance' ? 'outline' : 'secondary'}
+                size="icon-sm"
+                aria-label={t('sort.label')}
+                title={`${t('sort.label')}: ${t(`sort.${sort === 'price-asc' ? 'priceAsc' : sort === 'price-desc' ? 'priceDesc' : sort}`)}`}
+              >
+                <ArrowUpDown />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-52" align="start">
+              <DropdownMenuLabel>{t('sort.label')}</DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={sort}
+                onValueChange={(value) => setSort(value as SortOption)}
+              >
+                <DropdownMenuRadioItem value="relevance">
+                  {t('sort.relevance')}
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="price-asc">
+                  {t('sort.priceAsc')}
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="price-desc">
+                  {t('sort.priceDesc')}
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="name">
+                  {t('sort.name')}
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <p className="text-sm text-muted-foreground">
+            {productsQuery.data
+              ? t('showing', { count: displayItems.length })
+              : null}
+          </p>
+          <ProductsToolbarPagination
+            page={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       </div>
 
@@ -942,38 +1021,6 @@ export function ProductsPage() {
         </Card>
 
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">
-              {productsQuery.data
-                ? t('showing', { count: displayItems.length })
-                : null}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Select
-                value={sort}
-                onValueChange={(value) => setSort(value as SortOption)}
-              >
-                <SelectTrigger className="w-[12.5rem]" size="sm">
-                  <ArrowUpDown className="size-3.5 opacity-60" />
-                  <SelectValue placeholder={t('sort.label')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="relevance">{t('sort.relevance')}</SelectItem>
-                  <SelectItem value="price-asc">{t('sort.priceAsc')}</SelectItem>
-                  <SelectItem value="price-desc">{t('sort.priceDesc')}</SelectItem>
-                  <SelectItem value="name">{t('sort.name')}</SelectItem>
-                </SelectContent>
-              </Select>
-              <ProductsToolbarPagination
-                page={page}
-                totalPages={totalPages}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
-            </div>
-          </div>
-
           {productsQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">
               {t('loading', { ns: 'common' })}
@@ -994,12 +1041,7 @@ export function ProductsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div
-              className={cn(
-                'grid grid-cols-2 gap-3',
-                density === 'dense' ? 'lg:grid-cols-5' : 'lg:grid-cols-4',
-              )}
-            >
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {displayItems.map((product) => {
                 const selected =
                   (selectAllFiltered && product.isActive) || selectedIds.has(product.id)

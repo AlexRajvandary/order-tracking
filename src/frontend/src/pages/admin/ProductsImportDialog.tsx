@@ -1,7 +1,12 @@
-import { FileJson, Upload } from 'lucide-react'
+import { FileCode2, FileJson, Upload } from 'lucide-react'
 import { type ChangeEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
+import {
+  HTML_PRODUCT_PARSERS,
+  parseProductsHtml,
+  type HtmlProductParserId,
+} from '@/features/products/lib/htmlProductParsers'
 import type {
   ImportProductIssue,
   ImportProductItem,
@@ -18,7 +23,15 @@ import {
   DialogTitle,
 } from '@/shared/ui/dialog'
 import { Progress } from '@/shared/ui/progress'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/ui/select'
 import { Switch } from '@/shared/ui/switch'
+import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import { Textarea } from '@/shared/ui/textarea'
 
 const IMPORT_BATCH_SIZE = 100
@@ -41,6 +54,8 @@ type ImportSummary = Omit<ImportProductsResult, 'total' | 'issues'> & {
   total: number
   issues: ImportProductIssue[]
 }
+
+type ImportSource = 'json' | 'html'
 
 const emptySummary = (): ImportSummary => ({
   total: 0,
@@ -101,7 +116,9 @@ export function ProductsImportDialog({
 }) {
   const { t } = useTranslation('products')
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [json, setJson] = useState('')
+  const [source, setSource] = useState<ImportSource>('json')
+  const [input, setInput] = useState('')
+  const [htmlParser, setHtmlParser] = useState<HtmlProductParserId>('zenplus')
   const [fileName, setFileName] = useState<string | null>(null)
   const [createMissingCategories, setCreateMissingCategories] = useState(true)
   const [isImporting, setIsImporting] = useState(false)
@@ -109,28 +126,32 @@ export function ProductsImportDialog({
   const [total, setTotal] = useState(0)
   const [summary, setSummary] = useState<ImportSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [notificationError, setNotificationError] = useState<string | null>(null)
 
   const parsedCount = useMemo(() => {
-    if (!json.trim()) return null
+    if (!input.trim()) return null
     try {
-      return parseProducts(json).length
+      return source === 'json'
+        ? parseProducts(input).length
+        : parseProductsHtml(htmlParser, input).length
     } catch {
       return null
     }
-  }, [json])
+  }, [htmlParser, input, source])
 
   const resetResult = () => {
     setProcessed(0)
     setTotal(0)
     setSummary(null)
     setError(null)
+    setNotificationError(null)
   }
 
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
     try {
-      setJson(await file.text())
+      setInput(await file.text())
       setFileName(file.name)
       resetResult()
     } catch {
@@ -143,18 +164,22 @@ export function ProductsImportDialog({
   const startImport = async () => {
     let products: ImportProductItem[]
     try {
-      products = parseProducts(json)
+      products = source === 'json'
+        ? parseProducts(input)
+        : parseProductsHtml(htmlParser, input)
     } catch (parseError) {
       const reason = parseError instanceof Error ? parseError.message : ''
-      setError(t(`import.parseErrors.${reason || 'json'}`))
+      setError(t(`import.parseErrors.${reason || (source === 'json' ? 'json' : 'htmlNoProducts')}`))
       return
     }
 
     setIsImporting(true)
     setError(null)
+    setNotificationError(null)
     setProcessed(0)
     setTotal(products.length)
     let nextSummary = emptySummary()
+    const importId = crypto.randomUUID()
 
     try {
       for (let offset = 0; offset < products.length; offset += IMPORT_BATCH_SIZE) {
@@ -166,6 +191,16 @@ export function ProductsImportDialog({
         nextSummary = mergeSummary(nextSummary, result, offset)
         setSummary(nextSummary)
         setProcessed(Math.min(offset + batch.length, products.length))
+      }
+      if (nextSummary.insertedCount > 0) {
+        try {
+          await productsApi.notifyProductImport({
+            importId,
+            insertedCount: nextSummary.insertedCount,
+          })
+        } catch {
+          setNotificationError(t('import.notificationError'))
+        }
       }
       await onImported()
     } catch (importError) {
@@ -185,18 +220,67 @@ export function ProductsImportDialog({
         if (!isImporting) onOpenChange(nextOpen)
       }}
     >
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[94vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>{t('import.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">{t('import.description')}</p>
+          <Tabs
+            value={source}
+            onValueChange={(value) => {
+              setSource(value as ImportSource)
+              setInput('')
+              setFileName(null)
+              resetResult()
+            }}
+          >
+            <TabsList>
+              <TabsTrigger value="json" disabled={isImporting}>
+                <FileJson />{t('import.sources.json')}
+              </TabsTrigger>
+              <TabsTrigger value="html" disabled={isImporting}>
+                <FileCode2 />{t('import.sources.html')}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <p className="text-sm text-muted-foreground">
+            {t(source === 'json' ? 'import.description' : 'import.htmlDescription')}
+          </p>
+
+          {source === 'html' ? (
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">{t('import.parserLabel')}</p>
+              <Select
+                value={htmlParser}
+                disabled={isImporting}
+                onValueChange={(value) => {
+                  setHtmlParser(value as HtmlProductParserId)
+                  resetResult()
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {HTML_PRODUCT_PARSERS.map((parser) => (
+                    <SelectItem key={parser.id} value={parser.id}>
+                      {t(`import.parsers.${parser.id}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {t(`import.parserHints.${htmlParser}`)}
+              </p>
+            </div>
+          ) : null}
 
           <input
             ref={fileInputRef}
             type="file"
-            accept="application/json,.json"
+            accept={source === 'json' ? 'application/json,.json' : 'text/html,.html,.htm,.txt'}
             className="hidden"
             onChange={(event) => void handleFile(event)}
           />
@@ -207,37 +291,37 @@ export function ProductsImportDialog({
               disabled={isImporting}
               onClick={() => fileInputRef.current?.click()}
             >
-              <FileJson />
-              {t('import.chooseFile')}
+              {source === 'json' ? <FileJson /> : <FileCode2 />}
+              {t(source === 'json' ? 'import.chooseFile' : 'import.chooseHtmlFile')}
             </Button>
             {fileName ? (
               <span className="max-w-full truncate text-sm text-muted-foreground">
                 {fileName}
               </span>
             ) : null}
-            <Button
+            {source === 'json' ? <Button
               type="button"
               variant="ghost"
               size="sm"
               disabled={isImporting}
               onClick={() => {
-                setJson(EXAMPLE_JSON)
+                setInput(EXAMPLE_JSON)
                 setFileName(null)
                 resetResult()
               }}
             >
               {t('import.showExample')}
-            </Button>
+            </Button> : null}
           </div>
 
           <Textarea
-            value={json}
+            value={input}
             disabled={isImporting}
             className="min-h-64 resize-y font-mono text-xs"
-            placeholder={t('import.placeholder')}
+            placeholder={t(source === 'json' ? 'import.placeholder' : 'import.htmlPlaceholder')}
             spellCheck={false}
             onChange={(event) => {
-              setJson(event.target.value)
+              setInput(event.target.value)
               setFileName(null)
               resetResult()
             }}
@@ -285,6 +369,10 @@ export function ProductsImportDialog({
             <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>
           ) : null}
 
+          {notificationError ? (
+            <Alert><AlertDescription>{notificationError}</AlertDescription></Alert>
+          ) : null}
+
           {summary && summary.issues.length > 0 ? (
             <div className="space-y-2">
               <p className="text-sm font-medium">{t('import.issues')}</p>
@@ -315,7 +403,7 @@ export function ProductsImportDialog({
           </Button>
           <Button
             type="button"
-            disabled={isImporting || json.trim().length === 0}
+            disabled={isImporting || input.trim().length === 0}
             onClick={() => void startImport()}
           >
             <Upload />

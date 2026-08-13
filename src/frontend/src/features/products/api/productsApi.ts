@@ -1,10 +1,11 @@
-import { authorizedJsonFromUrl } from '@/shared/api/authorizedClient'
+import { authorizedJson, authorizedJsonFromUrl } from '@/shared/api/authorizedClient'
 import type {
   BrandListResult,
   CategoryListResult,
   ImportProductsRequest,
   ImportProductsResult,
   ListProductsParams,
+  NotifyProductImportRequest,
   PatchProductRequest,
   Product,
   ProductListResult,
@@ -67,6 +68,13 @@ export function patchProduct(id: string, body: PatchProductRequest) {
 
 export function importProducts(body: ImportProductsRequest) {
   return authorizedJsonFromUrl<ImportProductsResult>(`${PRODUCTS_API_BASE}/import`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+export function notifyProductImport(body: NotifyProductImportRequest) {
+  return authorizedJson<void>('/products/import-notification', {
     method: 'POST',
     body: JSON.stringify(body),
   })

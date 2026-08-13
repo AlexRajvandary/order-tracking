@@ -108,6 +108,49 @@ public sealed class TelegramOutboxNotifier : ITelegramAdminNotifier
         }
     }
 
+    public async Task NotifyProductImportCompletedAsync(
+        Guid importId,
+        int insertedCount,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsEnabled || insertedCount <= 0)
+        {
+            return;
+        }
+
+        var dedupKey = TelegramOutboxDedupKeys.ProductImport(importId);
+        if (await _outbox.ExistsByDedupAsync(
+                TelegramOutboxKinds.ProductImportCompleted,
+                dedupKey,
+                [TelegramOutboxStatus.Pending, TelegramOutboxStatus.Processing, TelegramOutboxStatus.Sent],
+                cancellationToken))
+        {
+            return;
+        }
+
+        var payload = new TelegramProductImportCompletedPayload(
+            importId,
+            insertedCount);
+        _outbox.Add(new TelegramOutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            Kind = TelegramOutboxKinds.ProductImportCompleted,
+            PayloadJson = JsonSerializer.Serialize(payload, JsonOptions),
+            Status = TelegramOutboxStatus.Pending,
+            DedupKey = dedupKey,
+            CreatedAt = _dateTime.UtcNow,
+        });
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        {
+            _logger.LogDebug("Telegram outbox dedup: product import {ImportId} already queued", importId);
+        }
+    }
+
     private static bool IsUniqueViolation(DbUpdateException ex)
     {
         for (var inner = ex.InnerException; inner is not null; inner = inner.InnerException)

@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Monitoring.Models;
+using OrderTracking.Application.Products.NotifyProductImport;
+using MediatR;
 
 namespace OrderTracking.Api.Controllers;
 
@@ -27,5 +29,16 @@ public sealed class SystemController : ControllerBase
         CancellationToken cancellationToken)
     {
         return Ok(await storageMetricsService.GetMetricsAsync(cancellationToken));
+    }
+
+    [HttpPost("products/import-notification")]
+    [Authorize]
+    public async Task<IActionResult> NotifyProductImport(
+        [FromBody] NotifyProductImportCommand command,
+        [FromServices] IMediator mediator,
+        CancellationToken cancellationToken)
+    {
+        await mediator.Send(command, cancellationToken);
+        return NoContent();
     }
 }

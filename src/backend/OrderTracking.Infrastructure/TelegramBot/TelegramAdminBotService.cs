@@ -61,4 +61,9 @@ public sealed class TelegramAdminBotService
         TelegramStatusPublishedWorkItem item,
         CancellationToken cancellationToken) =>
         _notifier.SendStatusPublishedAsync(item, cancellationToken);
+
+    internal Task SendProductImportCompletedNotifyAsync(
+        int insertedCount,
+        CancellationToken cancellationToken) =>
+        _notifier.SendProductImportCompletedAsync(insertedCount, cancellationToken);
 }

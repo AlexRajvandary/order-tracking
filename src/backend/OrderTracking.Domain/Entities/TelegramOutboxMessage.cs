@@ -9,7 +9,7 @@ public class TelegramOutboxMessage : BaseEntity
     public string PayloadJson { get; set; } = "{}";
     public TelegramOutboxStatus Status { get; set; } = TelegramOutboxStatus.Pending;
     /// <summary>
-    /// Dedup key: status history id, or csv:{adminId}:{yyyy-MM-dd}. Unique among Pending/Processing.
+    /// Dedup key for retry-safe notifications. Unique among Pending/Processing.
     /// </summary>
     public string? DedupKey { get; set; }
     public int AttemptCount { get; set; }

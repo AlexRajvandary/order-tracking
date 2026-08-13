@@ -23,11 +23,6 @@
     "priceDesc": "Цена: по убыванию",
     "name": "По названию"
   },
-  "density": {
-    "label": "Сетка",
-    "comfortable": "4 в ряд",
-    "dense": "5 в ряд"
-  },
   "visibility": {
     "label": "Видимость",
     "all": "Все",
@@ -49,12 +44,28 @@
   "count": "{{count}} позиций",
   "showing": "Показано {{count}}",
   "import": {
-    "button": "Импорт JSON",
-    "title": "Импорт товаров из JSON",
+    "button": "Импорт товаров",
+    "title": "Импорт товаров",
     "description": "Вставьте JSON или выберите файл .json. Поддерживается массив товаров или объект с массивом products.",
+    "htmlDescription": "Вставьте HTML каталога или выберите файл, затем укажите подходящий существующий парсер.",
+    "sources": {
+      "json": "JSON",
+      "html": "HTML"
+    },
+    "parserLabel": "Парсер HTML",
+    "parsers": {
+      "zenplus": "ZenPlus / LuiBags",
+      "lamoda": "Lamoda / Bags"
+    },
+    "parserHints": {
+      "zenplus": "Для карточек product-item product-link из выгрузок ZenPlus.",
+      "lamoda": "Для карточек x-product-card__card из каталога Lamoda."
+    },
     "chooseFile": "Выбрать JSON-файл",
+    "chooseHtmlFile": "Выбрать HTML-файл",
     "showExample": "Показать пример",
     "placeholder": "Вставьте массив JSON или { \"products\": [...] }",
+    "htmlPlaceholder": "Вставьте HTML-код страницы каталога…",
     "createCategories": "Создавать отсутствующие категории",
     "createCategoriesHint": "Поля category/parentCategory или путь categories сопоставляются по slug; отсутствующие категории будут созданы.",
     "recognized": "Распознано товаров: {{count}}",
@@ -70,11 +81,14 @@
     "importing": "Импортируем…",
     "fileReadError": "Не удалось прочитать файл.",
     "requestError": "Не удалось выполнить импорт.",
+    "notificationError": "Товары импортированы, но не удалось поставить уведомление Telegram в очередь.",
     "parseErrors": {
       "json": "Некорректный JSON.",
       "root": "Ожидался массив товаров или объект с массивом products.",
       "empty": "Список товаров пуст.",
-      "items": "Каждый товар должен быть JSON-объектом."
+      "items": "Каждый товар должен быть JSON-объектом.",
+      "htmlEmpty": "HTML пуст.",
+      "htmlNoProducts": "Выбранный парсер не нашёл товаров в HTML. Проверьте тип страницы и парсер."
     }
   },
   "bulk": {

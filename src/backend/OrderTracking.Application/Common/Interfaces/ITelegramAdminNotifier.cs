@@ -19,4 +19,9 @@ public interface ITelegramAdminNotifier
         string? location,
         Guid statusHistoryId,
         CancellationToken cancellationToken = default);
+
+    public Task NotifyProductImportCompletedAsync(
+        Guid importId,
+        int insertedCount,
+        CancellationToken cancellationToken = default);
 }
