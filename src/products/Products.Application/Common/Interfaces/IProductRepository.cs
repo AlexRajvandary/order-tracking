@@ -8,6 +8,7 @@ public interface IProductRepository
     Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default);
     Task<bool> IsSlugTakenAsync(string slug, Guid? excludeId = null, CancellationToken cancellationToken = default);
+    Task<bool> IsSkuTakenAsync(string sku, CancellationToken cancellationToken = default);
     Task<(IReadOnlyList<Product> Items, int Total)> SearchAsync(
         string? search,
         bool? activeOnly,

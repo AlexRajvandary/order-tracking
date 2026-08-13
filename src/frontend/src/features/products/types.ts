@@ -121,3 +121,57 @@ export type SetProductsVisibilityRequest = {
 export type SetProductsVisibilityResult = {
   updatedCount: number
 }
+
+export type ImportProductItem = {
+  name?: string | null
+  price?: number | null
+  imageUrl?: string | null
+  slug?: string | null
+  description?: string | null
+  sku?: string | null
+  brand?: string | null
+  brandId?: string | null
+  brandSlug?: string | null
+  currencyCode?: string | null
+  originalPrice?: number | null
+  originalCurrencyCode?: string | null
+  sourceUrl?: string | null
+  condition?: string | null
+  shopId?: string | null
+  shopName?: string | null
+  shopSlug?: string | null
+  categoryId?: string | null
+  categories?: string[] | null
+  category?: string | null
+  categoryName?: string | null
+  categorySlug?: string | null
+  parentCategoryId?: string | null
+  parentCategory?: string | null
+  parentCategoryName?: string | null
+  parentCategorySlug?: string | null
+  isActive?: boolean
+  [key: string]: unknown
+}
+
+export type ImportProductsRequest = {
+  products: ImportProductItem[]
+  createMissingCategories?: boolean
+}
+
+export type ImportProductIssue = {
+  index: number
+  name: string | null
+  status: 'failed' | 'skipped'
+  message: string
+}
+
+export type ImportProductsResult = {
+  total: number
+  insertedCount: number
+  skippedCount: number
+  failedCount: number
+  categoriesCreatedCount: number
+  brandsCreatedCount: number
+  shopsCreatedCount: number
+  issues: ImportProductIssue[]
+}

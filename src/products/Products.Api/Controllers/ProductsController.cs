@@ -5,6 +5,7 @@ using Products.Application.Products.CreateProduct;
 using Products.Application.Products.DeleteProduct;
 using Products.Application.Products.GetProduct;
 using Products.Application.Products.GetProductAudit;
+using Products.Application.Products.ImportProducts;
 using Products.Application.Products.ListProducts;
 using Products.Application.Products.PatchProduct;
 using Products.Application.Products.SetProductsVisibility;
@@ -88,6 +89,13 @@ public sealed class ProductsController : ControllerBase
         var result = await _mediator.Send(command, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
+
+    [HttpPost("import")]
+    [Authorize]
+    public Task<ImportProductsResult> Import(
+        [FromBody] ImportProductsCommand command,
+        CancellationToken cancellationToken) =>
+        _mediator.Send(command, cancellationToken);
 
     [HttpPut("{id:guid}")]
     [Authorize]

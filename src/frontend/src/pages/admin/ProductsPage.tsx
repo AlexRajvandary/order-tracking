@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, LayoutGrid, SquareCheck, X } from 'lucide-react'
+import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, LayoutGrid, SquareCheck, Upload, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
@@ -36,6 +36,7 @@ import {
 } from '@/shared/ui/select'
 import { Separator } from '@/shared/ui/separator'
 import { Switch } from '@/shared/ui/switch'
+import { ProductsImportDialog } from './ProductsImportDialog'
 
 const PAGE_SIZES = [20, 40, 60, 100] as const
 const BULK_ID_CHUNK = 500
@@ -431,6 +432,7 @@ export function ProductsPage() {
   const [pageSize, setPageSize] = useState<number>(40)
   const [editing, setEditing] = useState<Product | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(() => new Set())
   const [selectedShops, setSelectedShops] = useState<Set<string>>(() => new Set())
@@ -684,6 +686,14 @@ export function ProductsPage() {
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setImportDialogOpen(true)}
+          >
+            <Upload />
+            {t('import.button')}
+          </Button>
           <Button
             type="button"
             size="sm"
@@ -1087,6 +1097,19 @@ export function ProductsPage() {
         onOpenChange={(open) => {
           setDialogOpen(open)
           if (!open) setEditing(null)
+        }}
+      />
+
+      <ProductsImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImported={async () => {
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['admin-products'] }),
+            queryClient.invalidateQueries({ queryKey: ['admin-product-categories'] }),
+            queryClient.invalidateQueries({ queryKey: ['admin-product-brands'] }),
+            queryClient.invalidateQueries({ queryKey: ['admin-product-shops'] }),
+          ])
         }}
       />
 

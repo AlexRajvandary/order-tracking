@@ -2,6 +2,8 @@ import { authorizedJsonFromUrl } from '@/shared/api/authorizedClient'
 import type {
   BrandListResult,
   CategoryListResult,
+  ImportProductsRequest,
+  ImportProductsResult,
   ListProductsParams,
   PatchProductRequest,
   Product,
@@ -59,6 +61,13 @@ export function listShops(signal?: AbortSignal) {
 export function patchProduct(id: string, body: PatchProductRequest) {
   return authorizedJsonFromUrl<Product>(`${PRODUCTS_API_BASE}/${id}`, {
     method: 'PATCH',
+    body: JSON.stringify(body),
+  })
+}
+
+export function importProducts(body: ImportProductsRequest) {
+  return authorizedJsonFromUrl<ImportProductsResult>(`${PRODUCTS_API_BASE}/import`, {
+    method: 'POST',
     body: JSON.stringify(body),
   })
 }

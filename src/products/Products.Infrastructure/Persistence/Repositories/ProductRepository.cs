@@ -39,6 +39,11 @@ public sealed class ProductRepository : IProductRepository
         return query.AnyAsync(cancellationToken);
     }
 
+    public Task<bool> IsSkuTakenAsync(
+        string sku,
+        CancellationToken cancellationToken = default) =>
+        _db.Products.AnyAsync(p => p.Sku == sku, cancellationToken);
+
     public async Task<(IReadOnlyList<Product> Items, int Total)> SearchAsync(
         string? search,
         bool? activeOnly,
