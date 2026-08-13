@@ -56,8 +56,9 @@ function discountPercent(
 
 export function mapApiProductToCatalog(
   p: ApiProduct,
-  sectionId = "bags",
-  categorySlug = "женские-сумки",
+  sectionId = p.categorySlug ?? "catalog",
+  categorySlug = p.categorySlug ?? sectionId,
+  categoryName = p.categoryName ?? "Товары",
 ): CatalogProduct {
   const discount = discountPercent(Number(p.price), p.originalPrice);
   const description = p.description?.trim() || p.name;
@@ -67,14 +68,14 @@ export function mapApiProductToCatalog(
     id: p.id,
     slug: p.slug,
     name: p.name,
-    category: "Сумки",
+    category: categoryName,
     sectionId,
     categorySlug: p.categorySlug ?? categorySlug,
     priceRub: Number(p.price),
     currency: "RUB",
     shortDescription,
     description,
-    tags: ["сумки", ...(discount ? [discount] : [])],
+    tags: [categoryName.toLowerCase(), ...(discount ? [discount] : [])],
     tint: "#0f3d4c",
     inStock: p.isActive,
     imageUrl: p.imageUrl,
@@ -134,7 +135,7 @@ export async function fetchProductsPage(options?: {
 
   const url = `${productsApiBaseUrl()}/api/products?${params}`;
   const res = await fetch(url, {
-    next: { revalidate: 60 },
+    cache: "no-store",
   });
 
   if (!res.ok) {
@@ -149,7 +150,7 @@ export async function fetchProductById(
 ): Promise<ApiProduct | null> {
   const url = `${productsApiBaseUrl()}/api/products/${encodeURIComponent(id)}`;
   const res = await fetch(url, {
-    next: { revalidate: 60 },
+    cache: "no-store",
   });
 
   if (res.status === 404) return null;
@@ -165,7 +166,7 @@ export async function fetchProductBySlug(
 ): Promise<ApiProduct | null> {
   const url = `${productsApiBaseUrl()}/api/products/by-slug/${encodeURIComponent(slug)}`;
   const res = await fetch(url, {
-    next: { revalidate: 60 },
+    cache: "no-store",
   });
 
   if (res.status === 404) return null;
@@ -176,14 +177,17 @@ export async function fetchProductBySlug(
   return (await res.json()) as ApiProduct;
 }
 
-export async function fetchBagsCatalogPage(options?: {
+export async function fetchCatalogPage(options: {
+  rootCategorySlug: string;
+  rootCategoryName: string;
   page?: number;
   pageSize?: number;
   brandSlugs?: string[];
   shopSlugs?: string[];
   conditions?: Array<"new" | "used">;
-  /** Child subcategory slug, or omit for whole bags tree */
+  /** Child subcategory slug, or omit for the whole root category tree. */
   categorySlug?: string;
+  categoryName?: string;
 }): Promise<{
   products: CatalogProduct[];
   total: number;
@@ -191,26 +195,46 @@ export async function fetchBagsCatalogPage(options?: {
   pageSize: number;
 }> {
   const pageSize = options?.pageSize ?? DEFAULT_PAGE_SIZE;
-  const categorySlug = options?.categorySlug || "bags";
-  const includeCategoryChildren = !options?.categorySlug;
+  const categorySlug = options.categorySlug || options.rootCategorySlug;
+  const categoryName = options.categoryName || options.rootCategoryName;
+  const includeCategoryChildren = !options.categorySlug;
 
   const result = await fetchProductsPage({
-    page: options?.page,
+    page: options.page,
     pageSize,
-    brandSlugs: options?.brandSlugs,
-    shopSlugs: options?.shopSlugs,
-    conditions: options?.conditions,
+    brandSlugs: options.brandSlugs,
+    shopSlugs: options.shopSlugs,
+    conditions: options.conditions,
     categorySlug,
     includeCategoryChildren,
     activeOnly: true,
   });
 
   return {
-    products: result.items.map((p) => mapApiProductToCatalog(p)),
+    products: result.items.map((product) =>
+      mapApiProductToCatalog(
+        product,
+        options.rootCategorySlug,
+        product.categorySlug ?? categorySlug,
+        product.categoryName ?? categoryName,
+      ),
+    ),
     total: result.total,
     page: result.page,
     pageSize: result.pageSize,
   };
+}
+
+/** Compatibility wrapper for older imports. */
+export function fetchBagsCatalogPage(options?: Omit<
+  Parameters<typeof fetchCatalogPage>[0],
+  "rootCategorySlug" | "rootCategoryName"
+>) {
+  return fetchCatalogPage({
+    ...options,
+    rootCategorySlug: "bags",
+    rootCategoryName: "Сумки",
+  });
 }
 
 export { DEFAULT_PAGE_SIZE as PRODUCTS_PAGE_SIZE };

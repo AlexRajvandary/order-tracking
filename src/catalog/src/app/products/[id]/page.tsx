@@ -10,11 +10,12 @@ import {
   type CatalogProduct,
 } from "@/lib/catalog-products";
 import {
-  fetchBagsCatalogPage,
+  fetchCatalogPage,
   fetchProductById,
   fetchProductBySlug,
   mapApiProductToCatalog,
 } from "@/lib/products-api";
+import { fetchCategoryTree } from "@/lib/categories-api";
 import { formatPrice, getProductById, type Product } from "@/lib/products";
 
 type PageProps = {
@@ -81,15 +82,27 @@ export default async function ProductPage({ params }: PageProps) {
     ("categorySlug" in product && product.categorySlug) ||
     catalog?.categorySlug;
 
+  const categoryTree = await fetchCategoryTree().catch(() => []);
+  const rootCategory = categoryTree.find((root) =>
+    root.slug === categorySlug || root.children.some((child) => child.slug === categorySlug),
+  );
+  const childCategory = rootCategory?.children.find(
+    (child) => child.slug === categorySlug,
+  );
+  const rootCategorySlug = rootCategory?.slug ?? catalog?.sectionId ?? categorySlug;
+  const rootCategoryName = rootCategory?.name ?? product.category;
+
   let related: CatalogProduct[] = [];
-  try {
-    const bags = await fetchBagsCatalogPage({
+  if (rootCategorySlug) try {
+    const result = await fetchCatalogPage({
+      rootCategorySlug,
+      rootCategoryName,
       page: 1,
       pageSize: 12,
-      categorySlug:
-        categorySlug && categorySlug !== "bags" ? categorySlug : undefined,
+      categorySlug: childCategory?.slug,
+      categoryName: childCategory?.name,
     });
-    related = bags.products
+    related = result.products
       .filter((p) => p.id !== product.id)
       .slice(0, 8) as CatalogProduct[];
   } catch {
@@ -104,13 +117,13 @@ export default async function ProductPage({ params }: PageProps) {
       }).format(product.oldPriceRub)
     : null;
 
-  const backHref = catalog?.sectionId
-    ? `/categories/${catalog.sectionId}${
-        categorySlug && categorySlug !== "bags"
-          ? `?sub=${encodeURIComponent(categorySlug)}`
+  const backHref = rootCategorySlug
+    ? `/categories/${rootCategorySlug}${
+        childCategory
+          ? `?sub=${encodeURIComponent(childCategory.slug)}`
           : ""
       }`
-    : "/categories/bags";
+    : "/";
 
   const conditionLabel =
     product.condition === "used"

@@ -17,7 +17,7 @@ export function listProductsForCategoryItem(
   _sectionId: string,
   _itemSlug: string,
 ): CatalogProduct[] {
-  // Bags: Products API (fetchBagsCatalogPage). Other sections: disabled.
+  // Product lists are loaded from Products API by fetchCatalogPage.
   return [];
 }
 

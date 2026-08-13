@@ -23,7 +23,7 @@ function productsApiBaseUrl(): string {
 export async function fetchBrands(): Promise<ApiBrand[]> {
   const url = `${productsApiBaseUrl()}/api/products/brands?activeOnly=true`;
   const res = await fetch(url, {
-    next: { revalidate: 60 },
+    cache: "no-store",
   });
 
   if (!res.ok) {

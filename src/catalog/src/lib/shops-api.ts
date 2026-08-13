@@ -25,7 +25,7 @@ function productsApiBaseUrl(): string {
 export async function fetchShops(): Promise<ApiShop[]> {
   const url = `${productsApiBaseUrl()}/api/products/shops?activeOnly=true`;
   const res = await fetch(url, {
-    next: { revalidate: 60 },
+    cache: "no-store",
   });
 
   if (!res.ok) {

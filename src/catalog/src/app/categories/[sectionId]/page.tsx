@@ -10,7 +10,7 @@ import {
   safeDecode,
 } from "@/lib/categories-api";
 import {
-  fetchBagsCatalogPage,
+  fetchCatalogPage,
   PRODUCTS_PAGE_SIZE,
 } from "@/lib/products-api";
 import {
@@ -80,17 +80,17 @@ export default async function CategorySectionPage({
 
   const child = subSlug ? findChildCategory(root, subSlug) : undefined;
 
-  const catalog =
-    root.slug === "bags"
-      ? await fetchBagsCatalogPage({
-          page,
-          pageSize: PRODUCTS_PAGE_SIZE,
-          brandSlugs: selectedBrandSlugs,
-          shopSlugs: selectedShopSlugs,
-          conditions: selectedConditions,
-          categorySlug: child?.slug,
-        })
-      : { products: [], total: 0, page: 1, pageSize: PRODUCTS_PAGE_SIZE };
+  const catalog = await fetchCatalogPage({
+    rootCategorySlug: root.slug,
+    rootCategoryName: root.name,
+    page,
+    pageSize: PRODUCTS_PAGE_SIZE,
+    brandSlugs: selectedBrandSlugs,
+    shopSlugs: selectedShopSlugs,
+    conditions: selectedConditions,
+    categorySlug: child?.slug,
+    categoryName: child?.name,
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -111,22 +111,18 @@ export default async function CategorySectionPage({
             shops={shops}
             selectedShopSlugs={selectedShopSlugs}
             selectedConditions={selectedConditions}
-            pagination={
-              root.slug === "bags"
-                ? {
-                    page: catalog.page,
-                    pageSize: catalog.pageSize,
-                    total: catalog.total,
-                    basePath: buildBasePath(
-                      root.slug,
-                      child?.slug,
-                      selectedBrandSlugs,
-                      selectedShopSlugs,
-                      selectedConditions,
-                    ),
-                  }
-                : undefined
-            }
+            pagination={{
+              page: catalog.page,
+              pageSize: catalog.pageSize,
+              total: catalog.total,
+              basePath: buildBasePath(
+                root.slug,
+                child?.slug,
+                selectedBrandSlugs,
+                selectedShopSlugs,
+                selectedConditions,
+              ),
+            }}
           />
         </Suspense>
       </main>

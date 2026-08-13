@@ -33,7 +33,7 @@ export async function fetchCategoryTree(options?: {
 
   const url = `${productsApiBaseUrl()}/api/products/categories?${params}`;
   const res = await fetch(url, {
-    next: { revalidate: 60 },
+    cache: "no-store",
   });
 
   if (!res.ok) {
