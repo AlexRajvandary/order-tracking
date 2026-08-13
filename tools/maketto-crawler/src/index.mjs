@@ -6,6 +6,24 @@ import { chromium } from 'playwright'
 
 const directory = path.dirname(fileURLToPath(import.meta.url))
 const toolRoot = path.resolve(directory, '..')
+const processStartedAt = Date.now()
+let currentActivity = 'Запуск'
+
+function elapsedSeconds() {
+  return ((Date.now() - processStartedAt) / 1000).toFixed(1)
+}
+
+function log(message) {
+  console.log(`[${elapsedSeconds()} с] ${message}`)
+}
+
+function logError(message) {
+  console.error(`[${elapsedSeconds()} с] ${message}`)
+}
+
+function setActivity(message) {
+  currentActivity = message
+}
 
 function printHelp() {
   console.log(`
@@ -22,7 +40,7 @@ function printHelp() {
   --pages               Сколько страниц обработать
 
 Дополнительные параметры:
-  --output <ПУТЬ>       Итоговый JSON (output/maketto-products.json)
+  --output <ПУТЬ>       Итоговый JSON (в имя автоматически добавится категория)
   --delay <МС>          Задержка между страницами (1000)
   --timeout <МС>        Таймаут загрузки и ответа (45000)
   --category <НАЗВАНИЕ> Категория для всех товаров
@@ -87,6 +105,12 @@ function parseArgs(argv) {
   }
 
   result.url = url.toString()
+  const categoryId = url.searchParams.get('category')?.trim()
+  const fileCategory = result.category
+    || url.searchParams.get('query')?.trim()
+    || (categoryId ? `категория-${categoryId}` : 'каталог')
+  result.outputBase = result.output
+  result.output = addCategoryToFileName(result.output, fileCategory)
   return result
 }
 
@@ -97,6 +121,16 @@ function slugify(value) {
     .replace(/[^a-z0-9\u0400-\u04ff]+/gi, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '') || 'item'
+}
+
+function addCategoryToFileName(filePath, category) {
+  const parsed = path.parse(filePath)
+  const categorySlug = slugify(category)
+  const suffix = `-${categorySlug}`
+  const name = parsed.name.toLowerCase().endsWith(suffix.toLowerCase())
+    ? parsed.name
+    : `${parsed.name}${suffix}`
+  return path.join(parsed.dir, `${name}${parsed.ext || '.json'}`)
 }
 
 function marketplaceName(value) {
@@ -256,50 +290,57 @@ async function readInitialPage(page, timeout) {
   )
 }
 
-async function markNextButton(page) {
-  return page.locator('button').evaluateAll((buttons) => {
+async function findVisibleNextButton(page) {
+  const marked = await page.locator('button').evaluateAll((buttons) => {
     for (const button of buttons) button.removeAttribute('data-maketto-crawler-next')
-    const next = buttons.find((button) =>
-      !button.disabled
-      && /#(?:next|next-arrow|right-arrow)/i.test(button.innerHTML),
-    )
+    const next = buttons.find((button) => {
+      const use = button.querySelector('use')
+      const icon = use?.getAttribute('href') || use?.getAttribute('xlink:href') || ''
+      const styles = window.getComputedStyle(button)
+      const visible = button.getClientRects().length > 0
+        && styles.display !== 'none'
+        && styles.visibility !== 'hidden'
+      return visible && !button.disabled && icon.endsWith('#next-arrow')
+    })
     if (!next) return false
     next.setAttribute('data-maketto-crawler-next', 'true')
     return true
   })
+
+  return marked ? page.locator('[data-maketto-crawler-next="true"]') : null
 }
 
-async function ensureCatalogHydrated(page, timeout) {
-  const catalogChunk = page.waitForResponse(
-    (response) => /\/_next\/static\/chunks\/pages\/catalog-[^/]+\.js(?:\?|$)/i.test(response.url()),
-    { timeout: Math.min(timeout, 20000) },
-  ).catch(() => null)
+function waitForListingAfterClick(page, currentPage, timeout) {
+  return new Promise((resolve) => {
+    const requests = []
+    let finished = false
 
-  await page.locator('[data-maketto-crawler-next="true"]').click({ force: true })
-  const response = await catalogChunk
-  if (response) await page.waitForTimeout(750)
-  return response != null
-}
-
-function waitForNextListing(page, currentPage, timeout) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
+    const finish = (result) => {
+      if (finished) return
+      finished = true
+      clearTimeout(timer)
       page.off('response', handleResponse)
-      reject(new Error(`Maketto не вернул данные следующей страницы за ${timeout} мс.`))
-    }, timeout)
+      resolve({ ...result, requests })
+    }
+
+    const timer = setTimeout(() => finish({ listing: null }), timeout)
 
     async function handleResponse(response) {
-      const contentType = response.headers()['content-type'] ?? ''
-      if (!contentType.includes('json')) return
+      const request = response.request()
+      if (['fetch', 'xhr'].includes(request.resourceType())) {
+        requests.push(response.url())
+        if (requests.length > 5) requests.shift()
+      }
+
       try {
-        const payload = await response.json()
+        const text = await response.text()
+        if (!text || (!text.startsWith('{') && !text.startsWith('['))) return
+        const payload = JSON.parse(text)
         const listing = findListingData(payload)
-        if (!listing || Number(listing.pageInfo.page) <= currentPage) return
-        clearTimeout(timer)
-        page.off('response', handleResponse)
-        resolve(listing)
+        if (!listing || Number(listing.pageInfo?.page) <= currentPage) return
+        finish({ listing })
       } catch {
-        // This JSON response is unrelated to the catalog.
+        // Ответ не относится к данным каталога.
       }
     }
 
@@ -307,44 +348,177 @@ function waitForNextListing(page, currentPage, timeout) {
   })
 }
 
-async function crawl(options) {
-  const browser = await chromium.launch({ headless: options.headless })
-  const context = await browser.newContext({
-    locale: 'ru-RU',
-    viewport: { width: 1440, height: 1000 },
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136 Safari/537.36',
-  })
-  const page = await context.newPage()
-  page.setDefaultTimeout(options.timeout)
-  page.setDefaultNavigationTimeout(options.timeout)
-  await page.route('**/*', async (route) => {
-    const request = route.request()
-    const resourceType = request.resourceType()
-    const hostname = new URL(request.url()).hostname
-    if (
-      ['image', 'media', 'font'].includes(resourceType)
-      || /(?:^|\.)(?:yandex\.ru|mc\.yandex\.ru|google-analytics\.com|googletagmanager\.com)$/i.test(hostname)
-    ) {
-      await route.abort()
-      return
-    }
-    await route.continue()
-  })
+async function waitForHydratedNextButton(page, timeout) {
+  const startedAt = Date.now()
 
+  while (Date.now() - startedAt < timeout) {
+    const nextButton = await findVisibleNextButton(page)
+    if (nextButton) {
+      const hydrated = await nextButton.evaluate((button) => {
+        const reactPropsKey = Object.keys(button).find((key) => key.startsWith('__reactProps$'))
+        return Boolean(reactPropsKey && typeof button[reactPropsKey]?.onClick === 'function')
+      }).catch(() => false)
+      if (hydrated) return nextButton
+    }
+    await page.waitForTimeout(250)
+  }
+
+  throw new Error(`Кнопка #next-arrow не стала активной за ${timeout} мс.`)
+}
+
+async function clickNextPage(page, pageNumber, timeout, headless) {
+  const expectedPage = pageNumber + 1
+  setActivity(`Ждём активацию стрелки для страницы ${expectedPage}`)
+  log(`Ждём, когда React подключит обработчик к #next-arrow для страницы ${expectedPage}...`)
+  const nextButton = await waitForHydratedNextButton(page, timeout)
+  log('Стрелка активна и готова к нажатию.')
+
+  await nextButton.scrollIntoViewIfNeeded()
+  if (!headless) {
+    await nextButton.evaluate((button) => {
+      button.style.outline = '4px solid #ef4444'
+      button.style.outlineOffset = '4px'
+      button.style.boxShadow = '0 0 0 8px rgba(239, 68, 68, 0.25)'
+    })
+    const box = await nextButton.boundingBox()
+    if (box) {
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 12 })
+    }
+    await page.waitForTimeout(750)
+  }
+
+  setActivity(`Нажимаем стрелку для страницы ${expectedPage}`)
+  log(`Нажимаем #next-arrow: страница ${pageNumber} → ${expectedPage}.`)
+  const listingAfterClick = waitForListingAfterClick(page, pageNumber, timeout)
+  await nextButton.click()
+  const result = await listingAfterClick
+
+  if (result.listing) {
+    log(`Кнопка сработала: Maketto вернул данные страницы ${Number(result.listing.pageInfo?.page)}.`)
+    if (!headless) await page.waitForTimeout(750)
+    return { listing: result.listing }
+  }
+
+  const details = result.requests.length > 0
+    ? ` Последние запросы: ${result.requests.join(', ')}`
+    : ' Запросов fetch/xhr после клика не обнаружено.'
+  throw new Error(`После клика по #next-arrow Maketto не вернул страницу ${expectedPage}.${details}`)
+}
+
+async function crawl(options) {
   const productsBySku = new Map()
   const errors = []
   let scrapedPages = 0
+  let currentPage = null
+  let totalResults = null
+  let pageSize = null
+  let browser = null
+  let stopping = false
+  let saveQueue = Promise.resolve()
+
+  const makeOutput = (incomplete = false, stopReason = '') => ({
+    source: {
+      site: 'maketto.jp',
+      url: options.url,
+      requestedPages: options.pages,
+      scrapedPages,
+      ...(currentPage ? { currentPage } : {}),
+      ...(totalResults ? { totalResults } : {}),
+      ...(pageSize ? { pageSize } : {}),
+      generatedAt: new Date().toISOString(),
+      elapsedSeconds: Number(elapsedSeconds()),
+      ...(incomplete ? { incomplete: true, stopReason } : {}),
+    },
+    products: [...productsBySku.values()],
+    errors: [...errors],
+  })
+
+  const persist = (incomplete = false, stopReason = '') => {
+    const output = makeOutput(incomplete, stopReason)
+    saveQueue = saveQueue.catch(() => {}).then(() => saveOutput(options.output, output))
+    return saveQueue
+  }
+
+  const stopForSignal = async (signal) => {
+    if (stopping) {
+      logError('Получен повторный сигнал остановки. Завершаем процесс.')
+      process.exit(130)
+    }
+    stopping = true
+    const message = `Обход остановлен пользователем (${signal}).`
+    setActivity('Сохраняем товары перед остановкой')
+    logError(`${message} Сохраняем уже собранные товары...`)
+    errors.push({ date: new Date().toISOString(), message })
+
+    try {
+      await persist(true, message)
+      logError(`Сохранено товаров: ${productsBySku.size}. JSON: ${options.output}`)
+    } catch (saveError) {
+      logError(`Не удалось сохранить JSON: ${saveError instanceof Error ? saveError.message : String(saveError)}`)
+    }
+
+    await browser?.close().catch(() => {})
+    process.exit(130)
+  }
+
+  const handleSigint = () => { void stopForSignal('Ctrl+C') }
+  const handleSigterm = () => { void stopForSignal('SIGTERM') }
+  process.once('SIGINT', handleSigint)
+  process.once('SIGTERM', handleSigterm)
+
+  const heartbeat = setInterval(() => {
+    log(`Таймер · ${currentActivity}`)
+  }, 5000)
+  heartbeat.unref()
 
   try {
-    console.log(`Открываем: ${options.url}`)
+    setActivity('Запускаем Chromium')
+    browser = await chromium.launch({
+      headless: options.headless,
+      slowMo: options.headless ? 0 : 250,
+    })
+    const context = await browser.newContext({
+      locale: 'ru-RU',
+      viewport: { width: 1440, height: 1000 },
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136 Safari/537.36',
+    })
+    const page = await context.newPage()
+    page.setDefaultTimeout(options.timeout)
+    page.setDefaultNavigationTimeout(options.timeout)
+    await page.route('**/*', async (route) => {
+      const request = route.request()
+      const resourceType = request.resourceType()
+      const hostname = new URL(request.url()).hostname
+      if (
+        ['media', 'font'].includes(resourceType)
+        || (options.headless && resourceType === 'image')
+        || /(?:^|\.)(?:yandex\.ru|mc\.yandex\.ru|google-analytics\.com|googletagmanager\.com)$/i.test(hostname)
+      ) {
+        await route.abort()
+        return
+      }
+      await route.continue()
+    })
+
+    setActivity('Открываем страницу каталога')
+    log(`Открываем: ${options.url}`)
     await page.goto(options.url, { waitUntil: 'commit' })
+    setActivity('Ждём данные первой страницы')
     let initial = await readInitialPage(page, options.timeout)
     let listing = initial.listing
-    const totalResults = Number(listing.pageInfo?.totalResults) || null
-    const pageSize = Number(listing.pageInfo?.pageSize) || null
+    const queryCategory = new URL(options.url).searchParams.get('query')?.trim()
+    const detectedFileCategory = options.category || queryCategory || categoryFromListing(listing)
+    if (detectedFileCategory) {
+      options.output = addCategoryToFileName(options.outputBase, detectedFileCategory)
+    }
+    log(`JSON будет сохранён в: ${options.output}`)
+    totalResults = Number(listing.pageInfo?.totalResults) || null
+    pageSize = Number(listing.pageInfo?.pageSize) || null
 
     for (let index = 0; index < options.pages; index += 1) {
       const pageNumber = Number(listing.pageInfo?.page) || index + 1
+      currentPage = pageNumber
+      setActivity(`Обрабатываем страницу ${pageNumber}`)
       const detectedCategory = categoryFromListing(listing)
       const categoryName = options.category || detectedCategory
       let added = 0
@@ -363,66 +537,50 @@ async function crawl(options) {
       }
 
       scrapedPages += 1
-      const output = {
-        source: {
-          site: 'maketto.jp',
-          url: options.url,
-          requestedPages: options.pages,
-          scrapedPages,
-          currentPage: pageNumber,
-          totalResults,
-          pageSize,
-          generatedAt: new Date().toISOString(),
-        },
-        products: [...productsBySku.values()],
-        errors,
-      }
-      await saveOutput(options.output, output)
-      console.log(`Страница ${pageNumber}: найдено ${listing.products?.length ?? 0}, новых ${added}, всего ${productsBySku.size}`)
+      setActivity(`Сохраняем страницу ${pageNumber}`)
+      await persist()
+      log(`Страница ${pageNumber}: найдено ${listing.products?.length ?? 0}, новых ${added}, всего ${productsBySku.size}`)
 
       if (index === options.pages - 1) break
       if (pageSize && totalResults && pageNumber * pageSize >= totalResults) {
-        console.log('Достигнута последняя страница каталога.')
+        log('Достигнута последняя страница каталога.')
         break
       }
-      if (!(await markNextButton(page))) {
-        console.log('Кнопка следующей страницы не найдена. Обход завершён.')
-        break
+      setActivity(`Открываем страницу ${pageNumber + 1}`)
+      const nextPage = await clickNextPage(
+        page,
+        pageNumber,
+        options.timeout,
+        options.headless,
+      )
+      listing = nextPage.listing
+      const loadedPageNumber = Number(listing.pageInfo?.page)
+      if (loadedPageNumber !== pageNumber + 1) {
+        throw new Error(`Ожидалась страница ${pageNumber + 1}, но Maketto вернул страницу ${loadedPageNumber || 'без номера'}.`)
       }
-
-      await ensureCatalogHydrated(page, options.timeout)
-      if (!(await markNextButton(page))) {
-        console.log('После загрузки каталога следующая страница недоступна.')
-        break
+      log(`Страница ${loadedPageNumber} загружена.`)
+      if (options.delay > 0) {
+        setActivity(`Пауза перед страницей ${pageNumber + 1}`)
+        await page.waitForTimeout(options.delay)
       }
-      const nextListing = waitForNextListing(page, pageNumber, options.timeout)
-      await page.locator('[data-maketto-crawler-next="true"]').click({ force: true })
-      listing = await nextListing
-      if (options.delay > 0) await page.waitForTimeout(options.delay)
     }
 
-    console.log(`\nГотово. Страниц: ${scrapedPages}, товаров: ${productsBySku.size}`)
-    console.log(`JSON: ${options.output}`)
+    setActivity('Обход завершён')
+    log(`Готово. Страниц: ${scrapedPages}, товаров: ${productsBySku.size}`)
+    log(`JSON: ${options.output}`)
   } catch (error) {
-    errors.push({ date: new Date().toISOString(), message: error.message })
-    if (productsBySku.size > 0) {
-      await saveOutput(options.output, {
-        source: {
-          site: 'maketto.jp',
-          url: options.url,
-          requestedPages: options.pages,
-          scrapedPages,
-          generatedAt: new Date().toISOString(),
-          incomplete: true,
-        },
-        products: [...productsBySku.values()],
-        errors,
-      })
-      console.error(`Обход прерван, но ${productsBySku.size} товаров сохранены в ${options.output}`)
-    }
+    if (stopping) return
+    const message = error instanceof Error ? error.message : String(error)
+    errors.push({ date: new Date().toISOString(), message })
+    setActivity('Сохраняем товары после ошибки')
+    await persist(true, message)
+    logError(`Обход прерван, но ${productsBySku.size} товаров сохранены в ${options.output}`)
     throw error
   } finally {
-    await browser.close()
+    clearInterval(heartbeat)
+    process.off('SIGINT', handleSigint)
+    process.off('SIGTERM', handleSigterm)
+    await browser?.close().catch(() => {})
   }
 }
 
@@ -430,6 +588,6 @@ try {
   const options = parseArgs(process.argv.slice(2))
   await crawl(options)
 } catch (error) {
-  console.error(`Ошибка: ${error instanceof Error ? error.message : String(error)}`)
+  logError(`Ошибка: ${error instanceof Error ? error.message : String(error)}`)
   process.exitCode = 1
 }

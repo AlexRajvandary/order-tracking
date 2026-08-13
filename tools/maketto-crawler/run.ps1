@@ -6,7 +6,7 @@ param(
     [ValidateRange(1, 100000)]
     [int]$Pages,
 
-    [string]$Output = "output/maketto-products.json",
+    [string]$Output = "",
 
     [ValidateRange(0, 600000)]
     [int]$Delay = 1000,
@@ -25,10 +25,13 @@ $arguments = @(
     (Join-Path $PSScriptRoot "src/index.mjs"),
     "--url", $Url,
     "--pages", $Pages,
-    "--output", $Output,
     "--delay", $Delay,
     "--timeout", $Timeout
 )
+
+if ($Output) {
+    $arguments += @("--output", $Output)
+}
 
 if ($Category) {
     $arguments += @("--category", $Category)
