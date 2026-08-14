@@ -61,7 +61,12 @@
       "crawler": "Crawler jobs"
     },
     "crawler": {
-      "description": "Queue Maketto.jp catalog jobs. The server crawler processes them in order and imports products in batches into the selected category.",
+      "description": "Queue Maketto.jp and ZOZO.jp catalog jobs. The server crawler processes them in order and imports products in batches into the selected category.",
+      "parser": "Parser",
+      "parsers": {
+        "maketto": "Maketto.jp",
+        "zozo": "ZOZO.jp"
+      },
       "url": "Catalog URL",
       "pages": "Pages",
       "category": "Product category",
@@ -87,7 +92,7 @@
       "backToJobs": "Back to job list",
       "detailsError": "Could not load the job.",
       "empty": "No jobs yet",
-      "validationError": "Enter a Maketto.jp URL, 1 to 1000 pages, and a category.",
+      "validationError": "Choose a parser and enter its catalog URL, 1 to 1000 pages, and a category.",
       "createError": "Could not create the job.",
       "listError": "Could not load crawler jobs.",
       "table": {

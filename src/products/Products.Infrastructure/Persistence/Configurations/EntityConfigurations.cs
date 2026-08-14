@@ -157,6 +157,7 @@ public sealed class CrawlerJobConfiguration : IEntityTypeConfiguration<CrawlerJo
         builder.ToTable("crawler_jobs");
         builder.HasKey(x => x.Id);
 
+        builder.Property(x => x.Parser).HasMaxLength(32).IsRequired();
         builder.Property(x => x.Url).HasMaxLength(2000).IsRequired();
         builder.Property(x => x.CategoryPath).HasMaxLength(1000).IsRequired();
         builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(24).IsRequired();

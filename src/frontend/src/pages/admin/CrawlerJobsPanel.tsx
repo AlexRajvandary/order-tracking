@@ -12,7 +12,12 @@ import {
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
-import type { Category, CrawlerJob, CrawlerJobStatus } from '@/features/products/types'
+import type {
+  Category,
+  CrawlerJob,
+  CrawlerJobStatus,
+  CrawlerParser,
+} from '@/features/products/types'
 import { ApiError } from '@/shared/api/client'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { Badge } from '@/shared/ui/badge'
@@ -124,6 +129,9 @@ function JobDetails({
           </Button>
           <div className="min-w-0 space-y-1">
             <p className="font-semibold">{job.categoryPath || job.categoryName}</p>
+            <p className="text-xs text-muted-foreground">
+              {t('import.crawler.parser')}: {t(`import.crawler.parsers.${job.parser}`)}
+            </p>
             <a
               href={job.url}
               title={job.url}
@@ -232,6 +240,7 @@ function JobDetails({
 export function CrawlerJobsPanel({ categories }: { categories: Category[] }) {
   const { t, i18n } = useTranslation('products')
   const queryClient = useQueryClient()
+  const [parser, setParser] = useState<CrawlerParser>('maketto')
   const [url, setUrl] = useState('')
   const [pages, setPages] = useState('10')
   const [categoryId, setCategoryId] = useState('')
@@ -301,7 +310,7 @@ export function CrawlerJobsPanel({ categories }: { categories: Category[] }) {
       return
     }
     setError(null)
-    createMutation.mutate({ url: url.trim(), pages: pageCount, categoryId })
+    createMutation.mutate({ parser, url: url.trim(), pages: pageCount, categoryId })
   }
 
   const selectedJob = jobQuery.data
@@ -310,14 +319,35 @@ export function CrawlerJobsPanel({ categories }: { categories: Category[] }) {
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">{t('import.crawler.description')}</p>
       <div className="space-y-3 rounded-lg border p-3">
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
+        <div className="grid gap-3 sm:grid-cols-[11rem_minmax(0,1fr)_8rem]">
+          <div className="space-y-1.5">
+            <Label>{t('import.crawler.parser')}</Label>
+            <Select
+              value={parser}
+              onValueChange={(value) => {
+                setParser(value as CrawlerParser)
+                setUrl('')
+              }}
+              disabled={createMutation.isPending}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="maketto">{t('import.crawler.parsers.maketto')}</SelectItem>
+                <SelectItem value="zozo">{t('import.crawler.parsers.zozo')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="crawler-url">{t('import.crawler.url')}</Label>
             <Input
               id="crawler-url"
               type="url"
               value={url}
-              placeholder="https://maketto.jp/ru/catalog?..."
+              placeholder={parser === 'zozo'
+                ? 'https://zozo.jp/category/.../'
+                : 'https://maketto.jp/ru/catalog?...'}
               disabled={createMutation.isPending}
               onChange={(event) => setUrl(event.target.value)}
             />

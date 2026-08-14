@@ -5,6 +5,7 @@ namespace Products.Domain.Entities;
 
 public sealed class CrawlerJob : AuditableEntity
 {
+    public string Parser { get; set; } = "maketto";
     public string Url { get; set; } = string.Empty;
     public int RequestedPages { get; set; }
     public Guid CategoryId { get; set; }

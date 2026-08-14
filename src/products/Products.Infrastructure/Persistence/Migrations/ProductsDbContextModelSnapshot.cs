@@ -154,6 +154,7 @@ namespace Products.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsDeleted").HasColumnType("boolean");
                     b.Property<int>("LastPage").HasColumnType("integer");
                     b.Property<string>("LastError").HasMaxLength(4000).HasColumnType("character varying(4000)");
+                    b.Property<string>("Parser").IsRequired().HasMaxLength(32).HasColumnType("character varying(32)");
                     b.Property<int>("ProcessedPages").HasColumnType("integer");
                     b.Property<int>("ProductsFound").HasColumnType("integer");
                     b.Property<int>("RequestedPages").HasColumnType("integer");

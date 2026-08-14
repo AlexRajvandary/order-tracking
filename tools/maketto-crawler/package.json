@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/index.mjs",
     "worker": "node src/worker.mjs",
+    "test": "node --test src/*.test.mjs",
     "install-browser": "playwright install chromium"
   },
   "dependencies": {

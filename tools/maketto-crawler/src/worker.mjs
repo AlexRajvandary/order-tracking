@@ -1,5 +1,6 @@
 import process from 'node:process'
-import { crawl } from './index.mjs'
+import { crawl as crawlMaketto } from './index.mjs'
+import { crawlZozo } from './zozo.mjs'
 
 const apiBase = (process.env.PRODUCTS_API_URL || 'http://products-api:8080/api/products').replace(/\/$/, '')
 const notificationApiBase = (
@@ -94,7 +95,15 @@ function chunks(items, size) {
 }
 
 async function processJob(job) {
-  console.log(`Запущена задача ${job.id}: ${job.url}, страниц ${job.requestedPages}`)
+  const parser = job.parser || 'maketto'
+  const crawler = parser === 'zozo'
+    ? crawlZozo
+    : parser === 'maketto'
+      ? crawlMaketto
+      : null
+  if (!crawler) throw new Error(`Неизвестный parser задачи: ${parser}`)
+
+  console.log(`Запущена задача ${job.id}: parser ${parser}, ${job.url}, страниц ${job.requestedPages}`)
   const categoryPath = job.categoryPath || job.categoryName
   let processedPages = job.processedPages || 0
   const resumeOffset = processedPages
@@ -149,7 +158,7 @@ async function processJob(job) {
     }
 
     const productsFoundBeforeResume = productsFound
-    const output = await crawl({
+    const output = await crawler({
       url: job.url,
       pages: remainingPages,
       startPage: resumeOffset + 1,
@@ -238,7 +247,7 @@ async function processJob(job) {
 }
 
 async function run() {
-  console.log(`Maketto crawler worker запущен. Product API: ${apiBase}`)
+  console.log(`Crawler worker запущен. Парсеры: maketto, zozo. Product API: ${apiBase}`)
   while (true) {
     try {
       const job = await api('/worker/claim', { method: 'POST' })

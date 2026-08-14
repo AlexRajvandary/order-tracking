@@ -210,6 +210,7 @@ export type ImportProductsResult = {
 }
 
 export type CrawlerJobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+export type CrawlerParser = 'maketto' | 'zozo'
 
 export type CrawlerJobLog = {
   id: string
@@ -220,6 +221,7 @@ export type CrawlerJobLog = {
 
 export type CrawlerJob = {
   id: string
+  parser: CrawlerParser
   url: string
   requestedPages: number
   categoryId: string
@@ -246,6 +248,7 @@ export type CrawlerJob = {
 export type CrawlerJobListResult = { items: CrawlerJob[] }
 export type ClearCrawlerLogsResult = { deletedCount: number }
 export type CreateCrawlerJobRequest = {
+  parser: CrawlerParser
   url: string
   pages: number
   categoryId: string

@@ -17,6 +17,13 @@ namespace Products.Api.Controllers;
 [Route("api/products/crawler-jobs")]
 public sealed class CrawlerJobsController : ControllerBase
 {
+    private static readonly IReadOnlyDictionary<string, string> ParserHosts =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["maketto"] = "maketto.jp",
+            ["zozo"] = "zozo.jp",
+        };
+
     private readonly ProductsDbContext _db;
     private readonly IMediator _mediator;
     private readonly IConfiguration _configuration;
@@ -82,15 +89,27 @@ public sealed class CrawlerJobsController : ControllerBase
         [FromBody] CreateCrawlerJobRequest request,
         CancellationToken cancellationToken)
     {
+        var parser = string.IsNullOrWhiteSpace(request.Parser)
+            ? "maketto"
+            : request.Parser.Trim().ToLowerInvariant();
+        if (!ParserHosts.TryGetValue(parser, out var parserHost))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Неизвестный парсер",
+                Detail = "Поддерживаются парсеры maketto и zozo.",
+            });
+        }
+
         if (!Uri.TryCreate(request.Url, UriKind.Absolute, out var uri)
             || uri.Scheme != Uri.UriSchemeHttps
-            || !(uri.Host.Equals("maketto.jp", StringComparison.OrdinalIgnoreCase)
-                 || uri.Host.EndsWith(".maketto.jp", StringComparison.OrdinalIgnoreCase)))
+            || !(uri.Host.Equals(parserHost, StringComparison.OrdinalIgnoreCase)
+                 || uri.Host.EndsWith($".{parserHost}", StringComparison.OrdinalIgnoreCase)))
         {
             return BadRequest(new ProblemDetails
             {
                 Title = "Некорректная ссылка",
-                Detail = "Поддерживаются только HTTPS-ссылки каталога maketto.jp.",
+                Detail = $"Для парсера {parser} требуется HTTPS-ссылка каталога {parserHost}.",
             });
         }
 
@@ -118,6 +137,7 @@ public sealed class CrawlerJobsController : ControllerBase
         var job = new CrawlerJob
         {
             Id = Guid.NewGuid(),
+            Parser = parser,
             Url = uri.ToString(),
             RequestedPages = request.Pages,
             CategoryId = category.Id,
@@ -125,7 +145,7 @@ public sealed class CrawlerJobsController : ControllerBase
             CategoryPath = Trim(BuildCategoryPath(category.Id, categoryParts), 1000)!,
             CreatedBy = _currentUser.Login,
         };
-        AddLog(job, "info", "Задача добавлена в очередь.");
+        AddLog(job, "info", $"Задача добавлена в очередь. Парсер: {parser}.");
         _db.CrawlerJobs.Add(job);
         await _db.SaveChangesAsync(cancellationToken);
         return CreatedAtAction(nameof(Get), new { id = job.Id }, ToDto(job));
@@ -248,6 +268,7 @@ public sealed class CrawlerJobsController : ControllerBase
 
         return new CrawlerWorkerJobDto(
             job.Id,
+            job.Parser,
             job.Url,
             job.RequestedPages,
             job.CategoryId,
@@ -468,6 +489,7 @@ public sealed class CrawlerJobsController : ControllerBase
 
     private static CrawlerJobDto ToDto(CrawlerJob job) => new(
         job.Id,
+        job.Parser,
         job.Url,
         job.RequestedPages,
         job.CategoryId,
@@ -502,12 +524,13 @@ public sealed class CrawlerJobsController : ControllerBase
             .ToList());
 }
 
-public sealed record CreateCrawlerJobRequest(string Url, int Pages, Guid CategoryId);
+public sealed record CreateCrawlerJobRequest(string Url, int Pages, Guid CategoryId, string? Parser = null);
 public sealed record CrawlerJobListResult(IReadOnlyList<CrawlerJobDto> Items);
 public sealed record ClearCrawlerLogsResult(int DeletedCount);
 public sealed record CrawlerJobLogDto(Guid Id, DateTimeOffset CreatedAt, string Level, string Message);
 public sealed record CrawlerJobDto(
     Guid Id,
+    string Parser,
     string Url,
     int RequestedPages,
     Guid CategoryId,
@@ -531,6 +554,7 @@ public sealed record CrawlerJobDto(
     IReadOnlyList<CrawlerJobLogDto> Logs);
 public sealed record CrawlerWorkerJobDto(
     Guid Id,
+    string Parser,
     string Url,
     int RequestedPages,
     Guid CategoryId,
