@@ -20,6 +20,14 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+class WorkerApiError extends Error {
+  constructor(status, detail) {
+    super(`API ${status}: ${detail}`)
+    this.name = 'WorkerApiError'
+    this.status = status
+  }
+}
+
 async function api(pathname, init = {}, attempts = 5) {
   let lastError
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -35,12 +43,13 @@ async function api(pathname, init = {}, attempts = 5) {
       if (response.status === 204) return null
       if (!response.ok) {
         const detail = await response.text().catch(() => '')
-        throw new Error(`API ${response.status}: ${detail || response.statusText}`)
+        throw new WorkerApiError(response.status, detail || response.statusText)
       }
       const contentType = response.headers.get('content-type') || ''
       return contentType.includes('application/json') ? response.json() : null
     } catch (error) {
       lastError = error
+      if (error instanceof WorkerApiError && error.status < 500) throw error
       if (attempt < attempts) await sleep(Math.min(15000, 1000 * (2 ** (attempt - 1))))
     }
   }
@@ -60,6 +69,8 @@ async function processJob(job) {
   let processedPages = job.processedPages || 0
   let currentPage = 1
   let productsFound = 0
+  let wasCancelled = false
+  const abortController = new AbortController()
   const logBuffer = []
   const pushLog = (line) => {
     // Таймер остаётся в stdout контейнера, но не раздувает историю задания в БД.
@@ -71,7 +82,14 @@ async function processJob(job) {
 
   const heartbeat = setInterval(() => {
     void api(`/${job.id}/worker/heartbeat`, { method: 'POST' }, 2)
-      .catch((error) => console.error(`Heartbeat ${job.id}: ${error.message}`))
+      .catch((error) => {
+        if (error instanceof WorkerApiError && error.status === 404) {
+          wasCancelled = true
+          abortController.abort()
+          return
+        }
+        console.error(`Heartbeat ${job.id}: ${error.message}`)
+      })
   }, 30000)
   heartbeat.unref()
 
@@ -87,6 +105,7 @@ async function processJob(job) {
       parentCategory: '',
       headless: true,
       persistOutput: false,
+      signal: abortController.signal,
       onLog: ({ line }) => pushLog(line),
       onPageStart: async (page) => {
         currentPage = page.pageNumber
@@ -130,6 +149,10 @@ async function processJob(job) {
     })
     console.log(`Задача ${job.id} завершена: страниц ${processedPages}, товаров ${productsFound}`)
   } catch (error) {
+    if (wasCancelled || (error instanceof WorkerApiError && error.status === 404)) {
+      console.log(`Задача ${job.id} отменена, crawler остановлен.`)
+      return
+    }
     const message = error instanceof Error ? error.message : String(error)
     console.error(`Задача ${job.id} завершилась с ошибкой: ${message}`)
     await api(`/${job.id}/worker/fail`, {

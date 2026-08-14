@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, LoaderCircle, Plus } from 'lucide-react'
+import { ExternalLink, LoaderCircle, Plus, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
@@ -31,6 +31,7 @@ function categoryOptions(categories: Category[], depth = 0): Array<{ id: string;
 function statusVariant(status: CrawlerJobStatus) {
   if (status === 'failed') return 'destructive' as const
   if (status === 'completed') return 'default' as const
+  if (status === 'cancelled') return 'outline' as const
   return 'secondary' as const
 }
 
@@ -42,15 +43,27 @@ function formatDate(value: string | null, locale: string) {
   }).format(new Date(value))
 }
 
-function JobCard({ job, locale }: { job: CrawlerJob; locale: string }) {
+function JobCard({
+  job,
+  locale,
+  isCancelling,
+  onCancel,
+}: {
+  job: CrawlerJob
+  locale: string
+  isCancelling: boolean
+  onCancel: () => void
+}) {
   const { t } = useTranslation('products')
-  const hasFinished = job.status === 'completed' || job.status === 'failed'
+  const hasFinished = ['completed', 'failed', 'cancelled'].includes(job.status)
   const pageLabel = hasFinished
     ? t('import.crawler.finalPage')
     : t('import.crawler.currentPage')
   const completionLabel = job.status === 'failed'
     ? t('import.crawler.interruptedAt')
-    : t('import.crawler.finishedAt')
+    : job.status === 'cancelled'
+      ? t('import.crawler.cancelledAt')
+      : t('import.crawler.finishedAt')
 
   return (
     <Card size="sm">
@@ -119,6 +132,21 @@ function JobCard({ job, locale }: { job: CrawlerJob; locale: string }) {
           </Alert>
         ) : null}
 
+        {job.status === 'pending' || job.status === 'running' ? (
+          <div className="flex justify-end border-t pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isCancelling}
+              onClick={onCancel}
+            >
+              {isCancelling ? <LoaderCircle className="animate-spin" /> : <X />}
+              {isCancelling ? t('import.crawler.cancelling') : t('import.crawler.cancel')}
+            </Button>
+          </div>
+        ) : null}
+
         <details className="group rounded-md border px-2.5 py-2">
           <summary className="cursor-pointer select-none text-xs font-medium">
             {t('import.crawler.logs')} ({job.logs.length})
@@ -174,6 +202,20 @@ export function CrawlerJobsPanel({ categories }: { categories: Category[] }) {
         mutationError instanceof ApiError
           ? mutationError.message
           : t('import.crawler.createError'),
+      )
+    },
+  })
+  const cancelMutation = useMutation({
+    mutationFn: productsApi.cancelCrawlerJob,
+    onSuccess: async () => {
+      setError(null)
+      await queryClient.invalidateQueries({ queryKey: ['crawler-jobs'] })
+    },
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof ApiError
+          ? mutationError.message
+          : t('import.crawler.cancelError'),
       )
     },
   })
@@ -252,7 +294,13 @@ export function CrawlerJobsPanel({ categories }: { categories: Category[] }) {
       ) : jobsQuery.data?.items.length ? (
         <div className="space-y-2">
           {jobsQuery.data.items.map((job) => (
-            <JobCard key={job.id} job={job} locale={i18n.language} />
+            <JobCard
+              key={job.id}
+              job={job}
+              locale={i18n.language}
+              isCancelling={cancelMutation.isPending && cancelMutation.variables === job.id}
+              onCancel={() => cancelMutation.mutate(job.id)}
+            />
           ))}
         </div>
       ) : (

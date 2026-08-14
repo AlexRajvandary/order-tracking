@@ -423,6 +423,10 @@ export async function crawl(options) {
   let browser = null
   let stopping = false
   let saveQueue = Promise.resolve()
+  const handleAbort = () => {
+    void browser?.close().catch(() => {})
+  }
+  options.signal?.addEventListener('abort', handleAbort, { once: true })
 
   const makeOutput = (incomplete = false, stopReason = '') => ({
     source: {
@@ -481,11 +485,13 @@ export async function crawl(options) {
   heartbeat.unref()
 
   try {
+    if (options.signal?.aborted) throw new Error('Задача crawler отменена.')
     setActivity('Запускаем Chromium')
     browser = await chromium.launch({
       headless: options.headless,
       slowMo: options.headless ? 0 : 250,
     })
+    if (options.signal?.aborted) throw new Error('Задача crawler отменена.')
     const context = await browser.newContext({
       locale: 'ru-RU',
       viewport: { width: 1440, height: 1000 },
@@ -611,6 +617,7 @@ export async function crawl(options) {
     clearInterval(heartbeat)
     process.off('SIGINT', handleSigint)
     process.off('SIGTERM', handleSigterm)
+    options.signal?.removeEventListener('abort', handleAbort)
     await browser?.close().catch(() => {})
     crawlerLogSink = null
   }

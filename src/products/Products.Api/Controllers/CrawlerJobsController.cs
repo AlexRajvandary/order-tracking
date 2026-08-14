@@ -122,6 +122,47 @@ public sealed class CrawlerJobsController : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = job.Id }, ToDto(job));
     }
 
+    [HttpPost("{id:guid}/cancel")]
+    [Authorize]
+    public async Task<ActionResult<CrawlerJobDto>> Cancel(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var cancelled = await _db.CrawlerJobs
+            .Where(x => x.Id == id
+                        && (x.Status == CrawlerJobStatus.Pending
+                            || x.Status == CrawlerJobStatus.Running))
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(x => x.Status, CrawlerJobStatus.Cancelled)
+                    .SetProperty(x => x.CompletedAt, now)
+                    .SetProperty(x => x.HeartbeatAt, now)
+                    .SetProperty(x => x.LastError, (string?)null)
+                    .SetProperty(x => x.UpdatedAt, now),
+                cancellationToken);
+
+        if (cancelled == 0)
+        {
+            var exists = await _db.CrawlerJobs.AnyAsync(x => x.Id == id, cancellationToken);
+            if (!exists) return NotFound();
+            return Conflict(new ProblemDetails
+            {
+                Detail = "Можно отменить только ожидающую или выполняющуюся задачу.",
+            });
+        }
+
+        _db.CrawlerJobLogs.Add(CreateLog(id, "warning", "Задача отменена администратором."));
+        await _db.SaveChangesAsync(cancellationToken);
+
+        var job = await _db.CrawlerJobs
+            .AsNoTracking()
+            .Include(x => x.Category)
+            .Include(x => x.Logs)
+            .FirstAsync(x => x.Id == id, cancellationToken);
+        return ToDto(job);
+    }
+
     [HttpPost("worker/claim")]
     [AllowAnonymous]
     public async Task<ActionResult<CrawlerWorkerJobDto>> Claim(CancellationToken cancellationToken)
@@ -129,22 +170,35 @@ public sealed class CrawlerJobsController : ControllerBase
         if (!IsWorkerAuthorized()) return Unauthorized();
 
         await using var transaction = await _db.Database.BeginTransactionAsync(
-            IsolationLevel.Serializable,
+            IsolationLevel.ReadCommitted,
             cancellationToken);
         var now = DateTimeOffset.UtcNow;
         var staleBefore = now.AddMinutes(-5);
         var staleJobs = await _db.CrawlerJobs
+            .AsNoTracking()
             .Where(x => x.Status == CrawlerJobStatus.Running
                         && (x.HeartbeatAt == null || x.HeartbeatAt < staleBefore))
+            .Select(x => x.Id)
             .ToListAsync(cancellationToken);
-        foreach (var stale in staleJobs)
+        if (staleJobs.Count > 0)
         {
-            stale.Status = CrawlerJobStatus.Pending;
-            stale.LastError = "Worker перестал отправлять heartbeat; задача возвращена в очередь.";
-            AddLog(stale, "warning", stale.LastError);
+            const string staleMessage = "Worker перестал отправлять heartbeat; задача возвращена в очередь.";
+            await _db.CrawlerJobs
+                .Where(x => staleJobs.Contains(x.Id)
+                            && x.Status == CrawlerJobStatus.Running
+                            && (x.HeartbeatAt == null || x.HeartbeatAt < staleBefore))
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(x => x.Status, CrawlerJobStatus.Pending)
+                        .SetProperty(x => x.LastError, staleMessage)
+                        .SetProperty(x => x.UpdatedAt, now),
+                    cancellationToken);
+            foreach (var staleId in staleJobs)
+                _db.CrawlerJobLogs.Add(CreateLog(staleId, "warning", staleMessage));
         }
 
         var job = await _db.CrawlerJobs
+            .AsNoTracking()
             .Include(x => x.Category)
             .Where(x => x.Status == CrawlerJobStatus.Pending)
             .OrderBy(x => x.CreatedAt)
@@ -156,16 +210,33 @@ public sealed class CrawlerJobsController : ControllerBase
             return NoContent();
         }
 
-        job.Status = CrawlerJobStatus.Running;
-        job.StartedAt ??= now;
-        job.HeartbeatAt = now;
-        job.CompletedAt = null;
-        job.LastError = null;
-        job.ProcessedPages = 0;
-        job.LastPage = 0;
-        job.ProductsFound = 0;
-        job.AttemptCount++;
-        AddLog(job, "info", $"Worker начал выполнение, попытка {job.AttemptCount}.");
+        var nextAttempt = job.AttemptCount + 1;
+        var claimed = await _db.CrawlerJobs
+            .Where(x => x.Id == job.Id && x.Status == CrawlerJobStatus.Pending)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(x => x.Status, CrawlerJobStatus.Running)
+                    .SetProperty(x => x.StartedAt, x => x.StartedAt ?? now)
+                    .SetProperty(x => x.HeartbeatAt, now)
+                    .SetProperty(x => x.CompletedAt, (DateTimeOffset?)null)
+                    .SetProperty(x => x.LastError, (string?)null)
+                    .SetProperty(x => x.ProcessedPages, 0)
+                    .SetProperty(x => x.LastPage, 0)
+                    .SetProperty(x => x.ProductsFound, 0)
+                    .SetProperty(x => x.AttemptCount, x => x.AttemptCount + 1)
+                    .SetProperty(x => x.UpdatedAt, now),
+                cancellationToken);
+        if (claimed == 0)
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return NoContent();
+        }
+
+        _db.CrawlerJobLogs.Add(CreateLog(
+            job.Id,
+            "info",
+            $"Worker начал выполнение, попытка {nextAttempt}."));
         await _db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -175,7 +246,7 @@ public sealed class CrawlerJobsController : ControllerBase
             job.RequestedPages,
             job.CategoryId,
             job.Category.Name,
-            job.ProcessedPages);
+            0);
     }
 
     [HttpPost("{id:guid}/worker/heartbeat")]
@@ -322,14 +393,24 @@ public sealed class CrawlerJobsController : ControllerBase
                && CryptographicOperations.FixedTimeEquals(expectedBytes, receivedBytes);
     }
 
-    private static void AddLog(CrawlerJob job, string level, string message) =>
-        job.Logs.Add(new CrawlerJobLog
+    private void AddLog(CrawlerJob job, string level, string message)
+    {
+        var log = CreateLog(job.Id, level, message);
+        job.Logs.Add(log);
+        // У лога заранее задан Guid. Явно помечаем его как Added, иначе EF может
+        // принять новый элемент навигации за существующую строку и выполнить UPDATE.
+        _db.CrawlerJobLogs.Add(log);
+    }
+
+    private static CrawlerJobLog CreateLog(Guid jobId, string level, string message) =>
+        new()
         {
             Id = Guid.NewGuid(),
+            JobId = jobId,
             CreatedAt = DateTimeOffset.UtcNow,
             Level = Trim(level, 16) ?? "info",
             Message = Trim(message, 2000) ?? string.Empty,
-        });
+        };
 
     private static string? Trim(string? value, int maxLength)
     {

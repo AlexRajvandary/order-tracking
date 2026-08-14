@@ -124,6 +124,12 @@ export function createCrawlerJob(body: CreateCrawlerJobRequest) {
   })
 }
 
+export function cancelCrawlerJob(id: string) {
+  return authorizedJsonFromUrl<CrawlerJob>(`${PRODUCTS_API_BASE}/crawler-jobs/${id}/cancel`, {
+    method: 'POST',
+  })
+}
+
 export function notifyProductImport(body: NotifyProductImportRequest) {
   return authorizedJson<void>('/products/import-notification', {
     method: 'POST',

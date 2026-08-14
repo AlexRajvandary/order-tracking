@@ -209,7 +209,7 @@ export type ImportProductsResult = {
   issues: ImportProductIssue[]
 }
 
-export type CrawlerJobStatus = 'pending' | 'running' | 'completed' | 'failed'
+export type CrawlerJobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 
 export type CrawlerJobLog = {
   id: string

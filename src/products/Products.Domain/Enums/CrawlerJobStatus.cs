@@ -6,4 +6,5 @@ public enum CrawlerJobStatus
     Running,
     Completed,
     Failed,
+    Cancelled,
 }

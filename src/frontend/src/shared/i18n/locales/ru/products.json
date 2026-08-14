@@ -73,8 +73,12 @@
         "createdAt": "Создана",
         "finishedAt": "Завершена",
         "interruptedAt": "Прервана",
+        "cancelledAt": "Отменена",
         "currentPage": "Текущая страница",
         "finalPage": "Последняя страница",
+        "cancel": "Отменить задачу",
+        "cancelling": "Отмена…",
+        "cancelError": "Не удалось отменить задачу.",
         "logs": "Логи",
       "noLogs": "Логов пока нет",
       "empty": "Задач пока нет",
@@ -84,8 +88,9 @@
       "statuses": {
         "pending": "Ожидает",
         "running": "Выполняется",
-        "completed": "Завершена",
-        "failed": "Ошибка"
+          "completed": "Завершена",
+          "failed": "Ошибка",
+          "cancelled": "Отменена"
       }
     },
     "parserLabel": "Парсер HTML",

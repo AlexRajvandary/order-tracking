@@ -73,8 +73,12 @@
         "createdAt": "Created",
         "finishedAt": "Completed",
         "interruptedAt": "Interrupted",
+        "cancelledAt": "Cancelled",
         "currentPage": "Current page",
         "finalPage": "Last page",
+        "cancel": "Cancel job",
+        "cancelling": "Cancelling…",
+        "cancelError": "Could not cancel the job.",
         "logs": "Logs",
       "noLogs": "No logs yet",
       "empty": "No jobs yet",
@@ -84,8 +88,9 @@
       "statuses": {
         "pending": "Pending",
         "running": "Running",
-        "completed": "Completed",
-        "failed": "Failed"
+          "completed": "Completed",
+          "failed": "Failed",
+          "cancelled": "Cancelled"
       }
     },
     "parserLabel": "HTML parser",
