@@ -41,15 +41,15 @@ public sealed class FornexVpsStatsServiceTests
 
         var result = await service.GetAsync(
             "traffic",
-            new DateTimeOffset(2026, 8, 14, 8, 0, 0, TimeSpan.Zero),
-            new DateTimeOffset(2026, 8, 14, 9, 0, 0, TimeSpan.Zero),
+            "-6h",
+            "now",
             CancellationToken.None);
 
         Assert.Equal("Api-Key secret-key", authorization);
         Assert.Contains("vps/34-1234/stats/traffic/", requestUri);
         var decodedRequestUri = Uri.UnescapeDataString(requestUri!);
-        Assert.Contains("start=2026-08-14T08:00:00.000Z", decodedRequestUri);
-        Assert.Contains("end=2026-08-14T09:00:00.000Z", decodedRequestUri);
+        Assert.Contains("start=-6h", decodedRequestUri);
+        Assert.Contains("end=now", decodedRequestUri);
         Assert.Equal("Период", result.Subtitle);
         var series = Assert.Single(result.Series);
         Assert.Equal("Входящий", series.Name);
@@ -68,8 +68,8 @@ public sealed class FornexVpsStatsServiceTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetAsync(
             "cpu",
-            DateTimeOffset.UtcNow.AddHours(-1),
-            DateTimeOffset.UtcNow,
+            "-1h",
+            "now",
             CancellationToken.None));
     }
 

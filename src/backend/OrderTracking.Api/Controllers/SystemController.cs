@@ -40,8 +40,8 @@ public sealed class SystemController : ControllerBase
     [Authorize]
     public async Task<ActionResult<VpsStatsDto>> GetVpsStats(
         string field,
-        [FromQuery] DateTimeOffset? start,
-        [FromQuery] DateTimeOffset? end,
+        [FromQuery] string? start,
+        [FromQuery] string? end,
         [FromServices] IVpsStatsService vpsStatsService,
         CancellationToken cancellationToken)
     {
@@ -49,14 +49,20 @@ public sealed class SystemController : ControllerBase
         if (!VpsStatsFields.Contains(field))
             return BadRequest(new ProblemDetails { Detail = "Unsupported VPS statistics field." });
 
-        var periodEnd = end ?? DateTimeOffset.UtcNow;
-        var periodStart = start ?? periodEnd.AddHours(-1);
-        if (periodStart >= periodEnd)
+        var periodStart = string.IsNullOrWhiteSpace(start) ? "-1h" : start.Trim().ToLowerInvariant();
+        var periodEnd = string.IsNullOrWhiteSpace(end) ? "now" : end.Trim().ToLowerInvariant();
+        if (!TryParseFornexOffset(periodStart, out var startOffsetHours)
+            || !TryParseFornexOffset(periodEnd, out var endOffsetHours))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Detail = "The period must use the Fornex relative format, for example -6h or now."
+            });
+        }
+        if (startOffsetHours <= endOffsetHours)
             return BadRequest(new ProblemDetails { Detail = "The start date must be earlier than the end date." });
-        if (periodEnd - periodStart > TimeSpan.FromDays(31))
+        if (startOffsetHours - endOffsetHours > 31 * 24)
             return BadRequest(new ProblemDetails { Detail = "The statistics period cannot exceed 31 days." });
-        if (periodEnd > DateTimeOffset.UtcNow.AddMinutes(5))
-            return BadRequest(new ProblemDetails { Detail = "The end date cannot be in the future." });
 
         try
         {
@@ -75,6 +81,27 @@ public sealed class SystemController : ControllerBase
                 Status = StatusCodes.Status502BadGateway,
             });
         }
+    }
+
+    private static bool TryParseFornexOffset(string value, out int offsetHours)
+    {
+        if (value == "now")
+        {
+            offsetHours = 0;
+            return true;
+        }
+
+        if (value.Length >= 3
+            && value[0] == '-'
+            && value[^1] == 'h'
+            && int.TryParse(value[1..^1], out offsetHours)
+            && offsetHours > 0)
+        {
+            return true;
+        }
+
+        offsetHours = 0;
+        return false;
     }
 
     [HttpPost("products/import-notification")]

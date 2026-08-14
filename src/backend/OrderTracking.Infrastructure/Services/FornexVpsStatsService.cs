@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -28,8 +27,8 @@ public sealed class FornexVpsStatsService : IVpsStatsService
 
     public async Task<VpsStatsDto> GetAsync(
         string field,
-        DateTimeOffset start,
-        DateTimeOffset end,
+        string start,
+        string end,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_settings.ApiKey)
@@ -40,8 +39,8 @@ public sealed class FornexVpsStatsService : IVpsStatsService
         }
 
         var path = $"vps/{Uri.EscapeDataString(_settings.OrderId.Trim())}/stats/" +
-                   $"{Uri.EscapeDataString(field)}/?start={Uri.EscapeDataString(FormatDate(start))}" +
-                   $"&end={Uri.EscapeDataString(FormatDate(end))}";
+                   $"{Uri.EscapeDataString(field)}/?start={Uri.EscapeDataString(start)}" +
+                   $"&end={Uri.EscapeDataString(end)}";
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.TryAddWithoutValidation("Authorization", $"Api-Key {_settings.ApiKey.Trim()}");
         request.Headers.TryAddWithoutValidation("Accept", "application/json");
@@ -52,10 +51,19 @@ public sealed class FornexVpsStatsService : IVpsStatsService
             cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
+            var providerResponse = await response.Content.ReadAsStringAsync(cancellationToken);
+            providerResponse = providerResponse.ReplaceLineEndings(" ");
+            if (providerResponse.Length > 500)
+                providerResponse = providerResponse[..500];
+
             _logger.LogWarning(
-                "Fornex stats request for {Field} failed with status {StatusCode}",
+                "Fornex stats request for {Field} ({Start} - {End}) failed with status {StatusCode}. " +
+                "Provider response: {ProviderResponse}",
                 field,
-                (int)response.StatusCode);
+                start,
+                end,
+                (int)response.StatusCode,
+                providerResponse);
             throw new HttpRequestException(
                 $"Fornex returned HTTP {(int)response.StatusCode} for field '{field}'.",
                 null,
@@ -86,9 +94,6 @@ public sealed class FornexVpsStatsService : IVpsStatsService
 
         return new VpsStatsDto(series, payload.Subtitle?.Trim() ?? string.Empty);
     }
-
-    private static string FormatDate(DateTimeOffset value) =>
-        value.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
 
     private sealed record FornexChartResponse(
         IReadOnlyList<FornexChartSeries>? Series,

@@ -6,7 +6,7 @@ public interface IVpsStatsService
 {
     Task<VpsStatsDto> GetAsync(
         string field,
-        DateTimeOffset start,
-        DateTimeOffset end,
+        string start,
+        string end,
         CancellationToken cancellationToken);
 }

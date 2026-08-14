@@ -213,6 +213,7 @@ function MetricChart({
   field,
   start,
   end,
+  requestKey,
   duration,
   locale,
   fullWidth,
@@ -221,6 +222,7 @@ function MetricChart({
   field: VpsStatsField
   start: string
   end: string
+  requestKey: number
   duration: number
   locale: string
   fullWidth?: boolean
@@ -228,7 +230,7 @@ function MetricChart({
 }) {
   const { t } = useTranslation('dashboard')
   const query = useQuery({
-    queryKey: ['vps-stats', field, start, end],
+    queryKey: ['vps-stats', field, start, end, requestKey],
     queryFn: ({ signal }) => dashboardApi.getVpsStats(field, start, end, signal),
     staleTime: 30_000,
   })
@@ -265,10 +267,14 @@ export function VpsMonitoringPage() {
   const navigate = useNavigate()
   const [windowKey, setWindowKey] = useState<WindowKey>('6h')
   const [endMs, setEndMs] = useState(() => Date.now())
-  const [anchoredToNow, setAnchoredToNow] = useState(true)
+  const [windowOffset, setWindowOffset] = useState(0)
   const duration = WINDOWS[windowKey]
-  const start = new Date(endMs - duration).toISOString()
-  const end = new Date(endMs).toISOString()
+  const durationHours = duration / (60 * 60 * 1000)
+  const anchoredToNow = windowOffset === 0
+  const displayStart = new Date(endMs - duration)
+  const displayEnd = new Date(endMs)
+  const start = `-${durationHours * (windowOffset + 1)}h`
+  const end = anchoredToNow ? 'now' : `-${durationHours * windowOffset}h`
 
   useEffect(() => {
     if (!anchoredToNow) return
@@ -278,19 +284,13 @@ export function VpsMonitoringPage() {
 
   const shift = (direction: -1 | 1) => {
     const now = Date.now()
-    setEndMs((current) => {
-      const next = current + duration * direction
-      if (next >= now) {
-        setAnchoredToNow(true)
-        return now
-      }
-      setAnchoredToNow(false)
-      return next
-    })
+    const nextOffset = Math.max(0, windowOffset - direction)
+    setWindowOffset(nextOffset)
+    setEndMs(now - duration * nextOffset)
   }
 
   const resetToNow = () => {
-    setAnchoredToNow(true)
+    setWindowOffset(0)
     setEndMs(Date.now())
   }
 
@@ -320,16 +320,17 @@ export function VpsMonitoringPage() {
         </div>
 
         <p className="text-xs text-muted-foreground tabular-nums sm:text-sm">
-          {new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(start))}
+          {new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' }).format(displayStart)}
           {' — '}
-          {new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(end))}
+          {new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' }).format(displayEnd)}
         </p>
 
         <Select
           value={windowKey}
           onValueChange={(value) => {
             setWindowKey(value as WindowKey)
-            if (anchoredToNow) setEndMs(Date.now())
+            setWindowOffset(0)
+            setEndMs(Date.now())
           }}
         >
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
@@ -350,6 +351,7 @@ export function VpsMonitoringPage() {
             field={field}
             start={start}
             end={end}
+            requestKey={endMs}
             duration={duration}
             locale={i18n.language}
             fullWidth={fullWidth}
