@@ -47,8 +47,9 @@ public sealed class FornexVpsStatsServiceTests
 
         Assert.Equal("Api-Key secret-key", authorization);
         Assert.Contains("vps/34-1234/stats/traffic/", requestUri);
-        Assert.Contains("start=", requestUri);
-        Assert.Contains("end=", requestUri);
+        var decodedRequestUri = Uri.UnescapeDataString(requestUri!);
+        Assert.Contains("start=2026-08-14T08:00:00.000Z", decodedRequestUri);
+        Assert.Contains("end=2026-08-14T09:00:00.000Z", decodedRequestUri);
         Assert.Equal("Период", result.Subtitle);
         var series = Assert.Single(result.Series);
         Assert.Equal("Входящий", series.Name);

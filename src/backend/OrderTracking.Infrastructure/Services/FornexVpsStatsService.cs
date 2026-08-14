@@ -88,7 +88,7 @@ public sealed class FornexVpsStatsService : IVpsStatsService
     }
 
     private static string FormatDate(DateTimeOffset value) =>
-        value.UtcDateTime.ToString("O", CultureInfo.InvariantCulture);
+        value.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
 
     private sealed record FornexChartResponse(
         IReadOnlyList<FornexChartSeries>? Series,
