@@ -67,6 +67,9 @@ services:
       Minio__UseSsl: "false"
       OpenAI__ApiKey: ${OPENAI_API_KEY:-}
       OpenAI__Model: ${OPENAI_MODEL:-gpt-4o-mini}
+      Fornex__ApiKey: ${FORNEX_API_KEY:-}
+      Fornex__OrderId: ${FORNEX_ORDER_ID:-}
+      Crawler__ApiKey: ${CRAWLER_API_KEY:-dev-crawler-key-change-me}
       Monitoring__HostDiskPath: /host
     volumes:
       - /:/host:ro
@@ -88,8 +91,11 @@ services:
     depends_on:
       products-api:
         condition: service_healthy
+      api:
+        condition: service_healthy
     environment:
       PRODUCTS_API_URL: http://products-api:8080/api/products
+      ORDER_TRACKING_API_URL: http://api:8080/api/v1
       CRAWLER_API_KEY: ${CRAWLER_API_KEY:-dev-crawler-key-change-me}
       CRAWLER_POLL_INTERVAL_MS: ${CRAWLER_POLL_INTERVAL_MS:-5000}
       CRAWLER_BATCH_SIZE: ${CRAWLER_BATCH_SIZE:-50}

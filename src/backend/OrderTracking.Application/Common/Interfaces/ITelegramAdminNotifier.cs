@@ -24,4 +24,16 @@ public interface ITelegramAdminNotifier
         Guid importId,
         int insertedCount,
         CancellationToken cancellationToken = default);
+
+    public Task NotifyCrawlerJobStartedAsync(
+        Guid jobId,
+        string url,
+        string category,
+        CancellationToken cancellationToken = default);
+
+    public Task NotifyCrawlerJobFinishedAsync(
+        Guid jobId,
+        int insertedCount,
+        string category,
+        CancellationToken cancellationToken = default);
 }

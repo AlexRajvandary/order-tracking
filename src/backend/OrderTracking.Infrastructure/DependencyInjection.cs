@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.Configure<TelegramSettings>(configuration.GetSection(TelegramSettings.SectionName));
         services.Configure<MinioSettings>(configuration.GetSection(MinioSettings.SectionName));
         services.Configure<MonitoringSettings>(configuration.GetSection(MonitoringSettings.SectionName));
+        services.Configure<FornexSettings>(configuration.GetSection(FornexSettings.SectionName));
         services.Configure<OpenAiSettings>(options =>
         {
             configuration.GetSection(OpenAiSettings.SectionName).Bind(options);
@@ -68,6 +69,15 @@ public static class DependencyInjection
         services.AddSingleton<IObjectStorage, MinioObjectStorage>();
         services.AddSingleton<IImageCompressor, ImageSharpCompressor>();
         services.AddScoped<IStorageMetricsService, StorageMetricsService>();
+        services.AddHttpClient<IVpsStatsService, FornexVpsStatsService>((sp, client) =>
+        {
+            var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<FornexSettings>>().Value;
+            var baseUrl = string.IsNullOrWhiteSpace(settings.BaseUrl)
+                ? "https://fornex.com/api/"
+                : settings.BaseUrl.Trim();
+            client.BaseAddress = new Uri(baseUrl.EndsWith('/') ? baseUrl : $"{baseUrl}/");
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
         services.AddSingleton<IAiOrderParser, OpenAiOrderParser>();
 
         services.AddDbContext<ApplicationDbContext>((sp, options) =>

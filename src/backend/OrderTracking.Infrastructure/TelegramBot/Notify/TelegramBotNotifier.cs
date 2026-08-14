@@ -190,6 +190,72 @@ internal sealed class TelegramBotNotifier
         }
     }
 
+    public Task SendCrawlerJobStartedAsync(
+        string url,
+        string category,
+        CancellationToken cancellationToken) =>
+        SendCrawlerMessageAsync(
+            "🚀 <b>Парсер начал задачу</b>\n" +
+            $"Категория: <b>{TelegramBotText.Escape(category)}</b>\n" +
+            $"URL: {TelegramBotText.Escape(url)}",
+            disableLinkPreview: true,
+            cancellationToken);
+
+    public Task SendCrawlerJobFinishedAsync(
+        int insertedCount,
+        string category,
+        CancellationToken cancellationToken) =>
+        SendCrawlerMessageAsync(
+            "✅ <b>Парсер завершил задачу</b>\n" +
+            $"Добавлено товаров: <b>{Math.Max(0, insertedCount)}</b>\n" +
+            $"Категория: <b>{TelegramBotText.Escape(category)}</b>",
+            disableLinkPreview: false,
+            cancellationToken);
+
+    private async Task SendCrawlerMessageAsync(
+        string text,
+        bool disableLinkPreview,
+        CancellationToken cancellationToken)
+    {
+        if (!_runtime.IsEnabled || _runtime.Client is null)
+        {
+            return;
+        }
+
+        var recipients = await GetRecipientTelegramIdsAsync(cancellationToken);
+        if (recipients.Count == 0)
+        {
+            return;
+        }
+
+        var delivered = 0;
+        foreach (var chatId in recipients)
+        {
+            try
+            {
+                await _runtime.Client.SendMessage(
+                    chatId,
+                    text,
+                    ParseMode.Html,
+                    linkPreviewOptions: disableLinkPreview
+                        ? new Telegram.Bot.Types.LinkPreviewOptions { IsDisabled = true }
+                        : null,
+                    cancellationToken: cancellationToken);
+                delivered++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to notify Telegram chat {ChatId} about crawler job", chatId);
+            }
+        }
+
+        if (delivered == 0)
+        {
+            throw new InvalidOperationException(
+                $"Telegram crawler notify delivered to 0 of {recipients.Count} recipients");
+        }
+    }
+
     private async Task<IReadOnlyList<long>> GetRecipientTelegramIdsAsync(CancellationToken cancellationToken)
     {
         using var scope = _runtime.ScopeFactory.CreateScope();

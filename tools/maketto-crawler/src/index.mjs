@@ -415,6 +415,7 @@ export async function crawl(options) {
   currentActivity = 'Запуск'
   crawlerLogSink = typeof options.onLog === 'function' ? options.onLog : null
   const productsBySku = new Map()
+  const startPage = Math.max(1, Math.floor(Number(options.startPage) || 1))
   const errors = []
   let scrapedPages = 0
   let currentPage = null
@@ -459,15 +460,21 @@ export async function crawl(options) {
     }
     stopping = true
     const message = `Обход остановлен пользователем (${signal}).`
-    setActivity('Сохраняем товары перед остановкой')
-    logError(`${message} Сохраняем уже собранные товары...`)
+    setActivity(options.persistOutput === false
+      ? 'Останавливаем серверную задачу'
+      : 'Сохраняем товары перед остановкой')
+    logError(options.persistOutput === false
+      ? `${message} Уже обработанные батчи остаются в Product API.`
+      : `${message} Сохраняем уже собранные товары...`)
     errors.push({ date: new Date().toISOString(), message })
 
-    try {
-      await persist(true, message)
-      logError(`Сохранено товаров: ${productsBySku.size}. JSON: ${options.output}`)
-    } catch (saveError) {
-      logError(`Не удалось сохранить JSON: ${saveError instanceof Error ? saveError.message : String(saveError)}`)
+    if (options.persistOutput !== false) {
+      try {
+        await persist(true, message)
+        logError(`Сохранено товаров: ${productsBySku.size}. JSON: ${options.output}`)
+      } catch (saveError) {
+        logError(`Не удалось сохранить JSON: ${saveError instanceof Error ? saveError.message : String(saveError)}`)
+      }
     }
 
     await browser?.close().catch(() => {})
@@ -523,12 +530,43 @@ export async function crawl(options) {
     let listing = initial.listing
     const queryCategory = new URL(options.url).searchParams.get('query')?.trim()
     const detectedFileCategory = options.category || queryCategory || categoryFromListing(listing)
-    if (detectedFileCategory) {
+    if (detectedFileCategory && options.persistOutput !== false) {
       options.output = addCategoryToFileName(options.outputBase, detectedFileCategory)
     }
-    log(`JSON будет сохранён в: ${options.output}`)
+    if (options.persistOutput === false) {
+      log('Серверный режим: товары передаются батчами прямо в Product API, JSON не создаётся.')
+    } else {
+      log(`JSON будет сохранён в: ${options.output}`)
+    }
     totalResults = Number(listing.pageInfo?.totalResults) || null
     pageSize = Number(listing.pageInfo?.pageSize) || null
+
+    if (startPage > 1) {
+      let loadedPage = Number(listing.pageInfo?.page) || 1
+      if (loadedPage > startPage) {
+        throw new Error(`Каталог открыл страницу ${loadedPage}, хотя для продолжения нужна страница ${startPage}.`)
+      }
+
+      log(`Восстанавливаем задачу: переходим к странице ${startPage}, не импортируя уже обработанные страницы.`)
+      while (loadedPage < startPage) {
+        if (pageSize && totalResults && loadedPage * pageSize >= totalResults) {
+          throw new Error(`Нельзя продолжить со страницы ${startPage}: каталог закончился на странице ${loadedPage}.`)
+        }
+        setActivity(`Возвращаемся к странице ${loadedPage + 1}`)
+        const nextPage = await clickNextPage(page, loadedPage, options.timeout, options.headless)
+        listing = nextPage.listing
+        const nextPageNumber = Number(listing.pageInfo?.page)
+        if (nextPageNumber !== loadedPage + 1) {
+          throw new Error(`Ожидалась страница ${loadedPage + 1}, но Maketto вернул страницу ${nextPageNumber || 'без номера'}.`)
+        }
+        loadedPage = nextPageNumber
+        log(`Страница ${loadedPage} открыта для восстановления прогресса.`)
+        if (options.delay > 0 && loadedPage < startPage) {
+          await page.waitForTimeout(options.delay)
+        }
+      }
+      log(`Прогресс восстановлен. Продолжаем обработку со страницы ${startPage}.`)
+    }
 
     for (let index = 0; index < options.pages; index += 1) {
       const pageNumber = Number(listing.pageInfo?.page) || index + 1
@@ -603,15 +641,20 @@ export async function crawl(options) {
 
     setActivity('Обход завершён')
     log(`Готово. Страниц: ${scrapedPages}, товаров: ${productsBySku.size}`)
-    log(`JSON: ${options.output}`)
+    if (options.persistOutput !== false) log(`JSON: ${options.output}`)
     return makeOutput()
   } catch (error) {
     if (stopping) return
     const message = error instanceof Error ? error.message : String(error)
     errors.push({ date: new Date().toISOString(), message })
-    setActivity('Сохраняем товары после ошибки')
-    await persist(true, message)
-    logError(`Обход прерван, но ${productsBySku.size} товаров сохранены в ${options.output}`)
+    if (options.persistOutput === false) {
+      setActivity('Останавливаем серверную задачу после ошибки')
+      logError(`Обход прерван. Уже отправленные в Product API батчи сохранены; JSON не создавался.`)
+    } else {
+      setActivity('Сохраняем товары после ошибки')
+      await persist(true, message)
+      logError(`Обход прерван, но ${productsBySku.size} товаров сохранены в ${options.output}`)
+    }
     throw error
   } finally {
     clearInterval(heartbeat)

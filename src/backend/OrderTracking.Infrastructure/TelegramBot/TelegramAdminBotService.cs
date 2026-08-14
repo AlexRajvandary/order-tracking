@@ -66,4 +66,16 @@ public sealed class TelegramAdminBotService
         int insertedCount,
         CancellationToken cancellationToken) =>
         _notifier.SendProductImportCompletedAsync(insertedCount, cancellationToken);
+
+    internal Task SendCrawlerJobStartedNotifyAsync(
+        string url,
+        string category,
+        CancellationToken cancellationToken) =>
+        _notifier.SendCrawlerJobStartedAsync(url, category, cancellationToken);
+
+    internal Task SendCrawlerJobFinishedNotifyAsync(
+        int insertedCount,
+        string category,
+        CancellationToken cancellationToken) =>
+        _notifier.SendCrawlerJobFinishedAsync(insertedCount, category, cancellationToken);
 }

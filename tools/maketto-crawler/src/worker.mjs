@@ -1,8 +1,10 @@
-import path from 'node:path'
 import process from 'node:process'
 import { crawl } from './index.mjs'
 
 const apiBase = (process.env.PRODUCTS_API_URL || 'http://products-api:8080/api/products').replace(/\/$/, '')
+const notificationApiBase = (
+  process.env.ORDER_TRACKING_API_URL || 'http://api:8080/api/v1'
+).replace(/\/$/, '')
 const apiKey = process.env.CRAWLER_API_KEY || ''
 const pollInterval = positiveNumber(process.env.CRAWLER_POLL_INTERVAL_MS, 5000)
 const batchSize = Math.min(100, positiveNumber(process.env.CRAWLER_BATCH_SIZE, 50))
@@ -56,6 +58,33 @@ async function api(pathname, init = {}, attempts = 5) {
   throw lastError
 }
 
+async function notifyAdmins(payload, attempts = 5) {
+  let lastError
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const response = await fetch(`${notificationApiBase}/products/crawler-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Crawler-Key': apiKey,
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(30000),
+      })
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '')
+        throw new WorkerApiError(response.status, detail || response.statusText)
+      }
+      return
+    } catch (error) {
+      lastError = error
+      if (error instanceof WorkerApiError && error.status < 500) throw error
+      if (attempt < attempts) await sleep(Math.min(15000, 1000 * (2 ** (attempt - 1))))
+    }
+  }
+  throw lastError
+}
+
 function chunks(items, size) {
   const result = []
   for (let index = 0; index < items.length; index += size) {
@@ -66,9 +95,12 @@ function chunks(items, size) {
 
 async function processJob(job) {
   console.log(`Запущена задача ${job.id}: ${job.url}, страниц ${job.requestedPages}`)
+  const categoryPath = job.categoryPath || job.categoryName
   let processedPages = job.processedPages || 0
-  let currentPage = 1
-  let productsFound = 0
+  const resumeOffset = processedPages
+  const remainingPages = Math.max(0, job.requestedPages - resumeOffset)
+  let currentPage = Math.min(job.requestedPages, resumeOffset + 1)
+  let productsFound = job.productsFound || 0
   let wasCancelled = false
   const abortController = new AbortController()
   const logBuffer = []
@@ -94,11 +126,33 @@ async function processJob(job) {
   heartbeat.unref()
 
   try {
+    await notifyAdmins({
+      jobId: job.id,
+      event: 'started',
+      url: job.url,
+      category: categoryPath,
+    }).catch((error) => {
+      console.error(`Не удалось поставить стартовое Telegram-уведомление ${job.id}: ${error.message}`)
+    })
+
+    if (remainingPages === 0) {
+      await api(`/${job.id}/worker/complete`, {
+        method: 'POST',
+        body: JSON.stringify({ processedPages, productsFound, currentPage, logs: drainLogs() }),
+      })
+      console.log(`Задача ${job.id} уже обработала все ${processedPages} страниц; отмечена завершённой.`)
+      return
+    }
+
+    if (resumeOffset > 0) {
+      console.log(`Задача ${job.id} продолжится со страницы ${resumeOffset + 1}; готово ${resumeOffset} из ${job.requestedPages}.`)
+    }
+
+    const productsFoundBeforeResume = productsFound
     const output = await crawl({
       url: job.url,
-      pages: job.requestedPages,
-      output: path.join('/tmp', `crawler-${job.id}.json`),
-      outputBase: path.join('/tmp', `crawler-${job.id}.json`),
+      pages: remainingPages,
+      startPage: resumeOffset + 1,
       delay: pageDelay,
       timeout: pageTimeout,
       category: job.categoryName,
@@ -121,8 +175,8 @@ async function processJob(job) {
       },
       onPage: async (page) => {
         currentPage = page.pageNumber
-        processedPages = page.scrapedPages
-        productsFound = page.totalProducts
+        processedPages = resumeOffset + page.scrapedPages
+        productsFound = Math.max(productsFound, productsFoundBeforeResume + page.totalProducts)
         for (const batch of chunks(page.newProducts, batchSize)) {
           await api(`/${job.id}/worker/batch`, {
             method: 'POST',
@@ -141,8 +195,8 @@ async function processJob(job) {
       },
     })
 
-    processedPages = output.source.scrapedPages
-    productsFound = output.products.length
+    processedPages = resumeOffset + output.source.scrapedPages
+    productsFound = Math.max(productsFound, productsFoundBeforeResume + output.products.length)
     await api(`/${job.id}/worker/complete`, {
       method: 'POST',
       body: JSON.stringify({ processedPages, productsFound, currentPage, logs: drainLogs() }),
@@ -169,6 +223,17 @@ async function processJob(job) {
     })
   } finally {
     clearInterval(heartbeat)
+    try {
+      const summary = await api(`/${job.id}/worker/summary`, {}, 5)
+      await notifyAdmins({
+        jobId: job.id,
+        event: 'finished',
+        category: summary?.categoryPath || categoryPath,
+        insertedCount: summary?.importedCount || 0,
+      })
+    } catch (error) {
+      console.error(`Не удалось поставить итоговое Telegram-уведомление ${job.id}: ${error.message}`)
+    }
   }
 }
 

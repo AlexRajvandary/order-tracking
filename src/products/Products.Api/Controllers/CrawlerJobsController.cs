@@ -67,6 +67,15 @@ public sealed class CrawlerJobsController : ControllerBase
         return ToDto(job);
     }
 
+    [HttpDelete("logs")]
+    [Authorize]
+    public async Task<ActionResult<ClearCrawlerLogsResult>> ClearLogs(
+        CancellationToken cancellationToken)
+    {
+        var deletedCount = await _db.CrawlerJobLogs.ExecuteDeleteAsync(cancellationToken);
+        return new ClearCrawlerLogsResult(deletedCount);
+    }
+
     [HttpPost]
     [Authorize]
     public async Task<ActionResult<CrawlerJobDto>> Create(
@@ -220,9 +229,6 @@ public sealed class CrawlerJobsController : ControllerBase
                     .SetProperty(x => x.HeartbeatAt, now)
                     .SetProperty(x => x.CompletedAt, (DateTimeOffset?)null)
                     .SetProperty(x => x.LastError, (string?)null)
-                    .SetProperty(x => x.ProcessedPages, 0)
-                    .SetProperty(x => x.LastPage, 0)
-                    .SetProperty(x => x.ProductsFound, 0)
                     .SetProperty(x => x.AttemptCount, x => x.AttemptCount + 1)
                     .SetProperty(x => x.UpdatedAt, now),
                 cancellationToken);
@@ -246,7 +252,30 @@ public sealed class CrawlerJobsController : ControllerBase
             job.RequestedPages,
             job.CategoryId,
             job.Category.Name,
-            0);
+            string.IsNullOrWhiteSpace(job.CategoryPath) ? job.Category.Name : job.CategoryPath,
+            job.ProcessedPages,
+            job.ProductsFound);
+    }
+
+    [HttpGet("{id:guid}/worker/summary")]
+    [AllowAnonymous]
+    public async Task<ActionResult<CrawlerWorkerSummaryDto>> WorkerSummary(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        if (!IsWorkerAuthorized()) return Unauthorized();
+        var job = await _db.CrawlerJobs
+            .AsNoTracking()
+            .Include(x => x.Category)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (job is null) return NotFound();
+        return new CrawlerWorkerSummaryDto(
+            job.Id,
+            job.Status.ToString().ToLowerInvariant(),
+            job.ImportedCount,
+            string.IsNullOrWhiteSpace(job.CategoryPath)
+                ? job.Category?.Name ?? "Удалённая категория"
+                : job.CategoryPath);
     }
 
     [HttpPost("{id:guid}/worker/heartbeat")]
@@ -475,6 +504,7 @@ public sealed class CrawlerJobsController : ControllerBase
 
 public sealed record CreateCrawlerJobRequest(string Url, int Pages, Guid CategoryId);
 public sealed record CrawlerJobListResult(IReadOnlyList<CrawlerJobDto> Items);
+public sealed record ClearCrawlerLogsResult(int DeletedCount);
 public sealed record CrawlerJobLogDto(Guid Id, DateTimeOffset CreatedAt, string Level, string Message);
 public sealed record CrawlerJobDto(
     Guid Id,
@@ -505,7 +535,14 @@ public sealed record CrawlerWorkerJobDto(
     int RequestedPages,
     Guid CategoryId,
     string CategoryName,
-    int ProcessedPages);
+    string CategoryPath,
+    int ProcessedPages,
+    int ProductsFound);
+public sealed record CrawlerWorkerSummaryDto(
+    Guid Id,
+    string Status,
+    int ImportedCount,
+    string CategoryPath);
 public sealed record CrawlerProgressRequest(
     int ProcessedPages,
     int ProductsFound,

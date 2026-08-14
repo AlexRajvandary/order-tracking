@@ -17,6 +17,30 @@
     "statusWeek": "Status changes in 7 days"
   },
   "recentOrders": "Recent orders",
+  "monitoring": {
+    "title": "VPS monitoring",
+    "description": "Server load and resource usage",
+    "back": "Back to dashboard",
+    "previous": "Previous period",
+    "next": "Next period",
+    "now": "Now",
+    "dragHint": "Drag a chart horizontally to move to the adjacent period.",
+    "loadError": "Could not load VPS statistics.",
+    "fields": {
+      "cpu": "CPU",
+      "memory": "Memory",
+      "disk": "Disk",
+      "io": "Disk I/O",
+      "traffic": "Network traffic"
+    },
+    "windows": {
+      "1h": "Last hour",
+      "6h": "Last 6 hours",
+      "24h": "Last 24 hours",
+      "7d": "Last 7 days",
+      "30d": "Last 30 days"
+    }
+  },
   "statusFilter": {
     "label": "Order statuses",
     "all": "All statuses",

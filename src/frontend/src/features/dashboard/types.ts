@@ -87,3 +87,22 @@ export type StorageMetrics = {
   productsDatabase: DatabaseMetrics
   minio: MinioMetrics
 }
+
+export type VpsStatsField = 'cpu' | 'disk' | 'io' | 'memory' | 'traffic'
+
+export type VpsStatsPoint = {
+  timestamp: number
+  value: number
+}
+
+export type VpsStatsSeries = {
+  name: string
+  color?: string | null
+  type?: string | null
+  data: VpsStatsPoint[]
+}
+
+export type VpsStats = {
+  series: VpsStatsSeries[]
+  subtitle: string
+}

@@ -244,6 +244,7 @@ export type CrawlerJob = {
 }
 
 export type CrawlerJobListResult = { items: CrawlerJob[] }
+export type ClearCrawlerLogsResult = { deletedCount: number }
 export type CreateCrawlerJobRequest = {
   url: string
   pages: number

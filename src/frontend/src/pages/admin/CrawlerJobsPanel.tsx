@@ -1,5 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, LoaderCircle, Plus, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  CheckCircle2,
+  CircleX,
+  ExternalLink,
+  LoaderCircle,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
@@ -8,7 +17,6 @@ import { ApiError } from '@/shared/api/client'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
-import { Card, CardContent } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Progress } from '@/shared/ui/progress'
@@ -19,6 +27,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/shared/ui/table'
 import { cn } from '@/shared/lib/utils'
 
 function categoryOptions(categories: Category[], depth = 0): Array<{ id: string; label: string }> {
@@ -43,15 +59,43 @@ function formatDate(value: string | null, locale: string) {
   }).format(new Date(value))
 }
 
-function JobCard({
+function JobStatus({ status }: { status: CrawlerJobStatus }) {
+  const { t } = useTranslation('products')
+  if (status === 'completed') {
+    return (
+      <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700 dark:text-emerald-400">
+        <CheckCircle2 className="size-4" />
+        {t('import.crawler.tableStatuses.completed')}
+      </span>
+    )
+  }
+  if (status === 'failed' || status === 'cancelled') {
+    return (
+      <span className="inline-flex items-center gap-1.5 font-medium text-destructive">
+        <CircleX className="size-4" />
+        {t('import.crawler.tableStatuses.interrupted')}
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 font-medium text-muted-foreground">
+      <LoaderCircle className="size-4 animate-spin" />
+      {t(`import.crawler.tableStatuses.${status}`)}
+    </span>
+  )
+}
+
+function JobDetails({
   job,
   locale,
   isCancelling,
+  onBack,
   onCancel,
 }: {
   job: CrawlerJob
   locale: string
   isCancelling: boolean
+  onBack: () => void
   onCancel: () => void
 }) {
   const { t } = useTranslation('products')
@@ -66,113 +110,122 @@ function JobCard({
       : t('import.crawler.finishedAt')
 
   return (
-    <Card size="sm">
-      <CardContent className="space-y-3 p-3">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0 space-y-1">
-            <div className="flex items-center gap-2">
-              <Badge variant={statusVariant(job.status)}>
-                {job.status === 'running' ? <LoaderCircle className="animate-spin" /> : null}
-                {t(`import.crawler.statuses.${job.status}`)}
-              </Badge>
-            </div>
-            <p className="text-sm font-medium">{job.categoryPath || job.categoryName}</p>
-          </div>
-          <a
-            href={job.url}
-            title={job.url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex max-w-full items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+    <div className="space-y-4 rounded-lg border p-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t('import.crawler.backToJobs')}
+            onClick={onBack}
           >
-            <span className="max-w-64 truncate">{job.url}</span>
-            <ExternalLink className="size-3" />
-          </a>
-        </div>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs">
-            <span>{t('import.crawler.progress')}</span>
-            <span className="tabular-nums">
-              {job.processedPages} / {job.requestedPages} · {job.progressPercent}%
-            </span>
-          </div>
-          <Progress value={job.progressPercent} className="h-2" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-          <span>{t('import.crawler.found')}: <b>{job.productsFound}</b></span>
-          <span>{t('import.inserted')}: <b>{job.importedCount}</b></span>
-          <span>{t('import.skipped')}: <b>{job.skippedCount}</b></span>
-          <span>{t('import.failed')}: <b>{job.failedCount}</b></span>
-        </div>
-
-        <dl className="grid gap-x-4 gap-y-2 border-t pt-3 text-xs sm:grid-cols-3">
-          <div>
-            <dt className="text-muted-foreground">{t('import.crawler.createdAt')}</dt>
-            <dd className="mt-0.5 font-medium tabular-nums">{formatDate(job.createdAt, locale)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">{completionLabel}</dt>
-            <dd className="mt-0.5 font-medium tabular-nums">
-              {hasFinished ? formatDate(job.completedAt, locale) : '—'}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">{pageLabel}</dt>
-            <dd className="mt-0.5 font-medium tabular-nums">
-              {job.lastPage > 0 ? `${job.lastPage} / ${job.requestedPages}` : '—'}
-            </dd>
-          </div>
-        </dl>
-
-        {job.lastError ? (
-          <Alert variant="destructive">
-            <AlertDescription>{job.lastError}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        {job.status === 'pending' || job.status === 'running' ? (
-          <div className="flex justify-end border-t pt-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isCancelling}
-              onClick={onCancel}
+            <ArrowLeft />
+          </Button>
+          <div className="min-w-0 space-y-1">
+            <p className="font-semibold">{job.categoryPath || job.categoryName}</p>
+            <a
+              href={job.url}
+              title={job.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex max-w-full items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
-              {isCancelling ? <LoaderCircle className="animate-spin" /> : <X />}
-              {isCancelling ? t('import.crawler.cancelling') : t('import.crawler.cancel')}
-            </Button>
+              <span className="max-w-96 truncate">{job.url}</span>
+              <ExternalLink className="size-3" />
+            </a>
           </div>
-        ) : null}
+        </div>
+        <Badge variant={statusVariant(job.status)}>
+          {job.status === 'running' || job.status === 'pending'
+            ? <LoaderCircle className="animate-spin" />
+            : null}
+          {t(`import.crawler.statuses.${job.status}`)}
+        </Badge>
+      </div>
 
-        <details className="group rounded-md border px-2.5 py-2">
-          <summary className="cursor-pointer select-none text-xs font-medium">
-            {t('import.crawler.logs')} ({job.logs.length})
-          </summary>
-          <div className="mt-2 max-h-48 space-y-1 overflow-y-auto font-mono text-[11px]">
-            {job.logs.length > 0 ? job.logs.map((line) => (
-              <p
-                key={line.id}
-                className={cn(
-                  'break-words',
-                  line.level === 'error' && 'text-destructive',
-                  line.level === 'warning' && 'text-amber-700',
-                )}
-              >
-                <span className="text-muted-foreground">
-                  {formatDate(line.createdAt, locale)}
-                </span>{' '}
-                {line.message}
-              </p>
-            )) : (
-              <p className="text-muted-foreground">{t('import.crawler.noLogs')}</p>
-            )}
-          </div>
-        </details>
-      </CardContent>
-    </Card>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-xs">
+          <span>{t('import.crawler.progress')}</span>
+          <span className="tabular-nums">
+            {job.processedPages} / {job.requestedPages} · {job.progressPercent}%
+          </span>
+        </div>
+        <Progress value={job.progressPercent} className="h-2" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+        <span>{t('import.crawler.found')}: <b>{job.productsFound}</b></span>
+        <span>{t('import.inserted')}: <b>{job.importedCount}</b></span>
+        <span>{t('import.skipped')}: <b>{job.skippedCount}</b></span>
+        <span>{t('import.failed')}: <b>{job.failedCount}</b></span>
+      </div>
+
+      <dl className="grid gap-x-4 gap-y-2 border-t pt-3 text-xs sm:grid-cols-3">
+        <div>
+          <dt className="text-muted-foreground">{t('import.crawler.createdAt')}</dt>
+          <dd className="mt-0.5 font-medium tabular-nums">{formatDate(job.createdAt, locale)}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">{completionLabel}</dt>
+          <dd className="mt-0.5 font-medium tabular-nums">
+            {hasFinished ? formatDate(job.completedAt, locale) : '—'}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">{pageLabel}</dt>
+          <dd className="mt-0.5 font-medium tabular-nums">
+            {job.lastPage > 0 ? `${job.lastPage} / ${job.requestedPages}` : '—'}
+          </dd>
+        </div>
+      </dl>
+
+      {job.lastError ? (
+        <Alert variant="destructive">
+          <AlertDescription>{job.lastError}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {job.status === 'pending' || job.status === 'running' ? (
+        <div className="flex justify-end border-t pt-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isCancelling}
+            onClick={onCancel}
+          >
+            {isCancelling ? <LoaderCircle className="animate-spin" /> : <X />}
+            {isCancelling ? t('import.crawler.cancelling') : t('import.crawler.cancel')}
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="rounded-md border px-2.5 py-2">
+        <p className="text-xs font-medium">
+          {t('import.crawler.logs')} ({job.logs.length})
+        </p>
+        <div className="mt-2 max-h-56 space-y-1 overflow-y-auto font-mono text-[11px]">
+          {job.logs.length > 0 ? job.logs.map((line) => (
+            <p
+              key={line.id}
+              className={cn(
+                'break-words',
+                line.level === 'error' && 'text-destructive',
+                line.level === 'warning' && 'text-amber-700',
+              )}
+            >
+              <span className="text-muted-foreground">
+                {formatDate(line.createdAt, locale)}
+              </span>{' '}
+              {line.message}
+            </p>
+          )) : (
+            <p className="text-muted-foreground">{t('import.crawler.noLogs')}</p>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -182,12 +235,19 @@ export function CrawlerJobsPanel({ categories }: { categories: Category[] }) {
   const [url, setUrl] = useState('')
   const [pages, setPages] = useState('10')
   const [categoryId, setCategoryId] = useState('')
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const options = useMemo(() => categoryOptions(categories), [categories])
 
   const jobsQuery = useQuery({
     queryKey: ['crawler-jobs'],
     queryFn: ({ signal }) => productsApi.listCrawlerJobs(signal),
+    refetchInterval: 3000,
+  })
+  const jobQuery = useQuery({
+    queryKey: ['crawler-job', selectedJobId],
+    queryFn: ({ signal }) => productsApi.getCrawlerJob(selectedJobId!, signal),
+    enabled: selectedJobId !== null,
     refetchInterval: 3000,
   })
   const createMutation = useMutation({
@@ -209,7 +269,10 @@ export function CrawlerJobsPanel({ categories }: { categories: Category[] }) {
     mutationFn: productsApi.cancelCrawlerJob,
     onSuccess: async () => {
       setError(null)
-      await queryClient.invalidateQueries({ queryKey: ['crawler-jobs'] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['crawler-jobs'] }),
+        queryClient.invalidateQueries({ queryKey: ['crawler-job', selectedJobId] }),
+      ])
     },
     onError: (mutationError) => {
       setError(
@@ -218,6 +281,17 @@ export function CrawlerJobsPanel({ categories }: { categories: Category[] }) {
           : t('import.crawler.cancelError'),
       )
     },
+  })
+  const clearLogsMutation = useMutation({
+    mutationFn: productsApi.clearCrawlerLogs,
+    onSuccess: async () => {
+      setError(null)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['crawler-jobs'] }),
+        queryClient.invalidateQueries({ queryKey: ['crawler-job'] }),
+      ])
+    },
+    onError: () => setError(t('import.crawler.clearLogsError')),
   })
 
   const submit = () => {
@@ -230,6 +304,8 @@ export function CrawlerJobsPanel({ categories }: { categories: Category[] }) {
     createMutation.mutate({ url: url.trim(), pages: pageCount, categoryId })
   }
 
+  const selectedJob = jobQuery.data
+    ?? jobsQuery.data?.items.find((job) => job.id === selectedJobId)
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">{t('import.crawler.description')}</p>
@@ -285,23 +361,94 @@ export function CrawlerJobsPanel({ categories }: { categories: Category[] }) {
 
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium">{t('import.crawler.jobs')}</p>
-        {jobsQuery.isFetching ? <LoaderCircle className="size-4 animate-spin text-muted-foreground" /> : null}
+        <div className="flex items-center gap-2">
+          {jobsQuery.isFetching || jobQuery.isFetching
+            ? <LoaderCircle className="size-4 animate-spin text-muted-foreground" />
+            : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={clearLogsMutation.isPending}
+            onClick={() => {
+              if (window.confirm(t('import.crawler.clearLogsConfirm'))) {
+                clearLogsMutation.mutate()
+              }
+            }}
+          >
+            {clearLogsMutation.isPending
+              ? <LoaderCircle className="animate-spin" />
+              : <Trash2 />}
+            {t('import.crawler.clearLogs')}
+          </Button>
+        </div>
       </div>
-      {jobsQuery.isError ? (
+
+      {selectedJobId !== null ? (
+        jobQuery.isError || !selectedJob ? (
+          <Alert variant="destructive">
+            <AlertDescription>{t('import.crawler.detailsError')}</AlertDescription>
+          </Alert>
+        ) : (
+          <JobDetails
+            job={selectedJob}
+            locale={i18n.language}
+            isCancelling={cancelMutation.isPending && cancelMutation.variables === selectedJob.id}
+            onBack={() => setSelectedJobId(null)}
+            onCancel={() => cancelMutation.mutate(selectedJob.id)}
+          />
+        )
+      ) : jobsQuery.isError ? (
         <Alert variant="destructive">
           <AlertDescription>{t('import.crawler.listError')}</AlertDescription>
         </Alert>
       ) : jobsQuery.data?.items.length ? (
-        <div className="space-y-2">
-          {jobsQuery.data.items.map((job) => (
-            <JobCard
-              key={job.id}
-              job={job}
-              locale={i18n.language}
-              isCancelling={cancelMutation.isPending && cancelMutation.variables === job.id}
-              onCancel={() => cancelMutation.mutate(job.id)}
-            />
-          ))}
+        <div className="rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('import.crawler.table.status')}</TableHead>
+                <TableHead>{t('import.crawler.table.category')}</TableHead>
+                <TableHead>{t('import.crawler.table.created')}</TableHead>
+                <TableHead className="text-right">{t('import.crawler.table.progress')}</TableHead>
+                <TableHead className="text-right">{t('import.crawler.table.page')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {jobsQuery.data.items.map((job) => (
+                <TableRow
+                  key={job.id}
+                  role="button"
+                  tabIndex={0}
+                  className="cursor-pointer"
+                  onClick={() => setSelectedJobId(job.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      setSelectedJobId(job.id)
+                    }
+                  }}
+                >
+                  <TableCell><JobStatus status={job.status} /></TableCell>
+                  <TableCell className="max-w-64 truncate font-medium">
+                    {job.categoryPath || job.categoryName}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground tabular-nums">
+                    {formatDate(job.createdAt, i18n.language)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium tabular-nums">
+                    {job.progressPercent}%
+                  </TableCell>
+                  <TableCell className={cn(
+                    'text-right tabular-nums',
+                    (job.status === 'failed' || job.status === 'cancelled') && 'font-medium text-destructive',
+                  )}>
+                    {job.lastPage > 0 ? `${job.lastPage} / ${job.requestedPages}` : '—'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       ) : (
         <div className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">

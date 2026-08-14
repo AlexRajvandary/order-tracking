@@ -5,6 +5,7 @@ import type {
   BulkUpdateProductsResult,
   Category,
   CategoryListResult,
+  ClearCrawlerLogsResult,
   CrawlerJob,
   CrawlerJobListResult,
   CreateCategoryRequest,
@@ -114,6 +115,19 @@ export function listCrawlerJobs(signal?: AbortSignal) {
   return authorizedJsonFromUrl<CrawlerJobListResult>(
     `${PRODUCTS_API_BASE}/crawler-jobs?limit=50`,
     { signal },
+  )
+}
+
+export function getCrawlerJob(id: string, signal?: AbortSignal) {
+  return authorizedJsonFromUrl<CrawlerJob>(`${PRODUCTS_API_BASE}/crawler-jobs/${id}`, {
+    signal,
+  })
+}
+
+export function clearCrawlerLogs() {
+  return authorizedJsonFromUrl<ClearCrawlerLogsResult>(
+    `${PRODUCTS_API_BASE}/crawler-jobs/logs`,
+    { method: 'DELETE' },
   )
 }
 

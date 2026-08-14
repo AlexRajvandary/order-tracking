@@ -155,6 +155,30 @@ public sealed class TelegramOutboxProcessorHostedService : BackgroundService
                     cancellationToken);
                 break;
             }
+            case TelegramOutboxKinds.CrawlerJobStarted:
+            {
+                var payload = JsonSerializer.Deserialize<TelegramCrawlerJobStartedPayload>(
+                    message.PayloadJson,
+                    JsonOptions)
+                    ?? throw new InvalidOperationException("Invalid crawler_job_started payload");
+                await bot.SendCrawlerJobStartedNotifyAsync(
+                    payload.Url,
+                    payload.Category,
+                    cancellationToken);
+                break;
+            }
+            case TelegramOutboxKinds.CrawlerJobFinished:
+            {
+                var payload = JsonSerializer.Deserialize<TelegramCrawlerJobFinishedPayload>(
+                    message.PayloadJson,
+                    JsonOptions)
+                    ?? throw new InvalidOperationException("Invalid crawler_job_finished payload");
+                await bot.SendCrawlerJobFinishedNotifyAsync(
+                    payload.InsertedCount,
+                    payload.Category,
+                    cancellationToken);
+                break;
+            }
             default:
                 throw new InvalidOperationException($"Unknown outbox kind '{message.Kind}'");
         }

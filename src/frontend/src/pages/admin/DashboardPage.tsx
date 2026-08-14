@@ -104,7 +104,7 @@ function formatCount(value: number, locale: string) {
   return new Intl.NumberFormat(locale).format(value)
 }
 
-function StorageCard() {
+function StorageCard({ onClick }: { onClick: () => void }) {
   const { t, i18n } = useTranslation('dashboard')
   const { data, isLoading, isError } = useStorageMetrics()
   const unavailable = t('metrics.storageUnavailable')
@@ -135,7 +135,18 @@ function StorageCard() {
       : null
 
   return (
-    <Card className={cn('flex gap-0 overflow-hidden p-3', STAT_CARD_SIZE)}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'block rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+        STAT_CARD_SIZE,
+      )}
+    >
+    <Card className={cn(
+      'flex gap-0 overflow-hidden p-3 transition-colors hover:border-primary/40 hover:bg-muted/50',
+      STAT_CARD_SIZE,
+    )}>
       <CardContent className="flex h-full flex-col p-0">
         <div className="flex items-center gap-1.5">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground [&>svg]:size-3.5">
@@ -182,6 +193,7 @@ function StorageCard() {
         )}
       </CardContent>
     </Card>
+    </button>
   )
 }
 
@@ -302,7 +314,7 @@ export function DashboardPage() {
             </CarouselItem>
           ) : null}
           <CarouselItem className="basis-auto">
-            <StorageCard />
+            <StorageCard onClick={() => navigate('/admin/monitoring')} />
           </CarouselItem>
           <CarouselItem className="basis-auto">
             <StatCard
