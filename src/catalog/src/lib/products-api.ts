@@ -36,6 +36,7 @@ export type ApiProductListResult = {
 };
 
 const DEFAULT_PAGE_SIZE = 10;
+export const PRODUCTS_PAGE_SIZE = 50;
 
 function productsApiBaseUrl(): string {
   return (
@@ -263,5 +264,3 @@ export function fetchBagsCatalogPage(options?: Omit<
     rootCategoryName: "Сумки",
   });
 }
-
-export { DEFAULT_PAGE_SIZE as PRODUCTS_PAGE_SIZE };

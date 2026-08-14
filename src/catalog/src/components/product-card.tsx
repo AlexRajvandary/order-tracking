@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Card, CardTitle } from "@/components/ui/card";
-import { AddToCartButton } from "@/components/add-to-cart-button";
 import { FavoriteButton } from "@/components/favorite-button";
 import type { CatalogProduct } from "@/lib/catalog-products";
 import { formatPrice } from "@/lib/products";
@@ -49,12 +48,6 @@ export function ProductCard({ product }: ProductCardProps) {
       </Link>
 
       <FavoriteButton productId={product.id} />
-      <div className="mt-auto px-3 pb-3">
-        <AddToCartButton
-          product={product}
-          className="h-11 w-full rounded-lg border border-solid border-[#D1D5DB] bg-white text-[#111827] shadow-none hover:border-[#111827] hover:bg-[#111827] hover:text-white hover:-translate-y-px"
-        />
-      </div>
     </Card>
   );
 }
