@@ -5,7 +5,10 @@ import type {
   BulkUpdateProductsResult,
   Category,
   CategoryListResult,
+  CrawlerJob,
+  CrawlerJobListResult,
   CreateCategoryRequest,
+  CreateCrawlerJobRequest,
   DeleteCategoryResult,
   ImportProductsRequest,
   ImportProductsResult,
@@ -102,6 +105,20 @@ export function patchProduct(id: string, body: PatchProductRequest) {
 
 export function importProducts(body: ImportProductsRequest) {
   return authorizedJsonFromUrl<ImportProductsResult>(`${PRODUCTS_API_BASE}/import`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+export function listCrawlerJobs(signal?: AbortSignal) {
+  return authorizedJsonFromUrl<CrawlerJobListResult>(
+    `${PRODUCTS_API_BASE}/crawler-jobs?limit=50`,
+    { signal },
+  )
+}
+
+export function createCrawlerJob(body: CreateCrawlerJobRequest) {
+  return authorizedJsonFromUrl<CrawlerJob>(`${PRODUCTS_API_BASE}/crawler-jobs`, {
     method: 'POST',
     body: JSON.stringify(body),
   })

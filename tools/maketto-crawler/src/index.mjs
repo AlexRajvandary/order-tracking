@@ -6,19 +6,24 @@ import { chromium } from 'playwright'
 
 const directory = path.dirname(fileURLToPath(import.meta.url))
 const toolRoot = path.resolve(directory, '..')
-const processStartedAt = Date.now()
+let processStartedAt = Date.now()
 let currentActivity = 'Запуск'
+let crawlerLogSink = null
 
 function elapsedSeconds() {
   return ((Date.now() - processStartedAt) / 1000).toFixed(1)
 }
 
 function log(message) {
-  console.log(`[${elapsedSeconds()} с] ${message}`)
+  const line = `[${elapsedSeconds()} с] ${message}`
+  console.log(line)
+  crawlerLogSink?.({ level: 'info', message, line })
 }
 
 function logError(message) {
-  console.error(`[${elapsedSeconds()} с] ${message}`)
+  const line = `[${elapsedSeconds()} с] ${message}`
+  console.error(line)
+  crawlerLogSink?.({ level: 'error', message, line })
 }
 
 function setActivity(message) {
@@ -405,7 +410,10 @@ async function clickNextPage(page, pageNumber, timeout, headless) {
   throw new Error(`После клика по #next-arrow Maketto не вернул страницу ${expectedPage}.${details}`)
 }
 
-async function crawl(options) {
+export async function crawl(options) {
+  processStartedAt = Date.now()
+  currentActivity = 'Запуск'
+  crawlerLogSink = typeof options.onLog === 'function' ? options.onLog : null
   const productsBySku = new Map()
   const errors = []
   let scrapedPages = 0
@@ -434,6 +442,7 @@ async function crawl(options) {
   })
 
   const persist = (incomplete = false, stopReason = '') => {
+    if (options.persistOutput === false) return Promise.resolve()
     const output = makeOutput(incomplete, stopReason)
     saveQueue = saveQueue.catch(() => {}).then(() => saveOutput(options.output, output))
     return saveQueue
@@ -519,9 +528,18 @@ async function crawl(options) {
       const pageNumber = Number(listing.pageInfo?.page) || index + 1
       currentPage = pageNumber
       setActivity(`Обрабатываем страницу ${pageNumber}`)
+      if (typeof options.onPageStart === 'function') {
+        await options.onPageStart({
+          pageNumber,
+          scrapedPages,
+          requestedPages: options.pages,
+          totalProducts: productsBySku.size,
+        })
+      }
       const detectedCategory = categoryFromListing(listing)
       const categoryName = options.category || detectedCategory
       let added = 0
+      const newProducts = []
 
       for (const rawProduct of listing.products ?? []) {
         const product = toImportProduct(rawProduct, {
@@ -533,13 +551,25 @@ async function crawl(options) {
         if (!product) continue
         const existed = productsBySku.has(product.sku)
         productsBySku.set(product.sku, product)
-        if (!existed) added += 1
+        if (!existed) {
+          added += 1
+          newProducts.push(product)
+        }
       }
 
       scrapedPages += 1
       setActivity(`Сохраняем страницу ${pageNumber}`)
       await persist()
       log(`Страница ${pageNumber}: найдено ${listing.products?.length ?? 0}, новых ${added}, всего ${productsBySku.size}`)
+      if (typeof options.onPage === 'function') {
+        await options.onPage({
+          pageNumber,
+          scrapedPages,
+          requestedPages: options.pages,
+          newProducts,
+          totalProducts: productsBySku.size,
+        })
+      }
 
       if (index === options.pages - 1) break
       if (pageSize && totalResults && pageNumber * pageSize >= totalResults) {
@@ -568,6 +598,7 @@ async function crawl(options) {
     setActivity('Обход завершён')
     log(`Готово. Страниц: ${scrapedPages}, товаров: ${productsBySku.size}`)
     log(`JSON: ${options.output}`)
+    return makeOutput()
   } catch (error) {
     if (stopping) return
     const message = error instanceof Error ? error.message : String(error)
@@ -581,13 +612,19 @@ async function crawl(options) {
     process.off('SIGINT', handleSigint)
     process.off('SIGTERM', handleSigterm)
     await browser?.close().catch(() => {})
+    crawlerLogSink = null
   }
 }
 
-try {
-  const options = parseArgs(process.argv.slice(2))
-  await crawl(options)
-} catch (error) {
-  logError(`Ошибка: ${error instanceof Error ? error.message : String(error)}`)
-  process.exitCode = 1
+const isDirectRun = process.argv[1]
+  && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (isDirectRun) {
+  try {
+    const options = parseArgs(process.argv.slice(2))
+    await crawl(options)
+  } catch (error) {
+    logError(`Ошибка: ${error instanceof Error ? error.message : String(error)}`)
+    process.exitCode = 1
+  }
 }

@@ -68,6 +68,21 @@ services:
     expose:
       - "8080"
 
+  crawler-worker:
+    image: ghcr.io/alexrajvandary/order-tracking-crawler:latest
+    container_name: products-crawler-worker
+    restart: unless-stopped
+    depends_on:
+      products-api:
+        condition: service_started
+    environment:
+      PRODUCTS_API_URL: http://products-api:8080/api/products
+      CRAWLER_API_KEY: ${CRAWLER_API_KEY}
+      CRAWLER_POLL_INTERVAL_MS: ${CRAWLER_POLL_INTERVAL_MS:-5000}
+      CRAWLER_BATCH_SIZE: ${CRAWLER_BATCH_SIZE:-50}
+      CRAWLER_PAGE_DELAY_MS: ${CRAWLER_PAGE_DELAY_MS:-1000}
+      CRAWLER_PAGE_TIMEOUT_MS: ${CRAWLER_PAGE_TIMEOUT_MS:-60000}
+
   catalog:
     image: ghcr.io/alexrajvandary/order-tracking-catalog:latest
     container_name: order-tracking-catalog
@@ -108,6 +123,7 @@ services:
       Jwt__Secret: ${JWT_SECRET}
       Jwt__Issuer: ordertracking
       Jwt__Audience: ordertracking-admin
+      Crawler__ApiKey: ${CRAWLER_API_KEY}
       Cors__Origins__0: ${APP_BASE_URL}
     expose:
       - "8080"

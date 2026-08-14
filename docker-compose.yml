@@ -79,6 +79,23 @@ services:
       retries: 3
       start_period: 40s
 
+  crawler-worker:
+    build:
+      context: .
+      dockerfile: docker/crawler/Dockerfile
+    container_name: products-crawler-worker
+    restart: unless-stopped
+    depends_on:
+      products-api:
+        condition: service_healthy
+    environment:
+      PRODUCTS_API_URL: http://products-api:8080/api/products
+      CRAWLER_API_KEY: ${CRAWLER_API_KEY:-dev-crawler-key-change-me}
+      CRAWLER_POLL_INTERVAL_MS: ${CRAWLER_POLL_INTERVAL_MS:-5000}
+      CRAWLER_BATCH_SIZE: ${CRAWLER_BATCH_SIZE:-50}
+      CRAWLER_PAGE_DELAY_MS: ${CRAWLER_PAGE_DELAY_MS:-1000}
+      CRAWLER_PAGE_TIMEOUT_MS: ${CRAWLER_PAGE_TIMEOUT_MS:-60000}
+
   products-postgres:
     image: postgres:16-alpine
     container_name: products-db
@@ -112,6 +129,7 @@ services:
       Jwt__Secret: ${JWT_SECRET:-CHANGE_ME_IN_PRODUCTION_MIN_32_CHARS_LONG}
       Jwt__Issuer: ${JWT_ISSUER:-ordertracking}
       Jwt__Audience: ${JWT_AUDIENCE:-ordertracking-admin}
+      Crawler__ApiKey: ${CRAWLER_API_KEY:-dev-crawler-key-change-me}
       Cors__Origins__0: ${CORS_ORIGIN:-http://localhost:5173}
       Cors__Origins__1: http://localhost:3001
     ports:

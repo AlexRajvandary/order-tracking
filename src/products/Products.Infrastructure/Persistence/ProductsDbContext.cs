@@ -14,6 +14,8 @@ public sealed class ProductsDbContext : DbContext
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Brand> Brands => Set<Brand>();
     public DbSet<Shop> Shops => Set<Shop>();
+    public DbSet<CrawlerJob> CrawlerJobs => Set<CrawlerJob>();
+    public DbSet<CrawlerJobLog> CrawlerJobLogs => Set<CrawlerJobLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

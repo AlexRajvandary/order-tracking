@@ -1,4 +1,4 @@
-import { ExternalLink, FileCode2, FileJson, ImageOff, Upload } from 'lucide-react'
+import { ExternalLink, FileCode2, FileJson, ImageOff, ListTodo, Upload } from 'lucide-react'
 import { type ChangeEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
@@ -43,6 +43,7 @@ import {
 import { Switch } from '@/shared/ui/switch'
 import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import { Textarea } from '@/shared/ui/textarea'
+import { CrawlerJobsPanel } from './CrawlerJobsPanel'
 
 const IMPORT_BATCH_SIZE = 100
 const CATEGORY_FROM_SOURCE = '__category_from_source__'
@@ -69,7 +70,7 @@ type ImportSummary = Omit<ImportProductsResult, 'total' | 'issues'> & {
   issues: ImportProductIssue[]
 }
 
-type ImportSource = 'json' | 'html'
+type ImportSource = 'json' | 'html' | 'crawler'
 
 type CategoryOption = {
   id: string
@@ -361,9 +362,15 @@ export function ProductsImportDialog({
               <TabsTrigger value="html" disabled={isImporting}>
                 <FileCode2 />{t('import.sources.html')}
               </TabsTrigger>
+              <TabsTrigger value="crawler" disabled={isImporting}>
+                <ListTodo />{t('import.sources.crawler')}
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
+          {source === 'crawler' ? (
+            <CrawlerJobsPanel categories={categories} />
+          ) : <>
           <p className="text-sm text-muted-foreground">
             {t(source === 'json' ? 'import.description' : 'import.htmlDescription')}
           </p>
@@ -655,6 +662,7 @@ export function ProductsImportDialog({
               </div>
             </div>
           ) : null}
+          </>}
         </div>
 
         <DialogFooter>
@@ -666,14 +674,16 @@ export function ProductsImportDialog({
           >
             {finished ? t('close', { ns: 'common' }) : t('cancel', { ns: 'common' })}
           </Button>
-          <Button
-            type="button"
-            disabled={isImporting || input.trim().length === 0}
-            onClick={() => void startImport()}
-          >
-            <Upload />
-            {isImporting ? t('import.importing') : t('import.submit')}
-          </Button>
+          {source !== 'crawler' ? (
+            <Button
+              type="button"
+              disabled={isImporting || input.trim().length === 0}
+              onClick={() => void startImport()}
+            >
+              <Upload />
+              {isImporting ? t('import.importing') : t('import.submit')}
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>

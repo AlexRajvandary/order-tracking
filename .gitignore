@@ -35,6 +35,7 @@ coverage/
 *.tsbuildinfo
 .next/
 out/
+.dotnet-cli/
 src/frontend/src/generated/*.json
 
 # Local ops dumps / VPS backups (never commit production data)

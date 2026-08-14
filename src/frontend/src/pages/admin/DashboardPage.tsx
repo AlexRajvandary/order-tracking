@@ -36,6 +36,8 @@ const ORDER_STATUSES: OrderStatus[] = [
   'Cancelled',
 ]
 
+const STAT_CARD_SIZE = 'h-[170px] w-[170px]'
+
 function isOrderStatus(value: string): value is OrderStatus {
   return ORDER_STATUSES.includes(value as OrderStatus)
 }
@@ -56,11 +58,15 @@ function StatCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'block h-[150px] w-[170px] rounded-xl text-left',
+        'block rounded-xl text-left',
+        STAT_CARD_SIZE,
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
       )}
     >
-      <Card className="flex h-[150px] w-[170px] gap-0 p-3 transition-colors hover:border-primary/40 hover:bg-muted/50 sm:p-4">
+      <Card className={cn(
+        'flex gap-0 p-3 transition-colors hover:border-primary/40 hover:bg-muted/50 sm:p-4',
+        STAT_CARD_SIZE,
+      )}>
         <CardContent className="flex h-full flex-col justify-between p-0">
           <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground sm:size-9 [&>svg]:size-4 sm:[&>svg]:size-5">
             {icon}
@@ -129,7 +135,7 @@ function StorageCard() {
       : null
 
   return (
-    <Card className="flex h-auto min-h-[150px] w-[170px] gap-0 overflow-hidden p-3">
+    <Card className={cn('flex gap-0 overflow-hidden p-3', STAT_CARD_SIZE)}>
       <CardContent className="flex h-full flex-col p-0">
         <div className="flex items-center gap-1.5">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground [&>svg]:size-3.5">

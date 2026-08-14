@@ -149,3 +149,45 @@ public sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
         builder.HasQueryFilter(x => !x.IsDeleted);
     }
 }
+
+public sealed class CrawlerJobConfiguration : IEntityTypeConfiguration<CrawlerJob>
+{
+    public void Configure(EntityTypeBuilder<CrawlerJob> builder)
+    {
+        builder.ToTable("crawler_jobs");
+        builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.Url).HasMaxLength(2000).IsRequired();
+        builder.Property(x => x.CategoryPath).HasMaxLength(1000).IsRequired();
+        builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(24).IsRequired();
+        builder.Property(x => x.CreatedBy).HasMaxLength(100);
+        builder.Property(x => x.LastError).HasMaxLength(4000);
+
+        builder.HasOne(x => x.Category)
+            .WithMany()
+            .HasForeignKey(x => x.CategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(x => x.Logs)
+            .WithOne(x => x.Job)
+            .HasForeignKey(x => x.JobId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(x => x.CategoryId);
+        builder.HasIndex(x => new { x.Status, x.CreatedAt });
+        builder.HasIndex(x => x.HeartbeatAt);
+        builder.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
+public sealed class CrawlerJobLogConfiguration : IEntityTypeConfiguration<CrawlerJobLog>
+{
+    public void Configure(EntityTypeBuilder<CrawlerJobLog> builder)
+    {
+        builder.ToTable("crawler_job_logs");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Level).HasMaxLength(16).IsRequired();
+        builder.Property(x => x.Message).HasMaxLength(2000).IsRequired();
+        builder.HasIndex(x => new { x.JobId, x.CreatedAt });
+    }
+}

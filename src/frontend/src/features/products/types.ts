@@ -209,6 +209,47 @@ export type ImportProductsResult = {
   issues: ImportProductIssue[]
 }
 
+export type CrawlerJobStatus = 'pending' | 'running' | 'completed' | 'failed'
+
+export type CrawlerJobLog = {
+  id: string
+  createdAt: string
+  level: 'info' | 'warning' | 'error' | string
+  message: string
+}
+
+export type CrawlerJob = {
+  id: string
+  url: string
+  requestedPages: number
+  categoryId: string
+  categoryName: string
+  categoryPath: string
+  status: CrawlerJobStatus
+  processedPages: number
+  lastPage: number
+  progressPercent: number
+  productsFound: number
+  importedCount: number
+  skippedCount: number
+  failedCount: number
+  attemptCount: number
+  createdBy: string | null
+  lastError: string | null
+  createdAt: string
+  startedAt: string | null
+  completedAt: string | null
+  heartbeatAt: string | null
+  logs: CrawlerJobLog[]
+}
+
+export type CrawlerJobListResult = { items: CrawlerJob[] }
+export type CreateCrawlerJobRequest = {
+  url: string
+  pages: number
+  categoryId: string
+}
+
 export type NotifyProductImportRequest = {
   importId: string
   insertedCount: number

@@ -138,6 +138,49 @@ namespace Products.Infrastructure.Persistence.Migrations
                     b.ToTable("categories", (string)null);
                 });
 
+            modelBuilder.Entity("Products.Domain.Entities.CrawlerJob", b =>
+                {
+                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uuid");
+                    b.Property<int>("AttemptCount").HasColumnType("integer");
+                    b.Property<Guid>("CategoryId").HasColumnType("uuid");
+                    b.Property<string>("CategoryPath").IsRequired().HasMaxLength(1000).HasColumnType("character varying(1000)");
+                    b.Property<DateTimeOffset?>("CompletedAt").HasColumnType("timestamp with time zone");
+                    b.Property<DateTimeOffset>("CreatedAt").HasColumnType("timestamp with time zone");
+                    b.Property<string>("CreatedBy").HasMaxLength(100).HasColumnType("character varying(100)");
+                    b.Property<DateTimeOffset?>("DeletedAt").HasColumnType("timestamp with time zone");
+                    b.Property<int>("FailedCount").HasColumnType("integer");
+                    b.Property<DateTimeOffset?>("HeartbeatAt").HasColumnType("timestamp with time zone");
+                    b.Property<int>("ImportedCount").HasColumnType("integer");
+                    b.Property<bool>("IsDeleted").HasColumnType("boolean");
+                    b.Property<int>("LastPage").HasColumnType("integer");
+                    b.Property<string>("LastError").HasMaxLength(4000).HasColumnType("character varying(4000)");
+                    b.Property<int>("ProcessedPages").HasColumnType("integer");
+                    b.Property<int>("ProductsFound").HasColumnType("integer");
+                    b.Property<int>("RequestedPages").HasColumnType("integer");
+                    b.Property<int>("SkippedCount").HasColumnType("integer");
+                    b.Property<DateTimeOffset?>("StartedAt").HasColumnType("timestamp with time zone");
+                    b.Property<string>("Status").IsRequired().HasMaxLength(24).HasColumnType("character varying(24)");
+                    b.Property<DateTimeOffset?>("UpdatedAt").HasColumnType("timestamp with time zone");
+                    b.Property<string>("Url").IsRequired().HasMaxLength(2000).HasColumnType("character varying(2000)");
+                    b.HasKey("Id");
+                    b.HasIndex("CategoryId");
+                    b.HasIndex("HeartbeatAt");
+                    b.HasIndex("Status", "CreatedAt");
+                    b.ToTable("crawler_jobs", (string)null);
+                });
+
+            modelBuilder.Entity("Products.Domain.Entities.CrawlerJobLog", b =>
+                {
+                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uuid");
+                    b.Property<DateTimeOffset>("CreatedAt").HasColumnType("timestamp with time zone");
+                    b.Property<Guid>("JobId").HasColumnType("uuid");
+                    b.Property<string>("Level").IsRequired().HasMaxLength(16).HasColumnType("character varying(16)");
+                    b.Property<string>("Message").IsRequired().HasMaxLength(2000).HasColumnType("character varying(2000)");
+                    b.HasKey("Id");
+                    b.HasIndex("JobId", "CreatedAt");
+                    b.ToTable("crawler_job_logs", (string)null);
+                });
+
             modelBuilder.Entity("Products.Domain.Entities.Shop", b =>
                 {
                     b.Property<Guid>("Id")
@@ -345,6 +388,26 @@ namespace Products.Infrastructure.Persistence.Migrations
                     b.Navigation("Parent");
                 });
 
+            modelBuilder.Entity("Products.Domain.Entities.CrawlerJob", b =>
+                {
+                    b.HasOne("Products.Domain.Entities.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                    b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("Products.Domain.Entities.CrawlerJobLog", b =>
+                {
+                    b.HasOne("Products.Domain.Entities.CrawlerJob", "Job")
+                        .WithMany("Logs")
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                    b.Navigation("Job");
+                });
+
             modelBuilder.Entity("Products.Domain.Entities.Product", b =>
                 {
                     b.HasOne("Products.Domain.Entities.Brand", "BrandEntity")
@@ -372,6 +435,11 @@ namespace Products.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Products.Domain.Entities.Brand", b =>
                 {
                     b.Navigation("Products");
+                });
+
+            modelBuilder.Entity("Products.Domain.Entities.CrawlerJob", b =>
+                {
+                    b.Navigation("Logs");
                 });
 
             modelBuilder.Entity("Products.Domain.Entities.Shop", b =>

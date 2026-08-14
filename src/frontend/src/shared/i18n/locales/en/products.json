@@ -57,7 +57,36 @@
     "htmlDescription": "Paste catalog HTML or choose a file, then select the matching existing parser.",
     "sources": {
       "json": "JSON",
-      "html": "HTML"
+      "html": "HTML",
+      "crawler": "Crawler jobs"
+    },
+    "crawler": {
+      "description": "Queue Maketto.jp catalog jobs. The server crawler processes them in order and imports products in batches into the selected category.",
+      "url": "Catalog URL",
+      "pages": "Pages",
+      "category": "Product category",
+      "chooseCategory": "Choose a category",
+      "add": "Add job",
+      "jobs": "Job queue",
+        "progress": "Progress",
+        "found": "Found",
+        "createdAt": "Created",
+        "finishedAt": "Completed",
+        "interruptedAt": "Interrupted",
+        "currentPage": "Current page",
+        "finalPage": "Last page",
+        "logs": "Logs",
+      "noLogs": "No logs yet",
+      "empty": "No jobs yet",
+      "validationError": "Enter a Maketto.jp URL, 1 to 1000 pages, and a category.",
+      "createError": "Could not create the job.",
+      "listError": "Could not load crawler jobs.",
+      "statuses": {
+        "pending": "Pending",
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed"
+      }
     },
     "parserLabel": "HTML parser",
     "parsers": {

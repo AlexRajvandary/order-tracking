@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.mjs",
+    "worker": "node src/worker.mjs",
     "install-browser": "playwright install chromium"
   },
   "dependencies": {
-    "playwright": "^1.51.1"
+    "playwright": "1.62.1"
   }
 }
