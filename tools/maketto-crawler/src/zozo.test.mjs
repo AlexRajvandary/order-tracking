@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { parseZozoNextData } from './zozo.mjs'
+import { buildZozoPageUrl, parseZozoNextData } from './zozo.mjs'
+
+test('buildZozoPageUrl normalizes the category path and preserves filters', () => {
+  assert.equal(
+    buildZozoPageUrl('https://zozo.jp/category/skirt?sex=women', 3),
+    'https://zozo.jp/category/skirt/?sex=women&pno=3',
+  )
+})
 
 test('parseZozoNextData maps catalog products and paging', () => {
   const result = parseZozoNextData(JSON.stringify({

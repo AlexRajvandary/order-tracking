@@ -120,12 +120,14 @@
     "parsers": {
       "zenplus": "ZenPlus / LuiBags",
       "lamoda": "Lamoda / Bags",
-      "maketto": "Maketto.jp"
+      "maketto": "Maketto.jp",
+      "zozo": "ZOZO.jp"
     },
     "parserHints": {
       "zenplus": "For product-item product-link cards from ZenPlus exports.",
       "lamoda": "For x-product-card__card cards from the Lamoda catalog.",
-      "maketto": "For Maketto.jp catalog HTML containing embedded product data."
+      "maketto": "For Maketto.jp catalog HTML containing embedded product data.",
+      "zozo": "For manually copied ZOZO.jp catalog HTML containing embedded product data."
     },
     "chooseFile": "Choose JSON file",
     "chooseHtmlFile": "Choose HTML file",

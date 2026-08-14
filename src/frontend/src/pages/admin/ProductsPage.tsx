@@ -678,6 +678,15 @@ function ProductGridItem({
               {hiddenLabel}
             </Badge>
           ) : null}
+          {product.shopName ? (
+            <Badge
+              variant="outline"
+              title={product.shopName}
+              className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)] truncate bg-background/90 shadow-sm backdrop-blur"
+            >
+              {product.shopName}
+            </Badge>
+          ) : null}
         </div>
         <CardContent className="space-y-1 p-2.5">
           <p className="line-clamp-2 text-xs font-medium leading-snug">

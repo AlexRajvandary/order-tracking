@@ -1,16 +1,18 @@
 import type { ImportProductItem } from '../types'
 
-export type HtmlProductParserId = 'zenplus' | 'lamoda' | 'maketto'
+export type HtmlProductParserId = 'zenplus' | 'lamoda' | 'maketto' | 'zozo'
 
 export const HTML_PRODUCT_PARSERS: ReadonlyArray<{ id: HtmlProductParserId }> = [
   { id: 'zenplus' },
   { id: 'lamoda' },
   { id: 'maketto' },
+  { id: 'zozo' },
 ]
 
 const ZENPLUS_ORIGIN = 'https://www.zenplus.jp'
 const LAMODA_ORIGIN = 'https://www.lamoda.ru'
 const MAKETTO_ORIGIN = 'https://maketto.jp'
+const ZOZO_ORIGIN = 'https://zozo.jp'
 
 function decodeHtmlEntities(value: string): string {
   const textarea = document.createElement('textarea')
@@ -383,6 +385,107 @@ function parseMakettoHtml(html: string): ImportProductItem[] {
   return products
 }
 
+type ZozoGood = {
+  goodsId?: unknown
+  goodsCode?: unknown
+  goodsName?: unknown
+  goodsImageUrl?: unknown
+  goodsImage215Url?: unknown
+  goodsUrl?: unknown
+  properPrice?: unknown
+  salePrice?: unknown
+  brandName?: unknown
+  goodsType?: unknown
+  isSoldOut?: unknown
+}
+
+type ZozoNextData = {
+  props?: {
+    pageProps?: {
+      goodsCatalogContents?: {
+        goods?: unknown
+      }
+    }
+  }
+}
+
+function zozoPrice(value: unknown): number | null {
+  return parsePositiveNumber(typeof value === 'string' ? value : undefined)
+}
+
+function parseZozoHtml(html: string): ImportProductItem[] {
+  const nextDataText = html.match(
+    /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i,
+  )?.[1]
+  if (!nextDataText) return []
+
+  let nextData: ZozoNextData
+  try {
+    nextData = JSON.parse(nextDataText) as ZozoNextData
+  } catch {
+    return []
+  }
+
+  const rawGoods = nextData.props?.pageProps?.goodsCatalogContents?.goods
+  if (!Array.isArray(rawGoods)) return []
+
+  const products: ImportProductItem[] = []
+  const seen = new Set<string>()
+  for (const raw of rawGoods) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue
+    const good = raw as ZozoGood
+    const idValue = good.goodsId ?? good.goodsCode
+    const id = typeof idValue === 'string' || typeof idValue === 'number'
+      ? String(idValue).trim()
+      : ''
+    const name = typeof good.goodsName === 'string'
+      ? good.goodsName.trim().slice(0, 500)
+      : ''
+    const imageValue = typeof good.goodsImageUrl === 'string'
+      ? good.goodsImageUrl
+      : typeof good.goodsImage215Url === 'string'
+        ? good.goodsImage215Url
+        : ''
+    const imageUrl = imageValue ? absoluteUrl(imageValue, ZOZO_ORIGIN) : ''
+    const regularPrice = zozoPrice(good.properPrice)
+    const salePrice = zozoPrice(good.salePrice)
+    const price = salePrice ?? regularPrice
+    if (!id || !name || !imageUrl || price == null) continue
+
+    const sku = `zozo-${id}`.slice(0, 100)
+    if (seen.has(sku)) continue
+    seen.add(sku)
+    const brand = typeof good.brandName === 'string' && good.brandName.trim()
+      ? good.brandName.trim().slice(0, 200)
+      : null
+    const sourceUrl = typeof good.goodsUrl === 'string'
+      ? absoluteUrl(good.goodsUrl, ZOZO_ORIGIN)
+      : null
+    const originalPrice = regularPrice != null && regularPrice > price
+      ? regularPrice
+      : null
+
+    products.push({
+      name,
+      sku,
+      brand,
+      brandSlug: brand ? slugify(brand) : null,
+      price,
+      currencyCode: 'JPY',
+      originalPrice,
+      originalCurrencyCode: originalPrice == null ? null : 'JPY',
+      imageUrl,
+      sourceUrl,
+      condition: Number(good.goodsType) === 2 ? 'used' : 'new',
+      shopName: 'ZOZOTOWN',
+      shopSlug: 'zozotown',
+      isActive: good.isSoldOut !== true,
+    })
+  }
+
+  return products
+}
+
 export function parseProductsHtml(
   parserId: HtmlProductParserId,
   html: string,
@@ -392,7 +495,9 @@ export function parseProductsHtml(
     ? parseZenPlusHtml(html)
     : parserId === 'lamoda'
       ? parseLamodaHtml(html)
-      : parseMakettoHtml(html)
+      : parserId === 'maketto'
+        ? parseMakettoHtml(html)
+        : parseZozoHtml(html)
   if (products.length === 0) throw new Error('htmlNoProducts')
   return products
 }

@@ -80,14 +80,15 @@ export function parseZozoNextData(raw) {
   }
 }
 
-function pageUrl(sourceUrl, pageNumber) {
+export function buildZozoPageUrl(sourceUrl, pageNumber) {
   const url = new URL(sourceUrl)
+  if (!url.pathname.endsWith('/')) url.pathname = `${url.pathname}/`
   url.searchParams.set('pno', String(pageNumber))
   return url.toString()
 }
 
 async function readPage(page, sourceUrl, pageNumber, timeout) {
-  const url = pageUrl(sourceUrl, pageNumber)
+  const url = buildZozoPageUrl(sourceUrl, pageNumber)
   await page.goto(url, { waitUntil: 'commit', timeout })
   await page.waitForSelector('#__NEXT_DATA__', { state: 'attached', timeout })
   const raw = await page.locator('#__NEXT_DATA__').textContent()
@@ -140,12 +141,24 @@ export async function crawlZozo(options) {
 
   try {
     ensureActive()
-    browser = await chromium.launch({ headless: options.headless !== false })
+    browser = await chromium.launch({
+      headless: options.headless !== false,
+      ...(options.channel ? { channel: options.channel } : {}),
+      args: ['--disable-blink-features=AutomationControlled'],
+    })
     const context = await browser.newContext({
       locale: 'ja-JP',
       viewport: { width: 1440, height: 1000 },
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136 Safari/537.36',
+      ...(!options.channel
+        ? { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136 Safari/537.36' }
+        : {}),
       extraHTTPHeaders: { 'Accept-Language': 'ja-JP,ja;q=0.9,en;q=0.7' },
+    })
+    await context.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, 'webdriver', {
+        configurable: true,
+        get: () => undefined,
+      })
     })
     const page = await context.newPage()
     page.setDefaultTimeout(options.timeout)
