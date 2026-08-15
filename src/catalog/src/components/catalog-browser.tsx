@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowUpDown, Check, ChevronDown, ListTree } from "lucide-react";
+import { Check, ChevronDown, ListTree } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -37,12 +37,18 @@ import type { ApiShop } from "@/lib/shops-api";
 import { cn } from "@/lib/utils";
 
 type SortOption = "relevance" | "price-asc" | "price-desc" | "name";
+type ProductCondition = "new" | "used";
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
-  { value: "relevance", label: "По умолчанию" },
+  { value: "relevance", label: "По популярности" },
   { value: "price-asc", label: "Цена: по возрастанию" },
   { value: "price-desc", label: "Цена: по убыванию" },
   { value: "name", label: "По названию" },
+];
+
+const CONDITION_OPTIONS: Array<{ id: string; slug: ProductCondition; name: string }> = [
+  { id: "new", slug: "new", name: "Новое" },
+  { id: "used", slug: "used", name: "Б/у" },
 ];
 
 type CatalogBrowserProps = {
@@ -107,6 +113,7 @@ function FilterDropdown({
         type="button"
         variant="outline"
         size="sm"
+        className="h-9 rounded-md border-[#D1D5DB] bg-transparent px-3 text-[13px] font-medium shadow-none hover:bg-muted/50"
         aria-expanded={open}
         aria-controls={contentId}
         onClick={() => setOpen((value) => !value)}
@@ -122,7 +129,7 @@ function FilterDropdown({
       {open ? (
         <div
           id={contentId}
-          className="absolute right-0 z-30 mt-1.5 w-64 rounded-lg border border-[#E5E7EB] bg-white p-3 shadow-lg"
+          className="absolute right-0 z-30 mt-1.5 w-64 rounded-lg border border-[#E5E7EB] bg-white p-3"
         >
           {children}
         </div>
@@ -210,11 +217,12 @@ function SortDropdown({
   }, [open]);
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative shrink-0">
       <Button
         type="button"
         variant="outline"
-        size="icon-sm"
+        size="sm"
+        className="h-9 rounded-md border-[#D1D5DB] bg-transparent px-3 text-[13px] font-medium shadow-none hover:bg-muted/50"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
@@ -222,7 +230,8 @@ function SortDropdown({
         title={current.label}
         onClick={() => setOpen((prev) => !prev)}
       >
-        <ArrowUpDown className="size-4" />
+        {current.label}
+        <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
       </Button>
 
       {open ? (
@@ -230,7 +239,7 @@ function SortDropdown({
           id={listId}
           role="listbox"
           aria-label="Сортировка"
-          className="absolute right-0 z-30 mt-1.5 min-w-[14rem] overflow-hidden rounded-lg border border-[#E5E7EB] bg-white py-1 shadow-lg"
+          className="absolute right-0 z-30 mt-1.5 min-w-[14rem] overflow-hidden rounded-lg border border-[#E5E7EB] bg-white py-1"
         >
           {SORT_OPTIONS.map((option) => {
             const selected = option.value === value;
@@ -287,6 +296,7 @@ export function CatalogBrowser({
 
   const [priceFrom, setPriceFrom] = useState("");
   const [priceTo, setPriceTo] = useState("");
+  const [selectedConditions, setSelectedConditions] = useState<ProductCondition[]>([]);
   const [sort, setSort] = useState<SortOption>("relevance");
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
   const mobileDatasetKey = [
@@ -339,6 +349,14 @@ export function CatalogBrowser({
     toggleCsvParam("shops", slug);
   }
 
+  function onToggleCondition(condition: ProductCondition) {
+    setSelectedConditions((current) =>
+      current.includes(condition)
+        ? current.filter((item) => item !== condition)
+        : [...current, condition],
+    );
+  }
+
   const filterAndSort = useCallback((items: CatalogProduct[]) => {
     const parsedMin = Number(priceFrom);
     const parsedMax = Number(priceTo);
@@ -348,6 +366,12 @@ export function CatalogBrowser({
     let list = items.filter((p) => {
       if (min != null && p.priceRub < min) return false;
       if (max != null && p.priceRub > max) return false;
+      if (
+        selectedConditions.length > 0 &&
+        (!p.condition || !selectedConditions.includes(p.condition))
+      ) {
+        return false;
+      }
       return true;
     });
 
@@ -357,7 +381,7 @@ export function CatalogBrowser({
     if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, "ru"));
 
     return list;
-  }, [priceFrom, priceTo, sort]);
+  }, [priceFrom, priceTo, selectedConditions, sort]);
 
   const filtered = useMemo(
     () => filterAndSort(products),
@@ -411,6 +435,7 @@ export function CatalogBrowser({
   function resetFilters() {
     setPriceFrom("");
     setPriceTo("");
+    setSelectedConditions([]);
     const hasQueryFilters =
       selectedBrandSlugs.length > 0 ||
       selectedShopSlugs.length > 0;
@@ -427,13 +452,14 @@ export function CatalogBrowser({
   const activeCount =
     (priceActive ? 1 : 0) +
     (selectedBrandSlugs.length > 0 ? 1 : 0) +
-    (selectedShopSlugs.length > 0 ? 1 : 0);
+    (selectedShopSlugs.length > 0 ? 1 : 0) +
+    (selectedConditions.length > 0 ? 1 : 0);
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 sm:mb-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <Breadcrumb className="min-w-0 flex-1">
-          <BreadcrumbList>
+          <BreadcrumbList className="text-[13px]">
             <BreadcrumbItem>
               <BreadcrumbLink render={<Link href="/" />}>Главная</BreadcrumbLink>
             </BreadcrumbItem>
@@ -449,7 +475,7 @@ export function CatalogBrowser({
               </>
             ) : null}
             <BreadcrumbItem>
-              <BreadcrumbPage>{title}</BreadcrumbPage>
+              <BreadcrumbPage className="text-[#4B5563]">{title}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -470,36 +496,19 @@ export function CatalogBrowser({
         </aside>
 
         <div className="min-w-0">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E7EB] pb-3 sm:mb-4">
-            <div className="flex min-w-0 items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="min-[992px]:hidden"
-                onClick={() => setMobileCategoriesOpen(true)}
-              >
-                <ListTree className="size-4" />
-                Категории
-              </Button>
-              {pagination ? (
-                <CatalogPagination
-                  page={pagination.page}
-                  pageSize={pagination.pageSize}
-                  total={pagination.total}
-                  basePath={pagination.basePath}
-                  className="mx-0 hidden w-auto justify-start pt-0 sm:flex"
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{filtered.length}</span>
-                  {" из "}
-                  {totalCount}
-                </p>
-              )}
-            </div>
+          <div className="mb-3 flex flex-wrap items-center gap-2 min-[992px]:pt-[25px] min-[992px]:flex-nowrap min-[992px]:gap-2.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 min-[992px]:hidden"
+              onClick={() => setMobileCategoriesOpen(true)}
+            >
+              <ListTree className="size-4" />
+              Категории
+            </Button>
 
-            <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
+            <div className="flex max-w-full flex-wrap items-center gap-2 min-[992px]:flex-nowrap">
               <FilterDropdown label="Цена" activeCount={priceActive ? 1 : 0}>
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Цена, ₽
@@ -543,13 +552,43 @@ export function CatalogBrowser({
                 selected={selectedBrandSlugs}
                 onToggle={onToggleBrand}
               />
+              <MultiSelectFilter
+                label="Состояние"
+                options={CONDITION_OPTIONS}
+                selected={selectedConditions}
+                onToggle={(condition) =>
+                  onToggleCondition(condition as ProductCondition)
+                }
+              />
               <SortDropdown value={sort} onChange={setSort} />
               {activeCount > 0 ? (
-                <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-9"
+                  onClick={resetFilters}
+                >
                   Сбросить
                 </Button>
               ) : null}
             </div>
+
+            {pagination ? (
+              <CatalogPagination
+                page={pagination.page}
+                pageSize={pagination.pageSize}
+                total={pagination.total}
+                basePath={pagination.basePath}
+                className="ml-auto hidden w-auto shrink-0 justify-end pt-0 sm:flex"
+              />
+            ) : (
+              <p className="ml-auto shrink-0 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{filtered.length}</span>
+                {" из "}
+                {totalCount}
+              </p>
+            )}
           </div>
 
           {filtered.length === 0 ? (
@@ -594,16 +633,6 @@ export function CatalogBrowser({
                       Не удалось загрузить товары
                     </p>
                   ) : null}
-                </div>
-              ) : null}
-              {pagination ? (
-                <div className="hidden sm:block">
-                  <CatalogPagination
-                    page={pagination.page}
-                    pageSize={pagination.pageSize}
-                    total={pagination.total}
-                    basePath={pagination.basePath}
-                  />
                 </div>
               ) : null}
             </div>

@@ -9,6 +9,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { cn } from "@/lib/utils";
 
 type CatalogPaginationProps = {
   page: number;
@@ -63,20 +64,32 @@ export function CatalogPagination({
           <PaginationPrevious
             href={current > 1 ? buildHref(basePath, current - 1) : undefined}
             aria-disabled={current <= 1}
-            className={current <= 1 ? "pointer-events-none opacity-50" : undefined}
+            className={cn(
+              "rounded-md bg-transparent shadow-none hover:bg-muted/50",
+              current <= 1 && "pointer-events-none opacity-50",
+            )}
           />
         </PaginationItem>
 
         {items.map((item, index) =>
           item === "ellipsis" ? (
-            <PaginationItem key={`e-${index}`}>
+            <PaginationItem key={`e-${index}`} className="max-[1199px]:hidden">
               <PaginationEllipsis />
             </PaginationItem>
           ) : (
-            <PaginationItem key={item}>
+            <PaginationItem
+              key={item}
+              className={item === current ? undefined : "max-[1199px]:hidden"}
+            >
               <PaginationLink
                 href={buildHref(basePath, item)}
                 isActive={item === current}
+                className={cn(
+                  "rounded-md bg-transparent shadow-none",
+                  item === current
+                    ? "border-[#D1D5DB] font-semibold hover:bg-transparent"
+                    : "font-normal hover:bg-muted/50",
+                )}
               >
                 {item}
               </PaginationLink>
@@ -88,9 +101,10 @@ export function CatalogPagination({
           <PaginationNext
             href={current < totalPages ? buildHref(basePath, current + 1) : undefined}
             aria-disabled={current >= totalPages}
-            className={
-              current >= totalPages ? "pointer-events-none opacity-50" : undefined
-            }
+            className={cn(
+              "rounded-md bg-transparent shadow-none hover:bg-muted/50",
+              current >= totalPages && "pointer-events-none opacity-50",
+            )}
           />
         </PaginationItem>
       </PaginationContent>

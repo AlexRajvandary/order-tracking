@@ -125,7 +125,7 @@ export function CategoryTree({
                   "flex items-center gap-2 rounded-md px-2 py-2 transition-colors",
                   !activeRootSlug
                     ? "bg-[#F5F5F5] font-medium text-[#1F2937]"
-                    : "text-[#374151] hover:bg-[#F7F7F7]",
+                    : "font-medium text-[#374151] hover:bg-[#F7F7F7]",
                 )}
               >
                 <span className="min-w-0 flex-1 truncate">Все категории</span>
@@ -157,8 +157,8 @@ export function CategoryTree({
                   <Link
                     href={categoryHref(category.slug)}
                     className={cn(
-                      "flex min-w-0 flex-1 items-center gap-2 py-2 pl-2 text-[#374151]",
-                      (isExpanded || isActive) && "font-medium text-[#1F2937]",
+                      "flex min-w-0 flex-1 items-center gap-2 py-2 pl-2 font-medium text-[#374151]",
+                      (isExpanded || isActive) && "font-semibold text-[#1F2937]",
                     )}
                     onClick={() =>
                       setAccordion({ selectionKey, expandedSlug: category.slug })
