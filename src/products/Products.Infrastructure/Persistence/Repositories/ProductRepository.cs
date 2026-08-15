@@ -251,7 +251,7 @@ public sealed class ProductRepository : IProductRepository
         decimal? priceMax,
         CancellationToken cancellationToken)
     {
-        var query = _db.Products.AsQueryable();
+        var query = _db.Products.AsNoTracking().AsQueryable();
 
         if (activeOnly == true)
         {

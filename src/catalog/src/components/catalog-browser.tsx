@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/sheet";
 import { CatalogPagination } from "@/components/catalog-pagination";
 import { CategoryTree } from "@/components/category-tree";
-import type { ApiBrand } from "@/lib/brands-api";
+import type { ApiBrand, ApiBrandListResult } from "@/lib/brands-api";
 import type { ApiCategory } from "@/lib/categories-api";
 import type { CatalogProduct } from "@/lib/catalog-products";
 import {
@@ -51,6 +51,9 @@ const CONDITION_OPTIONS: Array<{ id: string; slug: ProductCondition; name: strin
   { id: "used", slug: "used", name: "Б/у" },
 ];
 
+const BRAND_CACHE_TTL_MS = 60 * 1000;
+let brandOptionsCache: { items: ApiBrand[]; expiresAt: number } | null = null;
+
 type CatalogBrowserProps = {
   products: CatalogProduct[];
   title: string;
@@ -62,7 +65,6 @@ type CatalogBrowserProps = {
   categoryTree?: ApiCategory[];
   activeRootSlug?: string;
   activeChildSlug?: string;
-  brands?: ApiBrand[];
   selectedBrandSlugs?: string[];
   shops?: ApiShop[];
   selectedShopSlugs?: string[];
@@ -79,10 +81,12 @@ function FilterDropdown({
   label,
   activeCount = 0,
   children,
+  onOpen,
 }: {
   label: string;
   activeCount?: number;
   children: ReactNode;
+  onOpen?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -116,7 +120,11 @@ function FilterDropdown({
         className="h-9 rounded-md border-[#D1D5DB] bg-transparent px-3 text-[13px] font-medium shadow-none hover:bg-muted/50"
         aria-expanded={open}
         aria-controls={contentId}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => setOpen((value) => {
+          const next = !value;
+          if (next) onOpen?.();
+          return next;
+        })}
       >
         {label}
         {activeCount > 0 ? (
@@ -143,43 +151,105 @@ function MultiSelectFilter({
   options,
   selected,
   onToggle,
+  onOpen,
+  loading = false,
+  error = false,
+  searchable = false,
 }: {
   label: string;
   options: Array<{ id: string; slug: string; name: string }>;
   selected: string[];
   onToggle: (slug: string) => void;
+  onOpen?: () => void;
+  loading?: boolean;
+  error?: boolean;
+  searchable?: boolean;
 }) {
-  const selectedSet = new Set(selected);
+  return (
+    <FilterDropdown label={label} activeCount={selected.length} onOpen={onOpen}>
+      <MultiSelectOptions
+        options={options}
+        selected={selected}
+        onToggle={onToggle}
+        loading={loading}
+        error={error}
+        searchable={searchable}
+      />
+    </FilterDropdown>
+  );
+}
+
+function MultiSelectOptions({
+  options,
+  selected,
+  onToggle,
+  loading,
+  error,
+  searchable,
+}: {
+  options: Array<{ id: string; slug: string; name: string }>;
+  selected: string[];
+  onToggle: (slug: string) => void;
+  loading: boolean;
+  error: boolean;
+  searchable: boolean;
+}) {
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLocaleLowerCase("ru");
+  const visibleOptions = useMemo(() => {
+    const matches = normalizedQuery
+      ? options.filter((option) => option.name.toLocaleLowerCase("ru").includes(normalizedQuery))
+      : options;
+    const selectedOptions = matches.filter((option) => selectedSet.has(option.slug));
+    const unselectedOptions = matches.filter((option) => !selectedSet.has(option.slug));
+    return [...selectedOptions, ...unselectedOptions].slice(0, searchable ? 200 : undefined);
+  }, [normalizedQuery, options, searchable, selectedSet]);
 
   return (
-    <FilterDropdown label={label} activeCount={selected.length}>
-      <div className="max-h-64 space-y-0.5 overflow-y-auto pr-1 [scrollbar-width:thin]">
-        {options.length > 0 ? (
-          options.map((option) => {
-            const checked = selectedSet.has(option.slug);
-            return (
-              <label
-                key={option.id}
-                className={cn(
-                  "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition",
-                  checked ? "bg-muted font-medium" : "hover:bg-muted",
-                )}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => onToggle(option.slug)}
-                  className="size-4 accent-[#111827]"
-                />
-                <span className="truncate">{option.name}</span>
-              </label>
-            );
-          })
-        ) : (
-          <p className="px-2 py-1.5 text-sm text-muted-foreground">Нет вариантов</p>
-        )}
-      </div>
-    </FilterDropdown>
+    <div className="max-h-64 space-y-0.5 overflow-y-auto pr-1 [scrollbar-width:thin]">
+      {searchable && !loading && !error ? (
+        <Input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Поиск"
+          className="sticky top-0 z-10 mb-2 h-8 bg-white text-sm"
+        />
+      ) : null}
+      {loading ? (
+        <p className="px-2 py-1.5 text-sm text-muted-foreground">Загрузка…</p>
+      ) : error ? (
+        <p className="px-2 py-1.5 text-sm text-destructive">Не удалось загрузить варианты</p>
+      ) : visibleOptions.length > 0 ? (
+        visibleOptions.map((option) => {
+          const checked = selectedSet.has(option.slug);
+          return (
+            <label
+              key={option.id}
+              className={cn(
+                "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition",
+                checked ? "bg-muted font-medium" : "hover:bg-muted",
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => onToggle(option.slug)}
+                className="size-4 accent-[#111827]"
+              />
+              <span className="truncate">{option.name}</span>
+            </label>
+          );
+        })
+      ) : (
+        <p className="px-2 py-1.5 text-sm text-muted-foreground">Нет вариантов</p>
+      )}
+      {searchable && visibleOptions.length < options.length ? (
+        <p className="px-2 pt-1 text-xs text-muted-foreground">
+          Уточните поиск, чтобы увидеть остальные варианты
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -275,7 +345,6 @@ export function CatalogBrowser({
   categoryTree,
   activeRootSlug,
   activeChildSlug,
-  brands,
   selectedBrandSlugs = [],
   shops,
   selectedShopSlugs = [],
@@ -284,6 +353,44 @@ export function CatalogBrowser({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isMobileLayout, setIsMobileLayout] = useState(false);
+  const [brandOptions, setBrandOptions] = useState<ApiBrand[]>(() =>
+    brandOptionsCache && brandOptionsCache.expiresAt > Date.now()
+      ? brandOptionsCache.items
+      : [],
+  );
+  const [brandsLoading, setBrandsLoading] = useState(false);
+  const [brandsError, setBrandsError] = useState(false);
+
+  const loadBrands = useCallback(async () => {
+    if (brandOptions.length > 0 || brandsLoading) return;
+    if (brandOptionsCache && brandOptionsCache.expiresAt > Date.now()) {
+      setBrandOptions(brandOptionsCache.items);
+      return;
+    }
+    setBrandsLoading(true);
+    setBrandsError(false);
+    try {
+      const response = await fetch("/api/catalog-brands");
+      if (!response.ok) throw new Error(`Brands API ${response.status}`);
+      const result = (await response.json()) as ApiBrandListResult;
+      const items = result.items ?? [];
+      brandOptionsCache = { items, expiresAt: Date.now() + BRAND_CACHE_TTL_MS };
+      setBrandOptions(items);
+    } catch {
+      setBrandsError(true);
+    } finally {
+      setBrandsLoading(false);
+    }
+  }, [brandOptions.length, brandsLoading]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 639px)");
+    const update = () => setIsMobileLayout(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   const prices = products.map((p) => p.priceRub);
   const absMin = prices.length ? Math.min(...prices) : 0;
@@ -548,9 +655,13 @@ export function CatalogBrowser({
               />
               <MultiSelectFilter
                 label="Бренд"
-                options={brands ?? []}
+                options={brandOptions}
                 selected={selectedBrandSlugs}
                 onToggle={onToggleBrand}
+                onOpen={() => void loadBrands()}
+                loading={brandsLoading}
+                error={brandsError}
+                searchable
               />
               <MultiSelectFilter
                 label="Состояние"
@@ -595,13 +706,8 @@ export function CatalogBrowser({
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-3 sm:hidden">
-                {mobileProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-              <div className="hidden grid-cols-2 gap-3 sm:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {filtered.map((product) => (
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {(isMobileLayout ? mobileProducts : filtered).map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>

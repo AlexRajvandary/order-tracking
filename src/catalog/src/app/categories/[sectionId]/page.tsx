@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { CatalogBrowser } from "@/components/catalog-browser";
 import { SiteHeader } from "@/components/site-header";
-import { fetchBrands, parseBrandSlugs } from "@/lib/brands-api";
+import { parseBrandSlugs } from "@/lib/brands-api";
 import {
   categoryHref,
   fetchCategoryTree,
@@ -64,36 +64,56 @@ export default async function CategorySectionPage({
   const subSlug = subParam ? safeDecode(subParam) : undefined;
   const selectedBrandSlugs = parseBrandSlugs(brandsParam);
   const selectedShopSlugs = parseCsvParam(shopsParam);
-  const isAllCategories = safeDecode(sectionId) === "all";
+  const decodedSectionId = safeDecode(sectionId);
+  const isAllCategories = decodedSectionId === "all";
 
-  const [categoryTree, brands, shops] = await Promise.all([
-    fetchCategoryTree({ includeProductCounts: true, productsActiveOnly: true }),
-    fetchBrands().catch(() => []),
-    fetchShops().catch(() => []),
-  ]);
+  const categoryTreePromise = fetchCategoryTree({
+    includeProductCounts: true,
+    productsActiveOnly: true,
+  });
+  const shopsPromise = fetchShops().catch(() => []);
+
+  // Product requests do not depend on category metadata. Start them immediately
+  // instead of putting products behind the categories/shops waterfall. Tree
+  // validation below still controls the title, breadcrumbs and 404 behaviour.
+  const earlyCatalogPromise = isAllCategories
+    ? fetchAllCatalogPage({
+        page,
+        pageSize: PRODUCTS_PAGE_SIZE,
+        brandSlugs: selectedBrandSlugs,
+        shopSlugs: selectedShopSlugs,
+      })
+    : fetchCatalogPage({
+        rootCategorySlug: decodedSectionId,
+        rootCategoryName: decodedSectionId,
+        page,
+        pageSize: PRODUCTS_PAGE_SIZE,
+        brandSlugs: selectedBrandSlugs,
+        shopSlugs: selectedShopSlugs,
+        categorySlug: subSlug,
+        categoryName: subSlug,
+      });
+
+  const categoryTree = await categoryTreePromise;
 
   const root = isAllCategories ? undefined : findRootCategory(categoryTree, sectionId);
   if (!isAllCategories && !root) notFound();
 
   const child = root && subSlug ? findChildCategory(root, subSlug) : undefined;
 
-  const catalog = isAllCategories
-    ? await fetchAllCatalogPage({
+  // Preserve the previous behaviour for an unknown `sub`: show the root
+  // category rather than an empty result for the invalid child slug.
+  const catalogPromise = subSlug && !child && root
+    ? fetchCatalogPage({
+        rootCategorySlug: root.slug,
+        rootCategoryName: root.name,
         page,
         pageSize: PRODUCTS_PAGE_SIZE,
         brandSlugs: selectedBrandSlugs,
         shopSlugs: selectedShopSlugs,
       })
-    : await fetchCatalogPage({
-        rootCategorySlug: root!.slug,
-        rootCategoryName: root!.name,
-        page,
-        pageSize: PRODUCTS_PAGE_SIZE,
-        brandSlugs: selectedBrandSlugs,
-        shopSlugs: selectedShopSlugs,
-        categorySlug: child?.slug,
-        categoryName: child?.name,
-      });
+    : earlyCatalogPromise;
+  const [catalog, shops] = await Promise.all([catalogPromise, shopsPromise]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -111,7 +131,6 @@ export default async function CategorySectionPage({
             categoryTree={categoryTree}
             activeRootSlug={root?.slug}
             activeChildSlug={child?.slug}
-            brands={brands}
             selectedBrandSlugs={selectedBrandSlugs}
             shops={shops}
             selectedShopSlugs={selectedShopSlugs}
