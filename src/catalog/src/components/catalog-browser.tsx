@@ -7,6 +7,14 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowUpDown, Check, ChevronDown, ListTree } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -37,22 +45,13 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "name", label: "По названию" },
 ];
 
-function pluralRu(n: number, one: string, few: string, many: string): string {
-  const abs = Math.abs(n) % 100;
-  const last = abs % 10;
-  if (abs > 10 && abs < 20) return many;
-  if (last === 1) return one;
-  if (last >= 2 && last <= 4) return few;
-  return many;
-}
-
 type CatalogBrowserProps = {
   products: CatalogProduct[];
   title: string;
-  subtitle?: string;
-  imageUrl?: string;
-  backHref: string;
-  backLabel: string;
+  parentBreadcrumb?: {
+    label: string;
+    href: string;
+  };
   /** Category tree from Products API */
   categoryTree?: ApiCategory[];
   activeRootSlug?: string;
@@ -263,10 +262,7 @@ function SortDropdown({
 export function CatalogBrowser({
   products,
   title,
-  subtitle,
-  imageUrl,
-  backHref,
-  backLabel,
+  parentBreadcrumb,
   categoryTree,
   activeRootSlug,
   activeChildSlug,
@@ -435,27 +431,32 @@ export function CatalogBrowser({
 
   return (
     <div>
-      <div className="mb-6 space-y-4 sm:mb-8">
-        <Button variant="ghost" size="sm" className="-ml-2" render={<Link href={backHref} />}>
-          ← {backLabel}
-        </Button>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 sm:mb-5">
+        <Breadcrumb className="min-w-0 flex-1">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink render={<Link href="/" />}>Главная</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            {parentBreadcrumb ? (
+              <>
+                <BreadcrumbItem>
+                  <BreadcrumbLink render={<Link href={parentBreadcrumb.href} />}>
+                    {parentBreadcrumb.label}
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+              </>
+            ) : null}
+            <BreadcrumbItem>
+              <BreadcrumbPage>{title}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          {imageUrl ? (
-            <div className="flex size-20 shrink-0 items-center justify-center border bg-muted/40 p-2 sm:size-24">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={imageUrl} alt="" className="max-h-full max-w-full object-contain" />
-            </div>
-          ) : null}
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-            {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
-            <p className="mt-1 text-sm text-muted-foreground">
-              {totalCount.toLocaleString("ru-RU")}{" "}
-              {pluralRu(totalCount, "позиция", "позиции", "позиций")}
-            </p>
-          </div>
-        </div>
+        <p className="shrink-0 text-[13px] tabular-nums text-muted-foreground sm:text-sm">
+          {totalCount.toLocaleString("ru-RU")} товаров
+        </p>
       </div>
 
       <div className="grid gap-x-6 gap-y-6 min-[992px]:grid-cols-[240px_minmax(0,1fr)] min-[1200px]:grid-cols-[260px_minmax(0,1fr)] min-[1200px]:gap-x-7">

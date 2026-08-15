@@ -4,6 +4,7 @@ import { CatalogBrowser } from "@/components/catalog-browser";
 import { SiteHeader } from "@/components/site-header";
 import { fetchBrands, parseBrandSlugs } from "@/lib/brands-api";
 import {
+  categoryHref,
   fetchCategoryTree,
   findChildCategory,
   findRootCategory,
@@ -102,9 +103,11 @@ export default async function CategorySectionPage({
           <CatalogBrowser
             products={catalog.products}
             title={isAllCategories ? "Все товары" : (child?.name ?? root!.name)}
-            subtitle={child ? root!.name : undefined}
-            backHref="/"
-            backLabel="На главную"
+            parentBreadcrumb={
+              child && root
+                ? { label: root.name, href: categoryHref(root.slug) }
+                : undefined
+            }
             categoryTree={categoryTree}
             activeRootSlug={root?.slug}
             activeChildSlug={child?.slug}
