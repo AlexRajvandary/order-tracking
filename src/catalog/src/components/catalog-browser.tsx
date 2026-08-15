@@ -574,21 +574,13 @@ export function CatalogBrowser({
               ) : null}
             </div>
 
-            {pagination ? (
-              <CatalogPagination
-                page={pagination.page}
-                pageSize={pagination.pageSize}
-                total={pagination.total}
-                basePath={pagination.basePath}
-                className="ml-auto hidden w-auto shrink-0 justify-end pt-0 sm:flex"
-              />
-            ) : (
+            {!pagination ? (
               <p className="ml-auto shrink-0 text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{filtered.length}</span>
                 {" из "}
                 {totalCount}
               </p>
-            )}
+            ) : null}
           </div>
 
           {filtered.length === 0 ? (
@@ -633,6 +625,16 @@ export function CatalogBrowser({
                       Не удалось загрузить товары
                     </p>
                   ) : null}
+                </div>
+              ) : null}
+              {pagination ? (
+                <div className="hidden sm:block">
+                  <CatalogPagination
+                    page={pagination.page}
+                    pageSize={pagination.pageSize}
+                    total={pagination.total}
+                    basePath={pagination.basePath}
+                  />
                 </div>
               ) : null}
             </div>

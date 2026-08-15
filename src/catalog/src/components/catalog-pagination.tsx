@@ -29,13 +29,16 @@ function buildHref(basePath: string, page: number): string {
 }
 
 function pageItems(current: number, totalPages: number): Array<number | "ellipsis"> {
-  if (totalPages <= 7) {
+  if (totalPages <= 9) {
     return Array.from({ length: totalPages }, (_, i) => i + 1);
   }
 
   const items: Array<number | "ellipsis"> = [1];
-  const left = Math.max(2, current - 1);
-  const right = Math.min(totalPages - 1, current + 1);
+  let left = Math.max(2, current - 2);
+  let right = Math.min(totalPages - 1, current + 2);
+
+  if (left === 2) right = Math.min(totalPages - 1, 6);
+  if (right === totalPages - 1) left = Math.max(2, totalPages - 5);
 
   if (left > 2) items.push("ellipsis");
   for (let p = left; p <= right; p++) items.push(p);
@@ -73,14 +76,11 @@ export function CatalogPagination({
 
         {items.map((item, index) =>
           item === "ellipsis" ? (
-            <PaginationItem key={`e-${index}`} className="max-[1199px]:hidden">
+            <PaginationItem key={`e-${index}`}>
               <PaginationEllipsis />
             </PaginationItem>
           ) : (
-            <PaginationItem
-              key={item}
-              className={item === current ? undefined : "max-[1199px]:hidden"}
-            >
+            <PaginationItem key={item}>
               <PaginationLink
                 href={buildHref(basePath, item)}
                 isActive={item === current}
