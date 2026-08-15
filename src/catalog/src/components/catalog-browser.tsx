@@ -459,20 +459,13 @@ export function CatalogBrowser({
       </div>
 
       <div className="grid gap-x-6 gap-y-6 min-[992px]:grid-cols-[240px_minmax(0,1fr)] min-[1200px]:grid-cols-[260px_minmax(0,1fr)] min-[1200px]:gap-x-7">
-        <aside className="hidden h-fit rounded-xl border border-[#E5E7EB] bg-white p-5 min-[992px]:sticky min-[992px]:top-20 min-[992px]:block">
-          <div className="space-y-2.5">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Категории
-            </p>
-            <div>
-              <CategoryTree
-                categories={categoryTree ?? []}
-                totalProductCount={allCategoriesProductCount}
-                activeRootSlug={activeRootSlug}
-                activeChildSlug={activeChildSlug}
-              />
-            </div>
-          </div>
+        <aside className="hidden h-fit min-[992px]:sticky min-[992px]:top-20 min-[992px]:block">
+          <CategoryTree
+            categories={categoryTree ?? []}
+            totalProductCount={allCategoriesProductCount}
+            activeRootSlug={activeRootSlug}
+            activeChildSlug={activeChildSlug}
+          />
         </aside>
 
         <div className="min-w-0">
@@ -619,11 +612,11 @@ export function CatalogBrowser({
 
       <Sheet open={mobileCategoriesOpen} onOpenChange={setMobileCategoriesOpen}>
         <SheetContent side="left" className="w-[min(100%,20rem)] gap-0 p-0">
-          <SheetHeader className="border-b border-[#E5E7EB]">
+          <SheetHeader className="sr-only">
             <SheetTitle>Категории</SheetTitle>
             <SheetDescription>Выберите нужный раздел каталога</SheetDescription>
           </SheetHeader>
-          <div className="overflow-y-auto p-4">
+          <div className="overflow-y-auto px-4 py-5">
             <CategoryTree
               categories={categoryTree ?? []}
               totalProductCount={allCategoriesProductCount}
