@@ -13,12 +13,21 @@ public static class BrandSeeder
         ILogger logger,
         CancellationToken cancellationToken = default)
     {
-        var names = await db.Products
+        var rawNames = await db.Products
             .IgnoreQueryFilters()
-            .Where(p => !p.IsDeleted && p.Brand != null && p.Brand != "")
-            .Select(p => p.Brand!)
+            .Where(p => !p.IsDeleted && p.Brand != null)
+            .Select(p => p.Brand)
             .Distinct()
             .ToListAsync(cancellationToken);
+
+        // DISTINCT in the database does not account for the trimming and
+        // case-insensitive comparison used by the seeder.
+        var names = rawNames
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => name!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         if (names.Count == 0)
         {
@@ -31,24 +40,27 @@ public static class BrandSeeder
             .Where(b => !b.IsDeleted)
             .ToListAsync(cancellationToken);
 
-        var bySlug = existing.ToDictionary(b => b.Slug, StringComparer.OrdinalIgnoreCase);
-        var byName = existing.ToDictionary(b => b.Name.Trim(), StringComparer.OrdinalIgnoreCase);
+        var bySlug = ToBrandDictionary(existing, b => b.Slug);
+        var byName = ToBrandDictionary(existing, b => b.Name);
         var now = DateTimeOffset.UtcNow;
         var sort = existing.Count == 0 ? 0 : existing.Max(b => b.SortOrder);
         var created = 0;
 
-        foreach (var raw in names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+        foreach (var name in names)
         {
-            var name = raw.Trim();
-            if (name.Length == 0) continue;
             if (byName.ContainsKey(name)) continue;
 
             var slug = Slugify(name);
             if (string.IsNullOrEmpty(slug))
                 slug = $"brand-{Guid.NewGuid():N}"[..16];
 
-            if (bySlug.ContainsKey(slug))
-                slug = $"{slug}-{created + 1}";
+            var baseSlug = slug;
+            var suffix = 1;
+            while (bySlug.ContainsKey(slug))
+            {
+                var suffixText = $"-{suffix++}";
+                slug = $"{baseSlug[..Math.Min(baseSlug.Length, 200 - suffixText.Length)]}{suffixText}";
+            }
 
             sort += 1;
             var brand = new Brand
@@ -73,7 +85,7 @@ public static class BrandSeeder
         var brands = await db.Brands
             .Where(b => b.IsActive)
             .ToListAsync(cancellationToken);
-        var brandByName = brands.ToDictionary(b => b.Name.Trim(), StringComparer.OrdinalIgnoreCase);
+        var brandByName = ToBrandDictionary(brands, b => b.Name);
 
         var products = await db.Products
             .Where(p => p.Brand != null && p.Brand != "" && p.BrandId == null)
@@ -96,6 +108,29 @@ public static class BrandSeeder
             created,
             linked,
             names.Count);
+    }
+
+    private static Dictionary<string, Brand> ToBrandDictionary(
+        IEnumerable<Brand> brands,
+        Func<Brand, string?> keySelector)
+    {
+        return brands
+            .Select(brand => new
+            {
+                Brand = brand,
+                Key = (keySelector(brand) ?? string.Empty).Trim(),
+            })
+            .Where(item => item.Key.Length > 0)
+            .GroupBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Select(item => item.Brand)
+                    .OrderBy(brand => brand.SortOrder)
+                    .ThenBy(brand => brand.CreatedAt)
+                    .ThenBy(brand => brand.Id)
+                    .First(),
+                StringComparer.OrdinalIgnoreCase);
     }
 
     public static string Slugify(string value)
