@@ -10,9 +10,9 @@ type ProductCardProps = {
 
 export function ProductCard({ product }: ProductCardProps) {
   return (
-    <Card className="relative flex h-full flex-col gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md">
+    <Card className="relative flex h-full flex-col gap-0 overflow-hidden rounded-none bg-transparent py-0 ring-0">
       <Link href={`/products/${product.id}`} className="flex min-h-0 flex-1 flex-col">
-        <div className="relative aspect-[3/4] shrink-0 overflow-hidden bg-muted">
+        <div className="relative aspect-square shrink-0 overflow-hidden rounded-xl bg-muted">
           {product.imageUrl ? (
             // External marketplace URLs — load directly, no Next.js image proxy.
             // eslint-disable-next-line @next/next/no-img-element
