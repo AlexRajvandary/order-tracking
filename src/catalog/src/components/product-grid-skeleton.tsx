@@ -1,8 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const PLACEHOLDERS = Array.from({ length: 15 }, (_, index) => index);
-
 function ProductCardSkeleton() {
   return (
     <Card className="relative flex h-full flex-col gap-0 overflow-hidden rounded-none bg-transparent py-0 ring-0">
@@ -32,14 +30,20 @@ function ProductCardSkeleton() {
   );
 }
 
-export function ProductGridSkeleton() {
+type ProductGridSkeletonProps = {
+  count?: number;
+};
+
+export function ProductGridSkeleton({ count = 15 }: ProductGridSkeletonProps) {
+  const placeholders = Array.from({ length: count }, (_, index) => index);
+
   return (
     <div
       className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
       aria-label="Загрузка товаров"
       aria-busy="true"
     >
-      {PLACEHOLDERS.map((index) => (
+      {placeholders.map((index) => (
         <ProductCardSkeleton key={index} />
       ))}
     </div>

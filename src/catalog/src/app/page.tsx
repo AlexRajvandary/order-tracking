@@ -1,79 +1,60 @@
-import Link from "next/link";
-import { HeroV2 } from "@/components/hero/hero-v2";
-import { LegacyImageHero } from "@/components/legacy-image-hero";
-import { CategoryCard } from "@/components/category-card";
-import { PopularCategories } from "@/components/popular-categories";
+import { Suspense } from "react";
+import { HomeCategories } from "@/components/home/home-categories";
+import { HomeHero } from "@/components/home/home-hero";
+import {
+  HomeProducts,
+  HomeProductsSkeleton,
+} from "@/components/home/home-products";
+import { HomeShops } from "@/components/home/home-shops";
 import { SiteHeader } from "@/components/site-header";
-import { categorySections } from "@/lib/categories";
-import { cn } from "@/lib/utils";
+import { fetchCategoryTree } from "@/lib/categories-api";
+import { fetchCatalogPage } from "@/lib/products-api";
+import { fetchShops } from "@/lib/shops-api";
 
-// Set to false to restore the legacy image-based THE GET hero.
-const USE_NEW_HERO = true;
+export default async function HomePage() {
+  const categoriesPromise = fetchCategoryTree({
+    includeProductCounts: true,
+    productsActiveOnly: true,
+  });
+  const shopsPromise = fetchShops();
+  const productsPromise = fetchCatalogPage({
+    rootCategorySlug: "одежда",
+    rootCategoryName: "Одежда",
+    page: 1,
+    pageSize: 5,
+  });
 
-/** Map legacy grid section ids → category slugs in Products DB. */
-const SECTION_TO_ROUTE: Record<string, string> = {
-  "women-fashion": "clothing",
-  "men-fashion": "clothing",
-  sports: "fishing",
-  dvd: "books",
-};
+  const [categoriesResult, shopsResult] = await Promise.allSettled([
+    categoriesPromise,
+    shopsPromise,
+  ]);
 
-function sectionRouteId(sectionId: string): string {
-  return SECTION_TO_ROUTE[sectionId] ?? sectionId;
-}
-
-export default function HomePage() {
   return (
-    <div className="min-h-screen bg-[#F4F4F5]">
+    <div className="min-h-screen bg-background">
       <SiteHeader />
-      <div className="overflow-x-hidden">
-        {USE_NEW_HERO ? <HeroV2 /> : <LegacyImageHero />}
-        <PopularCategories className="mt-8 mb-10 sm:mt-16 sm:mb-16" />
-        <main className="mx-auto max-w-6xl flex-1 space-y-12 px-4 pt-0 pb-12 sm:space-y-[72px] sm:px-6 sm:pb-16">
-          {categorySections.map((section) => (
-            <section key={section.id} id={section.id}>
-              <div className="mb-5 flex items-center justify-between gap-3 sm:mb-10 sm:gap-4">
-                <h2 className="flex min-w-0 items-center gap-2.5 text-[22px] font-bold tracking-tight text-[#111] sm:gap-3 sm:text-[30px]">
-                  <span
-                    className="inline-block h-[0.85em] w-1 shrink-0 rounded-full bg-[#F24676]"
-                    aria-hidden
-                  />
-                  <span className="truncate">{section.title}</span>
-                </h2>
-                <Link
-                  href={`/categories/${sectionRouteId(section.id)}`}
-                  className="group inline-flex shrink-0 items-center gap-1 text-[13px] text-[#666] transition-colors duration-200 hover:text-[#F24676] sm:text-[15px]"
-                >
-                  <span className="sm:hidden">Все</span>
-                  <span className="hidden sm:inline">Смотреть все</span>
-                  <span
-                    aria-hidden
-                    className="inline-block transition-transform duration-200 group-hover:translate-x-1"
-                  >
-                    →
-                  </span>
-                </Link>
-              </div>
-              <div
-                className={cn(
-                  "grid grid-cols-2 items-stretch gap-3 sm:gap-5 lg:gap-6",
-                  section.columns === 4
-                    ? "sm:grid-cols-4"
-                    : "sm:grid-cols-4 lg:grid-cols-6",
-                )}
-              >
-                {section.items.map((item) => (
-                  <CategoryCard
-                    key={item.id}
-                    item={item}
-                    sectionId={sectionRouteId(section.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-        </main>
-      </div>
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 pt-5 pb-16 sm:px-8 sm:pt-8 sm:pb-20 lg:px-10 lg:pb-24">
+        <HomeHero />
+
+        <div className="space-y-16 pt-16 sm:space-y-20 sm:pt-20 lg:space-y-24 lg:pt-24">
+          <HomeCategories
+            categories={
+              categoriesResult.status === "fulfilled"
+                ? categoriesResult.value
+                : []
+            }
+            failed={categoriesResult.status === "rejected"}
+          />
+
+          <Suspense fallback={<HomeProductsSkeleton />}>
+            <HomeProducts result={productsPromise} />
+          </Suspense>
+
+          <HomeShops
+            shops={shopsResult.status === "fulfilled" ? shopsResult.value : []}
+            failed={shopsResult.status === "rejected"}
+          />
+        </div>
+      </main>
     </div>
   );
 }
