@@ -566,11 +566,11 @@ export function CatalogBrowser({
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <Breadcrumb className="min-w-0 flex-1">
-          <BreadcrumbList className="text-[13px]">
+          <BreadcrumbList className="text-sm font-semibold sm:text-base">
             <BreadcrumbItem>
               <BreadcrumbLink render={<Link href="/" />}>Главная</BreadcrumbLink>
             </BreadcrumbItem>
-            <BreadcrumbSeparator />
+            <BreadcrumbSeparator className="[&>svg]:size-4" />
             {parentBreadcrumb ? (
               <>
                 <BreadcrumbItem>
@@ -578,11 +578,11 @@ export function CatalogBrowser({
                     {parentBreadcrumb.label}
                   </BreadcrumbLink>
                 </BreadcrumbItem>
-                <BreadcrumbSeparator />
+                <BreadcrumbSeparator className="[&>svg]:size-4" />
               </>
             ) : null}
             <BreadcrumbItem>
-              <BreadcrumbPage className="text-[#4B5563]">{title}</BreadcrumbPage>
+              <BreadcrumbPage className="font-semibold text-[#374151]">{title}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>

@@ -1,6 +1,11 @@
 {$SITE_ADDRESS} {
 	encode zstd gzip
 
+	# Next.js catalog API routes (must be before the general /api* handler)
+	handle /api/catalog-* {
+		reverse_proxy catalog:3000
+	}
+
 	# Products microservice (must be before /api*)
 	handle /api/products* {
 		reverse_proxy products-api:8080
