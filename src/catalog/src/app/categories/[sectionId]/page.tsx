@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { CatalogBrowser } from "@/components/catalog-browser";
 import { SiteHeader } from "@/components/site-header";
-import { parseBrandSlugs } from "@/lib/brands-api";
+import { fetchBrands, parseBrandSlugs } from "@/lib/brands-api";
 import {
   categoryHref,
   fetchCategoryTree,
@@ -72,6 +72,7 @@ export default async function CategorySectionPage({
     productsActiveOnly: true,
   });
   const shopsPromise = fetchShops().catch(() => []);
+  const brandsPromise = fetchBrands().catch(() => []);
 
   // Product requests do not depend on category metadata. Start them immediately
   // instead of putting products behind the categories/shops waterfall. Tree
@@ -113,7 +114,11 @@ export default async function CategorySectionPage({
         shopSlugs: selectedShopSlugs,
       })
     : earlyCatalogPromise;
-  const [catalog, shops] = await Promise.all([catalogPromise, shopsPromise]);
+  const [catalog, shops, brands] = await Promise.all([
+    catalogPromise,
+    shopsPromise,
+    brandsPromise,
+  ]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -131,6 +136,7 @@ export default async function CategorySectionPage({
             categoryTree={categoryTree}
             activeRootSlug={root?.slug}
             activeChildSlug={child?.slug}
+            brands={brands}
             selectedBrandSlugs={selectedBrandSlugs}
             shops={shops}
             selectedShopSlugs={selectedShopSlugs}

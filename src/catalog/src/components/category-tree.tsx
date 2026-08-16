@@ -13,6 +13,7 @@ type CategoryTreeProps = {
   activeRootSlug?: string;
   activeChildSlug?: string;
   className?: string;
+  onNavigate?: () => void;
 };
 
 function formatCount(value: number): string {
@@ -23,14 +24,17 @@ function ChildLink({
   category,
   rootSlug,
   selected,
+  onNavigate,
 }: {
   category: ApiCategory;
   rootSlug: string;
   selected: boolean;
+  onNavigate?: () => void;
 }) {
   return (
     <Link
       href={categoryHref(rootSlug, category.slug)}
+      onClick={onNavigate}
       className={cn(
         "flex min-w-0 items-center gap-2 rounded-md py-1.5 pr-8 pl-4 text-[13px] leading-5 transition-colors",
         selected
@@ -52,6 +56,7 @@ export function CategoryTree({
   activeRootSlug,
   activeChildSlug,
   className,
+  onNavigate,
 }: CategoryTreeProps) {
   const selectionKey = `${activeRootSlug ?? ""}:${activeChildSlug ?? ""}`;
   const [query, setQuery] = useState("");
@@ -121,6 +126,7 @@ export function CategoryTree({
             <li>
               <Link
                 href="/categories/all"
+                onClick={onNavigate}
                 className={cn(
                   "flex items-center gap-2 rounded-md px-2 py-2 transition-colors",
                   !activeRootSlug
@@ -160,9 +166,10 @@ export function CategoryTree({
                       "flex min-w-0 flex-1 items-center gap-2 py-2 pl-2 font-medium text-[#374151]",
                       (isExpanded || isActive) && "font-semibold text-[#1F2937]",
                     )}
-                    onClick={() =>
-                      setAccordion({ selectionKey, expandedSlug: category.slug })
-                    }
+                    onClick={() => {
+                      setAccordion({ selectionKey, expandedSlug: category.slug });
+                      onNavigate?.();
+                    }}
                   >
                     <span className="min-w-0 flex-1 truncate">{category.name}</span>
                     <span className="w-[4.5rem] shrink-0 text-right text-xs font-normal tabular-nums text-[#9CA3AF]">
@@ -200,6 +207,7 @@ export function CategoryTree({
                             activeRootSlug === category.slug &&
                             activeChildSlug === child.slug
                           }
+                          onNavigate={onNavigate}
                         />
                       </li>
                     ))}

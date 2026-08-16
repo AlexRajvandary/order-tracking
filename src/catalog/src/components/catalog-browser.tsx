@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronDown, ListTree } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
+import { ProductGridSkeleton } from "@/components/product-grid-skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
@@ -37,18 +38,12 @@ import type { ApiShop } from "@/lib/shops-api";
 import { cn } from "@/lib/utils";
 
 type SortOption = "relevance" | "price-asc" | "price-desc" | "name";
-type ProductCondition = "new" | "used";
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "relevance", label: "По популярности" },
   { value: "price-asc", label: "Цена: по возрастанию" },
   { value: "price-desc", label: "Цена: по убыванию" },
   { value: "name", label: "По названию" },
-];
-
-const CONDITION_OPTIONS: Array<{ id: string; slug: ProductCondition; name: string }> = [
-  { id: "new", slug: "new", name: "Новое" },
-  { id: "used", slug: "used", name: "Б/у" },
 ];
 
 const BRAND_CACHE_TTL_MS = 60 * 1000;
@@ -65,6 +60,7 @@ type CatalogBrowserProps = {
   categoryTree?: ApiCategory[];
   activeRootSlug?: string;
   activeChildSlug?: string;
+  brands?: ApiBrand[];
   selectedBrandSlugs?: string[];
   shops?: ApiShop[];
   selectedShopSlugs?: string[];
@@ -345,6 +341,7 @@ export function CatalogBrowser({
   categoryTree,
   activeRootSlug,
   activeChildSlug,
+  brands = [],
   selectedBrandSlugs = [],
   shops,
   selectedShopSlugs = [],
@@ -354,16 +351,19 @@ export function CatalogBrowser({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isMobileLayout, setIsMobileLayout] = useState(false);
-  const [brandOptions, setBrandOptions] = useState<ApiBrand[]>(() =>
-    brandOptionsCache && brandOptionsCache.expiresAt > Date.now()
+  const [brandOptions, setBrandOptions] = useState<ApiBrand[]>(() => {
+    if (brands.length > 0) return brands;
+    return brandOptionsCache && brandOptionsCache.expiresAt > Date.now()
       ? brandOptionsCache.items
-      : [],
-  );
+      : [];
+  });
   const [brandsLoading, setBrandsLoading] = useState(false);
   const [brandsError, setBrandsError] = useState(false);
+  const [pendingDatasetKey, setPendingDatasetKey] = useState<string | null>(null);
+  const effectiveBrandOptions = brands.length > 0 ? brands : brandOptions;
 
   const loadBrands = useCallback(async () => {
-    if (brandOptions.length > 0 || brandsLoading) return;
+    if (brands.length > 0 || brandOptions.length > 0 || brandsLoading) return;
     if (brandOptionsCache && brandOptionsCache.expiresAt > Date.now()) {
       setBrandOptions(brandOptionsCache.items);
       return;
@@ -382,7 +382,7 @@ export function CatalogBrowser({
     } finally {
       setBrandsLoading(false);
     }
-  }, [brandOptions.length, brandsLoading]);
+  }, [brands.length, brandOptions.length, brandsLoading]);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 639px)");
@@ -403,7 +403,6 @@ export function CatalogBrowser({
 
   const [priceFrom, setPriceFrom] = useState("");
   const [priceTo, setPriceTo] = useState("");
-  const [selectedConditions, setSelectedConditions] = useState<ProductCondition[]>([]);
   const [sort, setSort] = useState<SortOption>("relevance");
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
   const mobileDatasetKey = [
@@ -414,6 +413,13 @@ export function CatalogBrowser({
     selectedShopSlugs.join(","),
     pagination?.page ?? 1,
   ].join("|");
+  const categoryPending = pendingDatasetKey === mobileDatasetKey;
+
+  useEffect(() => {
+    if (!categoryPending) return;
+    const timeout = window.setTimeout(() => setPendingDatasetKey(null), 15000);
+    return () => window.clearTimeout(timeout);
+  }, [categoryPending]);
   const [mobilePages, setMobilePages] = useState<{
     key: string;
     products: CatalogProduct[];
@@ -456,14 +462,6 @@ export function CatalogBrowser({
     toggleCsvParam("shops", slug);
   }
 
-  function onToggleCondition(condition: ProductCondition) {
-    setSelectedConditions((current) =>
-      current.includes(condition)
-        ? current.filter((item) => item !== condition)
-        : [...current, condition],
-    );
-  }
-
   const filterAndSort = useCallback((items: CatalogProduct[]) => {
     const parsedMin = Number(priceFrom);
     const parsedMax = Number(priceTo);
@@ -473,12 +471,6 @@ export function CatalogBrowser({
     let list = items.filter((p) => {
       if (min != null && p.priceRub < min) return false;
       if (max != null && p.priceRub > max) return false;
-      if (
-        selectedConditions.length > 0 &&
-        (!p.condition || !selectedConditions.includes(p.condition))
-      ) {
-        return false;
-      }
       return true;
     });
 
@@ -488,7 +480,7 @@ export function CatalogBrowser({
     if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, "ru"));
 
     return list;
-  }, [priceFrom, priceTo, selectedConditions, sort]);
+  }, [priceFrom, priceTo, sort]);
 
   const filtered = useMemo(
     () => filterAndSort(products),
@@ -542,7 +534,6 @@ export function CatalogBrowser({
   function resetFilters() {
     setPriceFrom("");
     setPriceTo("");
-    setSelectedConditions([]);
     const hasQueryFilters =
       selectedBrandSlugs.length > 0 ||
       selectedShopSlugs.length > 0;
@@ -559,18 +550,17 @@ export function CatalogBrowser({
   const activeCount =
     (priceActive ? 1 : 0) +
     (selectedBrandSlugs.length > 0 ? 1 : 0) +
-    (selectedShopSlugs.length > 0 ? 1 : 0) +
-    (selectedConditions.length > 0 ? 1 : 0);
+    (selectedShopSlugs.length > 0 ? 1 : 0);
 
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <Breadcrumb className="min-w-0 flex-1">
-          <BreadcrumbList className="text-sm font-semibold sm:text-base">
+          <BreadcrumbList className="text-base font-bold sm:text-lg">
             <BreadcrumbItem>
               <BreadcrumbLink render={<Link href="/" />}>Главная</BreadcrumbLink>
             </BreadcrumbItem>
-            <BreadcrumbSeparator className="[&>svg]:size-4" />
+            <BreadcrumbSeparator className="[&>svg]:size-5" />
             {parentBreadcrumb ? (
               <>
                 <BreadcrumbItem>
@@ -578,11 +568,11 @@ export function CatalogBrowser({
                     {parentBreadcrumb.label}
                   </BreadcrumbLink>
                 </BreadcrumbItem>
-                <BreadcrumbSeparator className="[&>svg]:size-4" />
+                <BreadcrumbSeparator className="[&>svg]:size-5" />
               </>
             ) : null}
             <BreadcrumbItem>
-              <BreadcrumbPage className="font-semibold text-[#374151]">{title}</BreadcrumbPage>
+              <BreadcrumbPage className="font-bold text-[#374151]">{title}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -599,6 +589,7 @@ export function CatalogBrowser({
             totalProductCount={allCategoriesProductCount}
             activeRootSlug={activeRootSlug}
             activeChildSlug={activeChildSlug}
+            onNavigate={() => setPendingDatasetKey(mobileDatasetKey)}
           />
         </aside>
 
@@ -615,7 +606,7 @@ export function CatalogBrowser({
               Категории
             </Button>
 
-            <div className="flex max-w-full flex-wrap items-center gap-2 min-[992px]:flex-nowrap">
+            <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 min-[992px]:flex-nowrap">
               <FilterDropdown label="Цена" activeCount={priceActive ? 1 : 0}>
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Цена, ₽
@@ -655,21 +646,13 @@ export function CatalogBrowser({
               />
               <MultiSelectFilter
                 label="Бренд"
-                options={brandOptions}
+                options={effectiveBrandOptions}
                 selected={selectedBrandSlugs}
                 onToggle={onToggleBrand}
                 onOpen={() => void loadBrands()}
-                loading={brandsLoading}
-                error={brandsError}
+                loading={brands.length === 0 && brandsLoading}
+                error={brands.length === 0 && brandsError}
                 searchable
-              />
-              <MultiSelectFilter
-                label="Состояние"
-                options={CONDITION_OPTIONS}
-                selected={selectedConditions}
-                onToggle={(condition) =>
-                  onToggleCondition(condition as ProductCondition)
-                }
               />
               <SortDropdown value={sort} onChange={setSort} />
               {activeCount > 0 ? (
@@ -694,7 +677,9 @@ export function CatalogBrowser({
             ) : null}
           </div>
 
-          {filtered.length === 0 ? (
+          {categoryPending ? (
+            <ProductGridSkeleton />
+          ) : filtered.length === 0 ? (
             <div className="rounded-xl border border-[#E5E7EB] bg-white px-6 py-16 text-center">
               <p className="font-medium">Ничего не найдено</p>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -760,6 +745,10 @@ export function CatalogBrowser({
               totalProductCount={allCategoriesProductCount}
               activeRootSlug={activeRootSlug}
               activeChildSlug={activeChildSlug}
+              onNavigate={() => {
+                setPendingDatasetKey(mobileDatasetKey);
+                setMobileCategoriesOpen(false);
+              }}
             />
           </div>
         </SheetContent>
