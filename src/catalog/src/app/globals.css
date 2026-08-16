@@ -141,7 +141,7 @@
 .catalog-product-skeleton {
   position: relative;
   overflow: hidden;
-  background: color-mix(in oklch, var(--muted-foreground) 10%, var(--muted));
+  background: #f1f4f7;
 }
 
 .catalog-product-skeleton::after {

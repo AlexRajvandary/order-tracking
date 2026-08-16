@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Check, ChevronDown, ListTree } from "lucide-react";
+import { Check, ChevronDown, ListTree, SlidersHorizontal } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { ProductGridSkeleton } from "@/components/product-grid-skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -361,6 +361,15 @@ export function CatalogBrowser({
   const [brandsError, setBrandsError] = useState(false);
   const [pendingDatasetKey, setPendingDatasetKey] = useState<string | null>(null);
   const effectiveBrandOptions = brands.length > 0 ? brands : brandOptions;
+  const selectedBrandKey = selectedBrandSlugs.join(",");
+  const [brandSelection, setBrandSelection] = useState({
+    sourceKey: selectedBrandKey,
+    values: selectedBrandSlugs,
+  });
+  const activeBrandSlugs =
+    brandSelection.sourceKey === selectedBrandKey
+      ? brandSelection.values
+      : selectedBrandSlugs;
 
   const loadBrands = useCallback(async () => {
     if (brands.length > 0 || brandOptions.length > 0 || brandsLoading) return;
@@ -405,6 +414,7 @@ export function CatalogBrowser({
   const [priceTo, setPriceTo] = useState("");
   const [sort, setSort] = useState<SortOption>("relevance");
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const mobileDatasetKey = [
     pathname,
     activeRootSlug ?? "all",
@@ -413,13 +423,13 @@ export function CatalogBrowser({
     selectedShopSlugs.join(","),
     pagination?.page ?? 1,
   ].join("|");
-  const categoryPending = pendingDatasetKey === mobileDatasetKey;
+  const productsPending = pendingDatasetKey === mobileDatasetKey;
 
   useEffect(() => {
-    if (!categoryPending) return;
+    if (!productsPending) return;
     const timeout = window.setTimeout(() => setPendingDatasetKey(null), 15000);
     return () => window.clearTimeout(timeout);
-  }, [categoryPending]);
+  }, [productsPending]);
   const [mobilePages, setMobilePages] = useState<{
     key: string;
     products: CatalogProduct[];
@@ -455,7 +465,17 @@ export function CatalogBrowser({
   }
 
   function onToggleBrand(slug: string) {
-    toggleCsvParam("brands", slug);
+    const next = activeBrandSlugs.includes(slug)
+      ? activeBrandSlugs.filter((item) => item !== slug)
+      : [...activeBrandSlugs, slug];
+
+    setBrandSelection({ sourceKey: selectedBrandKey, values: next });
+    setPendingDatasetKey(mobileDatasetKey);
+    replaceQuery((params) => {
+      if (next.length > 0) params.set("brands", next.join(","));
+      else params.delete("brands");
+      params.delete("page");
+    });
   }
 
   function onToggleShop(slug: string) {
@@ -534,6 +554,7 @@ export function CatalogBrowser({
   function resetFilters() {
     setPriceFrom("");
     setPriceTo("");
+    setBrandSelection({ sourceKey: selectedBrandKey, values: [] });
     const hasQueryFilters =
       selectedBrandSlugs.length > 0 ||
       selectedShopSlugs.length > 0;
@@ -549,7 +570,7 @@ export function CatalogBrowser({
   const priceActive = priceFrom.trim() !== "" || priceTo.trim() !== "";
   const activeCount =
     (priceActive ? 1 : 0) +
-    (selectedBrandSlugs.length > 0 ? 1 : 0) +
+    (activeBrandSlugs.length > 0 ? 1 : 0) +
     (selectedShopSlugs.length > 0 ? 1 : 0);
 
   return (
@@ -606,7 +627,26 @@ export function CatalogBrowser({
               Категории
             </Button>
 
-            <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 min-[992px]:flex-nowrap">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-auto h-9 sm:hidden"
+              onClick={() => {
+                setMobileFiltersOpen(true);
+                void loadBrands();
+              }}
+            >
+              <SlidersHorizontal className="size-4" />
+              Фильтры
+              {activeCount > 0 ? (
+                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 tabular-nums">
+                  {activeCount}
+                </Badge>
+              ) : null}
+            </Button>
+
+            <div className="ml-auto hidden max-w-full flex-wrap items-center justify-end gap-2 sm:flex min-[992px]:flex-nowrap">
               <FilterDropdown label="Цена" activeCount={priceActive ? 1 : 0}>
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Цена, ₽
@@ -647,7 +687,7 @@ export function CatalogBrowser({
               <MultiSelectFilter
                 label="Бренд"
                 options={effectiveBrandOptions}
-                selected={selectedBrandSlugs}
+                selected={activeBrandSlugs}
                 onToggle={onToggleBrand}
                 onOpen={() => void loadBrands()}
                 loading={brands.length === 0 && brandsLoading}
@@ -677,7 +717,7 @@ export function CatalogBrowser({
             ) : null}
           </div>
 
-          {categoryPending ? (
+          {productsPending ? (
             <ProductGridSkeleton />
           ) : filtered.length === 0 ? (
             <div className="rounded-xl border border-[#E5E7EB] bg-white px-6 py-16 text-center">
@@ -750,6 +790,108 @@ export function CatalogBrowser({
                 setMobileCategoriesOpen(false);
               }}
             />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+        <SheetContent side="right" className="w-[min(100%,22rem)] gap-0 p-0">
+          <SheetHeader className="border-b pr-14">
+            <SheetTitle className="text-lg font-semibold">Фильтры</SheetTitle>
+            <SheetDescription>
+              Настройте параметры отображения товаров
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5">
+            <section>
+              <h3 className="mb-3 text-sm font-semibold">Цена, ₽</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1.5">
+                  <span className="text-xs text-muted-foreground">От</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    inputMode="decimal"
+                    value={priceFrom}
+                    placeholder={String(absMin)}
+                    aria-label="Минимальная цена"
+                    className="h-10"
+                    onChange={(event) => setPriceFrom(event.target.value)}
+                  />
+                </label>
+                <label className="space-y-1.5">
+                  <span className="text-xs text-muted-foreground">До</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    inputMode="decimal"
+                    value={priceTo}
+                    placeholder={String(absMax)}
+                    aria-label="Максимальная цена"
+                    className="h-10"
+                    onChange={(event) => setPriceTo(event.target.value)}
+                  />
+                </label>
+              </div>
+            </section>
+
+            <section className="border-t pt-5">
+              <h3 className="mb-2 text-sm font-semibold">Магазин</h3>
+              <MultiSelectOptions
+                options={shops ?? []}
+                selected={selectedShopSlugs}
+                onToggle={onToggleShop}
+                loading={false}
+                error={false}
+                searchable={false}
+              />
+            </section>
+
+            <section className="border-t pt-5">
+              <h3 className="mb-2 text-sm font-semibold">Бренд</h3>
+              <MultiSelectOptions
+                options={effectiveBrandOptions}
+                selected={activeBrandSlugs}
+                onToggle={onToggleBrand}
+                loading={brands.length === 0 && brandsLoading}
+                error={brands.length === 0 && brandsError}
+                searchable
+              />
+            </section>
+
+            <section className="border-t pt-5">
+              <h3 className="mb-2 text-sm font-semibold">Сортировка</h3>
+              <div className="space-y-1">
+                {SORT_OPTIONS.map((option) => {
+                  const selected = option.value === sort;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={cn(
+                        "flex w-full items-center justify-between gap-3 rounded-md px-2 py-2.5 text-left text-sm transition-colors",
+                        selected ? "bg-muted font-medium" : "hover:bg-muted/70",
+                      )}
+                      aria-pressed={selected}
+                      onClick={() => setSort(option.value)}
+                    >
+                      {option.label}
+                      {selected ? <Check className="size-4 shrink-0" /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 border-t p-4">
+            <Button type="button" variant="outline" onClick={resetFilters}>
+              Сбросить
+            </Button>
+            <Button type="button" onClick={() => setMobileFiltersOpen(false)}>
+              Готово
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
