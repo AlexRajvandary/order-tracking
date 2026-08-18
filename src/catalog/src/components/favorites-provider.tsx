@@ -9,11 +9,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { CatalogProduct } from "@/lib/catalog-products";
 
 type FavoritesContextValue = {
   ids: string[];
+  products: Record<string, CatalogProduct>;
   has: (productId: string) => boolean;
-  toggle: (productId: string) => void;
+  toggle: (productId: string, product?: CatalogProduct) => void;
 };
 
 const STORAGE_KEY = "the-get-catalog-favorites";
@@ -38,6 +40,7 @@ function loadFavorites(): string[] {
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [ids, setIds] = useState<string[]>([]);
+  const [products, setProducts] = useState<Record<string, CatalogProduct>>({});
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -68,11 +71,20 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
   const has = useCallback((productId: string) => ids.includes(productId), [ids]);
 
-  const toggle = useCallback((productId: string) => {
+  const toggle = useCallback((productId: string, product?: CatalogProduct) => {
     const favorite = !ids.includes(productId);
     setIds((prev) =>
       favorite ? [...prev, productId] : prev.filter((id) => id !== productId),
     );
+    if (favorite && product) {
+      setProducts((prev) => ({ ...prev, [productId]: product }));
+    } else if (!favorite) {
+      setProducts((prev) => {
+        const next = { ...prev };
+        delete next[productId];
+        return next;
+      });
+    }
     void fetch(`/api/catalog/favorites`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -81,8 +93,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   }, [ids]);
 
   const value = useMemo<FavoritesContextValue>(
-    () => ({ ids, has, toggle }),
-    [ids, has, toggle],
+    () => ({ ids, products, has, toggle }),
+    [ids, products, has, toggle],
   );
 
   return (

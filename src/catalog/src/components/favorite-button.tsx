@@ -3,13 +3,15 @@
 import { Heart } from "lucide-react";
 import { useFavorites } from "@/components/favorites-provider";
 import { cn } from "@/lib/utils";
+import type { CatalogProduct } from "@/lib/catalog-products";
 
 type FavoriteButtonProps = {
   productId: string;
+  product?: CatalogProduct;
   className?: string;
 };
 
-export function FavoriteButton({ productId, className }: FavoriteButtonProps) {
+export function FavoriteButton({ productId, product, className }: FavoriteButtonProps) {
   const { has, toggle } = useFavorites();
   const active = has(productId);
 
@@ -25,7 +27,7 @@ export function FavoriteButton({ productId, className }: FavoriteButtonProps) {
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        toggle(productId);
+        toggle(productId, product);
       }}
     >
       <Heart

@@ -47,7 +47,7 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
       </Link>
 
-      <FavoriteButton productId={product.id} />
+      <FavoriteButton productId={product.id} product={product} />
     </Card>
   );
 }

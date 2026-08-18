@@ -25,25 +25,36 @@ type FavoriteSheetProps = {
 };
 
 export function FavoriteSheet({ trigger }: FavoriteSheetProps) {
-  const { ids, toggle } = useFavorites();
-  const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const { ids, products: favoriteProducts, toggle } = useFavorites();
+  const [loadedProducts, setLoadedProducts] = useState<Record<string, CatalogProduct>>({});
 
   useEffect(() => {
     let cancelled = false;
+    const missingIds = ids.filter((id) => !favoriteProducts[id]);
+    if (missingIds.length === 0) return () => { cancelled = true; };
     void Promise.all(
-      ids.map(async (id) => {
+      missingIds.map(async (id) => {
         const response = await fetch(`/api/catalog/product/${encodeURIComponent(id)}`);
         if (!response.ok) return null;
         const product = (await response.json()) as ApiProduct;
-        return mapApiProductToCatalog(product);
+        return [id, mapApiProductToCatalog(product)] as const;
       }),
     ).then((items) => {
-      if (!cancelled) setProducts(items.filter((item): item is CatalogProduct => item !== null));
+      if (!cancelled) {
+        setLoadedProducts((prev) => Object.fromEntries([
+          ...Object.entries(prev),
+          ...items.filter((item): item is readonly [string, CatalogProduct] => item !== null),
+        ]));
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [ids]);
+  }, [ids, favoriteProducts]);
+
+  const products = ids
+    .map((id) => favoriteProducts[id] ?? loadedProducts[id])
+    .filter((product): product is CatalogProduct => product !== undefined);
 
   return (
     <Sheet>
