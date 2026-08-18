@@ -55,8 +55,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setItems(loadCart());
-    setReady(true);
+    let cancelled = false;
+    void (async () => {
+      const localItems = loadCart();
+      try {
+        const response = await fetch("/api/catalog/cart", { cache: "no-store" });
+        const serverItems = response.ok ? ((await response.json()) as CartItem[]) : [];
+        if (!cancelled) setItems(serverItems.length > 0 ? serverItems : localItems);
+      } catch {
+        if (!cancelled) setItems(localItems);
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -64,6 +78,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    void (async () => {
+      await fetch("/api/catalog/cart", { method: "DELETE" }).catch(() => undefined);
+      await Promise.all(
+        items.map((item) =>
+          fetch("/api/catalog/cart", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ productId: item.productId, quantity: item.quantity }),
+          }).catch(() => undefined),
+        ),
+      );
+    })();
   }, [items, ready]);
 
   const addItem = useCallback((product: Product, quantity = 1) => {

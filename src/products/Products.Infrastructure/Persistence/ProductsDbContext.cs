@@ -17,6 +17,8 @@ public sealed class ProductsDbContext : DbContext
     public DbSet<CrawlerJob> CrawlerJobs => Set<CrawlerJob>();
     public DbSet<CrawlerJobLog> CrawlerJobLogs => Set<CrawlerJobLog>();
     public DbSet<StorefrontAnnouncement> StorefrontAnnouncements => Set<StorefrontAnnouncement>();
+    public DbSet<CatalogCartItem> CatalogCartItems => Set<CatalogCartItem>();
+    public DbSet<CatalogFavorite> CatalogFavorites => Set<CatalogFavorite>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

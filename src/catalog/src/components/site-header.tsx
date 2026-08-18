@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Heart, Menu, ShoppingBag, User, X } from "lucide-react";
 import { CartSheet } from "@/components/cart-sheet";
 import { useCart } from "@/components/cart-provider";
+import { FavoriteSheet } from "@/components/favorite-sheet";
+import { useFavorites } from "@/components/favorites-provider";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
@@ -70,6 +72,34 @@ function CartIconButton() {
           </span>
           <span className="hidden text-xs leading-none text-[#555] transition-colors duration-200 group-hover:text-[#F24676] sm:inline">
             Корзина
+          </span>
+        </button>
+      }
+    />
+  );
+}
+
+function FavoriteIconButton() {
+  const { ids } = useFavorites();
+
+  return (
+    <FavoriteSheet
+      trigger={
+        <button
+          type="button"
+          className="group relative inline-flex flex-col items-center gap-0.5 text-[#555] transition-transform duration-200 hover:-translate-y-px sm:gap-1"
+          aria-label="Избранное"
+        >
+          <span className="relative inline-flex size-5 items-center justify-center sm:size-6">
+            <Heart className="size-5 stroke-[1.6] sm:size-6" aria-hidden />
+            {ids.length > 0 ? (
+              <span className="absolute -top-1.5 -right-2 flex size-4 items-center justify-center rounded-full bg-[#F24676] text-[9px] leading-none font-semibold text-white sm:size-[18px] sm:text-[10px]">
+                {ids.length > 99 ? "99" : ids.length}
+              </span>
+            ) : null}
+          </span>
+          <span className="hidden text-xs leading-none text-[#555] transition-colors duration-200 group-hover:text-[#F24676] sm:inline">
+            Избранное
           </span>
         </button>
       }
@@ -145,7 +175,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-4 sm:gap-6 lg:gap-7">
-          <HeaderIconButton href="/favorites" label="Избранное" icon={Heart} />
+          <FavoriteIconButton />
           <CartIconButton />
           <HeaderIconButton href="/login" label="Войти" icon={User} />
         </div>

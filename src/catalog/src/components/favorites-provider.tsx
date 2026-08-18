@@ -41,8 +41,22 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setIds(loadFavorites());
-    setReady(true);
+    let cancelled = false;
+    void (async () => {
+      const localIds = loadFavorites();
+      try {
+        const response = await fetch("/api/catalog/favorites", { cache: "no-store" });
+        const serverIds = response.ok ? ((await response.json()) as string[]) : [];
+        if (!cancelled) setIds(serverIds.length > 0 ? serverIds : localIds);
+      } catch {
+        if (!cancelled) setIds(localIds);
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -55,12 +69,16 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const has = useCallback((productId: string) => ids.includes(productId), [ids]);
 
   const toggle = useCallback((productId: string) => {
+    const favorite = !ids.includes(productId);
     setIds((prev) =>
-      prev.includes(productId)
-        ? prev.filter((id) => id !== productId)
-        : [...prev, productId],
+      favorite ? [...prev, productId] : prev.filter((id) => id !== productId),
     );
-  }, []);
+    void fetch(`/api/catalog/favorites`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId, favorite }),
+    }).catch(() => undefined);
+  }, [ids]);
 
   const value = useMemo<FavoritesContextValue>(
     () => ({ ids, has, toggle }),

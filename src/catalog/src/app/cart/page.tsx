@@ -52,7 +52,7 @@ export default function CartPage() {
                     <div
                       className="size-20 shrink-0 rounded-lg sm:size-24"
                       style={{
-                        background: `linear-gradient(145deg, ${item.tint}, oklch(0.25 0 0) 85%)`,
+                        background: `linear-gradient(145deg, ${item.tint || "#334155"}, oklch(0.25 0 0) 85%)`,
                       }}
                     />
                     <div className="min-w-0 flex-1 space-y-3">

@@ -72,7 +72,7 @@ export function CartSheet({ trigger }: CartSheetProps) {
                     <div
                       className="size-16 shrink-0 rounded-lg"
                       style={{
-                        background: `linear-gradient(145deg, ${item.tint}, #0b1220 85%)`,
+                        background: `linear-gradient(145deg, ${item.tint || "#334155"}, #0b1220 85%)`,
                       }}
                     />
                     <div className="min-w-0 flex-1 space-y-2">

@@ -203,3 +203,30 @@ public sealed class StorefrontAnnouncementConfiguration : IEntityTypeConfigurati
         builder.Property(x => x.UpdatedAt).IsRequired();
     }
 }
+
+public sealed class CatalogCartItemConfiguration : IEntityTypeConfiguration<CatalogCartItem>
+{
+    public void Configure(EntityTypeBuilder<CatalogCartItem> builder)
+    {
+        builder.ToTable("catalog_cart_items");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.VisitorKey).HasMaxLength(64);
+        builder.Property(x => x.Quantity).IsRequired();
+        builder.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(x => new { x.UserId, x.ProductId }).IsUnique().HasFilter("\"UserId\" IS NOT NULL");
+        builder.HasIndex(x => new { x.VisitorKey, x.ProductId }).IsUnique().HasFilter("\"VisitorKey\" IS NOT NULL");
+    }
+}
+
+public sealed class CatalogFavoriteConfiguration : IEntityTypeConfiguration<CatalogFavorite>
+{
+    public void Configure(EntityTypeBuilder<CatalogFavorite> builder)
+    {
+        builder.ToTable("catalog_favorites");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.VisitorKey).HasMaxLength(64);
+        builder.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(x => new { x.UserId, x.ProductId }).IsUnique().HasFilter("\"UserId\" IS NOT NULL");
+        builder.HasIndex(x => new { x.VisitorKey, x.ProductId }).IsUnique().HasFilter("\"VisitorKey\" IS NOT NULL");
+    }
+}
