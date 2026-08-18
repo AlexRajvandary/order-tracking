@@ -86,6 +86,11 @@ export type ShopListResult = {
   items: Shop[]
 }
 
+export type StorefrontAnnouncement = {
+  text: string
+  updatedAt: string
+}
+
 export type ProductConditionFilter = 'new' | 'used'
 
 export type ListProductsParams = {

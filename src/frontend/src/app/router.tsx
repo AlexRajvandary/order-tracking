@@ -15,6 +15,7 @@ import { OrderDetailsPage } from '@/pages/admin/OrderDetailsPage'
 import { ProductsPage } from '@/pages/admin/ProductsPage'
 import { ChangesPage } from '@/pages/admin/ChangesPage'
 import { VpsMonitoringPage } from '@/pages/admin/VpsMonitoringPage'
+import { StorefrontAnnouncementPage } from '@/pages/admin/StorefrontAnnouncementPage'
 import { TrackingPage } from '@/pages/public/TrackingPage'
 import { AdminShell } from '@/widgets/admin-shell/AdminShell'
 import { AuthProvider } from '@/features/auth/model/AuthContext'
@@ -47,6 +48,7 @@ export function AppRouter() {
               <Route path="products" element={<ProductsPage />} />
               <Route path="changes" element={<ChangesPage />} />
               <Route path="monitoring" element={<VpsMonitoringPage />} />
+              <Route path="storefront-announcement" element={<StorefrontAnnouncementPage />} />
               <Route path="admins" element={<AdminsPage />} />
               <Route path="statuses" element={<StatusManagementPage />} />
               <Route path="help" element={<HelpPage />} />

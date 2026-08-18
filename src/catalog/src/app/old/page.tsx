@@ -4,7 +4,9 @@ import { LegacyImageHero } from "@/components/legacy-image-hero";
 import { CategoryCard } from "@/components/category-card";
 import { PopularCategories } from "@/components/popular-categories";
 import { SiteHeader } from "@/components/site-header";
+import { StorefrontAnnouncement } from "@/components/storefront-announcement";
 import { categorySections } from "@/lib/categories";
+import { fetchStorefrontAnnouncement } from "@/lib/storefront-announcement-api";
 import { cn } from "@/lib/utils";
 
 // Set to false to restore the legacy image-based THE GET hero.
@@ -22,10 +24,13 @@ function sectionRouteId(sectionId: string): string {
   return SECTION_TO_ROUTE[sectionId] ?? sectionId;
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const announcement = await fetchStorefrontAnnouncement();
+
   return (
     <div className="min-h-screen bg-[#F4F4F5]">
       <SiteHeader />
+      <StorefrontAnnouncement text={announcement?.text} />
       <div className="overflow-x-hidden">
         {USE_NEW_HERO ? <HeroV2 /> : <LegacyImageHero />}
         <PopularCategories className="mt-8 mb-10 sm:mt-16 sm:mb-16" />

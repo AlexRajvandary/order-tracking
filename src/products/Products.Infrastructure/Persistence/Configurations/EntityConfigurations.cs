@@ -192,3 +192,14 @@ public sealed class CrawlerJobLogConfiguration : IEntityTypeConfiguration<Crawle
         builder.HasIndex(x => new { x.JobId, x.CreatedAt });
     }
 }
+
+public sealed class StorefrontAnnouncementConfiguration : IEntityTypeConfiguration<StorefrontAnnouncement>
+{
+    public void Configure(EntityTypeBuilder<StorefrontAnnouncement> builder)
+    {
+        builder.ToTable("storefront_announcements");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Text).HasMaxLength(1000).IsRequired();
+        builder.Property(x => x.UpdatedAt).IsRequired();
+    }
+}

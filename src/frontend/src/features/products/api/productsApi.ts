@@ -22,6 +22,7 @@ import type {
   SetProductsVisibilityRequest,
   SetProductsVisibilityResult,
   ShopListResult,
+  StorefrontAnnouncement,
 } from '../types'
 
 const PRODUCTS_API_BASE = '/api/products'
@@ -102,6 +103,23 @@ export function patchProduct(id: string, body: PatchProductRequest) {
     method: 'PATCH',
     body: JSON.stringify(body),
   })
+}
+
+export function getStorefrontAnnouncement(signal?: AbortSignal) {
+  return authorizedJsonFromUrl<StorefrontAnnouncement>(
+    `${PRODUCTS_API_BASE}/storefront-announcement`,
+    { signal },
+  )
+}
+
+export function updateStorefrontAnnouncement(text: string) {
+  return authorizedJsonFromUrl<StorefrontAnnouncement>(
+    `${PRODUCTS_API_BASE}/storefront-announcement`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ text }),
+    },
+  )
 }
 
 export function importProducts(body: ImportProductsRequest) {

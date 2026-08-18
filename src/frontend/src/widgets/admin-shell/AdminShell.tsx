@@ -57,6 +57,7 @@ const navItems: Array<{
   { to: '/admin/orders', labelKey: 'nav.orders' },
   { to: '/admin/customers', labelKey: 'nav.customers' },
   { to: '/admin/products', labelKey: 'nav.products' },
+  { to: '/admin/storefront-announcement', labelKey: 'nav.storefrontAnnouncement' },
   { to: '/admin/admins', labelKey: 'nav.admins', roles: ['Admin', 'SuperAdmin'] },
 ]
 

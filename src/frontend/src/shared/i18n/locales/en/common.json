@@ -18,7 +18,18 @@
     "help": "Help",
     "logout": "Log out",
     "menu": "Menu",
-    "changes": "Change history: {{count}}"
+    "changes": "Change history: {{count}}",
+    "storefrontAnnouncement": "Homepage ticker"
+  },
+  "announcement": {
+    "title": "Homepage ticker",
+    "description": "This text appears in the narrow scrolling bar above the catalog hero.",
+    "fieldLabel": "Ticker text",
+    "placeholder": "For example: New items from Japan are now in the catalog",
+    "hint": "Up to {{count}} / 1000 characters",
+    "previewTitle": "Ticker content",
+    "previewDescription": "An empty text disables the ticker on the public page.",
+    "saved": "Ticker text saved"
   },
   "notFound": {
     "title": "Page not found",

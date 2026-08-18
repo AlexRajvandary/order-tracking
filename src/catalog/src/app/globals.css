@@ -138,6 +138,25 @@
   }
 }
 
+@keyframes announcement-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-25%);
+  }
+}
+
+.announcement-marquee {
+  animation: announcement-marquee 28s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announcement-marquee {
+    animation: none;
+  }
+}
+
 .catalog-product-skeleton {
   position: relative;
   overflow: hidden;
