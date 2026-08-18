@@ -70,11 +70,23 @@ export function CartSheet({ trigger }: CartSheetProps) {
                 {items.map((item) => (
                   <li key={item.productId} className="flex gap-3">
                     <div
-                      className="size-16 shrink-0 rounded-lg"
+                      className="size-16 shrink-0 overflow-hidden bg-muted"
                       style={{
-                        background: `linear-gradient(145deg, ${item.tint || "#334155"}, #0b1220 85%)`,
+                        background: item.imageUrl
+                          ? undefined
+                          : `linear-gradient(145deg, ${item.tint || "#334155"}, #0b1220 85%)`,
                       }}
-                    />
+                    >
+                      {item.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.imageUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : null}
+                    </div>
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <Link
@@ -134,14 +146,11 @@ export function CartSheet({ trigger }: CartSheetProps) {
                   {formatCartMoney(totalRub)}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" onClick={clear}>
-                  Очистить
-                </Button>
-                <Button render={<Link href="/cart" />}>Открыть корзину</Button>
-              </div>
-              <Button disabled variant="secondary" className="w-full">
-                Оформить — скоро
+              <Button variant="outline" className="w-full" onClick={clear}>
+                Очистить корзину
+              </Button>
+              <Button disabled className="w-full" title="Оформление заказа скоро будет доступно">
+                Перейти к оформлению
               </Button>
             </SheetFooter>
           </>

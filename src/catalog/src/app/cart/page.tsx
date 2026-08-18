@@ -50,11 +50,23 @@ export default function CartPage() {
                 {items.map((item) => (
                   <li key={item.productId} className="flex gap-4 p-4 sm:p-5">
                     <div
-                      className="size-20 shrink-0 rounded-lg sm:size-24"
+                      className="size-20 shrink-0 overflow-hidden rounded-lg sm:size-24"
                       style={{
-                        background: `linear-gradient(145deg, ${item.tint || "#334155"}, oklch(0.25 0 0) 85%)`,
+                        background: item.imageUrl
+                          ? undefined
+                          : `linear-gradient(145deg, ${item.tint || "#334155"}, oklch(0.25 0 0) 85%)`,
                       }}
-                    />
+                    >
+                      {item.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.imageUrl}
+                          alt=""
+                          className="h-full w-full rounded-lg object-cover"
+                          loading="lazy"
+                        />
+                      ) : null}
+                    </div>
                     <div className="min-w-0 flex-1 space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div>

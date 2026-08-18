@@ -50,7 +50,7 @@ public sealed class CatalogStateController : ControllerBase
         row.Quantity = Math.Min(request.Quantity, 999);
         row.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
-        return Ok(new CartItemDto(product.Id, product.Slug, product.Name, product.Price, row.Quantity));
+        return Ok(new CartItemDto(product.Id, product.Slug, product.Name, product.Price, product.ImageUrl, row.Quantity));
     }
 
     [HttpDelete("cart")]
@@ -125,10 +125,10 @@ public sealed class CatalogStateController : ControllerBase
 
     private static bool IsValidVisitorKey(string? value) => value is not null && value.Length <= 64 && Regex.IsMatch(value, "^[A-Za-z0-9_-]+$");
     private static bool Matches(Guid? userId, string? visitorKey, Owner owner) => owner.UserId is not null ? userId == owner.UserId : visitorKey == owner.VisitorKey;
-    private static CartItemDto MapCart(CatalogCartItem item) => new(item.ProductId, item.Product.Slug, item.Product.Name, item.Product.Price, item.Quantity);
+    private static CartItemDto MapCart(CatalogCartItem item) => new(item.ProductId, item.Product.Slug, item.Product.Name, item.Product.Price, item.Product.ImageUrl, item.Quantity);
     private readonly record struct Owner(Guid? UserId, string? VisitorKey);
 }
 
 public sealed record SetCartItemRequest(int Quantity);
 public sealed record SetFavoriteRequest(bool Favorite);
-public sealed record CartItemDto(Guid ProductId, string Slug, string Name, decimal PriceRub, int Quantity);
+public sealed record CartItemDto(Guid ProductId, string Slug, string Name, decimal PriceRub, string ImageUrl, int Quantity);
