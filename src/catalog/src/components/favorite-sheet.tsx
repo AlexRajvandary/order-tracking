@@ -6,12 +6,10 @@ import { Heart, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useFavorites } from "@/components/favorites-provider";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -117,12 +115,6 @@ export function FavoriteSheet({ trigger }: FavoriteSheetProps) {
                 ))}
               </ul>
             </div>
-            <Separator />
-            <SheetFooter>
-              <Button className="w-full" render={<Link href="/favorites" />}>
-                Открыть избранное
-              </Button>
-            </SheetFooter>
           </>
         )}
       </SheetContent>
