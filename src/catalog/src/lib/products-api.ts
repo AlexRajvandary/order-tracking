@@ -35,6 +35,26 @@ export type ApiProductListResult = {
   pageSize: number;
 };
 
+export type ApiProductVariant = {
+  id: string;
+  productId: string;
+  size: string | null;
+  price: number | null;
+  currencyCode: string | null;
+  isAvailable: boolean | null;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type ApiProductImage = {
+  id: string;
+  productId: string;
+  imageUrl: string;
+  sortOrder: number;
+  isPrimary: boolean;
+  createdAt: string;
+};
+
 const DEFAULT_PAGE_SIZE = 10;
 export const PRODUCTS_PAGE_SIZE = 50;
 
@@ -223,6 +243,22 @@ export async function fetchCatalogPage(options: {
     total: result.total,
     page: result.page,
     pageSize: result.pageSize,
+  };
+}
+
+export async function fetchProductRelations(productId: string): Promise<{
+  variants: ApiProductVariant[];
+  images: ApiProductImage[];
+}> {
+  const base = `${productsApiBaseUrl()}/api/products/${encodeURIComponent(productId)}`;
+  const [variantsResponse, imagesResponse] = await Promise.all([
+    fetch(`${base}/variants`, { cache: "no-store" }),
+    fetch(`${base}/images`, { cache: "no-store" }),
+  ]);
+
+  return {
+    variants: variantsResponse.ok ? await variantsResponse.json() : [],
+    images: imagesResponse.ok ? await imagesResponse.json() : [],
   };
 }
 
