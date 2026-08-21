@@ -37,7 +37,7 @@ export function HeroContent() {
         <div className={styles.heroCtaBackdrop} aria-hidden />
         <div className={styles.heroTextInner}>
           <Link
-            href="/categories/bags"
+            href="/categories/all"
             className="inline-flex h-[52px] w-full max-w-full items-center justify-center gap-3 rounded-[11px] bg-[#F24676] px-5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(242,70,118,0.16)] transition-[background-color,transform,box-shadow] hover:-translate-y-px hover:bg-[#DC3565] hover:shadow-[0_10px_24px_rgba(242,70,118,0.22)] active:translate-y-0 sm:h-12 sm:w-auto sm:min-w-[230px] sm:gap-4 sm:px-[26px]"
           >
             Перейти в каталог

@@ -10,13 +10,22 @@ import { FavoriteSheet } from "@/components/favorite-sheet";
 import { useFavorites } from "@/components/favorites-provider";
 import { cn } from "@/lib/utils";
 
-const NAV_LINKS = [
+const LEGACY_NAV_LINKS = [
   { href: "/#figures", label: "Фигурки" },
   { href: "/#tcg", label: "ККИ" },
   { href: "/#women-fashion", label: "Одежда" },
   { href: "/#bags", label: "Сумки" },
   { href: "/#watches", label: "Аксессуары" },
   { href: "/blog", label: "Блог" },
+] as const;
+
+const NAV_LINKS = [
+  { href: "/#figures", label: "Фигурки" },
+  { href: "/#tcg", label: "ККИ" },
+  { href: "/#women-fashion", label: "Одежда" },
+  { href: "https://yandex.ru/profile/85406102943", label: "Отзывы" },
+  { href: "https://theget.ru/media", label: "Издание" },
+  { href: "https://theget.ru/aboutus", label: "О нас" },
 ] as const;
 
 function HeaderIconButton({
