@@ -19,6 +19,8 @@ public sealed class ProductsDbContext : DbContext
     public DbSet<StorefrontAnnouncement> StorefrontAnnouncements => Set<StorefrontAnnouncement>();
     public DbSet<CatalogCartItem> CatalogCartItems => Set<CatalogCartItem>();
     public DbSet<CatalogFavorite> CatalogFavorites => Set<CatalogFavorite>();
+    public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+    public DbSet<ProductImage> ProductImages => Set<ProductImage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

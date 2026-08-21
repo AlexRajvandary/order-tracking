@@ -17,6 +17,8 @@ public class Product : AuditableEntity
     public Shop? Shop { get; set; }
     public Guid? CategoryId { get; set; }
     public Category? Category { get; set; }
+    public ICollection<ProductVariant> ProductVariants { get; set; } = new List<ProductVariant>();
+    public ICollection<ProductImage> ProductImages { get; set; } = new List<ProductImage>();
     /// <summary>New or used (Б/У).</summary>
     public ProductCondition Condition { get; set; } = ProductCondition.New;
     public decimal Price { get; set; }
