@@ -29,16 +29,16 @@ export function OrderProcess() {
           {STEPS.map(({ number, title, text, icon: Icon }, index) => (
             <div key={number} className={`relative flex min-w-0 flex-col items-center text-center ${index === 6 ? "col-start-2 lg:col-start-auto" : ""}`}>
               <span className="absolute left-0 top-12 text-xs font-light text-[#48bde9] sm:-left-1 sm:top-20 sm:text-lg lg:-left-2">{number}.</span>
-              <div className="flex size-16 items-center justify-center rounded-[20px] border-2 border-[#48bde9] bg-[#f8fcfd] text-black sm:size-24 sm:rounded-[26px] lg:size-28">
-                <Icon className="size-8 sm:size-10" strokeWidth={1.7} aria-hidden />
+              <div className="flex size-16 items-center justify-center rounded-[20px] border-2 border-[#48bde9] bg-[#f8fcfd] text-black sm:size-16 sm:rounded-[22px] lg:size-[76px]">
+                <Icon className="size-8 sm:size-8 lg:size-9" strokeWidth={1.7} aria-hidden />
               </div>
               {index < 6 && (index % 3 !== 2 || index > 2) ? (
-                <span className={`pointer-events-none absolute left-[calc(50%+32px)] top-8 flex h-px w-[calc(100%-32px)] items-center bg-[#48bde9] lg:left-[calc(50%+56px)] lg:top-14 lg:w-[calc(100%+20px)] ${index % 3 === 2 ? "hidden lg:flex" : ""}`} aria-hidden>
+                <span className={`pointer-events-none absolute left-[calc(50%+32px)] top-8 flex h-px w-[calc(50%_-_32px)] items-center bg-[#48bde9] lg:left-[calc(50%+38px)] lg:top-[38px] lg:w-[calc(100%_-_56px)] ${index % 3 === 2 ? "hidden lg:flex" : ""}`} aria-hidden>
                   <span className="size-1.5 shrink-0 rounded-full bg-[#48bde9]" />
                 </span>
               ) : null}
-              <h3 className="mt-3 max-w-full text-[11px] leading-4 font-semibold sm:mt-4 sm:text-sm lg:text-base">{title}</h3>
-              <p className="mt-1 max-w-[110px] text-[10px] leading-4 text-[#a0a0a0] sm:mt-2 sm:max-w-[190px] sm:text-xs sm:leading-5">{text}</p>
+              <h3 className="mt-3 min-h-8 max-w-full text-[11px] leading-4 font-semibold sm:mt-4 sm:min-h-10 sm:text-sm lg:min-h-12 lg:text-base">{title}</h3>
+              <p className="mt-1 min-h-16 max-w-[110px] text-[10px] leading-4 text-[#a0a0a0] sm:mt-2 sm:min-h-20 sm:max-w-[190px] sm:text-xs sm:leading-5 lg:min-h-[100px]">{text}</p>
             </div>
           ))}
         </div>
