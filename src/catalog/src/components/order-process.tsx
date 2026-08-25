@@ -25,15 +25,15 @@ export function OrderProcess() {
       <div className="overflow-hidden rounded-[28px] border border-[#b9c2c8] bg-white px-5 py-8 sm:px-10 sm:py-10 lg:px-14">
         <p className="text-xl font-bold tracking-tight sm:text-2xl">КАК РАБОТАЕТ <span className="text-[#48bde9]">THEGET</span></p>
         <p className="mt-1 text-sm text-[#111]">Процесс работы</p>
-        <div className="mt-10 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-3 gap-x-1 gap-y-9 sm:gap-x-3 sm:gap-y-10 lg:mt-10 lg:grid-cols-7 lg:gap-x-5 lg:gap-y-10">
           {STEPS.map(({ number, title, text, icon: Icon }, index) => (
-            <div key={number} className={`relative flex flex-col items-center text-center ${index === 6 ? "lg:col-start-2" : ""}`}>
-              <span className="absolute -left-1 top-20 text-lg font-light text-[#48bde9] sm:-left-3">{number}.</span>
-              <div className="flex size-24 items-center justify-center rounded-[26px] border-2 border-[#48bde9] bg-[#f8fcfd] text-black sm:size-28">
+            <div key={number} className={`relative flex min-w-0 flex-col items-center text-center ${index === 6 ? "col-start-2 lg:col-start-auto" : ""}`}>
+              <span className="absolute left-0 top-12 text-xs font-light text-[#48bde9] sm:-left-1 sm:top-20 sm:text-lg lg:-left-2">{number}.</span>
+              <div className="flex size-16 items-center justify-center rounded-[20px] border-2 border-[#48bde9] bg-[#f8fcfd] text-black sm:size-24 sm:rounded-[26px] lg:size-28">
                 <Icon className="size-12" strokeWidth={1.7} aria-hidden />
               </div>
-              <h3 className="mt-4 text-sm font-semibold sm:text-base">{title}</h3>
-              <p className="mt-2 max-w-[190px] text-xs leading-5 text-[#a0a0a0]">{text}</p>
+              <h3 className="mt-3 max-w-full text-[11px] leading-4 font-semibold sm:mt-4 sm:text-sm lg:text-base">{title}</h3>
+              <p className="mt-1 max-w-[110px] text-[10px] leading-4 text-[#a0a0a0] sm:mt-2 sm:max-w-[190px] sm:text-xs sm:leading-5">{text}</p>
             </div>
           ))}
         </div>
