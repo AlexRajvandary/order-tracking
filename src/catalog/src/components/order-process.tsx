@@ -77,9 +77,10 @@ export function OrderProcess() {
                 <Icon className={`size-8 transition-transform duration-250 sm:size-8 lg:size-9 ${activeStep === index || selectedStep === index ? "scale-[1.04]" : "group-hover:lg:scale-[1.04] group-focus:scale-[1.04]"}`} strokeWidth={1.7} aria-hidden />
               </div>
               {index < 6 ? (
-                <span className={`pointer-events-none absolute left-[calc(50%+32px)] top-8 h-px w-[calc(100%_-_60px)] sm:w-[calc(100%_-_52px)] lg:left-[calc(50%+38px)] lg:top-[38px] lg:w-[calc(100%_-_56px)] ${index % 3 === 2 ? "hidden lg:flex" : ""}`} aria-hidden>
-                  <span className="relative flex h-px w-full items-center bg-[#48bde9] transition-colors duration-250 group-hover:lg:bg-[#20aee5]">
+                <span className={`pointer-events-none absolute left-[calc(50%+40px)] top-8 h-px w-[calc(100%_-_76px)] sm:w-[calc(100%_-_68px)] lg:left-[calc(50%+46px)] lg:top-[38px] lg:w-[calc(100%_-_72px)] ${index % 3 === 2 ? "hidden lg:flex" : ""}`} aria-hidden>
+                  <span className="relative flex h-px w-full items-center">
                     <span className="size-1.5 shrink-0 rounded-full bg-[#48bde9]" />
+                    <span className="ml-2 h-px flex-1 bg-[#48bde9] transition-colors duration-250 group-hover:lg:bg-[#20aee5]" />
                   </span>
                 </span>
               ) : null}
