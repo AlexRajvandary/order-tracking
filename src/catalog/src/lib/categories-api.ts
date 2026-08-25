@@ -30,24 +30,23 @@ export async function fetchCategoryTree(options?: {
   includeProductCounts?: boolean;
   productsActiveOnly?: boolean;
 }): Promise<ApiCategory[]> {
-  const params = new URLSearchParams({ activeOnly: "true" });
-  if (options?.popularOnly) params.set("popularOnly", "true");
-  if (options?.includeProductCounts) params.set("includeProductCounts", "true");
-  if (options?.productsActiveOnly != null) {
-    params.set("productsActiveOnly", String(options.productsActiveOnly));
+  try {
+    const params = new URLSearchParams({ activeOnly: "true" });
+    if (options?.popularOnly) params.set("popularOnly", "true");
+    if (options?.includeProductCounts) params.set("includeProductCounts", "true");
+    if (options?.productsActiveOnly != null) {
+      params.set("productsActiveOnly", String(options.productsActiveOnly));
+    }
+
+    const url = `${productsApiBaseUrl()}/api/products/categories?${params}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return [];
+
+    const data = (await res.json()) as ApiCategoryListResult;
+    return data.items ?? [];
+  } catch {
+    return [];
   }
-
-  const url = `${productsApiBaseUrl()}/api/products/categories?${params}`;
-  const res = await fetch(url, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    throw new Error(`Categories API ${res.status}: ${url}`);
-  }
-
-  const data = (await res.json()) as ApiCategoryListResult;
-  return data.items ?? [];
 }
 
 export function findRootCategory(
