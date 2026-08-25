@@ -23,7 +23,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-background font-sans antialiased">
         <CartProvider>
           <FavoritesProvider>
-            <main className="flex min-h-full flex-1 flex-col">{children}</main>
+            <main className="flex min-h-full flex-1 flex-col bg-background">{children}</main>
             <OrderProcess />
             <Footer />
           </FavoritesProvider>
