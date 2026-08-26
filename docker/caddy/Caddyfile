@@ -30,6 +30,11 @@
 		reverse_proxy api:8080
 	}
 
+	# Public catalog static assets (kept separate from admin /assets)
+	handle /catalog-assets* {
+		reverse_proxy catalog:3000
+	}
+
 	# Vite build assets for the admin SPA (base: "/")
 	handle /assets* {
 		reverse_proxy api:8080
