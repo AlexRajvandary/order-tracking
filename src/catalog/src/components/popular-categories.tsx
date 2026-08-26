@@ -8,7 +8,7 @@ import {
   useState,
   type RefObject,
 } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type PopularCategory = {
@@ -28,8 +28,7 @@ export const POPULAR_CATEGORIES: PopularCategory[] = [
     title: "Фигурки",
     caption: "Коллекционные издания",
     href: "/categories/figures",
-    image:
-      "https://static.zenmarket.jp/images/common-landing-pages/u1wfwyzi.mcf",
+    image: "/catalog-assets/popular-figures.png",
     gradient: "linear-gradient(135deg, #FCEAF1 0%, #F8EDF6 100%)",
   },
   {
@@ -37,8 +36,7 @@ export const POPULAR_CATEGORIES: PopularCategory[] = [
     title: "ККИ",
     caption: "Pokemon, One Piece, Yu-Gi-Oh",
     href: "/categories/tcg",
-    image:
-      "https://static.zenmarket.jp/images/common-landing-pages/a1w1bj2f.dob",
+    image: "/catalog-assets/popular-tcg.png",
     gradient: "linear-gradient(135deg, #EDF5FF 0%, #F6FAFF 100%)",
   },
   {
@@ -46,8 +44,7 @@ export const POPULAR_CATEGORIES: PopularCategory[] = [
     title: "Одежда",
     caption: "Японские бренды",
     href: "/categories/clothing",
-    image:
-      "https://static.zenmarket.jp/images/misc/68b97d1e817449228714e72737459c2e/p1hps89dvil3doq91qfo5sl1ck8g.png",
+    image: "/catalog-assets/popular-clothing.png",
     gradient: "linear-gradient(135deg, #F2EDFF 0%, #F8F5FF 100%)",
   },
   {
@@ -65,7 +62,7 @@ export const POPULAR_CATEGORIES: PopularCategory[] = [
     caption: "Sony, Panasonic, Nintendo",
     href: "/categories/electronics",
     image:
-      "https://static.zenmarket.jp/images/common-landing-pages/2w2225qn.twv",
+      "/catalog-assets/popular-electronics.png",
     gradient: "linear-gradient(135deg, #EEF9F6 0%, #F8FCFB 100%)",
   },
   {
@@ -89,20 +86,13 @@ export const POPULAR_CATEGORIES: PopularCategory[] = [
     accent: "#A89B7A",
   },
   {
-    id: "matcha",
-    title: "Чай матча",
-    caption: "Порошок и чай",
-    href: "/categories/matcha",
+    id: "sports",
+    title: "Спорт и отдых",
+    caption: "Товары для спорта и активного отдыха",
+    href: "/categories/sports",
+    image: "/catalog-assets/popular-sports.png",
     gradient: "linear-gradient(135deg, #EAF5E4 0%, #F5FAF2 100%)",
     accent: "#5F8F4A",
-  },
-  {
-    id: "retro-consoles",
-    title: "Ретро-консоли",
-    caption: "Классика игр",
-    href: "/categories/retro-consoles",
-    gradient: "linear-gradient(135deg, #ECE8F7 0%, #F6F4FB 100%)",
-    accent: "#6B5B95",
   },
   {
     id: "books",
@@ -113,14 +103,6 @@ export const POPULAR_CATEGORIES: PopularCategory[] = [
       "https://static.zenmarket.jp/images/common-landing-pages/ba5o0wae.4hs",
     gradient: "linear-gradient(135deg, #FCEEE8 0%, #FFF7F4 100%)",
     accent: "#C45C3E",
-  },
-  {
-    id: "vinyl",
-    title: "Пластинки",
-    caption: "LP и винил",
-    href: "/categories/vinyl",
-    gradient: "linear-gradient(135deg, #F5E9EC 0%, #FBF4F6 100%)",
-    accent: "#9B4D6A",
   },
   {
     id: "watches",
@@ -158,31 +140,16 @@ export const POPULAR_CATEGORIES: PopularCategory[] = [
     caption: "Гитары, клавиши, DJ",
     href: "/categories/instruments",
     image:
-      "https://static.zenmarket.jp/images/common-landing-pages/noootdcm.esx",
+      "/catalog-assets/popular-instruments.png",
     gradient: "linear-gradient(135deg, #FFF0E5 0%, #FFF8F2 100%)",
     accent: "#C67B3A",
-  },
-  {
-    id: "cameras",
-    title: "Камеры",
-    caption: "Фото и оптика",
-    href: "/categories/cameras",
-    gradient: "linear-gradient(135deg, #E9EDF2 0%, #F5F7FA 100%)",
-    accent: "#5A6A7A",
-  },
-  {
-    id: "snacks",
-    title: "Снеки и сладости",
-    caption: "KitKat и сладости",
-    href: "/categories/snacks",
-    gradient: "linear-gradient(135deg, #FFF0E8 0%, #FFF8F3 100%)",
-    accent: "#D4895A",
   },
   {
     id: "games",
     title: "Игры",
     caption: "PC и консоли",
     href: "/categories/games",
+    image: "/catalog-assets/popular-games.png",
     gradient: "linear-gradient(135deg, #E8F0FF 0%, #F3F7FF 100%)",
     accent: "#4A6FA5",
   },
@@ -201,22 +168,22 @@ export function PopularCategoryCard({
     <Link
       href={category.href}
       className={cn(
-        "group relative block h-full min-h-[200px] overflow-hidden rounded-[24px]",
-        "border border-[rgba(15,23,42,0.05)]",
-        "shadow-[0_8px_24px_rgba(15,23,42,0.05)]",
+        "group relative block h-full min-h-[270px] overflow-hidden rounded-2xl",
+        "border border-[#e5e7eb] bg-[#ffffff]",
+        "shadow-[0_2px_10px_rgba(15,23,42,0.03)]",
         "transition-[transform,box-shadow] duration-[250ms] ease",
-        "hover:-translate-y-1 hover:shadow-[0_14px_32px_rgba(15,23,42,0.09)]",
+        "hover:-translate-y-1 hover:border-[#f24676] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]",
         className,
       )}
-      style={{ background: category.gradient }}
     >
       <div className="relative z-10 flex h-full flex-col p-5 pr-4 sm:p-6">
-        <p className="text-[13px] font-normal leading-[1.35] text-[rgba(17,17,17,0.70)] sm:text-sm">
-          {category.caption}
-        </p>
-        <h3 className="mt-2 max-w-[70%] text-[clamp(20px,1.8vw,26px)] font-bold leading-[1.05] tracking-[-0.025em] text-[#111111]">
+        <ArrowUpRight className="absolute top-5 right-5 size-5 text-[#f24676] transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 sm:top-6 sm:right-6" />
+        <h3 className="max-w-[78%] text-[clamp(19px,1.8vw,25px)] font-bold leading-[1.08] tracking-[-0.025em] text-[#111111]">
           {category.title}
         </h3>
+        <p className="mt-2 max-w-[78%] text-[13px] leading-[1.4] text-[#666] sm:text-sm">
+          {category.caption}
+        </p>
       </div>
 
       {category.image ? (
@@ -226,7 +193,10 @@ export function PopularCategoryCard({
           alt=""
           loading="lazy"
           className={cn(
-            "pointer-events-none absolute right-[-4%] bottom-[-6%] z-0 h-[78%] w-[78%] object-contain object-right-bottom",
+            "pointer-events-none absolute inset-x-0 bottom-[-2%] z-0 h-[62%] w-full object-contain object-center",
+            category.id === "sports" && "bottom-[2%] h-[68%] scale-[1.08]",
+            (category.id === "instruments" || category.id === "games") &&
+              "bottom-[-2%] h-[68%] scale-[1.08]",
             "[filter:drop-shadow(0_8px_14px_rgba(15,23,42,0.08))]",
             "transition-transform duration-300 ease group-hover:scale-[1.025]",
           )}
@@ -293,13 +263,13 @@ function DesktopTwoRowSlider({
           "auto-cols-[calc((100%-1rem)/2)]",
           "md:auto-cols-[calc((100%-2.5rem)/3)]",
           "lg:auto-cols-[calc((100%-4.5rem)/4)]",
-          "xl:auto-cols-[calc((100%-6rem)/5)]",
+          "xl:auto-cols-[calc((100%-4.5rem)/4)]",
         )}
         style={{ gridTemplateRows: "repeat(2, minmax(210px, 1fr))" }}
       >
         {categories.map((category) => (
           <div key={category.id} className="min-w-0 snap-start">
-            <PopularCategoryCard category={category} className="min-h-[210px]" />
+            <PopularCategoryCard category={category} className="min-h-[270px]" />
           </div>
         ))}
       </div>
@@ -415,13 +385,13 @@ export function PopularCategories({ className }: PopularCategoriesProps) {
         </Link>
       </div>
 
-      {/* Mobile: single-row horizontal scroll */}
-      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory sm:hidden [&::-webkit-scrollbar]:hidden">
+      {/* Mobile: two-column category grid */}
+      <div className="grid grid-cols-2 gap-3 sm:hidden">
         {POPULAR_CATEGORIES.map((category) => (
           <PopularCategoryCard
             key={category.id}
             category={category}
-            className="h-[220px] min-w-[min(78vw,260px)] flex-none snap-start rounded-[24px]"
+            className="min-h-[230px] rounded-2xl"
           />
         ))}
       </div>
