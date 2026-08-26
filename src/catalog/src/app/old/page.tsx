@@ -68,11 +68,15 @@ function toWomenFashionCategories(categories: Array<Pick<FashionCategoryData, "i
 }
 
 function toMenFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | "name" | "slug" | "description" | "imageUrl">>): FashionCategoryData[] {
-  return toFashionCategories(categories, "men").map((category) =>
-    /kimono|\u043a\u0438\u043c\u043e\u043d/i.test(`${category.name} ${category.slug}`)
-      ? { ...category, imageUrl: "/catalog-assets/mens-kimono.png" }
-      : category,
-  );
+  return toFashionCategories(categories, "men")
+    .filter((category) => !/\u0432\u0435\u0440\u0445\u043d\u044f\u044f\s+\u043e\u0434\u0435\u0436\u0434\u0430|outerwear/i.test(`${category.name} ${category.slug}`))
+    .map((category) => {
+      const key = `${category.name} ${category.slug}`;
+      if (/kimono|\u043a\u0438\u043c\u043e\u043d/i.test(key)) return { ...category, imageUrl: "/catalog-assets/mens-kimono.png" };
+      if (/\u0432\u0435\u0440\u0445|top/i.test(key)) return { ...category, imageUrl: "/catalog-assets/mens-top.png" };
+      if (/\u043d\u0438\u0437|bottom/i.test(key)) return { ...category, imageUrl: "/catalog-assets/mens-bottom.png" };
+      return category;
+    });
 }
 
 export default async function HomePage() {
