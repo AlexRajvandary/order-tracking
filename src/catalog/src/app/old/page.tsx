@@ -71,8 +71,8 @@ export default async function HomePage() {
   const womenRoot = findFashionRoot(categoryTree, "women");
   const menRoot = findFashionRoot(categoryTree, "men");
   const fashionSections = new Map([
-    ["women-fashion", { root: womenRoot, categories: toWomenFashionCategories(womenRoot?.children ?? fallbackFashionCategories("women-fashion")) }],
-    ["men-fashion", { root: menRoot, categories: toFashionCategories(menRoot?.children ?? fallbackFashionCategories("men-fashion"), "men") }],
+    ["women-fashion", { root: womenRoot, categories: toWomenFashionCategories(womenRoot?.children?.length ? womenRoot.children : fallbackFashionCategories("women-fashion")) }],
+    ["men-fashion", { root: menRoot, categories: toFashionCategories(menRoot?.children?.length ? menRoot.children : fallbackFashionCategories("men-fashion"), "men") }],
   ]);
   const orderedSections = [
     ...categorySections.filter((section) => section.id === "women-fashion" || section.id === "men-fashion"),
