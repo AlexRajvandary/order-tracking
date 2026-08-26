@@ -58,7 +58,9 @@ function toFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | 
 }
 
 function toWomenFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | "name" | "slug" | "description" | "imageUrl">>): FashionCategoryData[] {
-  return toFashionCategories(categories).map((category) =>
+  return toFashionCategories(categories).filter((category) =>
+    !/\u0432\u0435\u0440\u0445\u043d\u044f\u044f\s+\u043e\u0434\u0435\u0436\u0434\u0430|outerwear|\u043a\u043e\u0441\u0442\u044e\u043c|suits?/i.test(`${category.name} ${category.slug}`),
+  ).map((category) =>
     /kimono|\u043a\u0438\u043c\u043e\u043d/i.test(`${category.name} ${category.slug}`)
       ? { ...category, imageUrl: "/catalog-assets/womens-kimono.png" }
       : category,
