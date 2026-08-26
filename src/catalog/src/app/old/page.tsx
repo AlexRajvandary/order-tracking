@@ -52,7 +52,7 @@ function toFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | 
   return categories.map((category) => ({
     ...category,
     imageUrl: men && /kimono|кимон/i.test(`${category.name} ${category.slug}`)
-      ? "/assets/mens-kimono.png"
+      ? "/catalog-assets/mens-kimono.png"
       : category.imageUrl,
   }));
 }
@@ -60,7 +60,7 @@ function toFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | 
 function toWomenFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | "name" | "slug" | "description" | "imageUrl">>): FashionCategoryData[] {
   return toFashionCategories(categories).map((category) =>
     /kimono|\u043a\u0438\u043c\u043e\u043d/i.test(`${category.name} ${category.slug}`)
-      ? { ...category, imageUrl: "/assets/womens-kimono.png" }
+      ? { ...category, imageUrl: "/catalog-assets/womens-kimono.png" }
       : category,
   );
 }
@@ -68,7 +68,7 @@ function toWomenFashionCategories(categories: Array<Pick<FashionCategoryData, "i
 function toMenFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | "name" | "slug" | "description" | "imageUrl">>): FashionCategoryData[] {
   return toFashionCategories(categories, "men").map((category) =>
     /kimono|\u043a\u0438\u043c\u043e\u043d/i.test(`${category.name} ${category.slug}`)
-      ? { ...category, imageUrl: "/assets/mens-kimono.png" }
+      ? { ...category, imageUrl: "/catalog-assets/mens-kimono.png" }
       : category,
   );
 }
