@@ -130,7 +130,7 @@ export const POPULAR_CATEGORIES: PopularCategory[] = [
     caption: "Красота и здоровье",
     href: "/categories/supplements",
     image:
-      "https://static.zenmarket.jp/images/common-landing-pages/323axv11.1qt",
+      "/catalog-assets/popular-supplements.png",
     gradient: "linear-gradient(135deg, #E9F6F0 0%, #F4FBF7 100%)",
     accent: "#3D8F6E",
   },
@@ -194,9 +194,11 @@ export function PopularCategoryCard({
           loading="lazy"
           className={cn(
             "pointer-events-none absolute inset-x-0 bottom-[-2%] z-0 h-[62%] w-full object-contain object-center",
-            category.id === "sports" && "bottom-[2%] h-[68%] scale-[1.08]",
-            (category.id === "instruments" || category.id === "games") &&
+            category.id === "sports" && "bottom-[2%] h-[64%] scale-[1.02]",
+            category.id === "instruments" &&
               "bottom-[-2%] h-[68%] scale-[1.08]",
+            category.id === "games" &&
+              "bottom-[-2%] h-[64%] scale-[1.02]",
             "[filter:drop-shadow(0_8px_14px_rgba(15,23,42,0.08))]",
             "transition-transform duration-300 ease group-hover:scale-[1.025]",
           )}

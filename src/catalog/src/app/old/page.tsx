@@ -3,6 +3,7 @@ import { HeroV2 } from "@/components/hero/hero-v2";
 import { LegacyImageHero } from "@/components/legacy-image-hero";
 import { CategoryCard } from "@/components/category-card";
 import { FashionCategorySection } from "@/components/fashion-category-section";
+import { FigureCategorySection } from "@/components/figure-category-section";
 import { PopularCategories } from "@/components/popular-categories";
 import { SiteHeader } from "@/components/site-header";
 import { StorefrontAnnouncement } from "@/components/storefront-announcement";
@@ -88,9 +89,12 @@ export default async function HomePage() {
     ["women-fashion", { root: womenRoot, categories: toWomenFashionCategories(womenRoot?.children?.length ? womenRoot.children : fallbackFashionCategories("women-fashion")) }],
     ["men-fashion", { root: menRoot, categories: toMenFashionCategories(menRoot?.children?.length ? menRoot.children : fallbackFashionCategories("men-fashion")) }],
   ]);
+  const visibleSections = categorySections.filter(
+    (section) => section.id !== "stationery" && section.id !== "dvd",
+  );
   const orderedSections = [
-    ...categorySections.filter((section) => section.id === "women-fashion" || section.id === "men-fashion"),
-    ...categorySections.filter((section) => section.id !== "women-fashion" && section.id !== "men-fashion"),
+    ...visibleSections.filter((section) => section.id === "women-fashion" || section.id === "men-fashion"),
+    ...visibleSections.filter((section) => section.id !== "women-fashion" && section.id !== "men-fashion"),
   ];
 
   return (
@@ -103,11 +107,18 @@ export default async function HomePage() {
         <main className="mx-auto max-w-6xl flex-1 space-y-12 px-4 pt-0 pb-12 sm:space-y-[72px] sm:px-6 sm:pb-16">
           {orderedSections.map((section) => (
             <section key={section.id} id={section.id}>
-              {fashionSections.has(section.id) ? (() => {
+              {section.id === "figures" || section.id === "books" || section.id === "tcg" ? (
+                <FigureCategorySection
+                  items={section.items}
+                  sectionId={sectionRouteId(section.id)}
+                  title={section.title}
+                  allLabel={section.id === "books" ? "Все книги и манга" : section.id === "tcg" ? "Все ККИ" : "Все фигурки"}
+                />
+              ) : fashionSections.has(section.id) ? (() => {
                 const fashion = fashionSections.get(section.id)!;
                 return <FashionCategorySection title={section.title} subtitle="Одежда и аксессуары на любой стиль" rootSlug={fashion.root?.slug ?? sectionRouteId(section.id)} categories={fashion.categories} />;
               })() : null}
-              {!fashionSections.has(section.id) ? <>
+              {section.id !== "figures" && section.id !== "books" && section.id !== "tcg" && !fashionSections.has(section.id) ? <>
               <div className="mb-5 flex items-center justify-between gap-3 sm:mb-10 sm:gap-4">
                 <h2 className="flex min-w-0 items-center gap-2.5 text-[22px] font-bold tracking-tight text-[#111] sm:gap-3 sm:text-[30px]">
                   <span

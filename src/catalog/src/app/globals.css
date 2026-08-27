@@ -177,6 +177,31 @@
   animation: catalog-skeleton-shimmer 1.35s ease-in-out infinite;
 }
 
+.figure-swiper {
+  padding-bottom: 32px !important;
+}
+
+.figure-swiper .swiper-scrollbar {
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 220px !important;
+  height: 4px !important;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: #d9d9d9;
+}
+
+.figure-swiper .swiper-scrollbar-drag {
+  border-radius: 999px;
+  background: #f24676;
+  cursor: grab;
+}
+
+.figure-swiper .swiper-scrollbar-drag:active {
+  cursor: grabbing;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .catalog-product-skeleton::after {
     animation: none;
