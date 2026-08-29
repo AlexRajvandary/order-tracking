@@ -81,7 +81,7 @@ export const POPULAR_CATEGORIES: PopularCategory[] = [
     caption: "Дом и бумага",
     href: "/categories/stationery",
     image:
-      "https://static.zenmarket.jp/images/misc/f6c6cb508ddb40bda9aebf81f3baa944/p1hr8dgot11nqc17ns2el1pplfcl5.png",
+      "/catalog-assets/stationery.png",
     gradient: "linear-gradient(135deg, #F3F0E8 0%, #FAF8F3 100%)",
     accent: "#A89B7A",
   },
