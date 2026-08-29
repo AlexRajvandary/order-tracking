@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, MoreHorizontal, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
+import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, MoreHorizontal, Pencil, Plus, Trash2, Upload, X, Table2, LayoutGrid } from 'lucide-react'
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useNavigate } from 'react-router-dom'
+import type { ColumnDef } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
 import type {
@@ -45,6 +47,7 @@ import {
 } from '@/shared/ui/select'
 import { Separator } from '@/shared/ui/separator'
 import { Switch } from '@/shared/ui/switch'
+import { DataTable, DataTableColumnHeader } from '@/shared/ui/data-table'
 import { ProductsImportDialog } from './ProductsImportDialog'
 
 const PAGE_SIZES = [20, 40, 60, 100] as const
@@ -716,6 +719,7 @@ async function hideProductIds(ids: string[]) {
 
 export function ProductsPage() {
   const { t, i18n } = useTranslation('products')
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isMobileProductsLayout = useMobileProductsLayout()
   const [search, setSearch] = useState('')
@@ -730,6 +734,7 @@ export function ProductsPage() {
   const [editing, setEditing] = useState<Product | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
 
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(() => new Set())
   const [selectedShops, setSelectedShops] = useState<Set<string>>(() => new Set())
@@ -919,6 +924,21 @@ export function ProductsPage() {
   }, [pageItems, activeMobilePages.items, sort, i18n.language])
 
   const activeDisplayItems = isMobileProductsLayout ? mobileDisplayItems : displayItems
+
+  const tableColumns = useMemo<ColumnDef<Product>[]>(() => {
+    const text = (id: keyof Product, label: string) => ({
+      id, accessorFn: (row: Product) => row[id] ?? '', meta: { label },
+      header: ({ column, table }: any) => <DataTableColumnHeader column={column} table={table} title={label} />,
+      cell: ({ row }: any) => String(row.original[id] ?? '—'),
+    })
+    return [
+      text('id', 'ID'), text('name', 'Название'), text('sku', 'SKU'), text('description', 'Описание'),
+      text('brand', 'Бренд'), text('condition', 'Состояние'), text('categoryName', 'Категория'),
+      text('shopName', 'Магазин'), text('price', 'Цена'), text('originalPrice', 'Цена оригинала'),
+      text('currencyCode', 'Валюта'), text('sourceUrl', 'Ссылка на источник'), text('isActive', 'Публичный'),
+      text('createdAt', 'Создан'), text('updatedAt', 'Изменён'),
+    ]
+  }, [])
 
   const totalPages = Math.max(
     1,
@@ -1178,6 +1198,8 @@ export function ProductsPage() {
         </Select>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2 lg:ml-auto lg:flex-nowrap">
+          <Button type="button" variant={viewMode === 'table' ? 'secondary' : 'outline'} size="icon-sm" aria-label="Таблица" title="Таблица" onClick={() => setViewMode('table')}><Table2 /></Button>
+          <Button type="button" variant={viewMode === 'cards' ? 'secondary' : 'outline'} size="icon-sm" aria-label="Карточки" title="Карточки" onClick={() => setViewMode('cards')}><LayoutGrid /></Button>
           <Button
             type="button"
             size="sm"
@@ -1514,6 +1536,16 @@ export function ProductsPage() {
                 {t('empty')}
               </CardContent>
             </Card>
+          ) : viewMode === 'table' ? (
+            <DataTable
+              tableId="products"
+              columns={tableColumns}
+              data={displayItems}
+              pageSize={10}
+              onRowClick={(row) => navigate(`/admin/products/${row.original.id}`)}
+              getRowClassName={() => 'cursor-pointer'}
+              emptyMessage={t('empty')}
+            />
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3 sm:hidden">

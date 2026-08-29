@@ -16,6 +16,7 @@ import type {
   ListProductsParams,
   NotifyProductImportRequest,
   PatchProductRequest,
+  UpdateProductRequest,
   Product,
   ProductListResult,
   RenameCategoryRequest,
@@ -47,6 +48,10 @@ function buildListUrl(params: ListProductsParams = {}) {
 
 export function listProducts(params?: ListProductsParams, signal?: AbortSignal) {
   return authorizedJsonFromUrl<ProductListResult>(buildListUrl(params), { signal })
+}
+
+export function getProduct(id: string, signal?: AbortSignal) {
+  return authorizedJsonFromUrl<Product>(`${PRODUCTS_API_BASE}/${id}`, { signal })
 }
 
 export function listCategories(productsActiveOnly?: boolean | null, signal?: AbortSignal) {
@@ -101,6 +106,13 @@ export function listShops(signal?: AbortSignal) {
 export function patchProduct(id: string, body: PatchProductRequest) {
   return authorizedJsonFromUrl<Product>(`${PRODUCTS_API_BASE}/${id}`, {
     method: 'PATCH',
+    body: JSON.stringify(body),
+  })
+}
+
+export function updateProduct(id: string, body: UpdateProductRequest) {
+  return authorizedJsonFromUrl<Product>(`${PRODUCTS_API_BASE}/${id}`, {
+    method: 'PUT',
     body: JSON.stringify(body),
   })
 }

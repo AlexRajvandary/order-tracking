@@ -120,6 +120,25 @@ export type PatchProductRequest = {
   clearShop?: boolean
 }
 
+export type UpdateProductRequest = {
+  name: string
+  slug?: string | null
+  description?: string | null
+  sku?: string | null
+  brand?: string | null
+  brandId?: string | null
+  price: number
+  currencyCode?: string | null
+  originalPrice?: number | null
+  originalCurrencyCode?: string | null
+  imageUrl: string
+  sourceUrl?: string | null
+  isActive: boolean
+  condition?: string | null
+  shopId?: string | null
+  categoryId?: string | null
+}
+
 export type SetProductsVisibilityRequest = {
   isActive: boolean
   productIds?: string[]

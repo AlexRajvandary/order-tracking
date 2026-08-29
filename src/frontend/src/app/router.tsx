@@ -13,6 +13,7 @@ import { OrdersListPage } from '@/pages/admin/OrdersListPage'
 import { CreateOrderPage } from '@/pages/admin/CreateOrderPage'
 import { OrderDetailsPage } from '@/pages/admin/OrderDetailsPage'
 import { ProductsPage } from '@/pages/admin/ProductsPage'
+import { ProductDetailsPage } from '@/pages/admin/ProductDetailsPage'
 import { ChangesPage } from '@/pages/admin/ChangesPage'
 import { VpsMonitoringPage } from '@/pages/admin/VpsMonitoringPage'
 import { StorefrontAnnouncementPage } from '@/pages/admin/StorefrontAnnouncementPage'
@@ -46,6 +47,7 @@ export function AppRouter() {
               <Route path="customers" element={<CustomersPage />} />
               <Route path="customers/:id" element={<CustomerDetailsPage />} />
               <Route path="products" element={<ProductsPage />} />
+              <Route path="products/:id" element={<ProductDetailsPage />} />
               <Route path="changes" element={<ChangesPage />} />
               <Route path="monitoring" element={<VpsMonitoringPage />} />
               <Route path="storefront-announcement" element={<StorefrontAnnouncementPage />} />
