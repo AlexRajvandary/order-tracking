@@ -43,6 +43,7 @@ type DataTableProps<TData> = {
   toolbarContainer?: HTMLElement | null
   className?: string
   paginationClassName?: string
+  showPagination?: boolean
   onRowClick?: (row: Row<TData>) => void
   getRowClassName?: (row: Row<TData>) => string | undefined
 }
@@ -62,6 +63,7 @@ export function DataTable<TData>({
   toolbarContainer,
   className,
   paginationClassName,
+  showPagination = true,
   onRowClick,
   getRowClassName,
 }: DataTableProps<TData>) {
@@ -170,9 +172,11 @@ export function DataTable<TData>({
         </TableBody>
       </Table>
 
-      <div className={paginationClassName}>
-        <DataTablePagination table={table} />
-      </div>
+      {showPagination ? (
+        <div className={paginationClassName}>
+          <DataTablePagination table={table} />
+        </div>
+      ) : null}
     </div>
   )
 }

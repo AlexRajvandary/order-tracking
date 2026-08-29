@@ -1283,13 +1283,13 @@ export function ProductsPage() {
               : null}
           </p>
           <div className="hidden sm:block">
-            <ProductsToolbarPagination
-              page={page}
-              totalPages={totalPages}
-              pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-            />
+              <ProductsToolbarPagination
+                page={page}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
           </div>
         </div>
       </div>
@@ -1542,6 +1542,7 @@ export function ProductsPage() {
               columns={tableColumns}
               data={displayItems}
               pageSize={10}
+              showPagination={false}
               onRowClick={(row) => navigate(`/admin/products/${row.original.id}`)}
               getRowClassName={() => 'cursor-pointer'}
               emptyMessage={t('empty')}
@@ -1603,15 +1604,17 @@ export function ProductsPage() {
                       : t('loadMore')}
                 </Button>
               ) : null}
-              <div className="hidden sm:block">
-                <ProductsToolbarPagination
-                  page={page}
-                  totalPages={totalPages}
-                  pageSize={pageSize}
-                  onPageChange={setPage}
-                  onPageSizeChange={setPageSize}
-                />
-              </div>
+              {viewMode !== 'table' ? (
+                <div className="hidden sm:block">
+                    <ProductsToolbarPagination
+                      page={page}
+                      totalPages={totalPages}
+                      pageSize={pageSize}
+                      onPageChange={setPage}
+                      onPageSizeChange={setPageSize}
+                    />
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
