@@ -12,6 +12,10 @@ node_modules/
 .env.local
 .env.*.local
 
+# Local LLM/API credentials
+tools/ProductTranslationWorker/appsettings.local.json
+tools/ProductTranslationWorker/appsettings.*.local.json
+
 # IDE
 .vs/
 .vscode/
