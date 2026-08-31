@@ -1,5 +1,6 @@
 using Products.Domain.Entities;
 using Products.Domain.Enums;
+using Products.Application.Products.Models;
 
 namespace Products.Application.Common.Interfaces;
 
@@ -66,4 +67,7 @@ public interface IProductRepository
         CancellationToken cancellationToken = default);
     void Add(Product product);
     void Remove(Product product);
+    Task<IReadOnlyList<ProductTranslationPendingDto>> GetPendingTranslationsAsync(int limit, CancellationToken cancellationToken = default);
+    Task<ProductTranslationStatsDto> GetTranslationStatsAsync(CancellationToken cancellationToken = default);
+    Task<(int Updated, int NotFound)> SaveTranslationsAsync(IReadOnlyDictionary<Guid, string> translations, CancellationToken cancellationToken = default);
 }

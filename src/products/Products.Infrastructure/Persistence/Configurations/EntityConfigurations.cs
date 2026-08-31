@@ -12,6 +12,7 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.HasKey(x => x.Id);
 
         builder.Property(x => x.Name).HasMaxLength(500).IsRequired();
+        builder.Property(x => x.NameRu).HasMaxLength(500);
         builder.Property(x => x.Slug).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Description).HasColumnType("text");
         builder.Property(x => x.Sku).HasMaxLength(100);

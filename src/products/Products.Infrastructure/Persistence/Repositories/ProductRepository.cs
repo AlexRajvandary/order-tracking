@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Products.Application.Common.Interfaces;
 using Products.Domain.Entities;
 using Products.Domain.Enums;
+using Products.Application.Products.Models;
 
 namespace Products.Infrastructure.Persistence.Repositories;
 
@@ -380,4 +381,35 @@ public sealed class ProductRepository : IProductRepository
     public void Add(Product product) => _db.Products.Add(product);
 
     public void Remove(Product product) => _db.Products.Remove(product);
+
+    public async Task<IReadOnlyList<ProductTranslationPendingDto>> GetPendingTranslationsAsync(int limit, CancellationToken cancellationToken = default) =>
+        await _db.Products.AsNoTracking()
+            .Where(p => p.NameRu == null || p.NameRu == "")
+            .OrderBy(p => p.Id)
+            .Select(p => new ProductTranslationPendingDto(p.Id, p.Name))
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+    public async Task<ProductTranslationStatsDto> GetTranslationStatsAsync(CancellationToken cancellationToken = default)
+    {
+        var total = await _db.Products.LongCountAsync(cancellationToken);
+        var translated = await _db.Products.LongCountAsync(p => p.NameRu != null && p.NameRu != "", cancellationToken);
+        return new ProductTranslationStatsDto(total, translated, total - translated);
+    }
+
+    public async Task<(int Updated, int NotFound)> SaveTranslationsAsync(IReadOnlyDictionary<Guid, string> translations, CancellationToken cancellationToken = default)
+    {
+        var ids = translations.Keys.ToList();
+        var products = await _db.Products.Where(p => ids.Contains(p.Id)).ToListAsync(cancellationToken);
+        var now = DateTimeOffset.UtcNow;
+        foreach (var product in products)
+        {
+            if (translations.TryGetValue(product.Id, out var value))
+            {
+                product.NameRu = value;
+                product.UpdatedAt = now;
+            }
+        }
+        return (products.Count, ids.Count - products.Count);
+    }
 }

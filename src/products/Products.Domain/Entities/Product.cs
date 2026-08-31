@@ -6,6 +6,7 @@ namespace Products.Domain.Entities;
 public class Product : AuditableEntity
 {
     public string Name { get; set; } = string.Empty;
+    public string? NameRu { get; set; }
     public string Slug { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? Sku { get; set; }

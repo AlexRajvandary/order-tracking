@@ -11,6 +11,7 @@ using Products.Application.Products.ListProducts;
 using Products.Application.Products.PatchProduct;
 using Products.Application.Products.SetProductsVisibility;
 using Products.Application.Products.UpdateProduct;
+using Products.Application.Products.Translations;
 
 namespace Products.Api.Controllers;
 
@@ -71,6 +72,25 @@ public sealed class ProductsController : ControllerBase
         string slug,
         CancellationToken cancellationToken) =>
         _mediator.Send(new GetProductBySlugQuery(slug), cancellationToken);
+
+    [HttpGet("translations/pending")]
+    [Authorize]
+    public Task<IReadOnlyList<Products.Application.Products.Models.ProductTranslationPendingDto>> PendingTranslations(
+        [FromQuery] int limit = 50, CancellationToken cancellationToken = default) =>
+        _mediator.Send(new GetPendingTranslationsQuery(limit), cancellationToken);
+
+    [HttpPost("translations")]
+    [Authorize]
+    public Task<Products.Application.Products.Models.SaveProductTranslationsResponse> SaveTranslations(
+        [FromBody] Products.Application.Products.Models.SaveProductTranslationsRequest body,
+        CancellationToken cancellationToken) =>
+        _mediator.Send(new SaveProductTranslationsCommand(body.Items), cancellationToken);
+
+    [HttpGet("translations/stats")]
+    [Authorize]
+    public Task<Products.Application.Products.Models.ProductTranslationStatsDto> TranslationStats(
+        CancellationToken cancellationToken) =>
+        _mediator.Send(new GetProductTranslationStatsQuery(), cancellationToken);
 
     [HttpGet("{id:guid}/audit")]
     [Authorize]

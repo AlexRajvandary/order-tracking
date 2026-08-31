@@ -26,6 +26,12 @@ public sealed record ProductDto(
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);
 
+public sealed record ProductTranslationPendingDto(Guid Id, string Name);
+public sealed record ProductTranslationResultDto(Guid Id, string NameRu);
+public sealed record SaveProductTranslationsRequest(IReadOnlyList<ProductTranslationResultDto> Items);
+public sealed record ProductTranslationStatsDto(long Total, long Translated, long Remaining);
+public sealed record SaveProductTranslationsResponse(int Requested, int Updated, int NotFound);
+
 public sealed record ProductListResult(
     IReadOnlyList<ProductDto> Items,
     int Total,
