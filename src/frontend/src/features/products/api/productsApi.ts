@@ -24,6 +24,8 @@ import type {
   SetProductsVisibilityResult,
   ShopListResult,
   StorefrontAnnouncement,
+  CreateTranslationJobRequest,
+  TranslationJob,
 } from '../types'
 
 const PRODUCTS_API_BASE = '/api/products'
@@ -178,6 +180,37 @@ export function notifyProductImport(body: NotifyProductImportRequest) {
   return authorizedJson<void>('/products/import-notification', {
     method: 'POST',
     body: JSON.stringify(body),
+  })
+}
+
+const TRANSLATION_JOBS_API_BASE = '/api/admin/translation-jobs'
+
+export function listTranslationJobs(signal?: AbortSignal) {
+  return authorizedJsonFromUrl<TranslationJob[]>(TRANSLATION_JOBS_API_BASE, { signal })
+}
+
+export function createTranslationJob(body: CreateTranslationJobRequest) {
+  return authorizedJsonFromUrl<TranslationJob>(TRANSLATION_JOBS_API_BASE, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+export function pauseTranslationJob(id: string) {
+  return authorizedJsonFromUrl<TranslationJob>(`${TRANSLATION_JOBS_API_BASE}/${id}/pause`, {
+    method: 'POST',
+  })
+}
+
+export function resumeTranslationJob(id: string) {
+  return authorizedJsonFromUrl<TranslationJob>(`${TRANSLATION_JOBS_API_BASE}/${id}/resume`, {
+    method: 'POST',
+  })
+}
+
+export function cancelTranslationJob(id: string) {
+  return authorizedJsonFromUrl<TranslationJob>(`${TRANSLATION_JOBS_API_BASE}/${id}/cancel`, {
+    method: 'POST',
   })
 }
 

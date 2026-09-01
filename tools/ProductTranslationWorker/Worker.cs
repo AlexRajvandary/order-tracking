@@ -5,11 +5,136 @@ using Microsoft.Extensions.Options;
 using Spectre.Console;
 namespace ProductTranslationWorker;
 
-public sealed class TranslationWorker(BackendClient backend, ITranslationProvider provider, NetworkTrafficTracker traffic, IOptions<WorkerOptions> cfg, IOptions<PricingOptions> pricing, ILogger<TranslationWorker> log) : BackgroundService
+public sealed class TranslationWorker(BackendClient backend,
+                                      ITranslationProvider provider,
+                                      NetworkTrafficTracker traffic,
+                                      IOptions<WorkerOptions> options,
+                                      IOptions<PricingOptions> pricing,
+                                      ILogger<TranslationWorker> log) : BackgroundService
 {
-    private readonly WorkerOptions o = cfg.Value; private readonly PricingOptions p = pricing.Value; private long processed, success, failed, prompt, completion; private DateTime started = DateTime.UtcNow; private TranslationStatsDto stats = new(0, 0, 0); private string status = "Starting";
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken) { started = DateTime.UtcNow; while (!stoppingToken.IsCancellationRequested) { try { status = "Backend"; stats = await backend.StatsAsync(stoppingToken) ?? stats; var batch = await backend.PendingAsync(o.BatchSize, stoppingToken); if (batch.Count == 0) { status = stats.Remaining == 0 ? "Completed" : "Waiting"; if (stats.Remaining == 0) break; await Task.Delay(2000, stoppingToken); continue; } status = "Translating"; var result = await WithRetry(() => Translate(batch, stoppingToken), stoppingToken); status = "Saving"; var save = await WithRetry(() => backend.SaveAsync(result, stoppingToken), stoppingToken); processed += batch.Count; success += save.Updated; failed += save.NotFound; await PersistAsync(); await Task.Delay(o.DelayBetweenBatchesMs, stoppingToken); } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; } catch (Exception ex) { failed++; status = "Retrying"; log.LogError(ex, "Translation batch failed"); await Task.Delay(o.RetryDelaySeconds * 1000, stoppingToken); } } status = "Completed"; await PersistAsync(); AnsiConsole.MarkupLine($"[green]Translation completed[/] Processed: {processed}, successful: {success}, failed: {failed}"); }
-    private async Task<IReadOnlyList<ProductTranslationResultDto>> Translate(IReadOnlyList<PendingProductDto> batch, CancellationToken ct) { var output = await provider.TranslateAsync(batch, ct); if (output is null || output.Any(x => x is null)) throw new InvalidDataException("LLM response contains null translations"); var input = batch.Select(x => x.Id).ToHashSet(); if (output.Count != input.Count || output.Any(x => string.IsNullOrWhiteSpace(x.Id) || string.IsNullOrWhiteSpace(x.NameRu)) || output.Select(x => x.Id).Distinct().Count() != output.Count || !output.All(x => input.Contains(x.Id))) throw new InvalidDataException("LLM response IDs or translated names do not match batch"); return output; }
-    private async Task<T> WithRetry<T>(Func<Task<T>> action, CancellationToken ct) { Exception? last = null; for (var i = 0; i <= o.MaxRetries; i++) { try { return await action(); } catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException) { last = ex; if (i < o.MaxRetries) await Task.Delay(o.RetryDelaySeconds * (int)Math.Pow(2, i) * 1000, ct); } } throw last!; }
-    private async Task PersistAsync() { try { var tmp = o.StatsFilePath + ".tmp"; await File.WriteAllTextAsync(tmp, JsonSerializer.Serialize(new { startedAt = started, lastUpdatedAt = DateTime.UtcNow, processed, successful = success, failed, promptTokens = prompt, completionTokens = completion, totalTokens = prompt + completion, elapsedSeconds = (DateTime.UtcNow - started).TotalSeconds }, new JsonSerializerOptions { WriteIndented = true })); File.Move(tmp, o.StatsFilePath, true); } catch (Exception ex) { log.LogWarning(ex, "Unable to save stats"); } }
+    private readonly WorkerOptions o = options.Value;
+    private readonly PricingOptions p = pricing.Value;
+    private long processed;
+    private long success;
+    private long failed;
+    private long prompt;
+    private long completion;
+    private DateTime started = DateTime.UtcNow;
+    private TranslationStatsDto stats = new(0, 0, 0);
+    private string status = "Starting";
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        started = DateTime.UtcNow;
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                status = "Backend";
+                stats = await backend.StatsAsync(stoppingToken) ?? stats;
+                var batch = await backend.PendingAsync(o.BatchSize, stoppingToken);
+
+                if (batch.Count == 0)
+                {
+                    status = stats.Remaining == 0 ? "Completed" : "Waiting";
+                    if (stats.Remaining == 0) break;
+                    await Task.Delay(2000, stoppingToken);
+                    continue;
+                }
+
+                status = "Translating";
+                var result = await WithRetry(() => Translate(batch, stoppingToken), stoppingToken);
+                status = "Saving";
+                var save = await WithRetry(() => backend.SaveAsync(result, stoppingToken), stoppingToken);
+                processed += batch.Count;
+                success += save.Updated;
+                failed += save.NotFound;
+                await PersistAsync();
+                await Task.Delay(o.DelayBetweenBatchesMs, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                status = "Retrying";
+                log.LogError(ex, "Translation batch failed");
+                await Task.Delay(o.RetryDelaySeconds * 1000, stoppingToken);
+            }
+        }
+
+        status = "Completed";
+        await PersistAsync();
+        AnsiConsole.MarkupLine($"[green]Translation completed[/] Processed: {processed}, successful: {success}, failed: {failed}");
+    }
+
+    private async Task<IReadOnlyList<ProductTranslationResultDto>> Translate(IReadOnlyList<PendingProductDto> batch, CancellationToken ct)
+    {
+        var output = await provider.TranslateAsync(batch, ct);
+        if (output is null || output.Any(x => x is null))
+        {
+            throw new InvalidDataException("LLM response contains null translations");
+        }
+
+        var input = batch.Select(x => x.Id).ToHashSet();
+
+        if (output.Count != input.Count ||
+            output.Any(x => string.IsNullOrWhiteSpace(x.Id) || string.IsNullOrWhiteSpace(x.NameRu)) || output.Select(x => x.Id).Distinct().Count() != output.Count || !output.All(x => input.Contains(x.Id)))
+        {
+            throw new InvalidDataException("LLM response IDs or translated names do not match batch");
+        }
+
+        return output;
+    }
+
+    private async Task<T> WithRetry<T>(Func<Task<T>> action, CancellationToken ct)
+    {
+        Exception? last = null;
+        for (var i = 0; i <= o.MaxRetries; i++)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException)
+            {
+                last = ex;
+                if (i < o.MaxRetries)
+                {
+                    await Task.Delay(o.RetryDelaySeconds * (int)Math.Pow(2, i) * 1000, ct);
+                }
+            }
+        }
+
+        throw last!;
+    }
+
+    private async Task PersistAsync()
+    {
+        try
+        {
+            var tmp = o.StatsFilePath + ".tmp";
+            await File.WriteAllTextAsync(tmp, JsonSerializer.Serialize(
+                new
+                {
+                    startedAt = started,
+                    lastUpdatedAt = DateTime.UtcNow,
+                    processed,
+                    successful = success,
+                    failed,
+                    promptTokens = prompt,
+                    completionTokens = completion,
+                    totalTokens = prompt + completion,
+                    elapsedSeconds = (DateTime.UtcNow - started).TotalSeconds
+                },
+                new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(tmp, o.StatsFilePath, true);
+        }
+        catch (Exception ex)
+        {
+            log.LogWarning(ex, "Unable to save stats");
+        }
+    }
 }

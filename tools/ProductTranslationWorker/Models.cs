@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace ProductTranslationWorker;
 
 public sealed record PendingProductDto(string Id, string Name);
@@ -6,7 +8,9 @@ public sealed record ProductTranslationResultDto(string Id, string NameRu);
 
 public sealed record TranslationResponseDto(List<TranslationItemDto> Translations);
 
-public sealed record TranslationItemDto(string Id, string TranslatedName);
+public sealed record TranslationItemDto(
+    string Id,
+    [property: JsonPropertyName("translation")] string TranslatedName);
 
 public sealed record TranslationStatsDto(long Total, long Translated, long Remaining);
 

@@ -10,6 +10,7 @@ internal static class ProductMappings
         new(
             product.Id,
             product.Name,
+            product.NameRu,
             product.Slug,
             product.Description,
             product.Sku,

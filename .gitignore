@@ -15,6 +15,8 @@ node_modules/
 # Local LLM/API credentials
 tools/ProductTranslationWorker/appsettings.local.json
 tools/ProductTranslationWorker/appsettings.*.local.json
+tools/ProductTranslationJobsWorker/appsettings.local.json
+tools/ProductTranslationJobsWorker/appsettings.*.local.json
 
 # IDE
 .vs/

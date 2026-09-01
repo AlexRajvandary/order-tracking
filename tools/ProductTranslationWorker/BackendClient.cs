@@ -7,12 +7,18 @@ public sealed class BackendClient(HttpClient http, IOptions<BackendOptions> opti
 {
     private readonly BackendOptions o = options.Value;
 
-    public async Task<IReadOnlyList<PendingProductDto>> PendingAsync(int limit, CancellationToken ct)
+    public async Task<IReadOnlyList<PendingProductDto>> PendingAsync(int limit, CancellationToken cancellationToken)
     {
-        return await http.GetFromJsonAsync<List<PendingProductDto>>($"{o.PendingEndpoint}?limit={Math.Clamp(limit, 1, 200)}", ct) ?? [];
+        return await http.GetFromJsonAsync<List<PendingProductDto>>($"{o.PendingEndpoint}?limit={Math.Clamp(limit, 1, 200)}", cancellationToken) ?? [];
     }
 
-    public Task<TranslationStatsDto?> StatsAsync(CancellationToken ct) => http.GetFromJsonAsync<TranslationStatsDto>(o.StatsEndpoint, ct);
+    public Task<TranslationStatsDto?> StatsAsync(CancellationToken cancellationToken) => http.GetFromJsonAsync<TranslationStatsDto>(o.StatsEndpoint, cancellationToken);
 
-    public async Task<SaveProductTranslationsResponse> SaveAsync(IReadOnlyList<ProductTranslationResultDto> items, CancellationToken ct) { using var r = await http.PostAsJsonAsync(o.SaveEndpoint, new SaveProductTranslationsRequest(items), ct); r.EnsureSuccessStatusCode(); return await r.Content.ReadFromJsonAsync<SaveProductTranslationsResponse>(cancellationToken: ct) ?? new(items.Count, 0, items.Count); }
+    public async Task<SaveProductTranslationsResponse> SaveAsync(IReadOnlyList<ProductTranslationResultDto> items, CancellationToken cancellationToken)
+    {
+        using var r = await http.PostAsJsonAsync(o.SaveEndpoint, new SaveProductTranslationsRequest(items), cancellationToken);
+        r.EnsureSuccessStatusCode();
+        return await r.Content.ReadFromJsonAsync<SaveProductTranslationsResponse>(cancellationToken)
+            ?? new(items.Count, 0, items.Count);
+    }
 }

@@ -30,10 +30,36 @@ public static class Program
             var o = sp.GetRequiredService<IOptions<LmStudioOptions>>().Value;
             c.BaseAddress = new Uri(o.BaseUrl.TrimEnd('/') + "/"); c.Timeout = TimeSpan.FromSeconds(o.RequestTimeoutSeconds);
         });
-        builder.Services.AddSingleton<ITranslationProvider>(sp => { if (provider == 1) return new LmStudioTranslationProvider(sp.GetRequiredService<LmStudioClient>()); var section = provider == 2 ? builder.Configuration.GetSection("OpenAI") : provider == 3 ? builder.Configuration.GetSection("Gemini") : builder.Configuration.GetSection("DeepSeek"); var o = section.Get<ProviderOptions>() ?? new(); var key = string.IsNullOrWhiteSpace(o.ApiKey) ? Environment.GetEnvironmentVariable(provider == 2 ? "OPENAI_API_KEY" : provider == 3 ? "GEMINI_API_KEY" : "DEEPSEEK_API_KEY") ?? "" : o.ApiKey; return new CloudTranslationProvider(new HttpClient { BaseAddress = new Uri(o.BaseUrl.TrimEnd('/') + "/") }, provider == 2 ? "OpenAI" : provider == 3 ? "Gemini" : "DeepSeek", o.Model, key); });
+        builder.Services.AddSingleton<ITranslationProvider>(sp =>
+        {
+            if (provider == 1)
+                return new LmStudioTranslationProvider(sp.GetRequiredService<LmStudioClient>());
+
+            var section = provider == 2
+                ? builder.Configuration.GetSection("OpenAI")
+                : provider == 3
+                    ? builder.Configuration.GetSection("Gemini")
+                    : builder.Configuration.GetSection("DeepSeek");
+            var options = section.Get<ProviderOptions>() ?? new();
+            var key = string.IsNullOrWhiteSpace(options.ApiKey)
+                ? Environment.GetEnvironmentVariable(provider == 2 ? "OPENAI_API_KEY" : provider == 3 ? "GEMINI_API_KEY" : "DEEPSEEK_API_KEY") ?? ""
+                : options.ApiKey;
+            var http = new HttpClient { BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/") };
+            return provider == 2
+                ? new OpenAiTranslationProvider(http, options.Model, key)
+                : new OpenAiCompatibleTranslationProvider(http, provider == 3 ? "Gemini" : "DeepSeek", options.Model, key);
+        });
         builder.Services.AddHostedService<TranslationWorker>();
         using var stop = new CancellationTokenSource(); Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
         var host = builder.Build();
+        if (provider == 2)
+        {
+            var openAi = host.Services.GetRequiredService<ITranslationProvider>() as OpenAiTranslationProvider
+                ?? throw new InvalidOperationException("OpenAI provider is not configured");
+            Console.WriteLine("Checking OpenAI connection...");
+            await openAi.CheckConnectionAsync(CancellationToken.None);
+            Console.WriteLine("OpenAI connection successful.");
+        }
         _ = Task.Run(() => { while (!stop.IsCancellationRequested) { try { if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Q) stop.Cancel(); } catch (InvalidOperationException) { } Thread.Sleep(100); } });
         try { await host.RunAsync(stop.Token); } catch (OperationCanceledException) { }
     }

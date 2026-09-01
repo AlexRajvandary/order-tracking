@@ -3,6 +3,7 @@ namespace Products.Application.Products.Models;
 public sealed record ProductDto(
     Guid Id,
     string Name,
+    string? NameRu,
     string Slug,
     string? Description,
     string? Sku,

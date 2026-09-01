@@ -89,6 +89,24 @@ services:
       CRAWLER_PAGE_DELAY_MS: ${CRAWLER_PAGE_DELAY_MS:-1000}
       CRAWLER_PAGE_TIMEOUT_MS: ${CRAWLER_PAGE_TIMEOUT_MS:-60000}
 
+  translation-worker:
+    image: ghcr.io/alexrajvandary/order-tracking-translation-worker:latest
+    container_name: products-translation-worker
+    restart: unless-stopped
+    depends_on:
+      products-api:
+        condition: service_started
+    environment:
+      TranslationJobs__ApiUrl: http://products-api:8080/api/translation-jobs
+      TranslationJobs__WorkerApiKey: ${CRAWLER_API_KEY}
+      TranslationJobs__PollIntervalSeconds: ${TRANSLATION_POLL_INTERVAL_SECONDS:-5}
+      TranslationJobs__MaxRetries: ${TRANSLATION_MAX_RETRIES:-3}
+      TranslationJobs__RetryBaseDelaySeconds: ${TRANSLATION_RETRY_BASE_DELAY_SECONDS:-2}
+      OpenAI__ApiKey: ${OPENAI_API_KEY:-}
+      OpenAI__Model: ${TRANSLATION_OPENAI_MODEL:-gpt-5-mini}
+      OpenAI__BaseUrl: ${OPENAI_BASE_URL:-https://api.openai.com/}
+      OpenAI__TimeoutSeconds: ${OPENAI_TIMEOUT_SECONDS:-120}
+
   catalog:
     image: ghcr.io/alexrajvandary/order-tracking-catalog:latest
     container_name: order-tracking-catalog
@@ -130,6 +148,7 @@ services:
       Jwt__Issuer: ordertracking
       Jwt__Audience: ordertracking-admin
       Crawler__ApiKey: ${CRAWLER_API_KEY}
+      TranslationJobs__WorkerApiKey: ${CRAWLER_API_KEY}
       Cors__Origins__0: ${APP_BASE_URL}
     expose:
       - "8080"

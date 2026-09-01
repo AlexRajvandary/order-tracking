@@ -102,6 +102,26 @@ services:
       CRAWLER_PAGE_DELAY_MS: ${CRAWLER_PAGE_DELAY_MS:-1000}
       CRAWLER_PAGE_TIMEOUT_MS: ${CRAWLER_PAGE_TIMEOUT_MS:-60000}
 
+  translation-worker:
+    build:
+      context: .
+      dockerfile: docker/translation/Dockerfile
+    container_name: products-translation-worker
+    restart: unless-stopped
+    depends_on:
+      products-api:
+        condition: service_healthy
+    environment:
+      TranslationJobs__ApiUrl: http://products-api:8080/api/translation-jobs
+      TranslationJobs__WorkerApiKey: ${CRAWLER_API_KEY:-dev-crawler-key-change-me}
+      TranslationJobs__PollIntervalSeconds: ${TRANSLATION_POLL_INTERVAL_SECONDS:-5}
+      TranslationJobs__MaxRetries: ${TRANSLATION_MAX_RETRIES:-3}
+      TranslationJobs__RetryBaseDelaySeconds: ${TRANSLATION_RETRY_BASE_DELAY_SECONDS:-2}
+      OpenAI__ApiKey: ${OPENAI_API_KEY:-}
+      OpenAI__Model: ${TRANSLATION_OPENAI_MODEL:-gpt-5-mini}
+      OpenAI__BaseUrl: ${OPENAI_BASE_URL:-https://api.openai.com/}
+      OpenAI__TimeoutSeconds: ${OPENAI_TIMEOUT_SECONDS:-120}
+
   products-postgres:
     image: postgres:16-alpine
     container_name: products-db
@@ -136,6 +156,7 @@ services:
       Jwt__Issuer: ${JWT_ISSUER:-ordertracking}
       Jwt__Audience: ${JWT_AUDIENCE:-ordertracking-admin}
       Crawler__ApiKey: ${CRAWLER_API_KEY:-dev-crawler-key-change-me}
+      TranslationJobs__WorkerApiKey: ${CRAWLER_API_KEY:-dev-crawler-key-change-me}
       Cors__Origins__0: ${CORS_ORIGIN:-http://localhost:5173}
       Cors__Origins__1: http://localhost:3001
     ports:

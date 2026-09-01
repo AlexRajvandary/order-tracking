@@ -932,6 +932,7 @@ export function ProductsPage() {
       cell: ({ row }: any) => String(row.original[id] ?? '—'),
     })
     return [
+      text('nameRu', 'Русское название'),
       text('id', 'ID'), text('name', 'Название'), text('sku', 'SKU'), text('description', 'Описание'),
       text('brand', 'Бренд'), text('condition', 'Состояние'), text('categoryName', 'Категория'),
       text('shopName', 'Магазин'), text('price', 'Цена'), text('originalPrice', 'Цена оригинала'),

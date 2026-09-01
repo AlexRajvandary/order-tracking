@@ -10,6 +10,15 @@
 	handle /api/products* {
 		reverse_proxy products-api:8080
 	}
+	handle /api/admin/translation-jobs* {
+		reverse_proxy products-api:8080
+	}
+	handle /api/translation-jobs* {
+		reverse_proxy products-api:8080
+	}
+	handle /api/internal/products* {
+		reverse_proxy products-api:8080
+	}
 
 	# ASP.NET API + SignalR + health
 	handle /api* {

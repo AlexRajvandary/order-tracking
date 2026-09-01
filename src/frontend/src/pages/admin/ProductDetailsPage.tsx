@@ -36,7 +36,7 @@ export function ProductDetailsPage() {
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     const p = productQuery.data
-    if (p) setForm({ name: p.name, slug: p.slug, description: p.description, sku: p.sku, brand: p.brand, brandId: p.brandId, price: p.price, currencyCode: p.currencyCode, originalPrice: p.originalPrice, originalCurrencyCode: p.originalCurrencyCode, imageUrl: p.imageUrl, sourceUrl: p.sourceUrl, isActive: p.isActive, condition: p.condition, shopId: p.shopId, categoryId: p.categoryId })
+    if (p) setForm({ name: p.name, nameRu: p.nameRu, slug: p.slug, description: p.description, sku: p.sku, brand: p.brand, brandId: p.brandId, price: p.price, currencyCode: p.currencyCode, originalPrice: p.originalPrice, originalCurrencyCode: p.originalCurrencyCode, imageUrl: p.imageUrl, sourceUrl: p.sourceUrl, isActive: p.isActive, condition: p.condition, shopId: p.shopId, categoryId: p.categoryId })
   }, [productQuery.data])
   const categoryOptions = useMemo(() => flatten(categoriesQuery.data?.items ?? []), [categoriesQuery.data])
   const mutation = useMutation({

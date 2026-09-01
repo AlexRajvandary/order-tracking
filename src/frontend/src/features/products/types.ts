@@ -1,6 +1,7 @@
 export type Product = {
   id: string
   name: string
+  nameRu: string | null
   slug: string
   description: string | null
   sku: string | null
@@ -122,6 +123,7 @@ export type PatchProductRequest = {
 
 export type UpdateProductRequest = {
   name: string
+  nameRu: string | null
   slug?: string | null
   description?: string | null
   sku?: string | null
@@ -281,4 +283,50 @@ export type CreateCrawlerJobRequest = {
 export type NotifyProductImportRequest = {
   importId: string
   insertedCount: number
+}
+
+export type TranslationJobScope = 'AllUntranslated' | 'Selected'
+export type TranslationJobStatus =
+  | 'Pending'
+  | 'Running'
+  | 'PauseRequested'
+  | 'Paused'
+  | 'CancelRequested'
+  | 'Cancelled'
+  | 'Completed'
+  | 'CompletedWithErrors'
+  | 'Failed'
+
+export type TranslationJob = {
+  id: string
+  scope: TranslationJobScope
+  status: TranslationJobStatus
+  parallelism: number
+  batchSize: number
+  totalItems: number
+  processedItems: number
+  succeededItems: number
+  failedItems: number
+  progressPercent: number
+  promptTokens: number
+  completionTokens: number
+  reasoningTokens: number
+  totalTokens: number
+  model: string
+  promptVersion: string | null
+  createdAt: string
+  startedAt: string | null
+  completedAt: string | null
+  updatedAt: string
+  lastError: string | null
+  elapsedMs: number
+  durationMs: number | null
+  averageBatchDurationMs: number
+  itemsPerMinute: number
+}
+
+export type CreateTranslationJobRequest = {
+  scope: TranslationJobScope
+  productIds?: string[] | null
+  parallelism?: number
 }
