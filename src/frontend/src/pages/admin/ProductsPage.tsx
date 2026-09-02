@@ -46,6 +46,7 @@ import {
   SelectValue,
 } from '@/shared/ui/select'
 import { Separator } from '@/shared/ui/separator'
+import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import { Switch } from '@/shared/ui/switch'
 import { DataTable, DataTableColumnHeader, dateRangeFilterFn, numberRangeFilterFn, textSearchFilterFn } from '@/shared/ui/data-table'
 import { ProductsImportDialog } from './ProductsImportDialog'
@@ -54,9 +55,8 @@ const PAGE_SIZES = [20, 40, 60, 100] as const
 const BULK_ID_CHUNK = 500
 const CONDITION_OPTIONS: ProductConditionFilter[] = ['new', 'used']
 type VisibilityFilter = 'all' | 'visible' | 'hidden'
-type SortOption = 'relevance' | 'price-asc' | 'price-desc' | 'name'
+type SortOption = 'relevance' | 'price-asc' | 'price-desc' | 'name' | 'updated' | 'created' | 'brand'
 
-const ALL_CATEGORIES_VALUE = '__all_categories__'
 const NO_PRODUCT_CATEGORY = '__no_product_category__'
 const NO_PRODUCT_SUBCATEGORY = '__no_product_subcategory__'
 const NO_PRODUCT_SHOP = '__no_product_shop__'
@@ -102,19 +102,6 @@ function toggleInSet(current: Set<string>, value: string): Set<string> {
   if (next.has(value)) next.delete(value)
   else next.add(value)
   return next
-}
-
-function flattenCategoryOptions(
-  categories: Category[],
-  depth = 0,
-): Array<{ value: string; label: string }> {
-  return categories.flatMap((category) => [
-    {
-      value: category.slug,
-      label: `${depth > 0 ? `${'— '.repeat(depth)}` : ''}${category.name}`,
-    },
-    ...flattenCategoryOptions(category.children, depth + 1),
-  ])
 }
 
 function findCategoryPath(categories: Category[], id: string): Category[] | null {
@@ -805,11 +792,6 @@ export function ProductsPage() {
     queryFn: ({ signal }) => productsApi.listCategories(activeOnly, signal),
   })
 
-  const categoryOptions = useMemo(
-    () => flattenCategoryOptions(categoriesQuery.data?.items ?? []),
-    [categoriesQuery.data?.items],
-  )
-
   const listFilters = useMemo(
     () => ({
       search: activeSearch,
@@ -920,7 +902,13 @@ export function ProductsPage() {
     if (sort === 'price-asc') list.sort((a, b) => a.price - b.price)
     if (sort === 'price-desc') list.sort((a, b) => b.price - a.price)
     if (sort === 'name') list.sort((a, b) => a.name.localeCompare(b.name, i18n.language))
+    if (sort === 'brand') list.sort((a, b) => (a.brand ?? '').localeCompare(b.brand ?? '', i18n.language))
+    if (sort === 'created') list.sort((a, b) => Date.parse(a.createdAt ?? '') - Date.parse(b.createdAt ?? ''))
+    if (sort === 'updated') list.sort((a, b) => Date.parse(a.updatedAt ?? '') - Date.parse(b.updatedAt ?? ''))
     return list
+    if (sort === 'brand') list.sort((a, b) => (a.brand ?? '').localeCompare(b.brand ?? '', i18n.language))
+    if (sort === 'created') list.sort((a, b) => Date.parse(a.createdAt ?? '') - Date.parse(b.createdAt ?? ''))
+    if (sort === 'updated') list.sort((a, b) => Date.parse(a.updatedAt ?? '') - Date.parse(b.updatedAt ?? ''))
   }, [pageItems, activeMobilePages.items, sort, i18n.language])
 
   const activeDisplayItems = isMobileProductsLayout ? mobileDisplayItems : displayItems
@@ -1183,28 +1171,13 @@ export function ProductsPage() {
           className="w-full min-w-0 lg:max-w-xl lg:flex-1"
         />
 
-        <Select
-          value={categorySlug ?? ALL_CATEGORIES_VALUE}
-          onValueChange={(value) =>
-            setCategorySlug(value === ALL_CATEGORIES_VALUE ? null : value)
-          }
-        >
-          <SelectTrigger className="w-full lg:w-56" size="sm">
-            <SelectValue placeholder={t('allCategories')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_CATEGORIES_VALUE}>{t('allCategories')}</SelectItem>
-            {categoryOptions.map((category) => (
-              <SelectItem key={category.value} value={category.value}>
-                {category.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
         <div className="flex shrink-0 flex-wrap items-center gap-2 lg:ml-auto lg:flex-nowrap">
-          <Button type="button" variant={viewMode === 'table' ? 'secondary' : 'outline'} size="icon-sm" aria-label="Таблица" title="Таблица" onClick={() => setViewMode('table')}><Table2 /></Button>
-          <Button type="button" variant={viewMode === 'cards' ? 'secondary' : 'outline'} size="icon-sm" aria-label="Карточки" title="Карточки" onClick={() => setViewMode('cards')}><LayoutGrid /></Button>
+          <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'cards' | 'table')}>
+            <TabsList>
+              <TabsTrigger value="cards" aria-label="Карточки" title="Карточки"><LayoutGrid /></TabsTrigger>
+              <TabsTrigger value="table" aria-label="Таблица" title="Таблица"><Table2 /></TabsTrigger>
+            </TabsList>
+          </Tabs>
           <Button
             type="button"
             size="sm"
@@ -1232,19 +1205,13 @@ export function ProductsPage() {
 
       <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={visibility}
-            onValueChange={(value) => setVisibility(value as VisibilityFilter)}
-          >
-            <SelectTrigger className="w-[10.5rem]" size="sm">
-              <SelectValue placeholder={t('visibility.label')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('visibility.all')}</SelectItem>
-              <SelectItem value="visible">{t('visibility.visible')}</SelectItem>
-              <SelectItem value="hidden">{t('visibility.hidden')}</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="inline-flex items-center rounded-md border p-0.5">
+            {(['all', 'visible', 'hidden'] as const).map((value) => (
+              <Button key={value} type="button" variant={visibility === value ? 'secondary' : 'ghost'} size="sm" onClick={() => setVisibility(value)}>
+                {t(`visibility.${value}`)}
+              </Button>
+            ))}
+          </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1276,6 +1243,9 @@ export function ProductsPage() {
                 <DropdownMenuRadioItem value="name">
                   {t('sort.name')}
                 </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="updated">По дате изменения</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="created">По дате добавления</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="brand">По бренду</DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>

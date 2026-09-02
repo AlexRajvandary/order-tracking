@@ -30,6 +30,40 @@ import type {
 
 const PRODUCTS_API_BASE = '/api/products'
 
+const USE_ADMIN_PRODUCTS_MOCK = import.meta.env.DEV && import.meta.env.VITE_MOCK_ADMIN_PRODUCTS !== 'false'
+
+const MOCK_PRODUCTS: Product[] = Array.from({ length: 50 }, (_, index) => {
+  const number = index + 1
+  const timestamp = new Date(Date.UTC(2026, 0, 1 + index)).toISOString()
+  return {
+    id: `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`,
+    name: `Тестовый товар ${number}`,
+    nameRu: `Тестовый товар ${number}`,
+    slug: `test-product-${number}`,
+    description: `Описание тестового товара ${number}`,
+    sku: `MOCK-${String(number).padStart(4, '0')}`,
+    brand: `Бренд ${number % 5 + 1}`,
+    brandId: null,
+    brandSlug: null,
+    condition: number % 7 === 0 ? 'used' : 'new',
+    shopId: null,
+    shopSlug: null,
+    shopName: number % 2 === 0 ? 'Maketto.jp' : 'ZOZO.jp',
+    categoryId: null,
+    categorySlug: null,
+    categoryName: number % 2 === 0 ? 'Одежда' : 'Аксессуары',
+    price: 1000 + number * 250,
+    currencyCode: 'RUB',
+    originalPrice: 1200 + number * 300,
+    originalCurrencyCode: 'JPY',
+    imageUrl: '/assets/womens-dresses-wide.png',
+    sourceUrl: `https://example.com/mock-product-${number}`,
+    isActive: number % 9 !== 0,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }
+})
+
 function buildListUrl(params: ListProductsParams = {}) {
   const search = new URLSearchParams()
   if (params.search) search.set('search', params.search)
@@ -49,6 +83,25 @@ function buildListUrl(params: ListProductsParams = {}) {
 }
 
 export function listProducts(params?: ListProductsParams, signal?: AbortSignal) {
+  if (USE_ADMIN_PRODUCTS_MOCK) {
+    const search = params?.search?.toLocaleLowerCase() ?? ''
+    let items = MOCK_PRODUCTS.filter((product) => {
+      if (search && !`${product.name} ${product.nameRu} ${product.sku}`.toLocaleLowerCase().includes(search)) return false
+      if (params?.activeOnly != null && product.isActive !== params.activeOnly) return false
+      if (params?.brand && !params.brand.split(',').includes(product.brand ?? '')) return false
+      if (params?.shop && !params.shop.split(',').includes(product.shopName ?? '')) return false
+      if (params?.condition && !params.condition.split(',').includes(product.condition)) return false
+      if (params?.priceMin != null && product.price < params.priceMin) return false
+      if (params?.priceMax != null && product.price > params.priceMax) return false
+      return true
+    })
+    const total = items.length
+    const page = params?.page ?? 1
+    const pageSize = params?.pageSize ?? 20
+    const start = (page - 1) * pageSize
+    items = items.slice(start, start + pageSize)
+    return Promise.resolve({ items, total, page, pageSize })
+  }
   return authorizedJsonFromUrl<ProductListResult>(buildListUrl(params), { signal })
 }
 
