@@ -329,4 +329,5 @@ export type CreateTranslationJobRequest = {
   scope: TranslationJobScope
   productIds?: string[] | null
   parallelism?: number
+  limit?: number | null
 }

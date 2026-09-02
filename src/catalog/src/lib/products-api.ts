@@ -3,6 +3,7 @@ import type { CatalogProduct } from "@/lib/catalog-products";
 export type ApiProduct = {
   id: string;
   name: string;
+  nameRu: string | null;
   slug: string;
   description: string | null;
   sku: string | null;
@@ -88,7 +89,7 @@ export function mapApiProductToCatalog(
   return {
     id: p.id,
     slug: p.slug,
-    name: p.name,
+    name: p.nameRu?.trim() || p.name,
     category: categoryName,
     sectionId,
     categorySlug: p.categorySlug ?? categorySlug,

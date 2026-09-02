@@ -23,6 +23,8 @@ public sealed class TranslationJobsController : ControllerBase
 
     private const int DefaultMaxParallelism = 10;
 
+    private const int DefaultMaxItems = 100_000;
+
     private const long AdvisoryLockKey = 726381921;
 
     private readonly ProductsDbContext _db;
@@ -76,6 +78,21 @@ public sealed class TranslationJobsController : ControllerBase
             return BadRequest(new ProblemDetails { Detail = "Для AllUntranslated productIds должен быть пустым." });
         }
 
+        var maxItems = _configuration.GetValue("TranslationJobs:MaxItems", DefaultMaxItems);
+        if (request.Limit is <= 0 || request.Limit > maxItems)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Некорректное ограничение количества товаров",
+                Detail = $"Значение должно быть от 1 до {maxItems}.",
+            });
+        }
+
+        if (scope == TranslationJobScope.Selected && request.Limit is not null)
+        {
+            return BadRequest(new ProblemDetails { Detail = "Limit доступен только для AllUntranslated." });
+        }
+
         await using var transaction = await _db.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
             cancellationToken);
@@ -105,8 +122,13 @@ public sealed class TranslationJobsController : ControllerBase
             productsQuery = productsQuery.Where(x => productIds.Contains(x.Id));
         }
 
-        var products = await productsQuery
-            .OrderBy(x => x.Id)
+        IQueryable<Product> orderedProductsQuery = productsQuery.OrderBy(x => x.Id);
+        if (scope == TranslationJobScope.AllUntranslated && request.Limit is int limit)
+        {
+            orderedProductsQuery = orderedProductsQuery.Take(limit);
+        }
+
+        var products = await orderedProductsQuery
             .Select(x => new TranslationSourceDto(x.Id, x.Name))
             .ToListAsync(cancellationToken);
         if (scope == TranslationJobScope.Selected && products.Count != productIds.Length)
@@ -818,7 +840,8 @@ public sealed class TranslationJobsController : ControllerBase
 public sealed record CreateTranslationJobRequest(
     TranslationJobScope Scope,
     IReadOnlyList<Guid>? ProductIds = null,
-    int? Parallelism = null);
+    int? Parallelism = null,
+    int? Limit = null);
 
 public sealed record TranslationJobDto(
     Guid Id,

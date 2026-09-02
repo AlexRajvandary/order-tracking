@@ -50,6 +50,7 @@ export function TranslationJobsPanel() {
   const queryClient = useQueryClient()
   const [scope, setScope] = useState<TranslationJobScope>('AllUntranslated')
   const [parallelism, setParallelism] = useState('5')
+  const [limit, setLimit] = useState('')
   const [productIdsText, setProductIdsText] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -96,11 +97,17 @@ export function TranslationJobsPanel() {
       setError('Укажите хотя бы один GUID товара.')
       return
     }
+    const parsedLimit = limit.trim() === '' ? null : Number(limit)
+    if (parsedLimit !== null && (!Number.isInteger(parsedLimit) || parsedLimit < 1)) {
+      setError('Ограничение количества товаров должно быть целым числом не меньше 1.')
+      return
+    }
     setError(null)
     createMutation.mutate({
       scope,
       parallelism: value,
       productIds: scope === 'Selected' ? [...new Set(productIds)] : null,
+      limit: scope === 'AllUntranslated' ? parsedLimit : null,
     })
   }
 
@@ -112,7 +119,7 @@ export function TranslationJobsPanel() {
         </p>
       </div>
 
-      <div className="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_120px_auto] sm:items-end">
+      <div className="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_120px_150px_auto] sm:items-end">
         <div className="space-y-1.5">
           <Label>Область перевода</Label>
           <Select value={scope} onValueChange={(value) => setScope(value as TranslationJobScope)} disabled={Boolean(activeJob)}>
@@ -127,6 +134,12 @@ export function TranslationJobsPanel() {
           <Label htmlFor="translation-parallelism">Параллелизм</Label>
           <Input id="translation-parallelism" type="number" min={1} max={10} value={parallelism} onChange={(event) => setParallelism(event.target.value)} disabled={Boolean(activeJob)} />
         </div>
+        {scope === 'AllUntranslated' ? (
+          <div className="space-y-1.5">
+            <Label htmlFor="translation-limit">Количество товаров</Label>
+            <Input id="translation-limit" type="number" min={1} placeholder="Все" value={limit} onChange={(event) => setLimit(event.target.value)} disabled={Boolean(activeJob)} />
+          </div>
+        ) : null}
         <Button onClick={submit} disabled={Boolean(activeJob) || createMutation.isPending}>
           {createMutation.isPending ? <Loader2 className="animate-spin" /> : <Play />}
           Запустить перевод
