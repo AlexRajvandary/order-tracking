@@ -724,6 +724,7 @@ export function ProductsPage() {
   const [importDialogSource, setImportDialogSource] = useState<'json' | 'html' | 'crawler' | 'translation'>('json')
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [categoriesPanelVisible, setCategoriesPanelVisible] = useState(true)
+  const [columnsToolbarContainer, setColumnsToolbarContainer] = useState<HTMLDivElement | null>(null)
 
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(() => new Set())
   const [selectedShops, setSelectedShops] = useState<Set<string>>(() => new Set())
@@ -1177,7 +1178,7 @@ export function ProductsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="shrink-0 lg:w-44">
           <h1 className="text-2xl font-bold">{t('title')}</h1>
@@ -1202,24 +1203,14 @@ export function ProductsPage() {
               <TabsTrigger value="table" aria-label="Таблица" title="Таблица"><Table2 /></TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button
-            type="button"
-            size="icon-sm"
-            variant={selectMode ? 'secondary' : 'outline'}
-            onClick={() => {
-              setSelectMode((v) => !v)
-              setBulkMessage(null)
-              setBulkError(null)
-            }}
-            aria-label={selectMode ? t('bulk.exitSelect') : t('bulk.selectMode')}
-            title={selectMode ? t('bulk.exitSelect') : t('bulk.selectMode')}
-          >
-            <Pencil />
+          <Button type="button" size="icon-sm" variant="outline" onClick={() => setCategoriesPanelVisible((visible) => !visible)} aria-label={categoriesPanelVisible ? 'Скрыть категории' : 'Показать категории'} title={categoriesPanelVisible ? 'Скрыть категории' : 'Показать категории'}>
+            {categoriesPanelVisible ? <PanelLeftClose /> : <PanelLeft />}
           </Button>
+          <div ref={setColumnsToolbarContainer} className={viewMode === 'table' ? 'contents' : 'hidden'} />
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex items-center rounded-md border p-0.5">
             {(['all', 'visible', 'hidden'] as const).map((value) => (
@@ -1265,15 +1256,26 @@ export function ProductsPage() {
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button type="button" size="sm" onClick={() => { setImportDialogSource('json'); setImportDialogOpen(true) }}>
-            Импорт
+          <Button type="button" size="sm" variant="outline" onClick={() => { setImportDialogSource('json'); setImportDialogOpen(true) }}>
+            Импорт товаров
           </Button>
           <Button type="button" size="sm" variant="outline" onClick={() => { setImportDialogSource('translation'); setImportDialogOpen(true) }}>
             <Languages />
             Перевод
           </Button>
-          <Button type="button" size="icon-sm" variant="outline" onClick={() => setCategoriesPanelVisible((visible) => !visible)} aria-label={categoriesPanelVisible ? 'Скрыть категории' : 'Показать категории'} title={categoriesPanelVisible ? 'Скрыть категории' : 'Показать категории'}>
-            {categoriesPanelVisible ? <PanelLeftClose /> : <PanelLeft />}
+          <Button
+            type="button"
+            size="icon-sm"
+            variant={selectMode ? 'secondary' : 'outline'}
+            onClick={() => {
+              setSelectMode((v) => !v)
+              setBulkMessage(null)
+              setBulkError(null)
+            }}
+            aria-label={selectMode ? t('bulk.exitSelect') : t('bulk.selectMode')}
+            title={selectMode ? t('bulk.exitSelect') : t('bulk.selectMode')}
+          >
+            <Pencil />
           </Button>
         </div>
 
@@ -1539,6 +1541,8 @@ export function ProductsPage() {
               columns={tableColumns}
               data={displayItems}
               pageSize={pageSize}
+              toolbarContainer={columnsToolbarContainer}
+              renderToolbar={({ viewOptions }) => viewOptions}
               showPagination={false}
               onRowClick={(row) => navigate(`/admin/products/${row.original.id}`)}
               getRowClassName={() => 'cursor-pointer'}
