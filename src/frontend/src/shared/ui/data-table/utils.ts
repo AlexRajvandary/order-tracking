@@ -4,7 +4,7 @@ declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
     label?: string
-    filterVariant?: 'multiSelect' | 'dateRange'
+    filterVariant?: 'multiSelect' | 'text' | 'numberRange' | 'dateRange'
   }
 }
 
@@ -13,6 +13,11 @@ export const EMPTY_FILTER_VALUE = '__empty__'
 export type DateRangeFilterValue = {
   from?: string
   to?: string
+}
+
+export type NumberRangeFilterValue = {
+  min?: number
+  max?: number
 }
 
 export function normalizeFilterValue(value: unknown): string {
@@ -31,6 +36,22 @@ export function multiValueFilterFn<TData>(
   }
   const selected = filterValue as string[]
   return selected.includes(normalizeFilterValue(row.getValue(columnId)))
+}
+
+export function textSearchFilterFn<TData>(row: Row<TData>, columnId: string, filterValue: unknown): boolean {
+  const search = String(filterValue ?? '').trim().toLocaleLowerCase()
+  if (!search) return true
+  return String(row.getValue(columnId) ?? '').toLocaleLowerCase().includes(search)
+}
+
+export function numberRangeFilterFn<TData>(row: Row<TData>, columnId: string, filterValue: unknown): boolean {
+  const range = filterValue as NumberRangeFilterValue | undefined
+  if (range == null || (range.min == null && range.max == null)) return true
+  const value = Number(row.getValue(columnId))
+  if (!Number.isFinite(value)) return false
+  if (range.min != null && value < range.min) return false
+  if (range.max != null && value > range.max) return false
+  return true
 }
 
 export function collectUniqueColumnValues<TData>(

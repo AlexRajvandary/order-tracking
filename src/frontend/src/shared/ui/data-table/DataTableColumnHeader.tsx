@@ -1,10 +1,12 @@
-import { CalendarDays, Filter } from 'lucide-react'
+import { CalendarDays, Filter, Search, SlidersHorizontal } from 'lucide-react'
 import type { Column, Table } from '@tanstack/react-table'
 import type { DateRange } from 'react-day-picker'
 import { useTranslation } from 'react-i18next'
+import { useState } from 'react'
 import { enUS, ru } from 'date-fns/locale'
 import { Button } from '@/shared/ui/button'
 import { Calendar } from '@/shared/ui/calendar'
+import { Input } from '@/shared/ui/input'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -21,7 +23,35 @@ import {
   EMPTY_FILTER_VALUE,
   isDateRangeFilterActive,
   type DateRangeFilterValue,
+  type NumberRangeFilterValue,
 } from './utils'
+
+function TextFilter<TData, TValue>({ column, title, className }: { column: Column<TData, TValue>; title: string; className?: string }) {
+  const value = String(column.getFilterValue() ?? '')
+  return (
+    <Popover>
+      <PopoverTrigger asChild><Button type="button" variant="ghost" size="sm" className={cn('h-8 w-full justify-between gap-2 px-1 font-medium data-[state=open]:bg-accent', value && 'text-primary', className)}><span className="truncate text-left">{title}</span><Search className="size-3.5 shrink-0 opacity-60" /></Button></PopoverTrigger>
+      <PopoverContent align="end" className="w-64 p-3"><Input autoFocus placeholder={`Поиск: ${title}`} value={value} onChange={(event) => column.setFilterValue(event.target.value || undefined)} /></PopoverContent>
+    </Popover>
+  )
+}
+
+function NumberRangeFilter<TData, TValue>({ column, title, className }: { column: Column<TData, TValue>; title: string; className?: string }) {
+  const range = (column.getFilterValue() as NumberRangeFilterValue | undefined) ?? {}
+  const active = range.min != null || range.max != null
+  const [min, setMin] = useState(range.min?.toString() ?? '')
+  const [max, setMax] = useState(range.max?.toString() ?? '')
+  const apply = () => {
+    const next = { min: min === '' ? undefined : Number(min), max: max === '' ? undefined : Number(max) }
+    column.setFilterValue(next.min == null && next.max == null ? undefined : next)
+  }
+  return (
+    <Popover>
+      <PopoverTrigger asChild><Button type="button" variant="ghost" size="sm" className={cn('h-8 w-full justify-between gap-2 px-1 font-medium data-[state=open]:bg-accent', active && 'text-primary', className)}><span className="truncate text-left">{title}</span><SlidersHorizontal className="size-3.5 shrink-0 opacity-60" /></Button></PopoverTrigger>
+      <PopoverContent align="end" className="w-64 space-y-3 p-3"><p className="text-sm font-medium">Диапазон: {title}</p><div className="grid grid-cols-2 gap-2"><Input type="number" placeholder="От" value={min} onChange={(event) => setMin(event.target.value)} /><Input type="number" placeholder="До" value={max} onChange={(event) => setMax(event.target.value)} /></div><div className="flex gap-2"><Button type="button" size="sm" className="flex-1" onClick={apply}>Применить</Button>{active ? <Button type="button" size="sm" variant="ghost" onClick={() => { setMin(''); setMax(''); column.setFilterValue(undefined) }}>Сбросить</Button> : null}</div></PopoverContent>
+    </Popover>
+  )
+}
 
 type DataTableColumnHeaderProps<TData, TValue> = {
   column: Column<TData, TValue>
@@ -117,6 +147,9 @@ export function DataTableColumnHeader<TData, TValue>({
       </Popover>
     )
   }
+
+  if (filterVariant === 'text') return <TextFilter column={column} title={title} className={className} />
+  if (filterVariant === 'numberRange') return <NumberRangeFilter column={column} title={title} className={className} />
 
   const selected = (column.getFilterValue() as string[] | undefined) ?? []
   const options = collectUniqueColumnValues(table.getCoreRowModel().rows, column.id)

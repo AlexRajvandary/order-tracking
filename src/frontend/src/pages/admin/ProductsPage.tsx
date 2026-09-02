@@ -47,7 +47,7 @@ import {
 } from '@/shared/ui/select'
 import { Separator } from '@/shared/ui/separator'
 import { Switch } from '@/shared/ui/switch'
-import { DataTable, DataTableColumnHeader } from '@/shared/ui/data-table'
+import { DataTable, DataTableColumnHeader, dateRangeFilterFn, numberRangeFilterFn, textSearchFilterFn } from '@/shared/ui/data-table'
 import { ProductsImportDialog } from './ProductsImportDialog'
 
 const PAGE_SIZES = [20, 40, 60, 100] as const
@@ -926,11 +926,15 @@ export function ProductsPage() {
   const activeDisplayItems = isMobileProductsLayout ? mobileDisplayItems : displayItems
 
   const tableColumns = useMemo<ColumnDef<Product>[]>(() => {
-    const text = (id: keyof Product, label: string) => ({
-      id, accessorFn: (row: Product) => row[id] ?? '', meta: { label },
+    const text = (id: keyof Product, label: string, filterVariant?: 'text' | 'numberRange' | 'dateRange', filterFn?: ColumnDef<Product>['filterFn']) => {
+      const inferredVariant = filterVariant ?? (id === 'id' || id === 'nameRu' || id === 'name' || id === 'sku' ? 'text' : id === 'price' || id === 'originalPrice' ? 'numberRange' : id === 'createdAt' || id === 'updatedAt' ? 'dateRange' : undefined)
+      const inferredFilterFn = filterFn ?? (inferredVariant === 'text' ? textSearchFilterFn : inferredVariant === 'numberRange' ? numberRangeFilterFn : inferredVariant === 'dateRange' ? dateRangeFilterFn : undefined)
+      return {
+      id, accessorFn: (row: Product) => row[id] ?? '', meta: { label, filterVariant: inferredVariant }, filterFn: inferredFilterFn,
       header: ({ column, table }: any) => <DataTableColumnHeader column={column} table={table} title={label} />,
       cell: ({ row }: any) => String(row.original[id] ?? '—'),
-    })
+      }
+    }
     return [
       text('nameRu', 'Русское название'),
       text('id', 'ID'), text('name', 'Название'), text('sku', 'SKU'), text('description', 'Описание'),
@@ -1539,10 +1543,11 @@ export function ProductsPage() {
             </Card>
           ) : viewMode === 'table' ? (
             <DataTable
+              key={`products-table-${pageSize}`}
               tableId="products"
               columns={tableColumns}
               data={displayItems}
-              pageSize={10}
+              pageSize={pageSize}
               showPagination={false}
               onRowClick={(row) => navigate(`/admin/products/${row.original.id}`)}
               getRowClassName={() => 'cursor-pointer'}
@@ -1587,7 +1592,7 @@ export function ProductsPage() {
 
           {activeDisplayItems.length > 0 ? (
             <div className="flex justify-center sm:justify-end">
-              {activeMobilePages.loadedPage < totalPages ? (
+              {viewMode !== 'table' && activeMobilePages.loadedPage < totalPages ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -1605,17 +1610,15 @@ export function ProductsPage() {
                       : t('loadMore')}
                 </Button>
               ) : null}
-              {viewMode !== 'table' ? (
-                <div className="hidden sm:block">
-                    <ProductsToolbarPagination
-                      page={page}
-                      totalPages={totalPages}
-                      pageSize={pageSize}
-                      onPageChange={setPage}
-                      onPageSizeChange={setPageSize}
-                    />
-                </div>
-              ) : null}
+              <div className={viewMode === 'table' ? '' : 'hidden sm:block'}>
+                <ProductsToolbarPagination
+                  page={page}
+                  totalPages={totalPages}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={setPageSize}
+                />
+              </div>
             </div>
           ) : null}
         </div>
