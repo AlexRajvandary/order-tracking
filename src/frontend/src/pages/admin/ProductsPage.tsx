@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, Languages, MoreHorizontal, PanelLeft, PanelLeftClose, Pencil, Plus, Trash2, X, Table2, LayoutGrid } from 'lucide-react'
+import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, ImageOff, Languages, MoreHorizontal, PanelLeft, PanelLeftClose, Pencil, Plus, Trash2, X, Table2, LayoutGrid } from 'lucide-react'
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -926,6 +926,28 @@ export function ProductsPage() {
       }
     }
     return [
+      {
+        id: 'image',
+        accessorFn: (row: Product) => row.imageUrl ?? '',
+        enableColumnFilter: false,
+        enableSorting: false,
+        meta: { label: 'Изображение' },
+        header: () => null,
+        cell: ({ row }: any) => (
+          <div className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted/40">
+            <ImageOff className="size-4 text-muted-foreground/60" />
+            {row.original.imageUrl ? (
+              <img
+                src={row.original.imageUrl}
+                alt=""
+                className="absolute inset-0 size-full object-contain"
+                loading="lazy"
+                onError={(event) => event.currentTarget.classList.add('hidden')}
+              />
+            ) : null}
+          </div>
+        ),
+      },
       text('nameRu', 'Русское название'),
       text('id', 'ID'), text('name', 'Название'), text('sku', 'SKU'), text('description', 'Описание'),
       text('brand', 'Бренд'), text('condition', 'Состояние'), text('categoryName', 'Категория'),
