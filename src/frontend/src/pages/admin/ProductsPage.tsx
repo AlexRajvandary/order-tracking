@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, MoreHorizontal, Pencil, Plus, Trash2, Upload, X, Table2, LayoutGrid } from 'lucide-react'
+import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, Languages, MoreHorizontal, Pencil, Plus, Trash2, X, Table2, LayoutGrid } from 'lucide-react'
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -721,6 +721,7 @@ export function ProductsPage() {
   const [editing, setEditing] = useState<Product | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [importDialogSource, setImportDialogSource] = useState<'json' | 'html' | 'crawler' | 'translation'>('json')
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
 
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(() => new Set())
@@ -1180,14 +1181,6 @@ export function ProductsPage() {
           </Tabs>
           <Button
             type="button"
-            size="sm"
-            onClick={() => setImportDialogOpen(true)}
-          >
-            <Upload />
-            {t('import.button')}
-          </Button>
-          <Button
-            type="button"
             size="icon-sm"
             variant={selectMode ? 'secondary' : 'outline'}
             onClick={() => {
@@ -1203,7 +1196,7 @@ export function ProductsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex items-center rounded-md border p-0.5">
             {(['all', 'visible', 'hidden'] as const).map((value) => (
@@ -1249,14 +1242,16 @@ export function ProductsPage() {
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button type="button" size="sm" onClick={() => { setImportDialogSource('json'); setImportDialogOpen(true) }}>
+            Импорт
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => { setImportDialogSource('translation'); setImportDialogOpen(true) }}>
+            <Languages />
+            Перевод
+          </Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          <p className="text-sm text-muted-foreground">
-            {productsQuery.data
-              ? t('showing', { count: activeDisplayItems.length })
-              : null}
-          </p>
           <div className="hidden sm:block">
               <ProductsToolbarPagination
                 page={page}
@@ -1608,6 +1603,7 @@ export function ProductsPage() {
       <ProductsImportDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
+        initialSource={importDialogSource}
         categories={categoriesQuery.data?.items ?? []}
         onImported={async () => {
           await Promise.all([

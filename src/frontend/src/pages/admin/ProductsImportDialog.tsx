@@ -1,5 +1,5 @@
 import { ExternalLink, FileCode2, FileJson, ImageOff, Languages, ListTodo, Upload } from 'lucide-react'
-import { type ChangeEvent, useMemo, useRef, useState } from 'react'
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
 import {
@@ -206,11 +206,13 @@ export function ProductsImportDialog({
   onOpenChange,
   onImported,
   categories,
+  initialSource = 'json',
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onImported: () => Promise<void> | void
   categories: Category[]
+  initialSource?: ImportSource
 }) {
   const { t, i18n } = useTranslation('products')
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -228,6 +230,10 @@ export function ProductsImportDialog({
   const [summary, setSummary] = useState<ImportSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notificationError, setNotificationError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (open) setSource(initialSource)
+  }, [open, initialSource])
 
   const parsedProducts = useMemo(() => {
     if (!input.trim()) return null
