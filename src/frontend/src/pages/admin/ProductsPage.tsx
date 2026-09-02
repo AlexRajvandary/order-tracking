@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, Languages, MoreHorizontal, Pencil, Plus, Trash2, X, Table2, LayoutGrid } from 'lucide-react'
+import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, Languages, MoreHorizontal, PanelLeft, PanelLeftClose, Pencil, Plus, Trash2, X, Table2, LayoutGrid } from 'lucide-react'
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -723,6 +723,7 @@ export function ProductsPage() {
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [importDialogSource, setImportDialogSource] = useState<'json' | 'html' | 'crawler' | 'translation'>('json')
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
+  const [categoriesPanelVisible, setCategoriesPanelVisible] = useState(true)
 
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(() => new Set())
   const [selectedShops, setSelectedShops] = useState<Set<string>>(() => new Set())
@@ -1249,6 +1250,9 @@ export function ProductsPage() {
             <Languages />
             Перевод
           </Button>
+          <Button type="button" size="icon-sm" variant="outline" onClick={() => setCategoriesPanelVisible((visible) => !visible)} aria-label={categoriesPanelVisible ? 'Скрыть категории' : 'Показать категории'} title={categoriesPanelVisible ? 'Скрыть категории' : 'Показать категории'}>
+            {categoriesPanelVisible ? <PanelLeftClose /> : <PanelLeft />}
+          </Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -1347,8 +1351,8 @@ export function ProductsPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <Card size="sm" className="h-fit">
+      <div className={cn('grid gap-4', categoriesPanelVisible ? 'lg:grid-cols-[260px_minmax(0,1fr)]' : 'lg:grid-cols-1')}>
+        {categoriesPanelVisible ? <Card size="sm" className="h-fit">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-sm">{t('categories')}</CardTitle>
@@ -1484,7 +1488,7 @@ export function ProductsPage() {
               onToggle={(value) => setSelectedBrands((current) => toggleInSet(current, value))}
             />
           </CardContent>
-        </Card>
+        </Card> : null}
 
         <div className="space-y-3">
           {productsQuery.isLoading ? (
@@ -1536,7 +1540,7 @@ export function ProductsPage() {
                   />
                 ))}
               </div>
-              <div className="hidden grid-cols-2 gap-3 sm:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <div className={cn('hidden grid-cols-2 gap-3 sm:grid md:grid-cols-3', categoriesPanelVisible ? 'lg:grid-cols-4 xl:grid-cols-5' : 'lg:grid-cols-5 xl:grid-cols-6')}>
                 {displayItems.map((product) => (
                   <ProductGridItem
                     key={product.id}
