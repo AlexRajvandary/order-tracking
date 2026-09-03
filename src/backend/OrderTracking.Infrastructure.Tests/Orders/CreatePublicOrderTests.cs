@@ -23,6 +23,7 @@ public sealed class CreatePublicOrderTests
             null,
             null,
             null,
+            null,
             [new(productId, 0), new(productId, 1)]);
 
         var result = new CreatePublicOrderCommandValidator().Validate(command);
@@ -79,6 +80,7 @@ public sealed class CreatePublicOrderTests
             new CreatePublicOrderCommand(
                 "Иван",
                 "+79990000000",
+                "@buyer",
                 null,
                 null,
                 null,
@@ -91,5 +93,6 @@ public sealed class CreatePublicOrderTests
         Assert.Equal(1500m, item.UnitPrice);
         Assert.Equal("https://shop.example/product/1", item.SourceUrl);
         Assert.Equal(adminId, forwarded.CreatedByAdminId);
+        Assert.Equal("@buyer", forwarded.NewCustomer?.Telegram);
     }
 }

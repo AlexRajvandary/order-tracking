@@ -43,6 +43,7 @@ public sealed class TelegramOutboxNotifier : ITelegramAdminNotifier
         string trackingCode,
         string? customerName,
         string? phone,
+        string? telegram,
         string? whatsApp,
         string? vk,
         string? address,
@@ -58,6 +59,7 @@ public sealed class TelegramOutboxNotifier : ITelegramAdminNotifier
             trackingCode,
             customerName,
             phone,
+            telegram,
             whatsApp,
             vk,
             address);

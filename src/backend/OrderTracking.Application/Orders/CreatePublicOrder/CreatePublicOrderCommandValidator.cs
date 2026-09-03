@@ -8,6 +8,7 @@ public sealed class CreatePublicOrderCommandValidator : AbstractValidator<Create
     {
         RuleFor(x => x.Name).MaximumLength(100);
         RuleFor(x => x.Phone).MaximumLength(30);
+        RuleFor(x => x.Telegram).MaximumLength(100);
         RuleFor(x => x.WhatsApp).MaximumLength(100);
         RuleFor(x => x.Vk).MaximumLength(200);
         RuleFor(x => x.Address).MaximumLength(4000);

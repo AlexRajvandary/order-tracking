@@ -25,6 +25,7 @@ internal sealed class TelegramBotNotifier
         string trackingCode,
         string? customerName,
         string? phone,
+        string? telegram,
         string? whatsApp,
         string? vk,
         string? address,
@@ -42,27 +43,22 @@ internal sealed class TelegramBotNotifier
             return;
         }
 
-        var text = new StringBuilder()
-            .AppendLine("<b>Новый заказ</b>")
-            .AppendLine($"Код: <code>{TelegramBotText.Escape(trackingCode)}</code>")
-            .AppendLine($"Клиент: {TelegramBotText.Escape(customerName)}");
-
-        AppendContact(text, "Телефон", phone);
-        AppendContact(text, "WhatsApp", whatsApp);
-        AppendContact(text, "VK", vk);
-        AppendContact(text, "Адрес", address);
-        text.Append($"Id: <code>{orderId}</code>");
-
-        var keyboard = new InlineKeyboardMarkup(
-            InlineKeyboardButton.WithCallbackData(
-                "Открыть заказ",
-                TelegramBotCallback.OrderOpen(orderId)));
+        var text = TelegramOrderCreatedNotification.BuildText(
+            orderId,
+            trackingCode,
+            customerName,
+            phone,
+            telegram,
+            whatsApp,
+            vk,
+            address);
+        var keyboard = TelegramOrderCreatedNotification.BuildKeyboard(orderId);
 
         foreach (var chatId in recipients)
         {
             try
             {
-                await bot.SendMessage(chatId, text.ToString(), ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
+                await bot.SendMessage(chatId, text, ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
             }
             catch (Exception ex)
             {
@@ -154,14 +150,6 @@ internal sealed class TelegramBotNotifier
         {
             await ClearStatusHistoryNotifyClaimAsync(item.StatusHistoryId, cancellationToken);
             throw;
-        }
-    }
-
-    private static void AppendContact(StringBuilder text, string label, string? value)
-    {
-        if (!string.IsNullOrWhiteSpace(value))
-        {
-            text.AppendLine($"{label}: {TelegramBotText.Escape(value)}");
         }
     }
 

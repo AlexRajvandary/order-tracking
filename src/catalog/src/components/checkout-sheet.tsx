@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactElement } from "react";
-import { CheckCircle2Icon, Loader2Icon } from "lucide-react";
+import { useState, type ReactElement } from "react";
+import { CheckCircle2Icon, ImageIcon, Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,12 +14,15 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { formatCartMoney } from "@/components/cart-provider";
+import { cn } from "@/lib/utils";
 
 export type CheckoutItem = {
   productId: string;
   name: string;
   quantity: number;
   priceRub: number;
+  imageUrl?: string;
+  tint?: string;
 };
 
 type CheckoutSheetProps = {
@@ -33,22 +36,72 @@ type CheckoutResult = {
   trackingCode: string;
 };
 
+type ContactMethod = "phone" | "whatsApp" | "telegram" | "vk";
+
+const contactMethods: Array<{ value: ContactMethod; label: string }> = [
+  { value: "phone", label: "Телефон" },
+  { value: "whatsApp", label: "WhatsApp" },
+  { value: "telegram", label: "Telegram" },
+  { value: "vk", label: "VK" },
+];
+
+const contactFields: Record<
+  ContactMethod,
+  { label: string; placeholder: string; autoComplete?: string; inputMode?: "tel" | "url" }
+> = {
+  phone: {
+    label: "Телефон",
+    placeholder: "+7 (___) ___-__-__",
+    autoComplete: "tel",
+    inputMode: "tel",
+  },
+  whatsApp: {
+    label: "WhatsApp",
+    placeholder: "Номер телефона",
+    autoComplete: "tel",
+    inputMode: "tel",
+  },
+  telegram: {
+    label: "Telegram",
+    placeholder: "@username или ссылка на профиль",
+  },
+  vk: {
+    label: "VK",
+    placeholder: "Ссылка на профиль",
+    inputMode: "url",
+  },
+};
+
 export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<CheckoutResult | null>(null);
+  const [contactMethod, setContactMethod] = useState<ContactMethod>("phone");
+  const [contacts, setContacts] = useState<Record<ContactMethod, string>>({
+    phone: "",
+    whatsApp: "",
+    telegram: "",
+    vk: "",
+  });
 
-  useEffect(() => {
-    if (open) {
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
       setError("");
       setResult(null);
     }
-  }, [open]);
+
+    setOpen(nextOpen);
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting || items.length === 0) {
+      return;
+    }
+
+    if (!Object.values(contacts).some((value) => value.trim())) {
+      setError("Укажите хотя бы один контакт.");
       return;
     }
 
@@ -62,9 +115,10 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.get("name") || null,
-          phone: form.get("phone") || null,
-          whatsApp: form.get("whatsApp") || null,
-          vk: form.get("vk") || null,
+          phone: contacts.phone || null,
+          telegram: contacts.telegram || null,
+          whatsApp: contacts.whatsApp || null,
+          vk: contacts.vk || null,
           address: form.get("address") || null,
           items: items.map(({ productId, quantity }) => ({ productId, quantity })),
         }),
@@ -88,15 +142,21 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
   }
 
   const total = items.reduce((sum, item) => sum + item.priceRub * item.quantity, 0);
+  const activeContact = contactFields[contactMethod];
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger render={trigger} />
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle className="text-xl">Оформление заявки</SheetTitle>
-          <SheetDescription>
-            Оставьте удобные контакты. Оплата на этом этапе не требуется.
+      <SheetContent
+        side="right"
+        className="w-full gap-0 overflow-hidden bg-white sm:max-w-[560px]"
+      >
+        <SheetHeader className="gap-1 px-5 pb-5 pt-6 sm:px-7">
+          <SheetTitle className="pr-10 text-2xl font-semibold tracking-tight">
+            Оформление заявки
+          </SheetTitle>
+          <SheetDescription className="text-sm">
+            Оплата сейчас не требуется
           </SheetDescription>
         </SheetHeader>
 
@@ -114,51 +174,108 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
             </Button>
           </div>
         ) : (
-          <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit}>
-            <div className="space-y-5 overflow-y-auto px-4 pb-4">
-              <div className="space-y-2">
-                <h3 className="font-medium">Товары</h3>
-                <ul className="space-y-2 text-sm">
-                  {items.map((item) => (
-                    <li key={item.productId} className="flex justify-between gap-4">
-                      <span className="min-w-0 truncate">{item.name} × {item.quantity}</span>
-                      <span className="shrink-0 tabular-nums">
-                        {formatCartMoney(item.priceRub * item.quantity)}
-                      </span>
-                    </li>
+          <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit} noValidate>
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 pb-8 sm:px-7">
+              <ul className="space-y-2">
+                {items.map((item) => (
+                  <li
+                    key={item.productId}
+                    className="flex min-h-20 items-center gap-3 rounded-xl border border-border/80 bg-white p-3"
+                  >
+                    <CheckoutProductImage item={item} />
+                    <p className="line-clamp-2 min-w-0 flex-1 text-sm font-medium leading-snug">
+                      {item.name}
+                      {item.quantity > 1 ? ` × ${item.quantity}` : ""}
+                    </p>
+                    <span className="shrink-0 whitespace-nowrap text-sm font-semibold tabular-nums">
+                      {formatCartMoney(item.priceRub * item.quantity)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              <Field
+                label="Имя"
+                name="name"
+                placeholder="Ваше имя"
+                autoComplete="name"
+              />
+
+              <fieldset className="space-y-2">
+                <legend className="mb-2 text-sm font-medium">Способ связи</legend>
+                <div
+                  role="radiogroup"
+                  aria-label="Способ связи"
+                  className="grid grid-cols-2 overflow-hidden rounded-lg border border-input min-[430px]:grid-cols-4"
+                >
+                  {contactMethods.map((method) => (
+                    <button
+                      key={method.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={contactMethod === method.value}
+                      onClick={() => setContactMethod(method.value)}
+                      className={cn(
+                        "h-11 border-input px-2 text-sm transition-colors outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-ring/50",
+                        "border-b odd:border-r min-[430px]:border-b-0 min-[430px]:border-r min-[430px]:last:border-r-0",
+                        contactMethod === method.value
+                          ? "bg-muted font-medium text-foreground"
+                          : "bg-white text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                      )}
+                    >
+                      {method.label}
+                    </button>
                   ))}
-                </ul>
-                <div className="flex justify-between border-t pt-2 font-semibold">
-                  <span>Итого</span>
-                  <span>{formatCartMoney(total)}</span>
                 </div>
-              </div>
+              </fieldset>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Имя" name="name" autoComplete="name" />
-                <Field label="Телефон" name="phone" autoComplete="tel" inputMode="tel" />
-                <Field label="WhatsApp" name="whatsApp" inputMode="tel" />
-                <Field label="VK" name="vk" placeholder="Ссылка или профиль" />
-              </div>
+              <Field
+                key={contactMethod}
+                label={activeContact.label}
+                name={contactMethod}
+                value={contacts[contactMethod]}
+                placeholder={activeContact.placeholder}
+                autoComplete={activeContact.autoComplete}
+                inputMode={activeContact.inputMode}
+                onChange={(event) => {
+                  setContacts((current) => ({
+                    ...current,
+                    [contactMethod]: event.target.value,
+                  }));
+                  if (error === "Укажите хотя бы один контакт.") {
+                    setError("");
+                  }
+                }}
+              />
 
-              <label className="block space-y-1.5 text-sm font-medium">
-                <span>Адрес доставки</span>
-                <textarea
-                  name="address"
-                  rows={3}
-                  className="w-full resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
-                />
-              </label>
+              <Field
+                label="Адрес доставки"
+                name="address"
+                placeholder="Город, улица, дом, квартира"
+                autoComplete="street-address"
+              />
 
               <p className="text-xs text-muted-foreground">
-                Все поля необязательны. Менеджер свяжется с вами, если указан хотя бы один контакт.
+                Укажите хотя бы один контакт.
               </p>
 
-              {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+              {error ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ) : null}
             </div>
 
-            <SheetFooter>
-              <Button type="submit" className="w-full" disabled={submitting || items.length === 0}>
+            <SheetFooter className="shrink-0 gap-4 border-t border-border bg-white px-5 pb-5 pt-4 sm:px-7 sm:pb-6">
+              <div className="flex items-center justify-between text-base">
+                <span className="font-medium">Итого</span>
+                <span className="font-semibold tabular-nums">{formatCartMoney(total)}</span>
+              </div>
+              <Button
+                type="submit"
+                className="h-12 w-full bg-black text-white hover:bg-black/85"
+                disabled={submitting || items.length === 0}
+              >
                 {submitting ? <Loader2Icon className="animate-spin" /> : null}
                 {submitting ? "Оформляем…" : "Оформить заявку"}
               </Button>
@@ -170,11 +287,44 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
   );
 }
 
-function Field({ label, name, ...props }: React.ComponentProps<typeof Input> & { label: string; name: string }) {
+function CheckoutProductImage({ item }: { item: CheckoutItem }) {
+  const [failed, setFailed] = useState(false);
+  const hasImage = Boolean(item.imageUrl) && !failed;
+
   return (
-    <label className="block space-y-1.5 text-sm font-medium">
+    <div
+      className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted"
+      style={{
+        background: hasImage
+          ? undefined
+          : `linear-gradient(145deg, ${item.tint || "#e5e7eb"}, #f3f4f6 85%)`,
+      }}
+    >
+      {hasImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.imageUrl}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <ImageIcon className="size-5 text-muted-foreground/60" aria-hidden="true" />
+      )}
+    </div>
+  );
+}
+
+function Field({
+  label,
+  name,
+  className,
+  ...props
+}: React.ComponentProps<typeof Input> & { label: string; name: string }) {
+  return (
+    <label className="block space-y-2 text-sm font-medium">
       <span>{label}</span>
-      <Input name={name} {...props} />
+      <Input name={name} className={cn("h-12 px-4", className)} {...props} />
     </label>
   );
 }

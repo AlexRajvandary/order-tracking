@@ -28,6 +28,7 @@ public sealed class PublicOrdersController : ControllerBase
             new CreatePublicOrderCommand(
                 request.Name,
                 request.Phone,
+                request.Telegram,
                 request.WhatsApp,
                 request.Vk,
                 request.Address,
@@ -45,6 +46,7 @@ public sealed class PublicOrdersController : ControllerBase
 public sealed record CreatePublicOrderRequest(
     string? Name,
     string? Phone,
+    string? Telegram,
     string? WhatsApp,
     string? Vk,
     string? Address,

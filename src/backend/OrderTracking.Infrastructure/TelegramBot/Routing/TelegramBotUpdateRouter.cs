@@ -168,15 +168,65 @@ internal sealed class TelegramBotUpdateRouter
                 return;
             }
 
+            if (data.StartsWith(TelegramBotCallback.OrderNotificationOpenPrefix, StringComparison.Ordinal))
+            {
+                var payload = data[TelegramBotCallback.OrderNotificationOpenPrefix.Length..];
+                var orderId = TelegramBotCallback.DecodeGuid(payload);
+                if (orderId is null)
+                {
+                    await _ui.RenderAsync(
+                        chatId.Value,
+                        messageId,
+                        "Некорректный заказ",
+                        TelegramBotKeyboards.MainMenu(admin),
+                        cancellationToken);
+                    return;
+                }
+
+                await _orders.RenderNotificationCardAsync(
+                    chatId.Value,
+                    messageId.Value,
+                    orderId.Value,
+                    cancellationToken);
+                return;
+            }
+
+            if (data.StartsWith(TelegramBotCallback.OrderNotificationBackPrefix, StringComparison.Ordinal))
+            {
+                var payload = data[TelegramBotCallback.OrderNotificationBackPrefix.Length..];
+                var orderId = TelegramBotCallback.DecodeGuid(payload);
+                if (orderId is null)
+                {
+                    await _ui.RenderAsync(
+                        chatId.Value,
+                        messageId,
+                        "Некорректный заказ",
+                        TelegramBotKeyboards.MainMenu(admin),
+                        cancellationToken);
+                    return;
+                }
+
+                await _orders.RenderOrderCreatedNotificationAsync(
+                    chatId.Value,
+                    messageId.Value,
+                    orderId.Value,
+                    cancellationToken);
+                return;
+            }
+
+            // Regular bot navigation sends a new message. Only a new-order notification
+            // and its Back button edit the notification in place.
+            int? navigationMessageId = null;
+
             if (data == TelegramBotCallback.Main)
             {
-                await _menu.RenderMainMenuAsync(chatId.Value, messageId, admin, cancellationToken);
+                await _menu.RenderMainMenuAsync(chatId.Value, navigationMessageId, admin, cancellationToken);
                 return;
             }
 
             if (data == TelegramBotCallback.AdminLink)
             {
-                await _menu.RenderAdminLinkAsync(chatId.Value, messageId, cancellationToken);
+                await _menu.RenderAdminLinkAsync(chatId.Value, navigationMessageId, cancellationToken);
                 return;
             }
 
@@ -184,14 +234,14 @@ internal sealed class TelegramBotUpdateRouter
                 or TelegramBotCallback.SettingsCsvOn
                 or TelegramBotCallback.SettingsCsvOff)
             {
-                await _settings.HandleAsync(chatId.Value, messageId, admin, data, cancellationToken);
+                await _settings.HandleAsync(chatId.Value, navigationMessageId, admin, data, cancellationToken);
                 return;
             }
 
             if (data.StartsWith(TelegramBotCallback.OrdersPagePrefix, StringComparison.Ordinal))
             {
                 var page = int.TryParse(data[TelegramBotCallback.OrdersPagePrefix.Length..], out var p) ? p : 1;
-                await _orders.RenderPageAsync(chatId.Value, messageId, page, cancellationToken);
+                await _orders.RenderPageAsync(chatId.Value, navigationMessageId, page, cancellationToken);
                 return;
             }
 
@@ -202,7 +252,7 @@ internal sealed class TelegramBotUpdateRouter
                 {
                     await _ui.RenderAsync(
                         chatId.Value,
-                        messageId,
+                        navigationMessageId,
                         "Некорректный заказ",
                         new InlineKeyboardMarkup(
                             InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)),
@@ -210,14 +260,14 @@ internal sealed class TelegramBotUpdateRouter
                     return;
                 }
 
-                await _orders.RenderCardAsync(chatId.Value, messageId, id, page, cancellationToken);
+                await _orders.RenderCardAsync(chatId.Value, navigationMessageId, id, page, cancellationToken);
                 return;
             }
 
             if (data.StartsWith(TelegramBotCallback.CustomersPagePrefix, StringComparison.Ordinal))
             {
                 var page = int.TryParse(data[TelegramBotCallback.CustomersPagePrefix.Length..], out var p) ? p : 1;
-                await _customers.RenderPageAsync(chatId.Value, messageId, page, cancellationToken);
+                await _customers.RenderPageAsync(chatId.Value, navigationMessageId, page, cancellationToken);
                 return;
             }
 
@@ -228,7 +278,7 @@ internal sealed class TelegramBotUpdateRouter
                 {
                     await _ui.RenderAsync(
                         chatId.Value,
-                        messageId,
+                        navigationMessageId,
                         "Некорректный клиент",
                         new InlineKeyboardMarkup(
                             InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)),
@@ -236,7 +286,7 @@ internal sealed class TelegramBotUpdateRouter
                     return;
                 }
 
-                await _customers.RenderCardAsync(chatId.Value, messageId, id, page, cancellationToken);
+                await _customers.RenderCardAsync(chatId.Value, navigationMessageId, id, page, cancellationToken);
                 return;
             }
 
@@ -250,7 +300,7 @@ internal sealed class TelegramBotUpdateRouter
                         callback.From.Id);
                     await _ui.RenderAsync(
                         chatId.Value,
-                        messageId,
+                        navigationMessageId,
                         "Недостаточно прав",
                         TelegramBotKeyboards.MainMenu(admin),
                         cancellationToken);
@@ -258,14 +308,14 @@ internal sealed class TelegramBotUpdateRouter
                 }
 
                 var page = int.TryParse(data[TelegramBotCallback.AdminsPagePrefix.Length..], out var p) ? p : 1;
-                await _admins.RenderPageAsync(chatId.Value, messageId, page, cancellationToken);
+                await _admins.RenderPageAsync(chatId.Value, navigationMessageId, page, cancellationToken);
                 return;
             }
 
             _logger.LogDebug("Unhandled callback data: {Data}", data);
             await _ui.RenderAsync(
                 chatId.Value,
-                messageId,
+                navigationMessageId,
                 "Это меню устарело. Откройте актуальное меню.",
                 TelegramBotKeyboards.MainMenu(admin),
                 cancellationToken);
@@ -277,7 +327,7 @@ internal sealed class TelegramBotUpdateRouter
             {
                 await _ui.RenderAsync(
                     chatId.Value,
-                    messageId,
+                    messageId: null,
                     "Ошибка при обработке кнопки. Попробуйте ещё раз или отправьте любое сообщение.",
                     TelegramBotKeyboards.MainMenu(admin),
                     cancellationToken);

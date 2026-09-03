@@ -8,6 +8,8 @@ internal static class TelegramBotCallback
     public const string CustomersPagePrefix = "cp:";
     public const string Main = "m";
     public const string Noop = "noop";
+    public const string OrderNotificationBackPrefix = "onb:";
+    public const string OrderNotificationOpenPrefix = "ono:";
     public const string OrderOpenPrefix = "oi:";
     public const string OrdersPagePrefix = "op:";
     public const string Settings = "set";
@@ -46,6 +48,12 @@ internal static class TelegramBotCallback
     /// <summary>Format: oi:{guid}[:{page}] — page optional for legacy notification buttons.</summary>
     public static string OrderOpen(Guid orderId, int page = 1) =>
         OrderOpenPrefix + EncodeGuid(orderId) + ":" + Math.Max(1, page);
+
+    public static string OrderNotificationOpen(Guid orderId) =>
+        OrderNotificationOpenPrefix + EncodeGuid(orderId);
+
+    public static string OrderNotificationBack(Guid orderId) =>
+        OrderNotificationBackPrefix + EncodeGuid(orderId);
 
     /// <summary>Format: ci:{guid}[:{page}]</summary>
     public static string CustomerOpen(Guid customerId, int page = 1) =>

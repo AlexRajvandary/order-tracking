@@ -71,11 +71,99 @@ internal sealed class TelegramBotOrdersScreen
         await _ui.RenderAsync(chatId, messageId, text, new InlineKeyboardMarkup(buttons), cancellationToken);
     }
 
-    public async Task RenderCardAsync(
+    public Task RenderCardAsync(
         long chatId,
         int? messageId,
         Guid orderId,
         int listPage,
+        CancellationToken cancellationToken)
+    {
+        return RenderCardCoreAsync(
+            chatId,
+            messageId,
+            orderId,
+            listPage,
+            returnToNotification: false,
+            cancellationToken);
+    }
+
+    public Task RenderNotificationCardAsync(
+        long chatId,
+        int messageId,
+        Guid orderId,
+        CancellationToken cancellationToken)
+    {
+        return RenderCardCoreAsync(
+            chatId,
+            messageId,
+            orderId,
+            listPage: 1,
+            returnToNotification: true,
+            cancellationToken);
+    }
+
+    public async Task RenderOrderCreatedNotificationAsync(
+        long chatId,
+        int messageId,
+        Guid orderId,
+        CancellationToken cancellationToken)
+    {
+        using var scope = _runtime.ScopeFactory.CreateScope();
+        var order = await scope.ServiceProvider
+            .GetRequiredService<IOrderRepository>()
+            .GetByIdWithPublishedStatusHistoryAsync(orderId, cancellationToken);
+
+        if (order is null)
+        {
+            await _ui.RenderAsync(
+                chatId,
+                messageId,
+                "Заказ не найден",
+                new InlineKeyboardMarkup(
+                    InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)),
+                cancellationToken);
+            return;
+        }
+
+        var customerName = order.Customer is null
+            ? null
+            : $"{order.Customer.LastName} {order.Customer.FirstName} {order.Customer.Patronymic}".Trim();
+        var address = string.Join(
+            ", ",
+            new[]
+            {
+                order.DeliveryPostalCode,
+                order.DeliveryCity,
+                order.DeliveryStreet,
+                order.DeliveryBuilding,
+                order.DeliveryApartment,
+                order.DeliveryNote,
+            }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+        var text = TelegramOrderCreatedNotification.BuildText(
+            order.Id,
+            order.TrackingCode,
+            customerName,
+            order.Customer?.Phone,
+            order.Customer?.Telegram,
+            order.Customer?.WhatsApp,
+            order.Customer?.Vk,
+            address);
+
+        await _ui.RenderAsync(
+            chatId,
+            messageId,
+            text,
+            TelegramOrderCreatedNotification.BuildKeyboard(order.Id),
+            cancellationToken);
+    }
+
+    private async Task RenderCardCoreAsync(
+        long chatId,
+        int? messageId,
+        Guid orderId,
+        int listPage,
+        bool returnToNotification,
         CancellationToken cancellationToken)
     {
         var bot = _runtime.RequireClient();
@@ -174,11 +262,16 @@ internal sealed class TelegramBotOrdersScreen
             }
         }
 
-        var keyboard = new InlineKeyboardMarkup(
-        [
-            [InlineKeyboardButton.WithCallbackData("← К заказам", TelegramBotCallback.OrdersPagePrefix + Math.Max(1, listPage))],
-            [InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)],
-        ]);
+        var keyboard = returnToNotification
+            ? new InlineKeyboardMarkup(
+                InlineKeyboardButton.WithCallbackData(
+                    "← Назад",
+                    TelegramBotCallback.OrderNotificationBack(orderId)))
+            : new InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton.WithCallbackData("← К заказам", TelegramBotCallback.OrdersPagePrefix + Math.Max(1, listPage))],
+                [InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)],
+            ]);
 
         await _ui.RenderAsync(chatId, messageId, sb.ToString(), keyboard, cancellationToken);
 

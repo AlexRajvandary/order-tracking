@@ -19,6 +19,8 @@ export function ProductDetailActions({ product, variants }: { product: CatalogPr
     name: product.name,
     quantity,
     priceRub: product.priceRub,
+    imageUrl: product.imageUrl,
+    tint: product.tint,
   }];
 
   return (

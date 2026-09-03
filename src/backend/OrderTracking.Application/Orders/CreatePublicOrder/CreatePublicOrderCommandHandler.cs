@@ -71,7 +71,7 @@ public sealed class CreatePublicOrderCommandHandler
             null,
             Normalize(request.Name),
             null,
-            null,
+            Normalize(request.Telegram),
             Normalize(request.Phone),
             Normalize(request.WhatsApp),
             Normalize(request.Vk),

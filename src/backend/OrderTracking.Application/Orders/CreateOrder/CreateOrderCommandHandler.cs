@@ -184,6 +184,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
                 order.TrackingCode,
                 customerName,
                 customerPhone,
+                customerTelegram,
                 customerWhatsApp,
                 customerVk,
                 FormatDeliveryAddress(order),

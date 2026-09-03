@@ -9,6 +9,7 @@ public interface ITelegramAdminNotifier
         string trackingCode,
         string? customerName,
         string? phone,
+        string? telegram,
         string? whatsApp,
         string? vk,
         string? address,

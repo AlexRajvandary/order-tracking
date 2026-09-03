@@ -119,6 +119,7 @@ public sealed class TelegramOutboxProcessorHostedService : BackgroundService
                     payload.TrackingCode,
                     payload.CustomerName,
                     payload.Phone,
+                    payload.Telegram,
                     payload.WhatsApp,
                     payload.Vk,
                     payload.Address,
