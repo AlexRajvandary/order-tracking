@@ -35,6 +35,7 @@ public sealed class SearchOrdersQueryHandler : IRequestHandler<SearchOrdersQuery
     private static OrderListItemDto Map(Common.Persistence.Models.OrderListRow row) =>
         new(
             row.Id, row.TrackingCode, row.CustomerId, row.CustomerName, row.CustomerPhone,
-            row.CustomerEmail, row.CustomerTelegram, row.AdminNotes, row.Status,
+            row.CustomerWhatsApp, row.CustomerVk, row.CustomerEmail, row.CustomerTelegram,
+            row.AdminNotes, row.Status,
             row.ItemsCount, row.CreatedAt, row.UpdatedAt);
 }

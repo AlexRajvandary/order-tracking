@@ -61,6 +61,8 @@ public sealed class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderComma
         string? customerName = null;
         string? customerPhone = null;
         string? customerTelegram = null;
+        string? customerWhatsApp = null;
+        string? customerVk = null;
         string? customerEmail = null;
 
         if (order.CustomerId is { } cid)
@@ -73,6 +75,8 @@ public sealed class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderComma
                 customer?.Patronymic);
             customerPhone = customer?.Phone;
             customerTelegram = customer?.Telegram;
+            customerWhatsApp = customer?.WhatsApp;
+            customerVk = customer?.Vk;
             customerEmail = customer?.Email;
         }
 
@@ -88,6 +92,8 @@ public sealed class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderComma
             customerName,
             customerPhone,
             customerTelegram,
+            customerWhatsApp,
+            customerVk,
             customerEmail,
             order.AdminNotes,
             order.CreatedByAdminId,

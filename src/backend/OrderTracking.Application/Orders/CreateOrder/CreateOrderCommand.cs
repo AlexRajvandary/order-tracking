@@ -11,6 +11,8 @@ public sealed record CreateOrderNewCustomerDto(
     string? Patronymic,
     string? Telegram,
     string? Phone,
+    string? WhatsApp,
+    string? Vk,
     string? Email);
 
 public sealed record CreateOrderCommand(
@@ -19,4 +21,5 @@ public sealed record CreateOrderCommand(
     string? AdminNotes,
     Guid? DeliveryAddressId,
     CreateOrderDeliveryAddressDto? DeliveryAddress,
-    IReadOnlyList<CreateOrderItemDto>? Items) : IRequest<OrderDetailsDto>, IAuditableCommand;
+    IReadOnlyList<CreateOrderItemDto>? Items,
+    Guid? CreatedByAdminId = null) : IRequest<OrderDetailsDto>, IAuditableCommand;

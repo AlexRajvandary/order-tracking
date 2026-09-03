@@ -30,6 +30,8 @@ public sealed record CustomerAuditSnapshotRow(
     string? Patronymic,
     string? Telegram,
     string? Phone,
+    string? WhatsApp,
+    string? Vk,
     string? Email,
     string? Notes,
     bool IsDeleted);

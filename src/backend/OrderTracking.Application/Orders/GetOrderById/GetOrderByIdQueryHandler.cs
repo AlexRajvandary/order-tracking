@@ -20,7 +20,8 @@ public sealed class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery
 
         return new OrderDetailsDto(
             order.Id, order.TrackingCode, order.CustomerId, order.CustomerName, order.CustomerPhone,
-            order.CustomerTelegram, order.CustomerEmail, order.AdminNotes, order.CreatedByAdminId,
+            order.CustomerTelegram, order.CustomerWhatsApp, order.CustomerVk, order.CustomerEmail,
+            order.AdminNotes, order.CreatedByAdminId,
             order.Status, order.CreatedAt, order.UpdatedAt, order.ExpectedDeliveryAt,
             order.DeliveryAddressId, order.DeliveryCity, order.DeliveryStreet, order.DeliveryBuilding,
             order.DeliveryApartment, order.DeliveryPostalCode, order.DeliveryNote,

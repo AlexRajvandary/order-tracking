@@ -59,6 +59,8 @@ public sealed class RestoreOrderCommandHandler : IRequestHandler<RestoreOrderCom
                 order.Customer?.Patronymic),
             order.Customer?.Phone,
             order.Customer?.Telegram,
+            order.Customer?.WhatsApp,
+            order.Customer?.Vk,
             order.Customer?.Email,
             order.AdminNotes,
             order.CreatedByAdminId,

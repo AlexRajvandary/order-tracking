@@ -11,5 +11,7 @@ public sealed record UpdateCustomerCommand(
     string? Patronymic,
     string? Telegram,
     string? Phone,
+    string? WhatsApp,
+    string? Vk,
     string? Email,
     string? Notes) : IRequest<CustomerDto>, IAuditableCommand;

@@ -147,6 +147,8 @@ public sealed class AuditSnapshotService : IAuditSnapshotService
                 customer.Patronymic),
             ["telegram"] = customer.Telegram,
             ["phone"] = customer.Phone,
+            ["whatsApp"] = customer.WhatsApp,
+            ["vk"] = customer.Vk,
             ["email"] = customer.Email,
             ["notes"] = customer.Notes,
             ["isDeleted"] = customer.IsDeleted ? "true" : "false",

@@ -69,6 +69,12 @@ public static class DependencyInjection
         services.AddSingleton<IObjectStorage, MinioObjectStorage>();
         services.AddSingleton<IImageCompressor, ImageSharpCompressor>();
         services.AddScoped<IStorageMetricsService, StorageMetricsService>();
+        services.AddHttpClient<IProductCatalogClient, ProductCatalogClient>((_, client) =>
+        {
+            var baseUrl = configuration["ProductsApi:BaseUrl"] ?? "http://localhost:5281/";
+            client.BaseAddress = new Uri(baseUrl.EndsWith('/') ? baseUrl : $"{baseUrl}/");
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
         services.AddHttpClient<IVpsStatsService, FornexVpsStatsService>((sp, client) =>
         {
             var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<FornexSettings>>().Value;

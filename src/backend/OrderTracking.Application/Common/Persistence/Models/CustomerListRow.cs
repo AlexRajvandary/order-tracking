@@ -7,6 +7,8 @@ public sealed record CustomerListRow(
     string? Patronymic,
     string? Telegram,
     string? Phone,
+    string? WhatsApp,
+    string? Vk,
     string? Email,
     string? Notes,
     DateTimeOffset CreatedAt,

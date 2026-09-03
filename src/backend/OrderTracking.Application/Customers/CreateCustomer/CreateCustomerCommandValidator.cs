@@ -11,6 +11,8 @@ public sealed class CreateCustomerCommandValidator : AbstractValidator<CreateCus
         RuleFor(x => x.Patronymic).MaximumLength(100);
         RuleFor(x => x.Telegram).MaximumLength(100);
         RuleFor(x => x.Phone).MaximumLength(30);
+        RuleFor(x => x.WhatsApp).MaximumLength(100);
+        RuleFor(x => x.Vk).MaximumLength(200);
         RuleFor(x => x.Email).MaximumLength(256).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.Email));
         RuleFor(x => x.Notes).MaximumLength(4000);
     }

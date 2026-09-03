@@ -38,6 +38,8 @@ public sealed class SearchCustomersQueryHandler : IRequestHandler<SearchCustomer
                 CustomerNameFormatting.Format(c.LastName, c.FirstName, c.Patronymic),
                 c.Telegram,
                 c.Phone,
+                c.WhatsApp,
+                c.Vk,
                 c.Email,
                 c.Notes,
                 c.CreatedAt,

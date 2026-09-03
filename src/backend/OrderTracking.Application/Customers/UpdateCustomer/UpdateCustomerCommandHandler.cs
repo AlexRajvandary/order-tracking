@@ -26,6 +26,8 @@ public sealed class UpdateCustomerCommandHandler : IRequestHandler<UpdateCustome
         customer.Patronymic = CustomerNameFormatting.NormalizePart(request.Patronymic);
         customer.Telegram = TelegramFormatting.Normalize(request.Telegram);
         customer.Phone = Normalize(request.Phone);
+        customer.WhatsApp = Normalize(request.WhatsApp);
+        customer.Vk = Normalize(request.Vk);
         customer.Email = Normalize(request.Email);
         customer.Notes = Normalize(request.Notes);
 
@@ -41,6 +43,8 @@ public sealed class UpdateCustomerCommandHandler : IRequestHandler<UpdateCustome
             CustomerNameFormatting.Format(customer.LastName, customer.FirstName, customer.Patronymic),
             customer.Telegram,
             customer.Phone,
+            customer.WhatsApp,
+            customer.Vk,
             customer.Email,
             customer.Notes,
             customer.CreatedAt,

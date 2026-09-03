@@ -49,7 +49,8 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
 
     public async Task<OrderDetailsDto> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
     {
-        if (_currentUserService.UserId is not { } adminId)
+        var adminId = request.CreatedByAdminId ?? _currentUserService.UserId;
+        if (adminId is null)
         {
             throw new UnauthorizedAccessException();
         }
@@ -58,6 +59,8 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
         string? customerName = null;
         string? customerPhone = null;
         string? customerTelegram = null;
+        string? customerWhatsApp = null;
+        string? customerVk = null;
         string? customerEmail = null;
 
         if (HasNewCustomerData(request.NewCustomer))
@@ -71,6 +74,8 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
                 Patronymic = CustomerNameFormatting.NormalizePart(request.NewCustomer.Patronymic),
                 Telegram = TelegramFormatting.Normalize(request.NewCustomer.Telegram),
                 Phone = Normalize(request.NewCustomer.Phone),
+                WhatsApp = Normalize(request.NewCustomer.WhatsApp),
+                Vk = Normalize(request.NewCustomer.Vk),
                 Email = Normalize(request.NewCustomer.Email),
                 CreatedAt = now,
                 UpdatedAt = now,
@@ -84,6 +89,8 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
                 customer.Patronymic);
             customerPhone = customer.Phone;
             customerTelegram = customer.Telegram;
+            customerWhatsApp = customer.WhatsApp;
+            customerVk = customer.Vk;
             customerEmail = customer.Email;
         }
         else if (customerId is { } existingId)
@@ -97,6 +104,8 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
                 customer.Patronymic);
             customerPhone = customer.Phone;
             customerTelegram = customer.Telegram;
+            customerWhatsApp = customer.WhatsApp;
+            customerVk = customer.Vk;
             customerEmail = customer.Email;
         }
 
@@ -118,7 +127,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
             DeliveryPostalCode = delivery.PostalCode,
             DeliveryNote = delivery.Note,
             AdminNotes = Normalize(request.AdminNotes),
-            CreatedByAdminId = adminId,
+            CreatedByAdminId = adminId.Value,
             Status = OrderStatus.AwaitingPayment,
             CreatedAt = orderNow,
             UpdatedAt = orderNow,
@@ -154,7 +163,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
             _statusDefinitionRepository,
             order,
             items,
-            adminId,
+            adminId.Value,
             cancellationToken);
 
         try
@@ -180,7 +189,15 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
             _logger.LogWarning(ex, "Telegram notify failed for new order {OrderId}", order.Id);
         }
 
-        return MapDetails(order, customerName, customerPhone, customerTelegram, customerEmail, items);
+        return MapDetails(
+            order,
+            customerName,
+            customerPhone,
+            customerTelegram,
+            customerWhatsApp,
+            customerVk,
+            customerEmail,
+            items);
     }
 
     private async Task<string> GenerateUniqueTrackingCodeAsync(CancellationToken cancellationToken)
@@ -218,6 +235,8 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
             || !string.IsNullOrWhiteSpace(customer.Patronymic)
             || !string.IsNullOrWhiteSpace(customer.Telegram)
             || !string.IsNullOrWhiteSpace(customer.Phone)
+            || !string.IsNullOrWhiteSpace(customer.WhatsApp)
+            || !string.IsNullOrWhiteSpace(customer.Vk)
             || !string.IsNullOrWhiteSpace(customer.Email));
 
     private static bool IsUniqueViolation(Exception ex)
@@ -241,6 +260,8 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
         string? customerName,
         string? customerPhone,
         string? customerTelegram,
+        string? customerWhatsApp,
+        string? customerVk,
         string? customerEmail,
         IReadOnlyList<OrderItem> items)
     {
@@ -251,6 +272,8 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
             customerName,
             customerPhone,
             customerTelegram,
+            customerWhatsApp,
+            customerVk,
             customerEmail,
             order.AdminNotes,
             order.CreatedByAdminId,

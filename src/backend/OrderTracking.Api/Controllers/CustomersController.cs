@@ -62,6 +62,8 @@ public sealed class CustomersController : ControllerBase
                 request.Patronymic,
                 request.Telegram,
                 request.Phone,
+                request.WhatsApp,
+                request.Vk,
                 request.Email,
                 request.Notes),
             cancellationToken);
@@ -100,6 +102,8 @@ public sealed class CustomersController : ControllerBase
                 request.Patronymic,
                 request.Telegram,
                 request.Phone,
+                request.WhatsApp,
+                request.Vk,
                 request.Email,
                 request.Notes),
             cancellationToken);
@@ -137,5 +141,7 @@ public sealed record UpsertCustomerRequest(
     string? Patronymic,
     string? Telegram,
     string? Phone,
+    string? WhatsApp,
+    string? Vk,
     string? Email,
     string? Notes);

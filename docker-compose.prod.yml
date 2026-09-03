@@ -65,6 +65,8 @@ services:
       Fornex__ApiKey: ${FORNEX_API_KEY:-}
       Fornex__OrderId: ${FORNEX_ORDER_ID:-}
       Crawler__ApiKey: ${CRAWLER_API_KEY}
+      ProductsApi__BaseUrl: http://products-api:8080
+      PublicCheckout__CreatedByAdminLogin: ${PUBLIC_CHECKOUT_ADMIN_LOGIN:-admin}
       Monitoring__HostDiskPath: /host
     volumes:
       - /:/host:ro

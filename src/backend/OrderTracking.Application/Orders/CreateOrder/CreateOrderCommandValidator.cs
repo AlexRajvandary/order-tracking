@@ -25,6 +25,8 @@ public sealed class CreateOrderCommandValidator : AbstractValidator<CreateOrderC
             RuleFor(x => x.NewCustomer!.Patronymic).MaximumLength(100);
             RuleFor(x => x.NewCustomer!.Telegram).MaximumLength(100);
             RuleFor(x => x.NewCustomer!.Phone).MaximumLength(30);
+            RuleFor(x => x.NewCustomer!.WhatsApp).MaximumLength(100);
+            RuleFor(x => x.NewCustomer!.Vk).MaximumLength(200);
             RuleFor(x => x.NewCustomer!.Email)
                 .MaximumLength(256)
                 .EmailAddress()
@@ -65,6 +67,8 @@ public sealed class CreateOrderCommandValidator : AbstractValidator<CreateOrderC
             || !string.IsNullOrWhiteSpace(customer.Patronymic)
             || !string.IsNullOrWhiteSpace(customer.Telegram)
             || !string.IsNullOrWhiteSpace(customer.Phone)
+            || !string.IsNullOrWhiteSpace(customer.WhatsApp)
+            || !string.IsNullOrWhiteSpace(customer.Vk)
             || !string.IsNullOrWhiteSpace(customer.Email));
 
     private static bool HasAnyDeliveryField(CreateOrderDeliveryAddressDto? address) =>

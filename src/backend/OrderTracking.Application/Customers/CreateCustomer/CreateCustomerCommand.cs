@@ -10,5 +10,7 @@ public sealed record CreateCustomerCommand(
     string? Patronymic,
     string? Telegram,
     string? Phone,
+    string? WhatsApp,
+    string? Vk,
     string? Email,
     string? Notes) : IRequest<CustomerDto>, IAuditableCommand;

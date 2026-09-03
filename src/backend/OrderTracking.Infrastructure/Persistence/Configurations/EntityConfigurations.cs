@@ -80,6 +80,8 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(e => e.Patronymic).HasMaxLength(100);
         builder.Property(e => e.Telegram).HasMaxLength(100);
         builder.Property(e => e.Phone).HasMaxLength(30);
+        builder.Property(e => e.WhatsApp).HasMaxLength(100);
+        builder.Property(e => e.Vk).HasMaxLength(200);
         builder.Property(e => e.Email).HasMaxLength(256);
         builder.Property(e => e.Notes).HasColumnType("text");
 

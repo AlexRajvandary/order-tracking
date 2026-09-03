@@ -8,6 +8,8 @@ public sealed record CustomerDto(
     string? FullName,
     string? Telegram,
     string? Phone,
+    string? WhatsApp,
+    string? Vk,
     string? Email,
     string? Notes,
     DateTimeOffset CreatedAt,

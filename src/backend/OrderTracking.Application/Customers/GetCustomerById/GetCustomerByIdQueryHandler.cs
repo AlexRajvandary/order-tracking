@@ -30,6 +30,8 @@ public sealed class GetCustomerByIdQueryHandler : IRequestHandler<GetCustomerByI
             CustomerNameFormatting.Format(row.LastName, row.FirstName, row.Patronymic),
             row.Telegram,
             row.Phone,
+            row.WhatsApp,
+            row.Vk,
             row.Email,
             row.Notes,
             row.CreatedAt,
