@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -36,11 +35,10 @@ type CheckoutResult = {
   trackingCode: string;
 };
 
-type ContactMethod = "phone" | "whatsApp" | "telegram" | "vk";
+type ContactMethod = "phone" | "telegram" | "vk";
 
 const contactMethods: Array<{ value: ContactMethod; label: string }> = [
   { value: "phone", label: "Телефон" },
-  { value: "whatsApp", label: "WhatsApp" },
   { value: "telegram", label: "Telegram" },
   { value: "vk", label: "VK" },
 ];
@@ -52,12 +50,6 @@ const contactFields: Record<
   phone: {
     label: "Телефон",
     placeholder: "+7 (___) ___-__-__",
-    autoComplete: "tel",
-    inputMode: "tel",
-  },
-  whatsApp: {
-    label: "WhatsApp",
-    placeholder: "Номер телефона",
     autoComplete: "tel",
     inputMode: "tel",
   },
@@ -80,7 +72,6 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
   const [contactMethod, setContactMethod] = useState<ContactMethod>("phone");
   const [contacts, setContacts] = useState<Record<ContactMethod, string>>({
     phone: "",
-    whatsApp: "",
     telegram: "",
     vk: "",
   });
@@ -117,7 +108,7 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
           name: form.get("name") || null,
           phone: contacts.phone || null,
           telegram: contacts.telegram || null,
-          whatsApp: contacts.whatsApp || null,
+          whatsApp: null,
           vk: contacts.vk || null,
           address: form.get("address") || null,
           items: items.map(({ productId, quantity }) => ({ productId, quantity })),
@@ -151,13 +142,10 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
         side="right"
         className="w-full gap-0 overflow-hidden bg-white sm:max-w-[560px]"
       >
-        <SheetHeader className="gap-1 px-5 pb-5 pt-6 sm:px-7">
+        <SheetHeader className="px-5 pb-5 pt-6 sm:px-7">
           <SheetTitle className="pr-10 text-2xl font-semibold tracking-tight">
             Оформление заявки
           </SheetTitle>
-          <SheetDescription className="text-sm">
-            Оплата сейчас не требуется
-          </SheetDescription>
         </SheetHeader>
 
         {result ? (
@@ -195,7 +183,7 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
               </ul>
 
               <Field
-                label="Имя"
+                label="Как к вам обращаться"
                 name="name"
                 placeholder="Ваше имя"
                 autoComplete="name"
@@ -206,7 +194,7 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
                 <div
                   role="radiogroup"
                   aria-label="Способ связи"
-                  className="grid grid-cols-2 overflow-hidden rounded-lg border border-input min-[430px]:grid-cols-4"
+                  className="grid grid-cols-3 overflow-hidden rounded-lg border border-input"
                 >
                   {contactMethods.map((method) => (
                     <button
@@ -217,7 +205,7 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
                       onClick={() => setContactMethod(method.value)}
                       className={cn(
                         "h-11 border-input px-2 text-sm transition-colors outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-ring/50",
-                        "border-b odd:border-r min-[430px]:border-b-0 min-[430px]:border-r min-[430px]:last:border-r-0",
+                        "border-r border-input last:border-r-0",
                         contactMethod === method.value
                           ? "bg-muted font-medium text-foreground"
                           : "bg-white text-muted-foreground hover:bg-muted/50 hover:text-foreground",
@@ -254,10 +242,6 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
                 placeholder="Город, улица, дом, квартира"
                 autoComplete="street-address"
               />
-
-              <p className="text-xs text-muted-foreground">
-                Укажите хотя бы один контакт.
-              </p>
 
               {error ? (
                 <p role="alert" className="text-sm text-destructive">
