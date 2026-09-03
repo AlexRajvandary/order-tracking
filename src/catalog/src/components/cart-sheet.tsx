@@ -5,7 +5,6 @@ import Link from "next/link";
 import { MinusIcon, PlusIcon, ShoppingBagIcon, Trash2Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
@@ -49,8 +48,11 @@ export function CartSheet({ trigger }: CartSheetProps) {
           )}
         </SheetTrigger>
       )}
-      <SheetContent side="right" className="w-full sm:max-w-md">
-        <SheetHeader>
+      <SheetContent
+        side="right"
+        className="max-h-dvh w-full gap-0 overflow-hidden sm:max-w-md"
+      >
+        <SheetHeader className="shrink-0">
           <SheetTitle className="text-xl">Корзина</SheetTitle>
           <SheetDescription>
             {itemCount === 0
@@ -66,7 +68,7 @@ export function CartSheet({ trigger }: CartSheetProps) {
           </div>
         ) : (
           <>
-            <ScrollArea className="flex-1 px-4">
+            <ScrollArea className="min-h-0 flex-1 overscroll-contain px-4">
               <ul className="space-y-4 pb-4">
                 {items.map((item) => (
                   <li key={item.productId} className="flex gap-3">
@@ -139,8 +141,7 @@ export function CartSheet({ trigger }: CartSheetProps) {
               </ul>
             </ScrollArea>
 
-            <Separator />
-            <SheetFooter className="gap-3">
+            <SheetFooter className="sticky bottom-0 z-10 shrink-0 gap-3 border-t border-border bg-popover">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Итого</span>
                 <span className="text-lg font-bold">
