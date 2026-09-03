@@ -42,6 +42,10 @@ public sealed class TelegramOutboxNotifier : ITelegramAdminNotifier
         Guid orderId,
         string trackingCode,
         string? customerName,
+        string? phone,
+        string? whatsApp,
+        string? vk,
+        string? address,
         CancellationToken cancellationToken = default)
     {
         if (!IsEnabled)
@@ -49,7 +53,14 @@ public sealed class TelegramOutboxNotifier : ITelegramAdminNotifier
             return;
         }
 
-        var payload = new TelegramOrderCreatedPayload(orderId, trackingCode, customerName);
+        var payload = new TelegramOrderCreatedPayload(
+            orderId,
+            trackingCode,
+            customerName,
+            phone,
+            whatsApp,
+            vk,
+            address);
         _outbox.Add(new TelegramOutboxMessage
         {
             Id = Guid.NewGuid(),

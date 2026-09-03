@@ -66,7 +66,8 @@ public sealed record OrderItemRow(
     int SortOrder,
     Guid? CurrentStatusId,
     string? CurrentStatusText,
-    DateTimeOffset? CurrentStatusUpdatedAt);
+    DateTimeOffset? CurrentStatusUpdatedAt,
+    string? SourceUrl);
 
 public sealed record OrderAuditSnapshotRow(
     string TrackingCode,

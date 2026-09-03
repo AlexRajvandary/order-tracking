@@ -12,6 +12,8 @@ export type OrderListItem = {
   customerId: string | null
   customerName: string | null
   customerPhone: string | null
+  customerWhatsApp: string | null
+  customerVk: string | null
   customerEmail: string | null
   customerTelegram: string | null
   adminNotes: string | null
@@ -26,6 +28,7 @@ export type OrderItem = {
   itemType: string
   name: string
   description: string | null
+  sourceUrl: string | null
   quantity: number
   unitPrice: number | null
   currencyCode: CurrencyCode | null
@@ -42,6 +45,8 @@ export type OrderDetails = {
   customerName: string | null
   customerPhone: string | null
   customerTelegram: string | null
+  customerWhatsApp: string | null
+  customerVk: string | null
   customerEmail: string | null
   adminNotes: string | null
   createdByAdminId: string
@@ -83,6 +88,8 @@ export type CreateOrderNewCustomer = {
   patronymic?: string | null
   telegram?: string | null
   phone?: string | null
+  whatsApp?: string | null
+  vk?: string | null
   email?: string | null
 }
 

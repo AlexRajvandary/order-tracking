@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { CheckoutSheet } from "@/components/checkout-sheet";
 
 export default function CartPage() {
   const { items, itemCount, totalRub, setQuantity, removeItem, clear } = useCart();
@@ -138,9 +139,11 @@ export default function CartPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex-col gap-2">
-                <Button className="w-full" disabled>
-                  Оформить заказ — скоро
-                </Button>
+                <CheckoutSheet
+                  items={items}
+                  onSuccess={clear}
+                  trigger={<Button className="w-full">Оформить заявку</Button>}
+                />
                 <Button variant="outline" className="w-full" onClick={clear}>
                   Очистить корзину
                 </Button>

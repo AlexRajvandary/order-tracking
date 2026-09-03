@@ -91,6 +91,8 @@ internal sealed class TelegramBotCustomersScreen
             $"Телефон: {TelegramBotText.Escape(c.Phone)}\n" +
             $"Email: {TelegramBotText.Escape(c.Email)}\n" +
             $"Telegram: {TelegramBotText.Escape(c.Telegram)}\n" +
+            $"WhatsApp: {TelegramBotText.Escape(c.WhatsApp)}\n" +
+            $"VK: {TelegramBotText.Escape(c.Vk)}\n" +
             $"Заказов: {c.OrdersCount}\n" +
             $"Создан: {c.CreatedAt:yyyy-MM-dd HH:mm} UTC";
 

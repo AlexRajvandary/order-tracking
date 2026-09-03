@@ -141,6 +141,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
                 ItemType = item.ItemType,
                 Name = item.Name.Trim(),
                 Description = Normalize(item.Description),
+                SourceUrl = Normalize(item.SourceUrl),
                 Quantity = item.Quantity <= 0 ? 1 : item.Quantity,
                 UnitPrice = item.UnitPrice,
                 CurrencyCode = item.UnitPrice.HasValue
@@ -182,6 +183,10 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
                 order.Id,
                 order.TrackingCode,
                 customerName,
+                customerPhone,
+                customerWhatsApp,
+                customerVk,
+                FormatDeliveryAddress(order),
                 cancellationToken);
         }
         catch (Exception ex)
@@ -303,10 +308,27 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
             item.SortOrder,
             item.CurrentStatusId,
             item.CurrentStatusText,
-            item.CurrentStatusUpdatedAt);
+            item.CurrentStatusUpdatedAt,
+            item.SourceUrl);
 
     private static string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string? FormatDeliveryAddress(Order order)
+    {
+        var parts = new[]
+        {
+            order.DeliveryPostalCode,
+            order.DeliveryCity,
+            order.DeliveryStreet,
+            order.DeliveryBuilding,
+            order.DeliveryApartment,
+            order.DeliveryNote,
+        };
+
+        var address = string.Join(", ", parts.Where(x => !string.IsNullOrWhiteSpace(x)));
+        return string.IsNullOrWhiteSpace(address) ? null : address;
+    }
 
     private async Task<(
         Guid? AddressId,

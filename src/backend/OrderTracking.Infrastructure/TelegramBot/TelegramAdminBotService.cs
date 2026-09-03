@@ -54,8 +54,20 @@ public sealed class TelegramAdminBotService
         Guid orderId,
         string trackingCode,
         string? customerName,
+        string? phone,
+        string? whatsApp,
+        string? vk,
+        string? address,
         CancellationToken cancellationToken) =>
-        _notifier.SendOrderCreatedAsync(orderId, trackingCode, customerName, cancellationToken);
+        _notifier.SendOrderCreatedAsync(
+            orderId,
+            trackingCode,
+            customerName,
+            phone,
+            whatsApp,
+            vk,
+            address,
+            cancellationToken);
 
     internal Task SendStatusPublishedNotifyAsync(
         TelegramStatusPublishedWorkItem item,

@@ -27,6 +27,6 @@ public sealed class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery
             order.DeliveryApartment, order.DeliveryPostalCode, order.DeliveryNote,
             order.Items.Select(i => new OrderItemDto(
                 i.Id, i.ItemType, i.Name, i.Description, i.Quantity, i.UnitPrice, i.CurrencyCode,
-                i.SortOrder, i.CurrentStatusId, i.CurrentStatusText, i.CurrentStatusUpdatedAt)).ToList());
+                i.SortOrder, i.CurrentStatusId, i.CurrentStatusText, i.CurrentStatusUpdatedAt, i.SourceUrl)).ToList());
     }
 }

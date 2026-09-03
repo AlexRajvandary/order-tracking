@@ -29,7 +29,8 @@ public sealed record OrderItemDto(
     int SortOrder,
     Guid? CurrentStatusId,
     string? CurrentStatusText,
-    DateTimeOffset? CurrentStatusUpdatedAt);
+    DateTimeOffset? CurrentStatusUpdatedAt,
+    string? SourceUrl);
 
 public sealed record OrderDetailsDto(
     Guid Id,
@@ -62,7 +63,8 @@ public sealed record CreateOrderItemDto(
     string? Description,
     int Quantity = 1,
     decimal? UnitPrice = null,
-    string? CurrencyCode = null);
+    string? CurrencyCode = null,
+    string? SourceUrl = null);
 
 public sealed record CreateOrderDeliveryAddressDto(
     string? City,

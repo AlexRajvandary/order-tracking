@@ -113,6 +113,16 @@ internal sealed class TelegramBotOrdersScreen
         sb.AppendLine($"Клиент: {TelegramBotText.Escape(customerName)}");
         sb.AppendLine($"Тел: {TelegramBotText.Escape(order.Customer?.Phone)}");
         sb.AppendLine($"TG: {TelegramBotText.Escape(order.Customer?.Telegram)}");
+        if (!string.IsNullOrWhiteSpace(order.Customer?.WhatsApp))
+        {
+            sb.AppendLine($"WhatsApp: {TelegramBotText.Escape(order.Customer.WhatsApp)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(order.Customer?.Vk))
+        {
+            sb.AppendLine($"VK: {TelegramBotText.Escape(order.Customer.Vk)}");
+        }
+
         sb.AppendLine($"Создан: {order.CreatedAt:yyyy-MM-dd HH:mm} UTC");
         sb.AppendLine($"Позиций: {order.Items.Count}");
 
@@ -123,6 +133,10 @@ internal sealed class TelegramBotOrdersScreen
             foreach (var item in order.Items.OrderBy(i => i.SortOrder).ThenBy(i => i.CreatedAt))
             {
                 sb.AppendLine($"• {TelegramBotText.Escape(item.Name)} × {item.Quantity}");
+                if (!string.IsNullOrWhiteSpace(item.SourceUrl))
+                {
+                    sb.AppendLine($"  Источник: {TelegramBotText.Escape(item.SourceUrl)}");
+                }
             }
         }
 

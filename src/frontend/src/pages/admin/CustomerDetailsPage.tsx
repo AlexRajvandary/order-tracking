@@ -143,6 +143,14 @@ export function CustomerDetailsPage() {
             <p className="text-xs text-muted-foreground">{t('form.email')}</p>
             <p>{customer.email ?? '—'}</p>
           </div>
+          <div>
+            <p className="text-xs text-muted-foreground">WhatsApp</p>
+            <p>{customer.whatsApp ?? '—'}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">VK</p>
+            <p>{customer.vk ?? '—'}</p>
+          </div>
           <div className="sm:col-span-2">
             <p className="text-xs text-muted-foreground">{t('form.notes')}</p>
             <p>{customer.notes ?? '—'}</p>

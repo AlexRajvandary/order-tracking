@@ -87,5 +87,6 @@ public sealed class AddOrderItemCommandHandler : IRequestHandler<AddOrderItemCom
             item.SortOrder,
             item.CurrentStatusId,
             item.CurrentStatusText,
-            item.CurrentStatusUpdatedAt);
+            item.CurrentStatusUpdatedAt,
+            item.SourceUrl);
 }

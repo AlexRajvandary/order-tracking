@@ -9,6 +9,9 @@ public class OrderItem : AuditableEntity
     public OrderItemType ItemType { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
+
+    public string? SourceUrl { get; set; }
+
     public int Quantity { get; set; } = 1;
     public decimal? UnitPrice { get; set; }
     public string? CurrencyCode { get; set; }

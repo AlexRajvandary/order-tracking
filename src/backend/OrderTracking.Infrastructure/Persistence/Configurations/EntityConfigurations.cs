@@ -209,6 +209,7 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.Property(e => e.ItemType).HasConversion<string>().HasMaxLength(20);
         builder.Property(e => e.Name).HasMaxLength(500).IsRequired();
         builder.Property(e => e.Description).HasColumnType("text");
+        builder.Property(e => e.SourceUrl).HasMaxLength(2000);
         builder.Property(e => e.UnitPrice).HasPrecision(18, 2);
         builder.Property(e => e.CurrencyCode).HasMaxLength(3).IsFixedLength();
         builder.Property(e => e.CurrentStatusText).HasMaxLength(200);

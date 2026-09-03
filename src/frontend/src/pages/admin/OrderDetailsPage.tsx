@@ -87,6 +87,8 @@ type CustomerEditFormState = {
   patronymic: string
   telegram: string
   phone: string
+  whatsApp: string
+  vk: string
   email: string
   notes: string
 }
@@ -137,6 +139,8 @@ function OrderCustomerEditDialog({
                 patronymic: form.patronymic || null,
                 telegram: form.telegram || null,
                 phone: form.phone || null,
+                whatsApp: form.whatsApp || null,
+                vk: form.vk || null,
                 email: form.email || null,
                 notes: form.notes || null,
               })
@@ -199,6 +203,24 @@ function OrderCustomerEditDialog({
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
               />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="order-customer-whatsapp">WhatsApp</Label>
+                <Input
+                  id="order-customer-whatsapp"
+                  value={form.whatsApp}
+                  onChange={(e) => setForm((f) => ({ ...f, whatsApp: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="order-customer-vk">VK</Label>
+                <Input
+                  id="order-customer-vk"
+                  value={form.vk}
+                  onChange={(e) => setForm((f) => ({ ...f, vk: e.target.value }))}
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="order-customer-notes">{tc('form.notes')}</Label>
@@ -977,6 +999,17 @@ export function OrderDetailsPage() {
                 href={telegramHref(order.customerTelegram)}
               />
               <CustomerField
+                label="WhatsApp"
+                value={order.customerWhatsApp}
+                emptyLabel={t('details.emptyValue')}
+              />
+              <CustomerField
+                label="VK"
+                value={order.customerVk}
+                emptyLabel={t('details.emptyValue')}
+                href={order.customerVk?.startsWith('http') ? order.customerVk : null}
+              />
+              <CustomerField
                 label={t('details.customerEmail')}
                 value={order.customerEmail}
                 emptyLabel={t('details.emptyValue')}
@@ -1180,6 +1213,16 @@ export function OrderDetailsPage() {
                             {item.description}
                           </p>
                         ) : null}
+                        {item.sourceUrl ? (
+                          <a
+                            className="mt-1 block text-sm text-primary hover:underline"
+                            href={item.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Открыть товар в магазине
+                          </a>
+                        ) : null}
                         <Badge className="mt-2" variant="secondary">
                           {item.currentStatusText ?? '—'}
                         </Badge>
@@ -1299,6 +1342,8 @@ export function OrderDetailsPage() {
           patronymic: customerDetails?.patronymic ?? '',
           telegram: customerDetails?.telegram ?? order.customerTelegram ?? '',
           phone: customerDetails?.phone ?? order.customerPhone ?? '',
+          whatsApp: customerDetails?.whatsApp ?? order.customerWhatsApp ?? '',
+          vk: customerDetails?.vk ?? order.customerVk ?? '',
           email: customerDetails?.email ?? order.customerEmail ?? '',
           notes: customerDetails?.notes ?? '',
         }}

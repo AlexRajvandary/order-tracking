@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatCartMoney, useCart } from "@/components/cart-provider";
+import { CheckoutSheet } from "@/components/checkout-sheet";
 
 type CartSheetProps = {
   trigger?: ReactElement;
@@ -149,9 +150,11 @@ export function CartSheet({ trigger }: CartSheetProps) {
               <Button variant="outline" className="w-full" onClick={clear}>
                 Очистить корзину
               </Button>
-              <Button disabled className="w-full" title="Оформление заказа скоро будет доступно">
-                Перейти к оформлению
-              </Button>
+              <CheckoutSheet
+                items={items}
+                onSuccess={clear}
+                trigger={<Button className="w-full">Перейти к оформлению</Button>}
+              />
             </SheetFooter>
           </>
         )}

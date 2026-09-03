@@ -62,7 +62,8 @@ public sealed class CreatePublicOrderCommandHandler
                     product.Description,
                     item.Quantity,
                     product.Price,
-                    product.CurrencyCode);
+                    product.CurrencyCode,
+                    product.SourceUrl);
             })
             .ToList();
 

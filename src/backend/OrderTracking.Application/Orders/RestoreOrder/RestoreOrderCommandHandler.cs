@@ -86,6 +86,7 @@ public sealed class RestoreOrderCommandHandler : IRequestHandler<RestoreOrderCom
                 i.SortOrder,
                 i.CurrentStatusId,
                 i.CurrentStatusText,
-                i.CurrentStatusUpdatedAt)).ToList());
+                i.CurrentStatusUpdatedAt,
+                i.SourceUrl)).ToList());
     }
 }

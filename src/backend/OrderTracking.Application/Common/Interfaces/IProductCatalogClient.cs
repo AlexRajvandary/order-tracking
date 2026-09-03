@@ -10,6 +10,7 @@ public sealed record CatalogProductSnapshot(
     string Name,
     string? NameRu,
     string? Description,
+    string? SourceUrl,
     decimal Price,
     string CurrencyCode,
     bool IsActive);

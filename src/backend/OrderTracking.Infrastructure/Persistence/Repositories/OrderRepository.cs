@@ -116,7 +116,8 @@ public sealed class OrderRepository : IOrderRepository
                         i.SortOrder,
                         i.CurrentStatusId,
                         i.CurrentStatusText,
-                        i.CurrentStatusUpdatedAt))
+                        i.CurrentStatusUpdatedAt,
+                        i.SourceUrl))
                     .ToList()))
             .FirstOrDefaultAsync(cancellationToken);
 

@@ -8,6 +8,10 @@ public interface ITelegramAdminNotifier
         Guid orderId,
         string trackingCode,
         string? customerName,
+        string? phone,
+        string? whatsApp,
+        string? vk,
+        string? address,
         CancellationToken cancellationToken = default);
 
     public Task NotifyStatusPublishedAsync(

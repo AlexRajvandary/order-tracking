@@ -119,6 +119,7 @@ public sealed class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderComma
                 i.SortOrder,
                 i.CurrentStatusId,
                 i.CurrentStatusText,
-                i.CurrentStatusUpdatedAt)).ToList());
+                i.CurrentStatusUpdatedAt,
+                i.SourceUrl)).ToList());
     }
 }

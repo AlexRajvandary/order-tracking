@@ -118,6 +118,10 @@ public sealed class TelegramOutboxProcessorHostedService : BackgroundService
                     payload.OrderId,
                     payload.TrackingCode,
                     payload.CustomerName,
+                    payload.Phone,
+                    payload.WhatsApp,
+                    payload.Vk,
+                    payload.Address,
                     cancellationToken);
                 break;
             }

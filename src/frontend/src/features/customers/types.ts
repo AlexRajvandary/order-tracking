@@ -6,6 +6,8 @@ export type Customer = {
   fullName: string | null
   telegram: string | null
   phone: string | null
+  whatsApp: string | null
+  vk: string | null
   email: string | null
   notes: string | null
   createdAt: string
@@ -50,6 +52,8 @@ export type UpsertCustomerRequest = {
   patronymic?: string | null
   telegram?: string | null
   phone?: string | null
+  whatsApp?: string | null
+  vk?: string | null
   email?: string | null
   notes?: string | null
 }

@@ -34,6 +34,8 @@ type FormState = {
   patronymic: string
   telegram: string
   phone: string
+  whatsApp: string
+  vk: string
   email: string
   notes: string
 }
@@ -44,6 +46,8 @@ const emptyForm: FormState = {
   patronymic: '',
   telegram: '',
   phone: '',
+  whatsApp: '',
+  vk: '',
   email: '',
   notes: '',
 }
@@ -96,6 +100,8 @@ function CustomerFormDialog({
               patronymic: form.patronymic || null,
               telegram: form.telegram || null,
               phone: form.phone || null,
+              whatsApp: form.whatsApp || null,
+              vk: form.vk || null,
               email: form.email || null,
               notes: form.notes || null,
             })
@@ -152,6 +158,22 @@ function CustomerFormDialog({
               value={form.email}
               onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
             />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>WhatsApp</Label>
+              <Input
+                value={form.whatsApp}
+                onChange={(e) => setForm((f) => ({ ...f, whatsApp: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>VK</Label>
+              <Input
+                value={form.vk}
+                onChange={(e) => setForm((f) => ({ ...f, vk: e.target.value }))}
+              />
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>{t('form.notes')}</Label>

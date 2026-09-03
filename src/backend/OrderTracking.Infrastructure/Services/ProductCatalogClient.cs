@@ -38,6 +38,7 @@ public sealed class ProductCatalogClient : IProductCatalogClient
                 product.Name,
                 product.NameRu,
                 product.Description,
+                product.SourceUrl,
                 product.Price,
                 product.CurrencyCode,
                 product.IsActive);
@@ -48,6 +49,7 @@ public sealed class ProductCatalogClient : IProductCatalogClient
         string Name,
         string? NameRu,
         string? Description,
+        string? SourceUrl,
         decimal Price,
         string CurrencyCode,
         bool IsActive);

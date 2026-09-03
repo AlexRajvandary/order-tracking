@@ -115,8 +115,10 @@ services:
     restart: unless-stopped
     depends_on:
       - products-api
+      - api
     environment:
       PRODUCTS_API_BASE_URL: http://products-api:8080
+      ORDER_TRACKING_API_BASE_URL: http://api:8080
     expose:
       - "3000"
 

@@ -46,6 +46,8 @@ type NewCustomerForm = {
   patronymic: string
   telegram: string
   phone: string
+  whatsApp: string
+  vk: string
   email: string
 }
 
@@ -81,6 +83,8 @@ const emptyNewCustomer: NewCustomerForm = {
   patronymic: '',
   telegram: '',
   phone: '',
+  whatsApp: '',
+  vk: '',
   email: '',
 }
 
@@ -100,6 +104,8 @@ function hasNewCustomerData(customer: NewCustomerForm) {
       customer.patronymic.trim() ||
       customer.telegram.trim() ||
       customer.phone.trim() ||
+      customer.whatsApp.trim() ||
+      customer.vk.trim() ||
       customer.email.trim(),
   )
 }
@@ -348,6 +354,8 @@ export function CreateOrderPage() {
         patronymic: capitalizeNamePart(customer.patronymic ?? ''),
         telegram: customer.telegram ?? '',
         phone: customer.phone ?? '',
+        whatsApp: '',
+        vk: '',
         email: customer.email ?? '',
       })
     }
@@ -512,6 +520,20 @@ export function CreateOrderPage() {
                     className={uncertainClass(isUncertain(uncertainPaths, 'customer.email'))}
                     value={newCustomer.email}
                     onChange={(e) => patchNewCustomer({ email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>WhatsApp</Label>
+                  <Input
+                    value={newCustomer.whatsApp}
+                    onChange={(e) => patchNewCustomer({ whatsApp: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>VK</Label>
+                  <Input
+                    value={newCustomer.vk}
+                    onChange={(e) => patchNewCustomer({ vk: e.target.value })}
                   />
                 </div>
               </div>
@@ -841,6 +863,8 @@ export function CreateOrderPage() {
                       patronymic: newCustomer.patronymic.trim() || null,
                       telegram: newCustomer.telegram.trim() || null,
                       phone: newCustomer.phone.trim() || null,
+                      whatsApp: newCustomer.whatsApp.trim() || null,
+                      vk: newCustomer.vk.trim() || null,
                       email: newCustomer.email.trim() || null,
                     }
                   : null,
