@@ -69,7 +69,6 @@ public sealed class OrdersController : ControllerBase
     }
 
     [HttpPost]
-    [AllowAnonymous]
     public async Task<ActionResult<OrderDetailsDto>> CreateOrder(
         [FromBody] CreateOrderRequest request,
         CancellationToken cancellationToken)

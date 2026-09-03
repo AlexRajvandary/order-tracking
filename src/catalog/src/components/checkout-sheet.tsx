@@ -57,7 +57,7 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
     setError("");
 
     try {
-      const response = await fetch("/api/public/orders", {
+      const response = await fetch("/checkout/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
