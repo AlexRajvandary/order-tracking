@@ -58,6 +58,7 @@ export type ApiProductImage = {
 
 const DEFAULT_PAGE_SIZE = 10;
 export const PRODUCTS_PAGE_SIZE = 50;
+const JPY_PER_RUB = 1.6;
 
 function productsApiBaseUrl(): string {
   return (
@@ -76,13 +77,32 @@ function discountPercent(
   return pct > 0 ? `−${pct}%` : undefined;
 }
 
+function convertPriceToRub(
+  price: number | null | undefined,
+  currencyCode: string | null | undefined,
+): number | undefined {
+  if (price == null) return undefined;
+
+  const numericPrice = Number(price);
+  if (!Number.isFinite(numericPrice)) return undefined;
+
+  return currencyCode?.trim().toUpperCase() === "JPY"
+    ? Math.round(numericPrice / JPY_PER_RUB)
+    : numericPrice;
+}
+
 export function mapApiProductToCatalog(
   p: ApiProduct,
   sectionId = p.categorySlug ?? "catalog",
   categorySlug = p.categorySlug ?? sectionId,
   categoryName = p.categoryName ?? "Товары",
 ): CatalogProduct {
-  const discount = discountPercent(Number(p.price), p.originalPrice);
+  const priceRub = convertPriceToRub(p.price, p.currencyCode) ?? 0;
+  const oldPriceRub = convertPriceToRub(
+    p.originalPrice,
+    p.originalCurrencyCode ?? p.currencyCode,
+  );
+  const discount = discountPercent(priceRub, oldPriceRub);
   const description = p.description?.trim() || p.name;
   const shortDescription = description.split("\n")[0] ?? p.name;
 
@@ -93,7 +113,7 @@ export function mapApiProductToCatalog(
     category: categoryName,
     sectionId,
     categorySlug: p.categorySlug ?? categorySlug,
-    priceRub: Number(p.price),
+    priceRub,
     currency: "RUB",
     shortDescription,
     description,
@@ -108,7 +128,7 @@ export function mapApiProductToCatalog(
     shopSlug: p.shopSlug ?? undefined,
     shopName: p.shopName ?? undefined,
     sourceUrl: p.sourceUrl ?? undefined,
-    oldPriceRub: p.originalPrice != null ? Number(p.originalPrice) : undefined,
+    oldPriceRub,
     discountPercent: discount,
   };
 }
