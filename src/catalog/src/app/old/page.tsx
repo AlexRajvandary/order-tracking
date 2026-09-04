@@ -4,7 +4,7 @@ import { LegacyImageHero } from "@/components/legacy-image-hero";
 import { CategoryCard } from "@/components/category-card";
 import { FashionCategorySection } from "@/components/fashion-category-section";
 import { FigureCategorySection } from "@/components/figure-category-section";
-import { IndividualRequestCard } from "@/components/individual-request-card";
+import { ServiceRequestCards } from "@/components/service-request-cards";
 import { PopularCategories } from "@/components/popular-categories";
 import { SiteHeader } from "@/components/site-header";
 import { StorefrontAnnouncement } from "@/components/storefront-announcement";
@@ -161,8 +161,8 @@ export default async function HomePage() {
               </> : null}
             </section>
           ))}
-          <section aria-label="Индивидуальный запрос">
-            <IndividualRequestCard />
+          <section aria-label="Сервисы">
+            <ServiceRequestCards />
           </section>
         </main>
       </div>

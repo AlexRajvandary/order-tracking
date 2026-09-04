@@ -7,44 +7,46 @@ using OrderTracking.Application.Orders.CreatePublicServiceRequest;
 namespace OrderTracking.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/public/individual-requests")]
+[Route("api/v1/public/auction-requests")]
 [AllowAnonymous]
-public sealed class PublicIndividualRequestsController : ControllerBase
+public sealed class PublicAuctionRequestsController : ControllerBase
 {
     private readonly IMediator _mediator;
 
-    public PublicIndividualRequestsController(IMediator mediator)
+    public PublicAuctionRequestsController(IMediator mediator)
     {
         _mediator = mediator;
     }
 
     [HttpPost]
     [EnableRateLimiting("checkout")]
-    public async Task<ActionResult<CreatePublicIndividualRequestResponse>> Create(
-        [FromBody] CreatePublicIndividualRequestRequest request,
+    public async Task<ActionResult<CreatePublicAuctionRequestResponse>> Create(
+        [FromBody] CreatePublicAuctionRequestRequest request,
         CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(
             new CreatePublicServiceRequestCommand(
-                PublicServiceRequestType.Individual,
+                PublicServiceRequestType.Auction,
                 request.ContactType,
                 request.Contact,
                 request.CustomerName,
-                request.ProductUrl,
-                request.Description),
+                request.LotUrl,
+                request.Comment,
+                BudgetJpy: request.MaxBidJpy),
             cancellationToken);
 
         return StatusCode(
             StatusCodes.Status201Created,
-            new CreatePublicIndividualRequestResponse(result.Id, result.TrackingCode));
+            new CreatePublicAuctionRequestResponse(result.Id, result.TrackingCode));
     }
 }
 
-public sealed record CreatePublicIndividualRequestRequest(
+public sealed record CreatePublicAuctionRequestRequest(
     string ContactType,
     string Contact,
     string CustomerName,
-    string? ProductUrl,
-    string Description);
+    string LotUrl,
+    decimal? MaxBidJpy,
+    string? Comment);
 
-public sealed record CreatePublicIndividualRequestResponse(Guid OrderId, string TrackingCode);
+public sealed record CreatePublicAuctionRequestResponse(Guid OrderId, string TrackingCode);
