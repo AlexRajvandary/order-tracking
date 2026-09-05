@@ -118,6 +118,8 @@ public static class DependencyInjection
         });
         services.AddSingleton<TelegramBot.Auth.TelegramBotAdminResolver>();
         services.AddSingleton<TelegramBot.Ui.TelegramUiService>();
+        services.AddSingleton<TelegramBot.TelegramOrderMessageFormatter>();
+        services.AddSingleton<TelegramBot.TelegramOrderKeyboardBuilder>();
         services.AddSingleton<TelegramBot.Screens.TelegramBotMenuScreen>();
         services.AddSingleton<TelegramBot.Screens.TelegramBotOrdersScreen>();
         services.AddSingleton<TelegramBot.Screens.TelegramBotCustomersScreen>();

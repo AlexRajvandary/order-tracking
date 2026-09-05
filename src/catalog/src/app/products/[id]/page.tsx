@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { NavigationBackButton } from "@/components/navigation-back-button";
 import { ProductDetailActions } from "@/components/product-detail-actions";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductCard } from "@/components/product-card";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { fetchCategoryTree } from "@/lib/categories-api";
 import { findCatalogProductBySlug, type CatalogProduct } from "@/lib/catalog-products";
 import { fetchCatalogPage, fetchProductById, fetchProductBySlug, fetchProductRelations, mapApiProductToCatalog } from "@/lib/products-api";
@@ -51,7 +50,11 @@ export default async function ProductPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-background"><SiteHeader /><main className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
-      <Button variant="ghost" size="sm" className="mb-5 -ml-2" render={<Link href={backHref} />}>← Назад к каталогу</Button>
+      <NavigationBackButton
+        label="Назад к каталогу"
+        fallbackHref={backHref}
+        className="mb-5 -ml-2"
+      />
       <nav className="mb-6 text-xs text-muted-foreground">Главная <span className="mx-2">/</span> {product.category} <span className="mx-2">/</span> {product.name}</nav>
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)] lg:gap-14">
         <ProductGallery product={catalog} images={relations.images} />

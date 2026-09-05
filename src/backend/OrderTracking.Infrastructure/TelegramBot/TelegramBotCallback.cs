@@ -9,7 +9,13 @@ internal static class TelegramBotCallback
     public const string Main = "m";
     public const string Noop = "noop";
     public const string OrderNotificationBackPrefix = "onb:";
+    public const string OrderNotificationActionsPrefix = "ona:";
+    public const string OrderNotificationContactPrefix = "onc:";
+    public const string OrderNotificationHistoryPrefix = "onh:";
     public const string OrderNotificationOpenPrefix = "ono:";
+    public const string OrderActionsPrefix = "oa:";
+    public const string OrderContactPrefix = "oc:";
+    public const string OrderHistoryPrefix = "oh:";
     public const string OrderOpenPrefix = "oi:";
     public const string OrdersPagePrefix = "op:";
     public const string Settings = "set";
@@ -46,18 +52,56 @@ internal static class TelegramBotCallback
     }
 
     /// <summary>Format: oi:{guid}[:{page}] — page optional for legacy notification buttons.</summary>
-    public static string OrderOpen(Guid orderId, int page = 1) =>
-        OrderOpenPrefix + EncodeGuid(orderId) + ":" + Math.Max(1, page);
+    public static string OrderOpen(Guid orderId, int page = 1)
+    {
+        return WithPage(OrderOpenPrefix, orderId, page);
+    }
 
-    public static string OrderNotificationOpen(Guid orderId) =>
-        OrderNotificationOpenPrefix + EncodeGuid(orderId);
+    public static string OrderNotificationOpen(Guid orderId)
+    {
+        return WithId(OrderNotificationOpenPrefix, orderId);
+    }
 
-    public static string OrderNotificationBack(Guid orderId) =>
-        OrderNotificationBackPrefix + EncodeGuid(orderId);
+    public static string OrderNotificationBack(Guid orderId)
+    {
+        return WithId(OrderNotificationBackPrefix, orderId);
+    }
+
+    public static string OrderActions(Guid orderId, int page)
+    {
+        return WithPage(OrderActionsPrefix, orderId, page);
+    }
+
+    public static string OrderContact(Guid orderId, int page)
+    {
+        return WithPage(OrderContactPrefix, orderId, page);
+    }
+
+    public static string OrderHistory(Guid orderId, int page)
+    {
+        return WithPage(OrderHistoryPrefix, orderId, page);
+    }
+
+    public static string OrderNotificationActions(Guid orderId)
+    {
+        return WithId(OrderNotificationActionsPrefix, orderId);
+    }
+
+    public static string OrderNotificationContact(Guid orderId)
+    {
+        return WithId(OrderNotificationContactPrefix, orderId);
+    }
+
+    public static string OrderNotificationHistory(Guid orderId)
+    {
+        return WithId(OrderNotificationHistoryPrefix, orderId);
+    }
 
     /// <summary>Format: ci:{guid}[:{page}]</summary>
-    public static string CustomerOpen(Guid customerId, int page = 1) =>
-        CustomerOpenPrefix + EncodeGuid(customerId) + ":" + Math.Max(1, page);
+    public static string CustomerOpen(Guid customerId, int page = 1)
+    {
+        return WithPage(CustomerOpenPrefix, customerId, page);
+    }
 
     public static bool TryParseEntityOpen(string payload, out Guid id, out int page)
     {
@@ -82,5 +126,15 @@ internal static class TelegramBotCallback
         }
 
         return true;
+    }
+
+    private static string WithId(string prefix, Guid id)
+    {
+        return prefix + EncodeGuid(id);
+    }
+
+    private static string WithPage(string prefix, Guid id, int page)
+    {
+        return WithId(prefix, id) + ":" + Math.Max(1, page);
     }
 }

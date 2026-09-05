@@ -15,16 +15,22 @@ namespace OrderTracking.Infrastructure.TelegramBot.Notify;
 internal sealed class TelegramBotNotifier
 {
     private readonly ILogger<TelegramBotNotifier> _logger;
+    private readonly TelegramOrderKeyboardBuilder _keyboardBuilder;
+    private readonly TelegramOrderMessageFormatter _messageFormatter;
     private readonly IObjectStorage _objectStorage;
     private readonly TelegramBotRuntime _runtime;
 
     public TelegramBotNotifier(
         TelegramBotRuntime runtime,
         IObjectStorage objectStorage,
+        TelegramOrderMessageFormatter messageFormatter,
+        TelegramOrderKeyboardBuilder keyboardBuilder,
         ILogger<TelegramBotNotifier> logger)
     {
         _runtime = runtime;
         _objectStorage = objectStorage;
+        _messageFormatter = messageFormatter;
+        _keyboardBuilder = keyboardBuilder;
         _logger = logger;
     }
 
@@ -52,16 +58,22 @@ internal sealed class TelegramBotNotifier
             return;
         }
 
-        var text = TelegramOrderCreatedNotification.BuildText(
-            orderId,
-            trackingCode,
-            customerName,
-            phone,
-            telegram,
-            whatsApp,
-            vk,
-            address);
-        var keyboard = TelegramOrderCreatedNotification.BuildKeyboard(orderId);
+        using var scope = _runtime.ScopeFactory.CreateScope();
+        var order = await scope.ServiceProvider
+            .GetRequiredService<IOrderRepository>()
+            .GetByIdWithPublishedStatusHistoryAsync(orderId, cancellationToken);
+
+        var text = order is null
+            ? _messageFormatter.FormatFallback(
+                trackingCode,
+                customerName,
+                phone,
+                telegram,
+                whatsApp,
+                vk,
+                address)
+            : _messageFormatter.Format(order);
+        var keyboard = _keyboardBuilder.BuildNotification(orderId);
 
         foreach (var chatId in recipients)
         {

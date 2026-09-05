@@ -216,6 +216,45 @@ internal sealed class TelegramBotUpdateRouter
                 return;
             }
 
+            if (TryParseNotificationSubview(data, out var notificationOrderId, out var notificationSubview))
+            {
+                if (notificationSubview == OrderSubview.Actions)
+                {
+                    await _orders.RenderActionsAsync(
+                        chatId.Value,
+                        messageId: null,
+                        notificationOrderId,
+                        listPage: 1,
+                        notificationContext: false,
+                        hasAttachedPhoto: false,
+                        cancellationToken);
+                }
+                else if (notificationSubview == OrderSubview.Contacts)
+                {
+                    await _orders.RenderContactsAsync(
+                        chatId.Value,
+                        messageId: null,
+                        notificationOrderId,
+                        listPage: 1,
+                        notificationContext: false,
+                        hasAttachedPhoto: false,
+                        cancellationToken);
+                }
+                else
+                {
+                    await _orders.RenderHistoryAsync(
+                        chatId.Value,
+                        messageId: null,
+                        notificationOrderId,
+                        listPage: 1,
+                        notificationContext: false,
+                        hasAttachedPhoto: false,
+                        cancellationToken);
+                }
+
+                return;
+            }
+
             // Regular bot navigation sends a new message. Only a new-order notification
             // and its Back button edit the notification in place.
             int? navigationMessageId = null;
@@ -263,6 +302,45 @@ internal sealed class TelegramBotUpdateRouter
                 }
 
                 await _orders.RenderCardAsync(chatId.Value, navigationMessageId, id, page, cancellationToken);
+                return;
+            }
+
+            if (TryParseOrderSubview(data, out var subviewOrderId, out var subviewPage, out var subview))
+            {
+                if (subview == OrderSubview.Actions)
+                {
+                    await _orders.RenderActionsAsync(
+                        chatId.Value,
+                        messageId.Value,
+                        subviewOrderId,
+                        subviewPage,
+                        notificationContext: false,
+                        hasAttachedPhoto: false,
+                        cancellationToken);
+                }
+                else if (subview == OrderSubview.Contacts)
+                {
+                    await _orders.RenderContactsAsync(
+                        chatId.Value,
+                        messageId.Value,
+                        subviewOrderId,
+                        subviewPage,
+                        notificationContext: false,
+                        hasAttachedPhoto: false,
+                        cancellationToken);
+                }
+                else
+                {
+                    await _orders.RenderHistoryAsync(
+                        chatId.Value,
+                        messageId.Value,
+                        subviewOrderId,
+                        subviewPage,
+                        notificationContext: false,
+                        hasAttachedPhoto: false,
+                        cancellationToken);
+                }
+
                 return;
             }
 
@@ -339,5 +417,71 @@ internal sealed class TelegramBotUpdateRouter
                 _logger.LogWarning(renderEx, "Failed to render callback error UI");
             }
         }
+    }
+
+    private static bool TryParseNotificationSubview(
+        string data,
+        out Guid orderId,
+        out OrderSubview subview)
+    {
+        foreach (var candidate in new[]
+        {
+            (TelegramBotCallback.OrderNotificationActionsPrefix, OrderSubview.Actions),
+            (TelegramBotCallback.OrderNotificationContactPrefix, OrderSubview.Contacts),
+            (TelegramBotCallback.OrderNotificationHistoryPrefix, OrderSubview.History),
+        })
+        {
+            if (!data.StartsWith(candidate.Item1, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var parsed = TelegramBotCallback.DecodeGuid(data[candidate.Item1.Length..]);
+            orderId = parsed ?? Guid.Empty;
+            subview = candidate.Item2;
+            return parsed.HasValue;
+        }
+
+        orderId = Guid.Empty;
+        subview = default;
+        return false;
+    }
+
+    private static bool TryParseOrderSubview(
+        string data,
+        out Guid orderId,
+        out int page,
+        out OrderSubview subview)
+    {
+        foreach (var candidate in new[]
+        {
+            (TelegramBotCallback.OrderActionsPrefix, OrderSubview.Actions),
+            (TelegramBotCallback.OrderContactPrefix, OrderSubview.Contacts),
+            (TelegramBotCallback.OrderHistoryPrefix, OrderSubview.History),
+        })
+        {
+            if (!data.StartsWith(candidate.Item1, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            subview = candidate.Item2;
+            return TelegramBotCallback.TryParseEntityOpen(
+                data[candidate.Item1.Length..],
+                out orderId,
+                out page);
+        }
+
+        orderId = Guid.Empty;
+        page = 1;
+        subview = default;
+        return false;
+    }
+
+    private enum OrderSubview
+    {
+        Actions,
+        Contacts,
+        History,
     }
 }

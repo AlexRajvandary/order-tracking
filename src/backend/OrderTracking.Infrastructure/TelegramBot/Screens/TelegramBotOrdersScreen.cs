@@ -13,16 +13,22 @@ namespace OrderTracking.Infrastructure.TelegramBot.Screens;
 internal sealed class TelegramBotOrdersScreen
 {
     private readonly ILogger<TelegramBotOrdersScreen> _logger;
+    private readonly TelegramOrderKeyboardBuilder _keyboardBuilder;
+    private readonly TelegramOrderMessageFormatter _messageFormatter;
     private readonly TelegramBotRuntime _runtime;
     private readonly TelegramUiService _ui;
 
     public TelegramBotOrdersScreen(
         TelegramBotRuntime runtime,
         TelegramUiService ui,
+        TelegramOrderMessageFormatter messageFormatter,
+        TelegramOrderKeyboardBuilder keyboardBuilder,
         ILogger<TelegramBotOrdersScreen> logger)
     {
         _runtime = runtime;
         _ui = ui;
+        _messageFormatter = messageFormatter;
+        _keyboardBuilder = keyboardBuilder;
         _logger = logger;
     }
 
@@ -130,37 +136,75 @@ internal sealed class TelegramBotOrdersScreen
             return;
         }
 
-        var customerName = order.Customer is null
-            ? null
-            : $"{order.Customer.LastName} {order.Customer.FirstName} {order.Customer.Patronymic}".Trim();
-        var address = string.Join(
-            ", ",
-            new[]
-            {
-                order.DeliveryPostalCode,
-                order.DeliveryCity,
-                order.DeliveryStreet,
-                order.DeliveryBuilding,
-                order.DeliveryApartment,
-                order.DeliveryNote,
-            }.Where(value => !string.IsNullOrWhiteSpace(value)));
-
-        var text = TelegramOrderCreatedNotification.BuildText(
-            order.Id,
-            order.TrackingCode,
-            customerName,
-            order.Customer?.Phone,
-            order.Customer?.Telegram,
-            order.Customer?.WhatsApp,
-            order.Customer?.Vk,
-            address);
-
         await RenderNotificationMessageAsync(
             chatId,
             messageId,
-            text,
-            TelegramOrderCreatedNotification.BuildKeyboard(order.Id),
+            _messageFormatter.Format(order),
+            _keyboardBuilder.BuildNotification(order.Id),
             hasAttachedPhoto,
+            cancellationToken);
+    }
+
+    public Task RenderActionsAsync(
+        long chatId,
+        int? messageId,
+        Guid orderId,
+        int listPage,
+        bool notificationContext,
+        bool hasAttachedPhoto,
+        CancellationToken cancellationToken)
+    {
+        return RenderSubviewAsync(
+            chatId,
+            messageId,
+            orderId,
+            listPage,
+            notificationContext,
+            hasAttachedPhoto,
+            order => $"<b>Действия · #{TelegramBotText.Escape(order.TrackingCode)}</b>",
+            order => _keyboardBuilder.BuildActions(order, listPage, notificationContext),
+            cancellationToken);
+    }
+
+    public Task RenderContactsAsync(
+        long chatId,
+        int? messageId,
+        Guid orderId,
+        int listPage,
+        bool notificationContext,
+        bool hasAttachedPhoto,
+        CancellationToken cancellationToken)
+    {
+        return RenderSubviewAsync(
+            chatId,
+            messageId,
+            orderId,
+            listPage,
+            notificationContext,
+            hasAttachedPhoto,
+            _messageFormatter.FormatContacts,
+            order => _keyboardBuilder.BuildSubviewBack(order.Id, listPage, notificationContext),
+            cancellationToken);
+    }
+
+    public Task RenderHistoryAsync(
+        long chatId,
+        int? messageId,
+        Guid orderId,
+        int listPage,
+        bool notificationContext,
+        bool hasAttachedPhoto,
+        CancellationToken cancellationToken)
+    {
+        return RenderSubviewAsync(
+            chatId,
+            messageId,
+            orderId,
+            listPage,
+            notificationContext,
+            hasAttachedPhoto,
+            _messageFormatter.FormatHistory,
+            order => _keyboardBuilder.BuildSubviewBack(order.Id, listPage, notificationContext),
             cancellationToken);
     }
 
@@ -192,138 +236,28 @@ internal sealed class TelegramBotOrdersScreen
             return;
         }
 
-        var customerName = order.Customer is null
-            ? null
-            : $"{order.Customer.LastName} {order.Customer.FirstName} {order.Customer.Patronymic}".Trim();
-
         var history = order.Items
             .SelectMany(i => i.StatusHistory)
             .OrderBy(h => h.ChangedAt)
             .ThenBy(h => h.Id)
             .ToList();
 
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine($"📦 Заказ <code>{TelegramBotText.Escape(order.TrackingCode)}</code>");
-        sb.AppendLine($"Статус: <b>{TelegramBotText.Escape(order.Status.ToString())}</b>");
-        sb.AppendLine($"Клиент: {DisplayValue(customerName)}");
-        sb.AppendLine($"Телефон: {DisplayValue(order.Customer?.Phone)}");
-        sb.AppendLine($"Telegram: {DisplayValue(order.Customer?.Telegram)}");
-        sb.AppendLine($"WhatsApp: {DisplayValue(order.Customer?.WhatsApp)}");
-        sb.AppendLine($"VK: {DisplayValue(order.Customer?.Vk)}");
-
-        sb.AppendLine($"Создан: {order.CreatedAt:yyyy-MM-dd HH:mm} UTC");
-
-        var isServiceRequest = order.AdminNotes?.StartsWith(
-            "Заявка из формы:",
-            StringComparison.Ordinal) == true;
-
-        if (isServiceRequest && order.Items.Count > 0)
-        {
-            sb.AppendLine();
-            sb.AppendLine("<b>Запрос:</b>");
-            foreach (var item in order.Items.OrderBy(i => i.SortOrder).ThenBy(i => i.CreatedAt))
-            {
-                if (!IsGenericServiceRequestName(item.Name))
-                {
-                    sb.AppendLine(TelegramBotText.Escape(item.Name));
-                }
-
-                sb.AppendLine(DisplayValue(item.Description ?? item.Name));
-
-                if (!string.IsNullOrWhiteSpace(item.SourceUrl))
-                {
-                    sb.AppendLine($"Ссылка: {TelegramBotText.Escape(item.SourceUrl)}");
-                }
-
-                if (item.UnitPrice.HasValue)
-                {
-                    sb.AppendLine(
-                        $"Бюджет: {item.UnitPrice.Value:0.##} {TelegramBotText.Escape(item.CurrencyCode)}");
-                }
-
-                if (item.Quantity > 1)
-                {
-                    sb.AppendLine($"Количество: {item.Quantity}");
-                }
-            }
-        }
-        else
-        {
-            sb.AppendLine($"Позиций: {order.Items.Count}");
-
-            if (order.Items.Count > 0)
-            {
-                sb.AppendLine();
-                sb.AppendLine("<b>Позиции:</b>");
-                foreach (var item in order.Items.OrderBy(i => i.SortOrder).ThenBy(i => i.CreatedAt))
-                {
-                    sb.AppendLine($"• {TelegramBotText.Escape(item.Name)} × {item.Quantity}");
-                    if (!string.IsNullOrWhiteSpace(item.SourceUrl))
-                    {
-                        sb.AppendLine($"  Источник: {TelegramBotText.Escape(item.SourceUrl)}");
-                    }
-                }
-            }
-        }
-
-        sb.AppendLine();
-        if (history.Count == 0)
-        {
-            sb.AppendLine("Опубликованных статусов пока нет.");
-        }
-        else
-        {
-            sb.AppendLine("<b>Опубликованные статусы:</b>");
-            foreach (var h in history)
-            {
-                sb.AppendLine();
-                sb.AppendLine($"📍 <b>{TelegramBotText.Escape(h.StatusText)}</b>");
-                sb.AppendLine($"Позиция: {TelegramBotText.Escape(h.OrderItem.Name)}");
-                sb.AppendLine($"Когда: {h.ChangedAt:yyyy-MM-dd HH:mm} UTC");
-                if (!string.IsNullOrWhiteSpace(h.Country) || !string.IsNullOrWhiteSpace(h.Location))
-                {
-                    sb.AppendLine(
-                        $"Где: {TelegramBotText.Escape(string.Join(", ", new[] { h.Country, h.Location }.Where(x => !string.IsNullOrWhiteSpace(x))))}");
-                }
-
-                if (!string.IsNullOrWhiteSpace(h.Comment))
-                {
-                    sb.AppendLine($"Комментарий: {TelegramBotText.Escape(h.Comment)}");
-                }
-
-                var photoCount = h.Attachments.Count(a =>
-                    a.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase));
-                if (photoCount > 0)
-                {
-                    sb.AppendLine($"Фото: {photoCount} (ниже отдельными сообщениями)");
-                }
-            }
-        }
-
-        var keyboard = returnToNotification
-            ? new InlineKeyboardMarkup(
-                InlineKeyboardButton.WithCallbackData(
-                    "← Назад",
-                    TelegramBotCallback.OrderNotificationBack(orderId)))
-            : new InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton.WithCallbackData("← К заказам", TelegramBotCallback.OrdersPagePrefix + Math.Max(1, listPage))],
-                [InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)],
-            ]);
+        var text = _messageFormatter.Format(order);
+        var keyboard = _keyboardBuilder.BuildCard(order, listPage, returnToNotification);
 
         if (returnToNotification && messageId.HasValue)
         {
             await RenderNotificationMessageAsync(
                 chatId,
                 messageId.Value,
-                sb.ToString(),
+                text,
                 keyboard,
                 hasAttachedPhoto,
                 cancellationToken);
         }
         else
         {
-            await _ui.RenderAsync(chatId, messageId, sb.ToString(), keyboard, cancellationToken);
+            await _ui.RenderAsync(chatId, messageId, text, keyboard, cancellationToken);
         }
 
         // Photos stay as separate event-like messages — cannot live inside edited text UI.
@@ -418,15 +352,48 @@ internal sealed class TelegramBotOrdersScreen
             : _ui.RenderAsync(chatId, messageId, text, replyMarkup, cancellationToken);
     }
 
-    private static string DisplayValue(string? value)
+    private async Task RenderSubviewAsync(
+        long chatId,
+        int? messageId,
+        Guid orderId,
+        int listPage,
+        bool notificationContext,
+        bool hasAttachedPhoto,
+        Func<OrderTracking.Domain.Entities.Order, string> formatText,
+        Func<OrderTracking.Domain.Entities.Order, InlineKeyboardMarkup> buildKeyboard,
+        CancellationToken cancellationToken)
     {
-        return string.IsNullOrWhiteSpace(value)
-            ? "пусто"
-            : TelegramBotText.Escape(value);
-    }
+        using var scope = _runtime.ScopeFactory.CreateScope();
+        var order = await scope.ServiceProvider
+            .GetRequiredService<IOrderRepository>()
+            .GetByIdWithPublishedStatusHistoryAsync(orderId, cancellationToken);
 
-    private static bool IsGenericServiceRequestName(string name)
-    {
-        return name is "Индивидуальный запрос" or "Аукционный лот";
+        if (order is null)
+        {
+            await _ui.RenderAsync(
+                chatId,
+                messageId,
+                "Заказ не найден",
+                new InlineKeyboardMarkup(
+                    InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)),
+                cancellationToken);
+            return;
+        }
+
+        var text = formatText(order);
+        var keyboard = buildKeyboard(order);
+        if (notificationContext && messageId.HasValue)
+        {
+            await RenderNotificationMessageAsync(
+                chatId,
+                messageId.Value,
+                text,
+                keyboard,
+                hasAttachedPhoto,
+                cancellationToken);
+            return;
+        }
+
+        await _ui.RenderAsync(chatId, messageId, text, keyboard, cancellationToken);
     }
 }

@@ -15,6 +15,11 @@ internal static class TelegramBotText
             .Replace(">", "&gt;");
     }
 
+    public static string EscapeAttribute(string? value)
+    {
+        return Escape(value).Replace("\"", "&quot;");
+    }
+
     public static string RoleLabel(Domain.Enums.AdminRole role) => role switch
     {
         Domain.Enums.AdminRole.SuperAdmin => "SuperAdmin",
