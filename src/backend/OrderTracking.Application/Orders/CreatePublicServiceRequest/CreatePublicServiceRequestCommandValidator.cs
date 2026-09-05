@@ -23,6 +23,7 @@ public sealed class CreatePublicServiceRequestCommandValidator
 
         RuleFor(x => x.ContactType)
             .NotEmpty()
+            .MaximumLength(50)
             .Must(value =>
                 value is not null
                 && SupportedContactTypes.Contains(value.Trim().ToLowerInvariant()))
@@ -32,23 +33,19 @@ public sealed class CreatePublicServiceRequestCommandValidator
             .NotEmpty()
             .MaximumLength(200);
 
-        RuleFor(x => x.Contact)
-            .MaximumLength(30)
-            .When(x => string.Equals(
-                x.ContactType,
-                "phone",
-                StringComparison.OrdinalIgnoreCase));
-
         RuleFor(x => x.CustomerName)
             .MaximumLength(100);
 
         RuleFor(x => x.SourceUrl)
-            .MaximumLength(2000)
-            .Must(BeValidHttpUrl)
-            .When(x => !string.IsNullOrWhiteSpace(x.SourceUrl))
-            .WithMessage("SourceUrl must be an absolute HTTP or HTTPS URL");
+            .MaximumLength(2000);
 
         RuleFor(x => x.Description).MaximumLength(4000);
+
+        RuleFor(x => x.EventName).MaximumLength(500);
+
+        RuleFor(x => x.EventDate).MaximumLength(100);
+
+        RuleFor(x => x.Location).MaximumLength(500);
 
         RuleFor(x => x.Images)
             .Must(images => images is null || images.Count <= MaxImageCount)
@@ -58,37 +55,5 @@ public sealed class CreatePublicServiceRequestCommandValidator
             .Must(image => image.Length > 0 && image.Length <= MaxImageBytes)
             .WithMessage($"Each image must be no larger than {MaxImageBytes / 1024 / 1024} MB");
 
-        When(x => x.RequestType == PublicServiceRequestType.Individual, () =>
-        {
-            RuleFor(x => x.CustomerName).NotEmpty();
-            RuleFor(x => x.Description).NotEmpty();
-        });
-
-        When(x => x.RequestType == PublicServiceRequestType.Auction, () =>
-        {
-            RuleFor(x => x.BudgetJpy)
-                .GreaterThan(0)
-                .When(x => x.BudgetJpy.HasValue);
-        });
-
-        When(x => x.RequestType == PublicServiceRequestType.Ticket, () =>
-        {
-            RuleFor(x => x.EventName).MaximumLength(500);
-            RuleFor(x => x.EventDate)
-                .Must(value => DateOnly.TryParse(value, out _))
-                .When(x => !string.IsNullOrWhiteSpace(x.EventDate))
-                .WithMessage("EventDate must be a valid date");
-            RuleFor(x => x.Location).MaximumLength(500);
-            RuleFor(x => x.Quantity).InclusiveBetween(1, 100);
-            RuleFor(x => x.BudgetJpy)
-                .GreaterThan(0)
-                .When(x => x.BudgetJpy.HasValue);
-        });
-    }
-
-    private static bool BeValidHttpUrl(string? value)
-    {
-        return Uri.TryCreate(value, UriKind.Absolute, out var uri)
-            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
     }
 }

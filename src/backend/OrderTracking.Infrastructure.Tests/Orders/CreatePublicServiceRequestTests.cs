@@ -27,14 +27,34 @@ public sealed class CreatePublicServiceRequestTests
     }
 
     [Fact]
-    public void Validator_RequiresDescriptionForIndividualRequest()
+    public void Validator_RequiresSelectedContactValue()
     {
-        var command = CreateIndividualCommand("telegram", null, "");
+        var command = CreateIndividualCommand("telegram", null, "") with
+        {
+            Contact = "",
+            CustomerName = "",
+        };
 
         var result = new CreatePublicServiceRequestCommandValidator().Validate(command);
 
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, error => error.PropertyName == "Description");
+        Assert.Single(result.Errors, error => error.PropertyName == "Contact");
+    }
+
+    [Fact]
+    public void Validator_AllowsIndividualRequestWithOnlyContact()
+    {
+        var command = CreateIndividualCommand(
+            "telegram",
+            "not necessarily a url",
+            "") with
+        {
+            CustomerName = "",
+        };
+
+        var result = new CreatePublicServiceRequestCommandValidator().Validate(command);
+
+        Assert.True(result.IsValid);
     }
 
     [Fact]

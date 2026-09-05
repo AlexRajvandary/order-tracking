@@ -98,10 +98,9 @@ export function ServiceRequestForm({ type }: { type: ServiceRequestType }) {
 
     const form = new FormData(event.currentTarget);
     const payload = buildPayload(type, contactType, form);
-    const validationError = validatePayload(type, payload);
 
-    if (validationError) {
-      setError(validationError);
+    if (!payload.contact) {
+      setError(`Заполните контакт ${activeContact.label}.`);
       return;
     }
 
@@ -198,10 +197,9 @@ export function ServiceRequestForm({ type }: { type: ServiceRequestType }) {
         />
       </FormField>
 
-      <FormField label="Как вас зовут" required={type === "individual"}>
+      <FormField label="Как вас зовут">
         <Input
           name="customerName"
-          required={type === "individual"}
           maxLength={100}
           placeholder="Ваше имя"
           autoComplete="name"
@@ -505,18 +503,15 @@ function RequestSpecificFields({
       >
         <Input
           name="productUrl"
-          type="url"
           maxLength={2000}
-          placeholder="https://..."
-          inputMode="url"
+          placeholder="Ссылка, артикул или другой ориентир"
           className="h-11 px-3"
           onChange={clearError}
         />
       </FormField>
-      <FormField label="Описание запроса" required>
+      <FormField label="Описание запроса">
         <Textarea
           name="description"
-          required
           maxLength={4000}
           placeholder="Например: Ищу редкую фигурку, карточку или одежду определённой модели. Можно б/у в хорошем состоянии..."
           className="min-h-36"
@@ -622,33 +617,6 @@ function buildRequestBody(
   return body;
 }
 
-function validatePayload(
-  type: ServiceRequestType,
-  payload: Record<string, string | number | null>,
-): string | null {
-  if (!payload.contact) {
-    return "Заполните контакт для выбранного способа связи.";
-  }
-
-  if (type === "individual") {
-    if (!payload.customerName) return "Укажите, как к вам обращаться.";
-    if (!payload.description) return "Опишите, какой товар вы ищете.";
-  }
-
-  const urlValue =
-    type === "auction"
-      ? payload.lotUrl
-      : type === "ticket"
-        ? payload.eventUrl
-        : payload.productUrl;
-
-  if (typeof urlValue === "string" && urlValue && !isHttpUrl(urlValue)) {
-    return "Укажите корректную ссылку.";
-  }
-
-  return null;
-}
-
 function getString(form: FormData, name: string): string {
   return String(form.get(name) ?? "").trim();
 }
@@ -658,13 +626,4 @@ function getOptionalNumber(form: FormData, name: string): number | null {
   if (!value) return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
-}
-
-function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
 }

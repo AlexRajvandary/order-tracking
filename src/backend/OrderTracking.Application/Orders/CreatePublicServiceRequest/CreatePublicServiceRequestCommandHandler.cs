@@ -178,21 +178,21 @@ public sealed class CreatePublicServiceRequestCommandHandler
                 "Аукционный лот",
                 Normalize(request.Description),
                 1,
-                request.BudgetJpy,
-                request.BudgetJpy.HasValue ? "JPY" : null,
+                PositiveBudget(request.BudgetJpy),
+                PositiveBudget(request.BudgetJpy).HasValue ? "JPY" : null,
                 Normalize(request.SourceUrl)),
             PublicServiceRequestType.Ticket => new CreateOrderItemDto(
                 OrderItemType.Service,
                 Normalize(request.EventName) ?? "Запрос на билеты",
                 BuildTicketDescription(request),
-                request.Quantity,
+                NormalizeQuantity(request.Quantity),
                 null,
                 null,
                 Normalize(request.SourceUrl)),
             _ => new CreateOrderItemDto(
                 OrderItemType.Product,
                 "Индивидуальный запрос",
-                request.Description!.Trim(),
+                Normalize(request.Description),
                 1,
                 null,
                 null,
@@ -207,9 +207,9 @@ public sealed class CreatePublicServiceRequestCommandHandler
         AddDetail(details, "Дата", request.EventDate);
         AddDetail(details, "Город / место", request.Location);
 
-        if (request.BudgetJpy.HasValue)
+        if (PositiveBudget(request.BudgetJpy) is { } budget)
         {
-            details.Add($"Бюджет: {request.BudgetJpy.Value:0.##} JPY");
+            details.Add($"Бюджет: {budget:0.##} JPY");
         }
 
         AddDetail(details, "Комментарий", request.Description);
@@ -223,6 +223,16 @@ public sealed class CreatePublicServiceRequestCommandHandler
         {
             details.Add($"{label}: {value.Trim()}");
         }
+    }
+
+    private static decimal? PositiveBudget(decimal? value)
+    {
+        return value > 0 ? value : null;
+    }
+
+    private static int NormalizeQuantity(int value)
+    {
+        return Math.Clamp(value <= 0 ? 1 : value, 1, 10_000);
     }
 
     private static string GetRequestLabel(PublicServiceRequestType requestType)
