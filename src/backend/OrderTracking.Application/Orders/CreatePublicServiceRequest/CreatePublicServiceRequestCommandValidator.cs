@@ -1,4 +1,5 @@
 using FluentValidation;
+using Microsoft.Extensions.Logging;
 
 namespace OrderTracking.Application.Orders.CreatePublicServiceRequest;
 
@@ -17,8 +18,38 @@ public sealed class CreatePublicServiceRequestCommandValidator
         "vk",
     ];
 
-    public CreatePublicServiceRequestCommandValidator()
+    public CreatePublicServiceRequestCommandValidator(ILogger logger)
     {
+        RuleFor(x => x)
+            .Custom((command, _) =>
+            {
+                logger.LogInformation(
+                    """
+                    Validating CreatePublicServiceRequestCommand:
+                    RequestType: {RequestType}
+                    ContactType: {ContactType}
+                    Contact: {Contact}
+                    CustomerName: {CustomerName}
+                    SourceUrl: {SourceUrl}
+                    Description: {Description}
+                    EventName: {EventName}
+                    EventDate: {EventDate}
+                    Location: {Location}
+                    ImagesCount: {ImagesCount}
+                    """,
+                    command.RequestType,
+                    command.ContactType,
+                    command.Contact,
+                    command.CustomerName,
+                    command.SourceUrl,
+                    command.Description,
+                    command.EventName,
+                    command.EventDate,
+                    command.Location,
+                    command.Images?.Count ?? 0);
+            });
+
+
         RuleFor(x => x.RequestType).IsInEnum();
 
         RuleFor(x => x.ContactType)
@@ -54,6 +85,5 @@ public sealed class CreatePublicServiceRequestCommandValidator
         RuleForEach(x => x.Images)
             .Must(image => image.Length > 0 && image.Length <= MaxImageBytes)
             .WithMessage($"Each image must be no larger than {MaxImageBytes / 1024 / 1024} MB");
-
     }
 }

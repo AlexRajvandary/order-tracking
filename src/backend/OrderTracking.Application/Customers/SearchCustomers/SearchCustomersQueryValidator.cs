@@ -9,9 +9,9 @@ public sealed class SearchCustomersQueryValidator : AbstractValidator<SearchCust
         RuleFor(x => x.Page).GreaterThanOrEqualTo(1);
         RuleFor(x => x.PageSize).InclusiveBetween(1, 500);
 
-        When(x => !string.IsNullOrWhiteSpace(x.Q), () =>
+        When(x => !string.IsNullOrWhiteSpace(x.Query), () =>
         {
-            RuleFor(x => x.Q).MinimumLength(1).MaximumLength(300);
+            RuleFor(x => x.Query).MinimumLength(1).MaximumLength(300);
         });
 
         When(x => !string.IsNullOrWhiteSpace(x.Phone), () =>
@@ -20,7 +20,7 @@ public sealed class SearchCustomersQueryValidator : AbstractValidator<SearchCust
         });
 
         RuleFor(x => x)
-            .Must(x => !string.IsNullOrWhiteSpace(x.Q) || !string.IsNullOrWhiteSpace(x.Phone))
+            .Must(x => !string.IsNullOrWhiteSpace(x.Query) || !string.IsNullOrWhiteSpace(x.Phone))
             .WithMessage("Search query or phone is required");
     }
 }

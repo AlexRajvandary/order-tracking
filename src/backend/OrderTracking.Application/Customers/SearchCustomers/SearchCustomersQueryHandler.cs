@@ -24,7 +24,7 @@ public sealed class SearchCustomersQueryHandler : IRequestHandler<SearchCustomer
         CancellationToken cancellationToken)
     {
         var rows = await _customers.SearchAsync(
-            new CustomerSearchCriteria(request.Q, request.Phone, request.Page, request.PageSize),
+            new CustomerSearchCriteria(request.Query, request.Phone, request.Page, request.PageSize),
             cancellationToken);
 
         var online = _presence.GetOnlineCustomerIds();
