@@ -5,6 +5,15 @@
 	handle /api/catalog-* {
 		reverse_proxy catalog:3000
 	}
+	handle /api/individual-requests {
+		reverse_proxy catalog:3000
+	}
+	handle /api/auction-requests {
+		reverse_proxy catalog:3000
+	}
+	handle /api/ticket-requests {
+		reverse_proxy catalog:3000
+	}
 
 	# Products microservice (must be before /api*)
 	handle /api/products* {
