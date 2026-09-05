@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Common.Persistence;
@@ -20,7 +21,7 @@ public sealed class CreatePublicServiceRequestTests
     {
         var command = CreateIndividualCommand(contactType, null, "Описание");
 
-        var result = new CreatePublicServiceRequestCommandValidator().Validate(command);
+        var result = CreateValidator().Validate(command);
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, error => error.PropertyName == "ContactType");
@@ -35,7 +36,7 @@ public sealed class CreatePublicServiceRequestTests
             CustomerName = "",
         };
 
-        var result = new CreatePublicServiceRequestCommandValidator().Validate(command);
+        var result = CreateValidator().Validate(command);
 
         Assert.False(result.IsValid);
         Assert.Single(result.Errors, error => error.PropertyName == "Contact");
@@ -52,7 +53,7 @@ public sealed class CreatePublicServiceRequestTests
             CustomerName = "",
         };
 
-        var result = new CreatePublicServiceRequestCommandValidator().Validate(command);
+        var result = CreateValidator().Validate(command);
 
         Assert.True(result.IsValid);
     }
@@ -68,7 +69,7 @@ public sealed class CreatePublicServiceRequestTests
             null,
             null);
 
-        var result = new CreatePublicServiceRequestCommandValidator().Validate(command);
+        var result = CreateValidator().Validate(command);
 
         Assert.True(result.IsValid);
     }
@@ -93,7 +94,7 @@ public sealed class CreatePublicServiceRequestTests
                 Images = images,
             };
 
-            var result = new CreatePublicServiceRequestCommandValidator().Validate(command);
+            var result = CreateValidator().Validate(command);
 
             Assert.False(result.IsValid);
             Assert.Contains(result.Errors, error => error.PropertyName == "Images");
@@ -120,7 +121,7 @@ public sealed class CreatePublicServiceRequestTests
             EventName: "",
             Quantity: 1);
 
-        var result = new CreatePublicServiceRequestCommandValidator().Validate(command);
+        var result = CreateValidator().Validate(command);
 
         Assert.True(result.IsValid);
     }
@@ -286,5 +287,10 @@ public sealed class CreatePublicServiceRequestTests
             "Покупатель",
             sourceUrl,
             description);
+    }
+
+    private static CreatePublicServiceRequestCommandValidator CreateValidator()
+    {
+        return new CreatePublicServiceRequestCommandValidator(NullLogger.Instance);
     }
 }

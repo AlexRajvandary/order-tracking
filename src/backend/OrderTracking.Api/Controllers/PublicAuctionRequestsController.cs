@@ -51,9 +51,9 @@ public sealed class CreatePublicAuctionRequestRequest
 
     public string Contact { get; init; } = string.Empty;
 
-    public string CustomerName { get; init; } = string.Empty;
+    public string? CustomerName { get; init; }
 
-    public string LotUrl { get; init; } = string.Empty;
+    public string? LotUrl { get; init; }
 
     public decimal? MaxBidJpy { get; init; }
 

@@ -116,10 +116,14 @@ export function ServiceRequestForm({ type }: { type: ServiceRequestType }) {
 
       if (!response.ok) {
         const responsePayload = (await response.json().catch(() => null)) as
-          | { title?: string; detail?: string }
+          | {
+              title?: string;
+              detail?: string;
+              errors?: Record<string, string[]>;
+            }
           | null;
         throw new Error(
-          responsePayload?.detail ||
+          getResponseError(responsePayload) ||
             responsePayload?.title ||
             "Не удалось отправить заявку",
         );
@@ -626,4 +630,21 @@ function getOptionalNumber(form: FormData, name: string): number | null {
   if (!value) return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function getResponseError(
+  payload:
+    | {
+        detail?: string;
+        errors?: Record<string, string[]>;
+      }
+    | null,
+): string | null {
+  if (payload?.detail) return payload.detail;
+
+  const validationMessage = Object.values(payload?.errors ?? {})
+    .flat()
+    .find((message) => Boolean(message));
+
+  return validationMessage ?? null;
 }

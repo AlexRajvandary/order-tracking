@@ -160,7 +160,7 @@ public sealed class CreatePublicServiceRequestCommandHandler
 
         return new CreateOrderNewCustomerDto(
             null,
-            request.CustomerName.Trim(),
+            Normalize(request.CustomerName),
             null,
             contactType == "telegram" ? contact : null,
             contactType == "phone" ? contact : null,

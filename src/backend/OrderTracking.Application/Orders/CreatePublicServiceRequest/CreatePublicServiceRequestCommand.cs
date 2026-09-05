@@ -14,7 +14,7 @@ public sealed record CreatePublicServiceRequestCommand(
     PublicServiceRequestType RequestType,
     string ContactType,
     string Contact,
-    string CustomerName,
+    string? CustomerName,
     string? SourceUrl,
     string? Description,
     string? EventName = null,

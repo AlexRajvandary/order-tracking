@@ -50,11 +50,11 @@ public sealed class CreatePublicIndividualRequestRequest
 
     public string Contact { get; init; } = string.Empty;
 
-    public string CustomerName { get; init; } = string.Empty;
+    public string? CustomerName { get; init; }
 
     public string? ProductUrl { get; init; }
 
-    public string Description { get; init; } = string.Empty;
+    public string? Description { get; init; }
 
     public List<IFormFile> Images { get; init; } = [];
 }

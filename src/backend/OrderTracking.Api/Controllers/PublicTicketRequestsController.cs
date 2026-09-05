@@ -55,9 +55,9 @@ public sealed class CreatePublicTicketRequestRequest
 
     public string Contact { get; init; } = string.Empty;
 
-    public string CustomerName { get; init; } = string.Empty;
+    public string? CustomerName { get; init; }
 
-    public string EventName { get; init; } = string.Empty;
+    public string? EventName { get; init; }
 
     public string? EventUrl { get; init; }
 
