@@ -12,14 +12,15 @@ export async function proxyServiceRequest(
   request: Request,
   endpoint: "individual-requests" | "auction-requests" | "ticket-requests",
 ) {
-  const body = await request.text();
+  const body = await request.arrayBuffer();
+  const contentType = request.headers.get("content-type");
 
   try {
     const response = await fetch(
       `${orderApiBaseUrl()}/api/v1/public/${endpoint}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: contentType ? { "Content-Type": contentType } : undefined,
         body,
         cache: "no-store",
       },

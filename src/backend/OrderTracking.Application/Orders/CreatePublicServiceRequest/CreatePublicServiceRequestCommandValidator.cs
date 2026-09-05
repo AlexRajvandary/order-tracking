@@ -5,6 +5,10 @@ namespace OrderTracking.Application.Orders.CreatePublicServiceRequest;
 public sealed class CreatePublicServiceRequestCommandValidator
     : AbstractValidator<CreatePublicServiceRequestCommand>
 {
+    public const int MaxImageCount = 5;
+
+    public const long MaxImageBytes = 10 * 1024 * 1024;
+
     private static readonly string[] SupportedContactTypes =
     [
         "telegram",
@@ -46,6 +50,14 @@ public sealed class CreatePublicServiceRequestCommandValidator
             .WithMessage("SourceUrl must be an absolute HTTP or HTTPS URL");
 
         RuleFor(x => x.Description).MaximumLength(4000);
+
+        RuleFor(x => x.Images)
+            .Must(images => images is null || images.Count <= MaxImageCount)
+            .WithMessage($"You can upload at most {MaxImageCount} images");
+
+        RuleForEach(x => x.Images)
+            .Must(image => image.Length > 0 && image.Length <= MaxImageBytes)
+            .WithMessage($"Each image must be no larger than {MaxImageBytes / 1024 / 1024} MB");
 
         When(x => x.RequestType == PublicServiceRequestType.Individual, () =>
         {

@@ -20,8 +20,11 @@ public sealed class PublicAuctionRequestsController : ControllerBase
 
     [HttpPost]
     [EnableRateLimiting("checkout")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(PublicServiceRequestUploadMapper.MaxRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = PublicServiceRequestUploadMapper.MaxRequestBytes)]
     public async Task<ActionResult<CreatePublicAuctionRequestResponse>> Create(
-        [FromBody] CreatePublicAuctionRequestRequest request,
+        [FromForm] CreatePublicAuctionRequestRequest request,
         CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(
@@ -32,7 +35,8 @@ public sealed class PublicAuctionRequestsController : ControllerBase
                 request.CustomerName,
                 request.LotUrl,
                 request.Comment,
-                BudgetJpy: request.MaxBidJpy),
+                BudgetJpy: request.MaxBidJpy,
+                Images: PublicServiceRequestUploadMapper.Map(request.Images)),
             cancellationToken);
 
         return StatusCode(
@@ -41,12 +45,21 @@ public sealed class PublicAuctionRequestsController : ControllerBase
     }
 }
 
-public sealed record CreatePublicAuctionRequestRequest(
-    string ContactType,
-    string Contact,
-    string CustomerName,
-    string LotUrl,
-    decimal? MaxBidJpy,
-    string? Comment);
+public sealed class CreatePublicAuctionRequestRequest
+{
+    public string ContactType { get; init; } = string.Empty;
+
+    public string Contact { get; init; } = string.Empty;
+
+    public string CustomerName { get; init; } = string.Empty;
+
+    public string LotUrl { get; init; } = string.Empty;
+
+    public decimal? MaxBidJpy { get; init; }
+
+    public string? Comment { get; init; }
+
+    public List<IFormFile> Images { get; init; } = [];
+}
 
 public sealed record CreatePublicAuctionRequestResponse(Guid OrderId, string TrackingCode);

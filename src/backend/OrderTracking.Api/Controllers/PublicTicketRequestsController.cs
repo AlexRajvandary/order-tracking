@@ -20,8 +20,11 @@ public sealed class PublicTicketRequestsController : ControllerBase
 
     [HttpPost]
     [EnableRateLimiting("checkout")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(PublicServiceRequestUploadMapper.MaxRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = PublicServiceRequestUploadMapper.MaxRequestBytes)]
     public async Task<ActionResult<CreatePublicTicketRequestResponse>> Create(
-        [FromBody] CreatePublicTicketRequestRequest request,
+        [FromForm] CreatePublicTicketRequestRequest request,
         CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(
@@ -36,7 +39,8 @@ public sealed class PublicTicketRequestsController : ControllerBase
                 request.EventDate,
                 request.Location,
                 request.Quantity,
-                request.BudgetJpy),
+                request.BudgetJpy,
+                PublicServiceRequestUploadMapper.Map(request.Images)),
             cancellationToken);
 
         return StatusCode(
@@ -45,16 +49,29 @@ public sealed class PublicTicketRequestsController : ControllerBase
     }
 }
 
-public sealed record CreatePublicTicketRequestRequest(
-    string ContactType,
-    string Contact,
-    string CustomerName,
-    string EventName,
-    string? EventUrl,
-    string? EventDate,
-    string? Location,
-    int Quantity,
-    decimal? BudgetJpy,
-    string? Comment);
+public sealed class CreatePublicTicketRequestRequest
+{
+    public string ContactType { get; init; } = string.Empty;
+
+    public string Contact { get; init; } = string.Empty;
+
+    public string CustomerName { get; init; } = string.Empty;
+
+    public string EventName { get; init; } = string.Empty;
+
+    public string? EventUrl { get; init; }
+
+    public string? EventDate { get; init; }
+
+    public string? Location { get; init; }
+
+    public int Quantity { get; init; }
+
+    public decimal? BudgetJpy { get; init; }
+
+    public string? Comment { get; init; }
+
+    public List<IFormFile> Images { get; init; } = [];
+}
 
 public sealed record CreatePublicTicketRequestResponse(Guid OrderId, string TrackingCode);

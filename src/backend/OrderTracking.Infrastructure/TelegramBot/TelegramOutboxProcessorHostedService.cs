@@ -123,6 +123,7 @@ public sealed class TelegramOutboxProcessorHostedService : BackgroundService
                     payload.WhatsApp,
                     payload.Vk,
                     payload.Address,
+                    payload.Images,
                     cancellationToken);
                 break;
             }

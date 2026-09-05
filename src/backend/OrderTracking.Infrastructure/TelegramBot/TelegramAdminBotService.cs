@@ -1,4 +1,5 @@
 using OrderTracking.Infrastructure.TelegramBot.Notify;
+using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Infrastructure.TelegramBot.Reports;
 using OrderTracking.Infrastructure.TelegramBot.Routing;
 using Telegram.Bot;
@@ -59,6 +60,7 @@ public sealed class TelegramAdminBotService
         string? whatsApp,
         string? vk,
         string? address,
+        IReadOnlyList<TelegramImageAttachment>? images,
         CancellationToken cancellationToken) =>
         _notifier.SendOrderCreatedAsync(
             orderId,
@@ -69,6 +71,7 @@ public sealed class TelegramAdminBotService
             whatsApp,
             vk,
             address,
+            images,
             cancellationToken);
 
     internal Task SendStatusPublishedNotifyAsync(

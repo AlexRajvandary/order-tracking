@@ -1,3 +1,5 @@
+using OrderTracking.Application.Common.Interfaces;
+
 namespace OrderTracking.Infrastructure.TelegramBot;
 
 internal sealed record TelegramOrderCreatedPayload(
@@ -8,4 +10,5 @@ internal sealed record TelegramOrderCreatedPayload(
     string? Telegram,
     string? WhatsApp,
     string? Vk,
-    string? Address);
+    string? Address,
+    IReadOnlyList<TelegramImageAttachment>? Images);

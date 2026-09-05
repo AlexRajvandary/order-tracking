@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.Extensions.Configuration;
+using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Application.Orders.CreateOrder;
 using OrderTracking.Application.Orders.Models;
@@ -17,14 +18,22 @@ public sealed class CreatePublicServiceRequestCommandHandler
 
     private readonly IMediator _mediator;
 
+    private readonly IImageCompressor _imageCompressor;
+
+    private readonly IObjectStorage _objectStorage;
+
     public CreatePublicServiceRequestCommandHandler(
         IAdminUserRepository adminUserRepository,
         IConfiguration configuration,
-        IMediator mediator)
+        IMediator mediator,
+        IImageCompressor imageCompressor,
+        IObjectStorage objectStorage)
     {
         _adminUserRepository = adminUserRepository;
         _configuration = configuration;
         _mediator = mediator;
+        _imageCompressor = imageCompressor;
+        _objectStorage = objectStorage;
     }
 
     public async Task<OrderDetailsDto> Handle(
@@ -34,17 +43,113 @@ public sealed class CreatePublicServiceRequestCommandHandler
         var creator = await ResolveCreatorAsync(cancellationToken);
         var customer = CreateCustomer(request);
         var item = CreateItem(request);
+        var orderId = Guid.NewGuid();
+        var uploadedImages = await UploadImagesAsync(request, orderId, cancellationToken);
 
-        return await _mediator.Send(
-            new CreateOrderCommand(
-                null,
-                customer,
-                $"Заявка из формы: {GetRequestLabel(request.RequestType)}",
-                null,
-                null,
-                [item],
-                creator.Id),
-            cancellationToken);
+        try
+        {
+            return await _mediator.Send(
+                new CreateOrderCommand(
+                    null,
+                    customer,
+                    $"Заявка из формы: {GetRequestLabel(request.RequestType)}",
+                    null,
+                    null,
+                    [item],
+                    creator.Id,
+                    orderId,
+                    uploadedImages),
+                cancellationToken);
+        }
+        catch
+        {
+            await DeleteUploadedImagesAsync(uploadedImages, CancellationToken.None);
+            throw;
+        }
+    }
+
+    private async Task<IReadOnlyList<TelegramImageAttachment>> UploadImagesAsync(
+        CreatePublicServiceRequestCommand request,
+        Guid orderId,
+        CancellationToken cancellationToken)
+    {
+        if (request.Images is not { Count: > 0 })
+        {
+            return [];
+        }
+
+        var requestType = request.RequestType.ToString().ToLowerInvariant();
+        var uploaded = new List<TelegramImageAttachment>(request.Images.Count);
+
+        try
+        {
+            for (var index = 0; index < request.Images.Count; index++)
+            {
+                var image = request.Images[index];
+                await using var source = image.Content;
+                var compressed = await _imageCompressor.CompressAsync(
+                    source,
+                    image.ContentType,
+                    cancellationToken);
+
+                if (compressed is null)
+                {
+                    throw new InvalidOperationException(
+                        $"File '{image.FileName ?? "upload"}' is not a supported image");
+                }
+
+                var (content, contentType, extension) = compressed.Value;
+                await using (content)
+                {
+                    var objectKey =
+                        $"service-requests/{requestType}/{orderId:D}/images/{index + 1:D2}-{Guid.NewGuid():N}{extension}";
+
+                    await _objectStorage.PutAsync(
+                        objectKey,
+                        content,
+                        contentType,
+                        cancellationToken);
+
+                    uploaded.Add(new TelegramImageAttachment(
+                        objectKey,
+                        BuildStoredFileName(image.FileName, index, extension),
+                        contentType));
+                }
+            }
+
+            return uploaded;
+        }
+        catch
+        {
+            await DeleteUploadedImagesAsync(uploaded, CancellationToken.None);
+            throw;
+        }
+    }
+
+    private async Task DeleteUploadedImagesAsync(
+        IReadOnlyList<TelegramImageAttachment> images,
+        CancellationToken cancellationToken)
+    {
+        foreach (var image in images)
+        {
+            try
+            {
+                await _objectStorage.DeleteAsync(image.ObjectKey, cancellationToken);
+            }
+            catch
+            {
+                // Preserve the original request failure; orphan cleanup can be retried operationally.
+            }
+        }
+    }
+
+    private static string BuildStoredFileName(string? originalFileName, int index, string extension)
+    {
+        var baseName = string.IsNullOrWhiteSpace(originalFileName)
+            ? $"image-{index + 1}"
+            : Path.GetFileNameWithoutExtension(originalFileName);
+
+        return $"{baseName}{extension}";
     }
 
     private static CreateOrderNewCustomerDto CreateCustomer(

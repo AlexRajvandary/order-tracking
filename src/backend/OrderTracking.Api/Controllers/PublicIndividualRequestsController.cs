@@ -20,8 +20,11 @@ public sealed class PublicIndividualRequestsController : ControllerBase
 
     [HttpPost]
     [EnableRateLimiting("checkout")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(PublicServiceRequestUploadMapper.MaxRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = PublicServiceRequestUploadMapper.MaxRequestBytes)]
     public async Task<ActionResult<CreatePublicIndividualRequestResponse>> Create(
-        [FromBody] CreatePublicIndividualRequestRequest request,
+        [FromForm] CreatePublicIndividualRequestRequest request,
         CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(
@@ -31,7 +34,8 @@ public sealed class PublicIndividualRequestsController : ControllerBase
                 request.Contact,
                 request.CustomerName,
                 request.ProductUrl,
-                request.Description),
+                request.Description,
+                Images: PublicServiceRequestUploadMapper.Map(request.Images)),
             cancellationToken);
 
         return StatusCode(
@@ -40,11 +44,19 @@ public sealed class PublicIndividualRequestsController : ControllerBase
     }
 }
 
-public sealed record CreatePublicIndividualRequestRequest(
-    string ContactType,
-    string Contact,
-    string CustomerName,
-    string? ProductUrl,
-    string Description);
+public sealed class CreatePublicIndividualRequestRequest
+{
+    public string ContactType { get; init; } = string.Empty;
+
+    public string Contact { get; init; } = string.Empty;
+
+    public string CustomerName { get; init; } = string.Empty;
+
+    public string? ProductUrl { get; init; }
+
+    public string Description { get; init; } = string.Empty;
+
+    public List<IFormFile> Images { get; init; } = [];
+}
 
 public sealed record CreatePublicIndividualRequestResponse(Guid OrderId, string TrackingCode);

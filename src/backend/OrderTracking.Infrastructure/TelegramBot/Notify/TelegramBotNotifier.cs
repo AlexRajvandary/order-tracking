@@ -1,9 +1,11 @@
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Domain.Enums;
 using Telegram.Bot;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
@@ -12,11 +14,16 @@ namespace OrderTracking.Infrastructure.TelegramBot.Notify;
 internal sealed class TelegramBotNotifier
 {
     private readonly ILogger<TelegramBotNotifier> _logger;
+    private readonly IObjectStorage _objectStorage;
     private readonly TelegramBotRuntime _runtime;
 
-    public TelegramBotNotifier(TelegramBotRuntime runtime, ILogger<TelegramBotNotifier> logger)
+    public TelegramBotNotifier(
+        TelegramBotRuntime runtime,
+        IObjectStorage objectStorage,
+        ILogger<TelegramBotNotifier> logger)
     {
         _runtime = runtime;
+        _objectStorage = objectStorage;
         _logger = logger;
     }
 
@@ -29,6 +36,7 @@ internal sealed class TelegramBotNotifier
         string? whatsApp,
         string? vk,
         string? address,
+        IReadOnlyList<TelegramImageAttachment>? images,
         CancellationToken cancellationToken)
     {
         if (!_runtime.IsEnabled || _runtime.Client is null)
@@ -59,6 +67,16 @@ internal sealed class TelegramBotNotifier
             try
             {
                 await bot.SendMessage(chatId, text, ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
+
+                if (images is { Count: > 0 })
+                {
+                    await SendOrderImagesAsync(
+                        bot,
+                        chatId,
+                        trackingCode,
+                        images,
+                        cancellationToken);
+                }
             }
             catch (Exception ex)
             {
@@ -150,6 +168,59 @@ internal sealed class TelegramBotNotifier
         {
             await ClearStatusHistoryNotifyClaimAsync(item.StatusHistoryId, cancellationToken);
             throw;
+        }
+    }
+
+    private async Task SendOrderImagesAsync(
+        ITelegramBotClient bot,
+        long chatId,
+        string trackingCode,
+        IReadOnlyList<TelegramImageAttachment> images,
+        CancellationToken cancellationToken)
+    {
+        var media = new List<IAlbumInputMedia>(images.Count);
+        var streams = new List<Stream>(images.Count);
+
+        try
+        {
+            for (var index = 0; index < images.Count; index++)
+            {
+                var image = images[index];
+                var stream = await _objectStorage.GetAsync(image.ObjectKey, cancellationToken);
+                streams.Add(stream);
+
+                var photo = new InputMediaPhoto(InputFile.FromStream(stream, image.FileName));
+                if (index == 0)
+                {
+                    photo.Caption = $"Изображения к заявке {trackingCode}";
+                }
+
+                media.Add(photo);
+            }
+
+            if (media.Count == 1)
+            {
+                var image = images[0];
+                streams[0].Position = 0;
+                await bot.SendPhoto(
+                    chatId,
+                    InputFile.FromStream(streams[0], image.FileName),
+                    caption: $"Изображение к заявке {trackingCode}",
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            await bot.SendMediaGroup(
+                chatId,
+                media,
+                cancellationToken: cancellationToken);
+        }
+        finally
+        {
+            foreach (var stream in streams)
+            {
+                await stream.DisposeAsync();
+            }
         }
     }
 

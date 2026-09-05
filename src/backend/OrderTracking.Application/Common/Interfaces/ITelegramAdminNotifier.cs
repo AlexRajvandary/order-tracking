@@ -13,6 +13,7 @@ public interface ITelegramAdminNotifier
         string? whatsApp,
         string? vk,
         string? address,
+        IReadOnlyList<TelegramImageAttachment>? images = null,
         CancellationToken cancellationToken = default);
 
     public Task NotifyStatusPublishedAsync(
@@ -42,3 +43,8 @@ public interface ITelegramAdminNotifier
         string category,
         CancellationToken cancellationToken = default);
 }
+
+public sealed record TelegramImageAttachment(
+    string ObjectKey,
+    string FileName,
+    string ContentType);

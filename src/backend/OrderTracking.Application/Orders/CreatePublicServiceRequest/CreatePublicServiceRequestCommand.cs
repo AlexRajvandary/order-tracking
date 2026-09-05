@@ -21,4 +21,11 @@ public sealed record CreatePublicServiceRequestCommand(
     string? EventDate = null,
     string? Location = null,
     int Quantity = 1,
-    decimal? BudgetJpy = null) : IRequest<OrderDetailsDto>;
+    decimal? BudgetJpy = null,
+    IReadOnlyList<ServiceRequestImageUpload>? Images = null) : IRequest<OrderDetailsDto>;
+
+public sealed record ServiceRequestImageUpload(
+    Stream Content,
+    string? FileName,
+    string? ContentType,
+    long Length);

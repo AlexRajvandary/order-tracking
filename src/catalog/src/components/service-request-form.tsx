@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, ImagePlus, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +15,9 @@ type RequestResult = {
   orderId: string;
   trackingCode: string;
 };
+
+const maxImages = 5;
+const maxImageBytes = 10 * 1024 * 1024;
 
 const formConfig: Record<
   ServiceRequestType,
@@ -69,6 +73,20 @@ export function ServiceRequestForm({ type }: { type: ServiceRequestType }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<RequestResult | null>(null);
+  const [images, setImages] = useState<SelectedImage[]>([]);
+  const imagesRef = useRef(images);
+
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+
+  useEffect(() => {
+    return () => {
+      imagesRef.current.forEach((image) =>
+        URL.revokeObjectURL(image.previewUrl),
+      );
+    };
+  }, []);
 
   const activeContact =
     contactOptions.find((option) => option.value === contactType) ??
@@ -91,10 +109,10 @@ export function ServiceRequestForm({ type }: { type: ServiceRequestType }) {
     setError("");
 
     try {
+      const requestBody = buildRequestBody(payload, images);
       const response = await fetch(config.endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: requestBody,
       });
 
       if (!response.ok) {
@@ -109,6 +127,8 @@ export function ServiceRequestForm({ type }: { type: ServiceRequestType }) {
       }
 
       setResult((await response.json()) as RequestResult);
+      images.forEach((image) => URL.revokeObjectURL(image.previewUrl));
+      setImages([]);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -192,6 +212,12 @@ export function ServiceRequestForm({ type }: { type: ServiceRequestType }) {
 
       <RequestSpecificFields type={type} clearError={() => setError("")} />
 
+      <ImageAttachments
+        images={images}
+        onChange={setImages}
+        onError={setError}
+      />
+
       {error ? (
         <p className="text-sm text-destructive" role="alert">
           {error}
@@ -212,6 +238,122 @@ export function ServiceRequestForm({ type }: { type: ServiceRequestType }) {
         в соответствии с политикой конфиденциальности.
       </p>
     </form>
+  );
+}
+
+type SelectedImage = {
+  file: File;
+  previewUrl: string;
+  id: string;
+};
+
+function ImageAttachments({
+  images,
+  onChange,
+  onError,
+}: {
+  images: SelectedImage[];
+  onChange: (images: SelectedImage[]) => void;
+  onError: (message: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function selectFiles(files: FileList | null) {
+    if (!files) return;
+
+    const nextFiles = Array.from(files);
+    if (images.length + nextFiles.length > maxImages) {
+      onError(`Можно прикрепить не более ${maxImages} изображений.`);
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+
+    const invalidFile = nextFiles.find(
+      (file) => !file.type.startsWith("image/") || file.size > maxImageBytes,
+    );
+    if (invalidFile) {
+      onError("Выберите изображения размером не более 10 МБ каждое.");
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+
+    onError("");
+    onChange([
+      ...images,
+      ...nextFiles.map((file) => ({
+        file,
+        previewUrl: URL.createObjectURL(file),
+        id: crypto.randomUUID(),
+      })),
+    ]);
+
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function removeImage(id: string) {
+    const image = images.find((item) => item.id === id);
+    if (image) URL.revokeObjectURL(image.previewUrl);
+    onChange(images.filter((item) => item.id !== id));
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium">Изображения</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            До {maxImages} файлов, не более 10 МБ каждый
+          </p>
+        </div>
+        <Input
+          ref={inputRef}
+          type="file"
+          name="image-picker"
+          accept="image/*"
+          multiple
+          className="sr-only"
+          onChange={(event) => selectFiles(event.target.files)}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          disabled={images.length >= maxImages}
+          onClick={() => inputRef.current?.click()}
+        >
+          <ImagePlus aria-hidden />
+          Прикрепить
+        </Button>
+      </div>
+
+      {images.length > 0 ? (
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+          {images.map((image) => (
+            <div
+              key={image.id}
+              className="group relative aspect-square overflow-hidden rounded-lg bg-muted"
+            >
+              <Image
+                src={image.previewUrl}
+                alt={image.file.name}
+                fill
+                unoptimized
+                className="object-cover"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon-sm"
+                aria-label={`Удалить ${image.file.name}`}
+                className="absolute right-1.5 top-1.5 size-7 rounded-full bg-white/90 shadow-sm hover:bg-white"
+                onClick={() => removeImage(image.id)}
+              >
+                <X aria-hidden />
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -467,6 +609,20 @@ function buildPayload(
     productUrl: getString(form, "productUrl") || null,
     description: getString(form, "description"),
   };
+}
+
+function buildRequestBody(
+  payload: Record<string, string | number | null>,
+  images: SelectedImage[],
+): FormData {
+  const body = new FormData();
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== null) body.append(key, String(value));
+  });
+
+  images.forEach((image) => body.append("images", image.file, image.file.name));
+  return body;
 }
 
 function validatePayload(

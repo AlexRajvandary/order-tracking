@@ -47,6 +47,7 @@ public sealed class TelegramOutboxNotifier : ITelegramAdminNotifier
         string? whatsApp,
         string? vk,
         string? address,
+        IReadOnlyList<TelegramImageAttachment>? images = null,
         CancellationToken cancellationToken = default)
     {
         if (!IsEnabled)
@@ -62,7 +63,8 @@ public sealed class TelegramOutboxNotifier : ITelegramAdminNotifier
             telegram,
             whatsApp,
             vk,
-            address);
+            address,
+            images);
         _outbox.Add(new TelegramOutboxMessage
         {
             Id = Guid.NewGuid(),

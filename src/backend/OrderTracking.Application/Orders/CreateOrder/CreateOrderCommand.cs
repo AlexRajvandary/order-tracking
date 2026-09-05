@@ -22,4 +22,7 @@ public sealed record CreateOrderCommand(
     Guid? DeliveryAddressId,
     CreateOrderDeliveryAddressDto? DeliveryAddress,
     IReadOnlyList<CreateOrderItemDto>? Items,
-    Guid? CreatedByAdminId = null) : IRequest<OrderDetailsDto>, IAuditableCommand;
+    Guid? CreatedByAdminId = null,
+    Guid? RequestedOrderId = null,
+    IReadOnlyList<TelegramImageAttachment>? NotificationImages = null)
+    : IRequest<OrderDetailsDto>, IAuditableCommand;

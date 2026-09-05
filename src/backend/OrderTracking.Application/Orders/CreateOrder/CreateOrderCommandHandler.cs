@@ -116,7 +116,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
 
         var order = new Order
         {
-            Id = Guid.NewGuid(),
+            Id = request.RequestedOrderId ?? Guid.NewGuid(),
             TrackingCode = trackingCode,
             CustomerId = customerId,
             DeliveryAddressId = delivery.AddressId,
@@ -188,6 +188,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
                 customerWhatsApp,
                 customerVk,
                 FormatDeliveryAddress(order),
+                request.NotificationImages,
                 cancellationToken);
         }
         catch (Exception ex)
