@@ -40,7 +40,6 @@ public sealed class CreatePublicServiceRequestCommandValidator
                 StringComparison.OrdinalIgnoreCase));
 
         RuleFor(x => x.CustomerName)
-            .NotEmpty()
             .MaximumLength(100);
 
         RuleFor(x => x.SourceUrl)
@@ -61,12 +60,12 @@ public sealed class CreatePublicServiceRequestCommandValidator
 
         When(x => x.RequestType == PublicServiceRequestType.Individual, () =>
         {
+            RuleFor(x => x.CustomerName).NotEmpty();
             RuleFor(x => x.Description).NotEmpty();
         });
 
         When(x => x.RequestType == PublicServiceRequestType.Auction, () =>
         {
-            RuleFor(x => x.SourceUrl).NotEmpty();
             RuleFor(x => x.BudgetJpy)
                 .GreaterThan(0)
                 .When(x => x.BudgetJpy.HasValue);
@@ -74,7 +73,7 @@ public sealed class CreatePublicServiceRequestCommandValidator
 
         When(x => x.RequestType == PublicServiceRequestType.Ticket, () =>
         {
-            RuleFor(x => x.EventName).NotEmpty().MaximumLength(500);
+            RuleFor(x => x.EventName).MaximumLength(500);
             RuleFor(x => x.EventDate)
                 .Must(value => DateOnly.TryParse(value, out _))
                 .When(x => !string.IsNullOrWhiteSpace(x.EventDate))

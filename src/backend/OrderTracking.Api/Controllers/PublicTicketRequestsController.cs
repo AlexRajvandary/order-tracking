@@ -65,7 +65,7 @@ public sealed class CreatePublicTicketRequestRequest
 
     public string? Location { get; init; }
 
-    public int Quantity { get; init; }
+    public int Quantity { get; init; } = 1;
 
     public decimal? BudgetJpy { get; init; }
 

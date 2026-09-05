@@ -183,7 +183,7 @@ public sealed class CreatePublicServiceRequestCommandHandler
                 Normalize(request.SourceUrl)),
             PublicServiceRequestType.Ticket => new CreateOrderItemDto(
                 OrderItemType.Service,
-                request.EventName!.Trim(),
+                Normalize(request.EventName) ?? "Запрос на билеты",
                 BuildTicketDescription(request),
                 request.Quantity,
                 null,

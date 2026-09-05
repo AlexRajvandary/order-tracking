@@ -1,4 +1,7 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/site-header";
 import { StorefrontAnnouncement } from "@/components/storefront-announcement";
 import { fetchStorefrontAnnouncement } from "@/lib/storefront-announcement-api";
@@ -21,6 +24,15 @@ export async function ServiceRequestPage({
       <SiteHeader />
       <StorefrontAnnouncement text={announcement?.text} />
       <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-16">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mb-6 -ml-2"
+          render={<Link href="/" />}
+        >
+          <ArrowLeft aria-hidden />
+          Назад на главную
+        </Button>
         <header className="mb-8 sm:mb-10">
           <h1 className="text-3xl font-bold tracking-tight text-[#111] sm:text-4xl">
             {title}

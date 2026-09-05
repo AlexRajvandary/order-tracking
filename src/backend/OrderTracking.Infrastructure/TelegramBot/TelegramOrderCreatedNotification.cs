@@ -40,9 +40,10 @@ internal static class TelegramOrderCreatedNotification
 
     private static void AppendValue(StringBuilder text, string label, string? value)
     {
-        if (!string.IsNullOrWhiteSpace(value))
-        {
-            text.AppendLine($"{label}: {TelegramBotText.Escape(value)}");
-        }
+        var displayValue = string.IsNullOrWhiteSpace(value)
+            ? "пусто"
+            : TelegramBotText.Escape(value);
+
+        text.AppendLine($"{label}: {displayValue}");
     }
 }

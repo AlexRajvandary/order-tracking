@@ -198,10 +198,10 @@ export function ServiceRequestForm({ type }: { type: ServiceRequestType }) {
         />
       </FormField>
 
-      <FormField label="Как вас зовут" required>
+      <FormField label="Как вас зовут" required={type === "individual"}>
         <Input
           name="customerName"
-          required
+          required={type === "individual"}
           maxLength={100}
           placeholder="Ваше имя"
           autoComplete="name"
@@ -400,11 +400,10 @@ function RequestSpecificFields({
   if (type === "auction") {
     return (
       <>
-        <FormField label="Ссылка на лот" required>
+        <FormField label="Ссылка на лот">
           <Input
             name="lotUrl"
             type="url"
-            required
             maxLength={2000}
             placeholder="https://..."
             inputMode="url"
@@ -431,10 +430,9 @@ function RequestSpecificFields({
   if (type === "ticket") {
     return (
       <>
-        <FormField label="Название события" required>
+        <FormField label="Название события">
           <Input
             name="eventName"
-            required
             maxLength={500}
             placeholder="Концерт, фестиваль или другое событие"
             className="h-11 px-3"
@@ -470,7 +468,7 @@ function RequestSpecificFields({
               onChange={clearError}
             />
           </FormField>
-          <FormField label="Количество билетов" required>
+          <FormField label="Количество билетов">
             <Input
               name="quantity"
               type="number"
@@ -478,7 +476,6 @@ function RequestSpecificFields({
               max="100"
               step="1"
               defaultValue="1"
-              required
               className="h-11 px-3"
               onChange={clearError}
             />
@@ -629,21 +626,13 @@ function validatePayload(
   type: ServiceRequestType,
   payload: Record<string, string | number | null>,
 ): string | null {
-  if (!payload.contact || !payload.customerName) {
-    return "Заполните обязательные поля.";
+  if (!payload.contact) {
+    return "Заполните контакт для выбранного способа связи.";
   }
 
-  if (type === "individual" && !payload.description) {
-    return "Опишите, какой товар вы ищете.";
-  }
-
-  if (type === "auction" && !payload.lotUrl) {
-    return "Укажите ссылку на лот.";
-  }
-
-  if (type === "ticket") {
-    if (!payload.eventName) return "Укажите название события.";
-    if (Number(payload.quantity) < 1) return "Укажите количество билетов.";
+  if (type === "individual") {
+    if (!payload.customerName) return "Укажите, как к вам обращаться.";
+    if (!payload.description) return "Опишите, какой товар вы ищете.";
   }
 
   const urlValue =

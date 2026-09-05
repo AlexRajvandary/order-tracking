@@ -13,6 +13,8 @@ namespace OrderTracking.Infrastructure.TelegramBot.Ui;
 internal sealed class TelegramUiService
 {
     private const int MaxMessageLength = 4096;
+
+    private const int MaxCaptionLength = 1024;
     private readonly ILogger<TelegramUiService> _logger;
     private readonly TelegramBotRuntime _runtime;
 
@@ -91,6 +93,66 @@ internal sealed class TelegramUiService
         const string suffix = "\n\n… (обрезано)";
         var keep = MaxMessageLength - suffix.Length;
         return text[..keep] + suffix;
+    }
+
+    public async Task RenderCaptionAsync(
+        long chatId,
+        int messageId,
+        string text,
+        InlineKeyboardMarkup? replyMarkup,
+        CancellationToken cancellationToken)
+    {
+        var bot = _runtime.RequireClient();
+        text = Truncate(text, MaxCaptionLength);
+
+        try
+        {
+            await bot.EditMessageCaption(
+                chatId,
+                messageId,
+                text,
+                ParseMode.Html,
+                replyMarkup: replyMarkup,
+                cancellationToken: cancellationToken);
+        }
+        catch (ApiRequestException ex) when (IsMessageNotModified(ex))
+        {
+            _logger.LogDebug(
+                "Telegram caption not modified chat={ChatId} message={MessageId}",
+                chatId,
+                messageId);
+        }
+        catch (ApiRequestException ex) when (IsMessageUneditable(ex))
+        {
+            _logger.LogWarning(
+                ex,
+                "Telegram caption edit fallback to send chat={ChatId} message={MessageId}",
+                chatId,
+                messageId);
+
+            await bot.SendMessage(
+                chatId,
+                TruncateForTelegram(text),
+                ParseMode.Html,
+                replyMarkup: replyMarkup,
+                cancellationToken: cancellationToken);
+        }
+    }
+
+    public static string TruncateForTelegramCaption(string text)
+    {
+        return Truncate(text, MaxCaptionLength);
+    }
+
+    private static string Truncate(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
+        {
+            return text;
+        }
+
+        const string suffix = "\n\n… (обрезано)";
+        return text[..(maxLength - suffix.Length)] + suffix;
     }
 
     private static bool IsMessageNotModified(ApiRequestException ex) =>

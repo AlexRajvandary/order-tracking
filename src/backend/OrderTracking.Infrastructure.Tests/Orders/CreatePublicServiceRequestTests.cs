@@ -38,20 +38,19 @@ public sealed class CreatePublicServiceRequestTests
     }
 
     [Fact]
-    public void Validator_RequiresValidLotUrlForAuction()
+    public void Validator_AllowsAuctionWithoutLotUrlAndCustomerName()
     {
         var command = new CreatePublicServiceRequestCommand(
             PublicServiceRequestType.Auction,
             "telegram",
             "@buyer",
-            "Покупатель",
-            "not-a-url",
+            "",
+            null,
             null);
 
         var result = new CreatePublicServiceRequestCommandValidator().Validate(command);
 
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, error => error.PropertyName == "SourceUrl");
+        Assert.True(result.IsValid);
     }
 
     [Fact]
@@ -89,23 +88,21 @@ public sealed class CreatePublicServiceRequestTests
     }
 
     [Fact]
-    public void Validator_RequiresEventNameAndValidQuantityForTickets()
+    public void Validator_AllowsTicketWithoutEventNameAndCustomerName()
     {
         var command = new CreatePublicServiceRequestCommand(
             PublicServiceRequestType.Ticket,
             "telegram",
             "@buyer",
-            "Покупатель",
+            "",
             null,
             null,
             EventName: "",
-            Quantity: 0);
+            Quantity: 1);
 
         var result = new CreatePublicServiceRequestCommandValidator().Validate(command);
 
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, error => error.PropertyName == "EventName");
-        Assert.Contains(result.Errors, error => error.PropertyName == "Quantity");
+        Assert.True(result.IsValid);
     }
 
     [Fact]

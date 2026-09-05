@@ -84,6 +84,7 @@ internal sealed class TelegramBotOrdersScreen
             orderId,
             listPage,
             returnToNotification: false,
+            hasAttachedPhoto: false,
             cancellationToken);
     }
 
@@ -91,6 +92,7 @@ internal sealed class TelegramBotOrdersScreen
         long chatId,
         int messageId,
         Guid orderId,
+        bool hasAttachedPhoto,
         CancellationToken cancellationToken)
     {
         return RenderCardCoreAsync(
@@ -99,6 +101,7 @@ internal sealed class TelegramBotOrdersScreen
             orderId,
             listPage: 1,
             returnToNotification: true,
+            hasAttachedPhoto,
             cancellationToken);
     }
 
@@ -106,6 +109,7 @@ internal sealed class TelegramBotOrdersScreen
         long chatId,
         int messageId,
         Guid orderId,
+        bool hasAttachedPhoto,
         CancellationToken cancellationToken)
     {
         using var scope = _runtime.ScopeFactory.CreateScope();
@@ -115,12 +119,13 @@ internal sealed class TelegramBotOrdersScreen
 
         if (order is null)
         {
-            await _ui.RenderAsync(
+            await RenderNotificationMessageAsync(
                 chatId,
                 messageId,
                 "Заказ не найден",
                 new InlineKeyboardMarkup(
                     InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)),
+                hasAttachedPhoto,
                 cancellationToken);
             return;
         }
@@ -150,11 +155,12 @@ internal sealed class TelegramBotOrdersScreen
             order.Customer?.Vk,
             address);
 
-        await _ui.RenderAsync(
+        await RenderNotificationMessageAsync(
             chatId,
             messageId,
             text,
             TelegramOrderCreatedNotification.BuildKeyboard(order.Id),
+            hasAttachedPhoto,
             cancellationToken);
     }
 
@@ -164,6 +170,7 @@ internal sealed class TelegramBotOrdersScreen
         Guid orderId,
         int listPage,
         bool returnToNotification,
+        bool hasAttachedPhoto,
         CancellationToken cancellationToken)
     {
         var bot = _runtime.RequireClient();
@@ -198,32 +205,63 @@ internal sealed class TelegramBotOrdersScreen
         var sb = new System.Text.StringBuilder();
         sb.AppendLine($"📦 Заказ <code>{TelegramBotText.Escape(order.TrackingCode)}</code>");
         sb.AppendLine($"Статус: <b>{TelegramBotText.Escape(order.Status.ToString())}</b>");
-        sb.AppendLine($"Клиент: {TelegramBotText.Escape(customerName)}");
-        sb.AppendLine($"Тел: {TelegramBotText.Escape(order.Customer?.Phone)}");
-        sb.AppendLine($"TG: {TelegramBotText.Escape(order.Customer?.Telegram)}");
-        if (!string.IsNullOrWhiteSpace(order.Customer?.WhatsApp))
-        {
-            sb.AppendLine($"WhatsApp: {TelegramBotText.Escape(order.Customer.WhatsApp)}");
-        }
-
-        if (!string.IsNullOrWhiteSpace(order.Customer?.Vk))
-        {
-            sb.AppendLine($"VK: {TelegramBotText.Escape(order.Customer.Vk)}");
-        }
+        sb.AppendLine($"Клиент: {DisplayValue(customerName)}");
+        sb.AppendLine($"Телефон: {DisplayValue(order.Customer?.Phone)}");
+        sb.AppendLine($"Telegram: {DisplayValue(order.Customer?.Telegram)}");
+        sb.AppendLine($"WhatsApp: {DisplayValue(order.Customer?.WhatsApp)}");
+        sb.AppendLine($"VK: {DisplayValue(order.Customer?.Vk)}");
 
         sb.AppendLine($"Создан: {order.CreatedAt:yyyy-MM-dd HH:mm} UTC");
-        sb.AppendLine($"Позиций: {order.Items.Count}");
 
-        if (order.Items.Count > 0)
+        var isServiceRequest = order.AdminNotes?.StartsWith(
+            "Заявка из формы:",
+            StringComparison.Ordinal) == true;
+
+        if (isServiceRequest && order.Items.Count > 0)
         {
             sb.AppendLine();
-            sb.AppendLine("<b>Позиции:</b>");
+            sb.AppendLine("<b>Запрос:</b>");
             foreach (var item in order.Items.OrderBy(i => i.SortOrder).ThenBy(i => i.CreatedAt))
             {
-                sb.AppendLine($"• {TelegramBotText.Escape(item.Name)} × {item.Quantity}");
+                if (!IsGenericServiceRequestName(item.Name))
+                {
+                    sb.AppendLine(TelegramBotText.Escape(item.Name));
+                }
+
+                sb.AppendLine(DisplayValue(item.Description ?? item.Name));
+
                 if (!string.IsNullOrWhiteSpace(item.SourceUrl))
                 {
-                    sb.AppendLine($"  Источник: {TelegramBotText.Escape(item.SourceUrl)}");
+                    sb.AppendLine($"Ссылка: {TelegramBotText.Escape(item.SourceUrl)}");
+                }
+
+                if (item.UnitPrice.HasValue)
+                {
+                    sb.AppendLine(
+                        $"Бюджет: {item.UnitPrice.Value:0.##} {TelegramBotText.Escape(item.CurrencyCode)}");
+                }
+
+                if (item.Quantity > 1)
+                {
+                    sb.AppendLine($"Количество: {item.Quantity}");
+                }
+            }
+        }
+        else
+        {
+            sb.AppendLine($"Позиций: {order.Items.Count}");
+
+            if (order.Items.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("<b>Позиции:</b>");
+                foreach (var item in order.Items.OrderBy(i => i.SortOrder).ThenBy(i => i.CreatedAt))
+                {
+                    sb.AppendLine($"• {TelegramBotText.Escape(item.Name)} × {item.Quantity}");
+                    if (!string.IsNullOrWhiteSpace(item.SourceUrl))
+                    {
+                        sb.AppendLine($"  Источник: {TelegramBotText.Escape(item.SourceUrl)}");
+                    }
                 }
             }
         }
@@ -273,7 +311,20 @@ internal sealed class TelegramBotOrdersScreen
                 [InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)],
             ]);
 
-        await _ui.RenderAsync(chatId, messageId, sb.ToString(), keyboard, cancellationToken);
+        if (returnToNotification && messageId.HasValue)
+        {
+            await RenderNotificationMessageAsync(
+                chatId,
+                messageId.Value,
+                sb.ToString(),
+                keyboard,
+                hasAttachedPhoto,
+                cancellationToken);
+        }
+        else
+        {
+            await _ui.RenderAsync(chatId, messageId, sb.ToString(), keyboard, cancellationToken);
+        }
 
         // Photos stay as separate event-like messages — cannot live inside edited text UI.
         foreach (var h in history)
@@ -352,5 +403,30 @@ internal sealed class TelegramBotOrdersScreen
                 }
             }
         }
+    }
+
+    private Task RenderNotificationMessageAsync(
+        long chatId,
+        int messageId,
+        string text,
+        InlineKeyboardMarkup replyMarkup,
+        bool hasAttachedPhoto,
+        CancellationToken cancellationToken)
+    {
+        return hasAttachedPhoto
+            ? _ui.RenderCaptionAsync(chatId, messageId, text, replyMarkup, cancellationToken)
+            : _ui.RenderAsync(chatId, messageId, text, replyMarkup, cancellationToken);
+    }
+
+    private static string DisplayValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? "пусто"
+            : TelegramBotText.Escape(value);
+    }
+
+    private static bool IsGenericServiceRequestName(string name)
+    {
+        return name is "Индивидуальный запрос" or "Аукционный лот";
     }
 }

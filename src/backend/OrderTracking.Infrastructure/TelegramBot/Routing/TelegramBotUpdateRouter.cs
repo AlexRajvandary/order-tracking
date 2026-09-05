@@ -187,6 +187,7 @@ internal sealed class TelegramBotUpdateRouter
                     chatId.Value,
                     messageId.Value,
                     orderId.Value,
+                    callback.Message?.Photo is { Length: > 0 },
                     cancellationToken);
                 return;
             }
@@ -210,6 +211,7 @@ internal sealed class TelegramBotUpdateRouter
                     chatId.Value,
                     messageId.Value,
                     orderId.Value,
+                    callback.Message?.Photo is { Length: > 0 },
                     cancellationToken);
                 return;
             }

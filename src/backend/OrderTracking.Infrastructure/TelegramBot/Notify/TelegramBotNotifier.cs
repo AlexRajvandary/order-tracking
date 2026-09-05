@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Common.Persistence;
 using OrderTracking.Domain.Enums;
+using OrderTracking.Infrastructure.TelegramBot.Ui;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -66,16 +67,25 @@ internal sealed class TelegramBotNotifier
         {
             try
             {
-                await bot.SendMessage(chatId, text, ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
-
                 if (images is { Count: > 0 })
                 {
-                    await SendOrderImagesAsync(
+                    await SendOrderNotificationWithImagesAsync(
                         bot,
                         chatId,
                         trackingCode,
+                        text,
+                        keyboard,
                         images,
                         cancellationToken);
+                }
+                else
+                {
+                    await bot.SendMessage(
+                        chatId,
+                        text,
+                        ParseMode.Html,
+                        replyMarkup: keyboard,
+                        cancellationToken: cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -171,28 +181,49 @@ internal sealed class TelegramBotNotifier
         }
     }
 
-    private async Task SendOrderImagesAsync(
+    private async Task SendOrderNotificationWithImagesAsync(
         ITelegramBotClient bot,
         long chatId,
         string trackingCode,
+        string text,
+        InlineKeyboardMarkup keyboard,
         IReadOnlyList<TelegramImageAttachment> images,
         CancellationToken cancellationToken)
     {
-        var media = new List<IAlbumInputMedia>(images.Count);
-        var streams = new List<Stream>(images.Count);
+        await using (var firstImage = await _objectStorage.GetAsync(
+                         images[0].ObjectKey,
+                         cancellationToken))
+        {
+            await bot.SendPhoto(
+                chatId,
+                InputFile.FromStream(firstImage, images[0].FileName),
+                caption: TelegramUiService.TruncateForTelegramCaption(text),
+                parseMode: ParseMode.Html,
+                replyMarkup: keyboard,
+                cancellationToken: cancellationToken);
+        }
+
+        var remainingImages = images.Skip(1).ToList();
+        if (remainingImages.Count == 0)
+        {
+            return;
+        }
+
+        var media = new List<IAlbumInputMedia>(remainingImages.Count);
+        var streams = new List<Stream>(remainingImages.Count);
 
         try
         {
-            for (var index = 0; index < images.Count; index++)
+            for (var index = 0; index < remainingImages.Count; index++)
             {
-                var image = images[index];
+                var image = remainingImages[index];
                 var stream = await _objectStorage.GetAsync(image.ObjectKey, cancellationToken);
                 streams.Add(stream);
 
                 var photo = new InputMediaPhoto(InputFile.FromStream(stream, image.FileName));
                 if (index == 0)
                 {
-                    photo.Caption = $"Изображения к заявке {trackingCode}";
+                    photo.Caption = $"Другие изображения к заявке {trackingCode}";
                 }
 
                 media.Add(photo);
@@ -200,12 +231,12 @@ internal sealed class TelegramBotNotifier
 
             if (media.Count == 1)
             {
-                var image = images[0];
+                var image = remainingImages[0];
                 streams[0].Position = 0;
                 await bot.SendPhoto(
                     chatId,
                     InputFile.FromStream(streams[0], image.FileName),
-                    caption: $"Изображение к заявке {trackingCode}",
+                    caption: $"Дополнительное изображение к заявке {trackingCode}",
                     cancellationToken: cancellationToken);
                 return;
             }
