@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Products.Application.Common.Interfaces;
 using Products.Domain.Entities;
 using Products.Domain.Enums;
@@ -8,9 +9,19 @@ namespace Products.Infrastructure.Persistence.Repositories;
 
 public sealed class ProductRepository : IProductRepository
 {
+    private static readonly TimeSpan MixedCandidatesCacheDuration = TimeSpan.FromMinutes(5);
+
+    private static readonly SemaphoreSlim MixedCandidatesCacheLock = new(1, 1);
+
     private readonly ProductsDbContext _db;
 
-    public ProductRepository(ProductsDbContext db) => _db = db;
+    private readonly IMemoryCache _cache;
+
+    public ProductRepository(ProductsDbContext db, IMemoryCache cache)
+    {
+        _db = db;
+        _cache = cache;
+    }
 
     public async Task<(IReadOnlyDictionary<Guid, int> ByCategory, int Total)> CountByCategoryAsync(
         bool? activeOnly,
@@ -105,6 +116,19 @@ public sealed class ProductRepository : IProductRepository
         {
             return await SearchMixedAsync(
                 query,
+                BuildMixedCandidatesCacheKey(
+                    search,
+                    activeOnly,
+                    brandIds,
+                    brandSlugs,
+                    shopIds,
+                    shopSlugs,
+                    conditions,
+                    categoryId,
+                    categorySlug,
+                    includeCategoryChildren,
+                    priceMin,
+                    priceMax),
                 page,
                 pageSize,
                 shuffleSeed,
@@ -124,17 +148,18 @@ public sealed class ProductRepository : IProductRepository
         return (items, total);
     }
 
-    private static async Task<(IReadOnlyList<Product> Items, int Total)> SearchMixedAsync(
+    private async Task<(IReadOnlyList<Product> Items, int Total)> SearchMixedAsync(
         IQueryable<Product> query,
+        string candidatesCacheKey,
         int page,
         int pageSize,
         int shuffleSeed,
         CancellationToken cancellationToken)
     {
-        var candidates = await query
-            .Select(product => new MixedProductCandidate(product.Id, product.CategoryId))
-            .OrderBy(product => product.Id)
-            .ToListAsync(cancellationToken);
+        var candidates = await GetMixedCandidatesAsync(
+            query,
+            candidatesCacheKey,
+            cancellationToken);
 
         var orderedIds = BuildMixedProductOrder(candidates, shuffleSeed);
         var pageIds = orderedIds
@@ -162,6 +187,99 @@ public sealed class ProductRepository : IProductRepository
                 .Select(id => productsById[id])
                 .ToList(),
             candidates.Count);
+    }
+
+    private async Task<IReadOnlyList<MixedProductCandidate>> GetMixedCandidatesAsync(
+        IQueryable<Product> query,
+        string cacheKey,
+        CancellationToken cancellationToken)
+    {
+        if (_cache.TryGetValue(cacheKey, out IReadOnlyList<MixedProductCandidate>? cached)
+            && cached is not null)
+        {
+            return cached;
+        }
+
+        await MixedCandidatesCacheLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_cache.TryGetValue(cacheKey, out cached) && cached is not null)
+            {
+                return cached;
+            }
+
+            IReadOnlyList<MixedProductCandidate> candidates = await query
+                .OrderBy(product => product.Id)
+                .Select(product => new MixedProductCandidate(product.Id, product.CategoryId))
+                .ToListAsync(cancellationToken);
+
+            _cache.Set(
+                cacheKey,
+                candidates,
+                new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = MixedCandidatesCacheDuration,
+                    Size = Math.Max(1, candidates.Count),
+                });
+
+            return candidates;
+        }
+        finally
+        {
+            MixedCandidatesCacheLock.Release();
+        }
+    }
+
+    private static string BuildMixedCandidatesCacheKey(
+        string? search,
+        bool? activeOnly,
+        IReadOnlyList<Guid>? brandIds,
+        IReadOnlyList<string>? brandSlugs,
+        IReadOnlyList<Guid>? shopIds,
+        IReadOnlyList<string>? shopSlugs,
+        IReadOnlyList<ProductCondition>? conditions,
+        Guid? categoryId,
+        string? categorySlug,
+        bool includeCategoryChildren,
+        decimal? priceMin,
+        decimal? priceMax)
+    {
+        var parts = new[]
+        {
+            "products:mixed-candidates:v1",
+            CachePart(search?.Trim()),
+            CachePart(activeOnly?.ToString()),
+            CachePart(JoinCacheValues(brandIds)),
+            CachePart(JoinCacheValues(brandSlugs, value => value.Trim().ToLowerInvariant())),
+            CachePart(JoinCacheValues(shopIds)),
+            CachePart(JoinCacheValues(shopSlugs, value => value.Trim().ToLowerInvariant())),
+            CachePart(JoinCacheValues(conditions)),
+            CachePart(categoryId?.ToString("D")),
+            CachePart(categorySlug?.Trim().ToLowerInvariant()),
+            CachePart(includeCategoryChildren.ToString()),
+            CachePart(priceMin?.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            CachePart(priceMax?.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+        };
+
+        return string.Join('|', parts);
+    }
+
+    private static string? JoinCacheValues<T>(
+        IReadOnlyList<T>? values,
+        Func<T, string>? formatter = null)
+    {
+        if (values is not { Count: > 0 })
+        {
+            return null;
+        }
+
+        formatter ??= value => value is null ? string.Empty : value.ToString() ?? string.Empty;
+        return string.Join(',', values.Select(formatter).Order(StringComparer.Ordinal));
+    }
+
+    private static string CachePart(string? value)
+    {
+        return value is null ? "-" : $"{value.Length}:{value}";
     }
 
     private static IReadOnlyList<Guid> BuildMixedProductOrder(
