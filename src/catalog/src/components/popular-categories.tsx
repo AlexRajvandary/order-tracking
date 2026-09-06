@@ -258,7 +258,7 @@ function DesktopTwoRowSlider({
       <div
         ref={scrollerRef}
         className={cn(
-          "grid grid-flow-col grid-rows-2 gap-4 overflow-x-auto scroll-smooth md:gap-5 lg:gap-6",
+          "grid grid-flow-col grid-rows-2 gap-4 overflow-x-auto py-1 scroll-smooth md:gap-5 lg:gap-6",
           "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           "snap-x snap-mandatory",
           // 5 columns visible: each auto-column is 1/5 of track minus gaps
@@ -267,11 +267,11 @@ function DesktopTwoRowSlider({
           "lg:auto-cols-[calc((100%-4.5rem)/4)]",
           "xl:auto-cols-[calc((100%-4.5rem)/4)]",
         )}
-        style={{ gridTemplateRows: "repeat(2, minmax(210px, 1fr))" }}
+        style={{ gridTemplateRows: "repeat(2, minmax(298px, 1fr))" }}
       >
         {categories.map((category) => (
           <div key={category.id} className="min-w-0 snap-start">
-            <PopularCategoryCard category={category} className="min-h-[270px]" />
+            <PopularCategoryCard category={category} className="min-h-[298px]" />
           </div>
         ))}
       </div>
@@ -393,7 +393,7 @@ export function PopularCategories({ className }: PopularCategoriesProps) {
           <PopularCategoryCard
             key={category.id}
             category={category}
-            className="min-h-[230px] rounded-2xl"
+            className="min-h-[254px] rounded-2xl"
           />
         ))}
       </div>

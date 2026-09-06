@@ -92,7 +92,7 @@ export function OrderProcess() {
           ))}
         </div>
         <div className="mt-9 flex justify-center">
-          <Link href="/categories/all" className="inline-flex h-12 items-center gap-4 rounded-full border border-[#d7d7d7] bg-white px-6 text-sm font-medium shadow-sm transition-colors hover:border-[#48bde9] hover:text-[#28a6d6]">
+          <Link href="/individual-request" className="inline-flex h-12 items-center gap-4 rounded-full border border-[#d7d7d7] bg-white px-6 text-sm font-medium shadow-sm transition-colors hover:border-[#48bde9] hover:text-[#28a6d6]">
             <span className="flex size-8 items-center justify-center rounded-full bg-[#e9f8fd] text-xl text-[#48bde9]">→</span>
             Оформить заявку
           </Link>
