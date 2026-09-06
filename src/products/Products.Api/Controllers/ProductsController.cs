@@ -40,6 +40,8 @@ public sealed class ProductsController : ControllerBase
         [FromQuery] decimal? priceMax = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
+        [FromQuery] string? sort = null,
+        [FromQuery] int? shuffleSeed = null,
         CancellationToken cancellationToken = default) =>
         _mediator.Send(
             new ListProductsQuery(
@@ -56,7 +58,9 @@ public sealed class ProductsController : ControllerBase
                 priceMin,
                 priceMax,
                 page,
-                pageSize),
+                pageSize,
+                sort,
+                shuffleSeed),
             cancellationToken);
 
     [HttpGet("{id:guid}")]

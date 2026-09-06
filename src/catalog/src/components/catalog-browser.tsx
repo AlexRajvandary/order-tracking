@@ -70,6 +70,7 @@ type CatalogBrowserProps = {
     pageSize: number;
     total: number;
     basePath: string;
+    shuffleSeed?: number;
   };
 };
 
@@ -421,6 +422,7 @@ export function CatalogBrowser({
     activeChildSlug ?? "",
     selectedBrandSlugs.join(","),
     selectedShopSlugs.join(","),
+    pagination?.shuffleSeed ?? "default",
     pagination?.page ?? 1,
   ].join("|");
   const productsPending = pendingDatasetKey === mobileDatasetKey;
@@ -530,6 +532,10 @@ export function CatalogBrowser({
     if (activeRootSlug && !activeChildSlug) params.set("includeCategoryChildren", "true");
     if (selectedBrandSlugs.length > 0) params.set("brands", selectedBrandSlugs.join(","));
     if (selectedShopSlugs.length > 0) params.set("shops", selectedShopSlugs.join(","));
+    if (pagination.shuffleSeed != null) {
+      params.set("sort", "mixed");
+      params.set("shuffleSeed", String(pagination.shuffleSeed));
+    }
 
     try {
       const response = await fetch(`/api/catalog-products?${params}`);

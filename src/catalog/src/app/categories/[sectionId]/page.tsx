@@ -27,6 +27,7 @@ type PageProps = {
     sub?: string;
     brands?: string;
     shops?: string;
+    shuffleSeed?: string;
   }>;
 };
 
@@ -40,11 +41,13 @@ function buildBasePath(
   subSlug?: string,
   brandSlugs?: string[],
   shopSlugs?: string[],
+  shuffleSeed?: number,
 ) {
   const qs = new URLSearchParams();
   if (subSlug) qs.set("sub", subSlug);
   if (brandSlugs && brandSlugs.length > 0) qs.set("brands", brandSlugs.join(","));
   if (shopSlugs && shopSlugs.length > 0) qs.set("shops", shopSlugs.join(","));
+  if (shuffleSeed != null) qs.set("shuffleSeed", String(shuffleSeed));
   const search = qs.toString();
   return search ? `/categories/${rootSlug}?${search}` : `/categories/${rootSlug}`;
 }
@@ -59,6 +62,7 @@ export default async function CategorySectionPage({
     sub: subParam,
     brands: brandsParam,
     shops: shopsParam,
+    shuffleSeed: shuffleSeedParam,
   } = await searchParams;
   const page = parsePage(pageParam);
   const subSlug = subParam ? safeDecode(subParam) : undefined;
@@ -66,6 +70,12 @@ export default async function CategorySectionPage({
   const selectedShopSlugs = parseCsvParam(shopsParam);
   const decodedSectionId = safeDecode(sectionId);
   const isAllCategories = decodedSectionId === "all";
+  const parsedShuffleSeed = Number(shuffleSeedParam);
+  const shuffleSeed = isAllCategories
+    ? Number.isSafeInteger(parsedShuffleSeed) && parsedShuffleSeed >= 0
+      ? parsedShuffleSeed
+      : Math.floor(Math.random() * 2_147_483_647)
+    : undefined;
 
   const categoryTreePromise = fetchCategoryTree({
     includeProductCounts: true,
@@ -83,6 +93,7 @@ export default async function CategorySectionPage({
         pageSize: PRODUCTS_PAGE_SIZE,
         brandSlugs: selectedBrandSlugs,
         shopSlugs: selectedShopSlugs,
+        shuffleSeed,
       })
     : fetchCatalogPage({
         rootCategorySlug: decodedSectionId,
@@ -149,7 +160,9 @@ export default async function CategorySectionPage({
                 child?.slug,
                 selectedBrandSlugs,
                 selectedShopSlugs,
+                shuffleSeed,
               ),
+              shuffleSeed,
             }}
           />
         </Suspense>

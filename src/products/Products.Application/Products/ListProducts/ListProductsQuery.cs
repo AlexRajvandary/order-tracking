@@ -20,7 +20,9 @@ public sealed record ListProductsQuery(
     decimal? PriceMin = null,
     decimal? PriceMax = null,
     int Page = 1,
-    int PageSize = 20) : IRequest<ProductListResult>;
+    int PageSize = 20,
+    string? Sort = null,
+    int? ShuffleSeed = null) : IRequest<ProductListResult>;
 
 public sealed class ListProductsQueryValidator : AbstractValidator<ListProductsQuery>
 {
@@ -33,6 +35,9 @@ public sealed class ListProductsQueryValidator : AbstractValidator<ListProductsQ
         RuleFor(x => x.Shop).MaximumLength(200).When(x => !string.IsNullOrWhiteSpace(x.Shop));
         RuleFor(x => x.Condition).MaximumLength(64).When(x => !string.IsNullOrWhiteSpace(x.Condition));
         RuleFor(x => x.Category).MaximumLength(200).When(x => !string.IsNullOrWhiteSpace(x.Category));
+        RuleFor(x => x.Sort)
+            .Must(value => string.IsNullOrWhiteSpace(value) || value.Equals("mixed", StringComparison.OrdinalIgnoreCase))
+            .WithMessage("Sort must be 'mixed'");
         RuleFor(x => x.PriceMin).GreaterThanOrEqualTo(0).When(x => x.PriceMin.HasValue);
         RuleFor(x => x.PriceMax).GreaterThanOrEqualTo(0).When(x => x.PriceMax.HasValue);
     }
@@ -93,6 +98,8 @@ public sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery
             request.PriceMax,
             request.Page,
             request.PageSize,
+            request.Sort?.Equals("mixed", StringComparison.OrdinalIgnoreCase) == true,
+            request.ShuffleSeed ?? 0,
             cancellationToken);
 
         return new ProductListResult(

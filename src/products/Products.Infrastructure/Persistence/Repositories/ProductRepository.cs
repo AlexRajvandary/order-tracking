@@ -82,6 +82,8 @@ public sealed class ProductRepository : IProductRepository
         decimal? priceMax,
         int page,
         int pageSize,
+        bool mixCategories,
+        int shuffleSeed,
         CancellationToken cancellationToken = default)
     {
         var query = await BuildFilterQueryAsync(
@@ -99,6 +101,16 @@ public sealed class ProductRepository : IProductRepository
             priceMax,
             cancellationToken);
 
+        if (mixCategories)
+        {
+            return await SearchMixedAsync(
+                query,
+                page,
+                pageSize,
+                shuffleSeed,
+                cancellationToken);
+        }
+
         var total = await query.CountAsync(cancellationToken);
         var items = await query
             .Include(p => p.Shop)
@@ -111,6 +123,90 @@ public sealed class ProductRepository : IProductRepository
 
         return (items, total);
     }
+
+    private static async Task<(IReadOnlyList<Product> Items, int Total)> SearchMixedAsync(
+        IQueryable<Product> query,
+        int page,
+        int pageSize,
+        int shuffleSeed,
+        CancellationToken cancellationToken)
+    {
+        var candidates = await query
+            .Select(product => new MixedProductCandidate(product.Id, product.CategoryId))
+            .OrderBy(product => product.Id)
+            .ToListAsync(cancellationToken);
+
+        var orderedIds = BuildMixedProductOrder(candidates, shuffleSeed);
+        var pageIds = orderedIds
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        if (pageIds.Count == 0)
+        {
+            return ([], candidates.Count);
+        }
+
+        var pageIdSet = pageIds.ToHashSet();
+        var products = await query
+            .Where(product => pageIdSet.Contains(product.Id))
+            .Include(product => product.Shop)
+            .Include(product => product.BrandEntity)
+            .Include(product => product.Category)
+            .ToListAsync(cancellationToken);
+        var productsById = products.ToDictionary(product => product.Id);
+
+        return (
+            pageIds
+                .Where(productsById.ContainsKey)
+                .Select(id => productsById[id])
+                .ToList(),
+            candidates.Count);
+    }
+
+    private static IReadOnlyList<Guid> BuildMixedProductOrder(
+        IReadOnlyList<MixedProductCandidate> candidates,
+        int shuffleSeed)
+    {
+        var random = new Random(shuffleSeed);
+        var categoryGroups = candidates
+            .GroupBy(candidate => candidate.CategoryId)
+            .OrderBy(group => group.Key?.ToString() ?? string.Empty)
+            .Select(group => group.Select(candidate => candidate.Id).ToList())
+            .ToList();
+
+        foreach (var group in categoryGroups)
+        {
+            Shuffle(group, random);
+        }
+
+        Shuffle(categoryGroups, random);
+
+        var result = new List<Guid>(candidates.Count);
+        for (var itemIndex = 0; result.Count < candidates.Count; itemIndex++)
+        {
+            foreach (var group in categoryGroups)
+            {
+                if (itemIndex < group.Count)
+                {
+                    result.Add(group[itemIndex]);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private static void Shuffle<T>(IList<T> items, Random random)
+    {
+        for (var index = items.Count - 1; index > 0; index--)
+        {
+            var swapIndex = random.Next(index + 1);
+            (items[index], items[swapIndex]) = (items[swapIndex], items[index]);
+        }
+    }
+
+    private sealed record MixedProductCandidate(Guid Id, Guid? CategoryId);
 
     public async Task<int> SetIsActiveAsync(
         bool isActive,

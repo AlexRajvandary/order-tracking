@@ -14,6 +14,12 @@ function csv(value: string | null): string[] {
     .filter(Boolean);
 }
 
+function optionalInt(value: string | null): number | undefined {
+  if (value == null) return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
+}
+
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
 
@@ -26,6 +32,8 @@ export async function GET(request: NextRequest) {
       includeCategoryChildren: params.get("includeCategoryChildren") === "true",
       brandSlugs: csv(params.get("brands")),
       shopSlugs: csv(params.get("shops")),
+      sort: params.get("sort") === "mixed" ? "mixed" : undefined,
+      shuffleSeed: optionalInt(params.get("shuffleSeed")),
     });
 
     return NextResponse.json(result);

@@ -144,6 +144,8 @@ export async function fetchProductsPage(options?: {
   conditions?: Array<"new" | "used">;
   categorySlug?: string;
   includeCategoryChildren?: boolean;
+  sort?: "mixed";
+  shuffleSeed?: number;
 }): Promise<ApiProductListResult> {
   const page = options?.page && options.page > 0 ? options.page : 1;
   const pageSize =
@@ -173,6 +175,10 @@ export async function fetchProductsPage(options?: {
   }
   if (options?.includeCategoryChildren) {
     params.set("includeCategoryChildren", "true");
+  }
+  if (options?.sort) params.set("sort", options.sort);
+  if (options?.shuffleSeed != null) {
+    params.set("shuffleSeed", String(options.shuffleSeed));
   }
 
   const url = `${productsApiBaseUrl()}/api/products?${params}`;
@@ -288,6 +294,7 @@ export async function fetchAllCatalogPage(options?: {
   pageSize?: number;
   brandSlugs?: string[];
   shopSlugs?: string[];
+  shuffleSeed?: number;
 }): Promise<{
   products: CatalogProduct[];
   total: number;
@@ -300,6 +307,8 @@ export async function fetchAllCatalogPage(options?: {
     brandSlugs: options?.brandSlugs,
     shopSlugs: options?.shopSlugs,
     activeOnly: true,
+    sort: "mixed",
+    shuffleSeed: options?.shuffleSeed,
   });
 
   return {

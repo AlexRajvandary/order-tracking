@@ -28,6 +28,8 @@ public interface IProductRepository
         decimal? priceMax,
         int page,
         int pageSize,
+        bool mixCategories,
+        int shuffleSeed,
         CancellationToken cancellationToken = default);
     Task<int> SetIsActiveAsync(
         bool isActive,
