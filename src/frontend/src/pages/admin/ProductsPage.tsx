@@ -611,6 +611,19 @@ function ProductsToolbarPagination({
   )
 }
 
+function formatImageSize(bytes: number | null | undefined, locale: string) {
+  if (bytes == null || bytes < 0) return 'Неизвестно'
+  if (bytes < 1024) return `${bytes} Б`
+  const units = ['КБ', 'МБ', 'ГБ']
+  let value = bytes / 1024
+  let unit = 0
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024
+    unit += 1
+  }
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value)} ${units[unit]}`
+}
+
 function ProductGridItem({
   product,
   selected,
@@ -916,6 +929,14 @@ export function ProductsPage() {
 
   const activeDisplayItems = isMobileProductsLayout ? mobileDisplayItems : displayItems
 
+  const imageSizesQuery = useQuery({
+    queryKey: ['admin-product-image-sizes', activeDisplayItems.map((product) => product.id)],
+    queryFn: ({ signal }) =>
+      productsApi.getProductImageSizes(activeDisplayItems.map((product) => product.id), signal),
+    enabled: !isMobileProductsLayout && activeDisplayItems.length > 0,
+    staleTime: 12 * 60 * 60 * 1000,
+  })
+
   const tableColumns = useMemo<ColumnDef<Product>[]>(() => {
     const text = (id: keyof Product, label: string, filterVariant?: 'text' | 'numberRange' | 'dateRange', filterFn?: ColumnDef<Product>['filterFn']) => {
       const inferredVariant = filterVariant ?? (id === 'id' || id === 'nameRu' || id === 'name' || id === 'sku' ? 'text' : id === 'price' || id === 'originalPrice' ? 'numberRange' : id === 'createdAt' || id === 'updatedAt' ? 'dateRange' : undefined)
@@ -949,6 +970,21 @@ export function ProductsPage() {
           </div>
         ),
       },
+      {
+        id: 'imageSize',
+        accessorFn: (row: Product) => imageSizesQuery.data?.[row.id] ?? null,
+        enableColumnFilter: false,
+        enableSorting: false,
+        meta: { label: 'Вес изображения' },
+        header: ({ column, table }: any) => (
+          <DataTableColumnHeader column={column} table={table} title="Вес изображения" />
+        ),
+        cell: ({ row }: any) => {
+          const size = imageSizesQuery.data?.[row.original.id]
+          if (imageSizesQuery.isLoading) return <span className="text-muted-foreground">…</span>
+          return <span className="whitespace-nowrap">{formatImageSize(size, i18n.language)}</span>
+        },
+      },
       text('nameRu', 'Русское название'),
       text('id', 'ID'), text('name', 'Название'), text('sku', 'SKU'), text('description', 'Описание'),
       text('brand', 'Бренд'), text('condition', 'Состояние'), text('categoryName', 'Категория'),
@@ -956,7 +992,7 @@ export function ProductsPage() {
       text('currencyCode', 'Валюта'), text('sourceUrl', 'Ссылка на источник'), text('isActive', 'Публичный'),
       text('createdAt', 'Создан'), text('updatedAt', 'Изменён'),
     ]
-  }, [])
+  }, [i18n.language, imageSizesQuery.data, imageSizesQuery.isLoading])
 
   const totalPages = Math.max(
     1,

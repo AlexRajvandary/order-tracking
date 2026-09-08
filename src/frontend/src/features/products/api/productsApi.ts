@@ -109,6 +109,16 @@ export function getProduct(id: string, signal?: AbortSignal) {
   return authorizedJsonFromUrl<Product>(`${PRODUCTS_API_BASE}/${id}`, { signal })
 }
 
+export function getProductImageSizes(ids: string[], signal?: AbortSignal) {
+  if (ids.length === 0) return Promise.resolve({} as Record<string, number | null>)
+  const search = new URLSearchParams()
+  ids.forEach((id) => search.append('ids', id))
+  return authorizedJsonFromUrl<Record<string, number | null>>(
+    `${PRODUCTS_API_BASE}/image-sizes?${search.toString()}`,
+    { signal },
+  )
+}
+
 export function listCategories(productsActiveOnly?: boolean | null, signal?: AbortSignal) {
   const search = new URLSearchParams({
     activeOnly: 'true',

@@ -6,6 +6,7 @@ using Products.Application.Products.BulkUpdateProducts;
 using Products.Application.Products.DeleteProduct;
 using Products.Application.Products.GetProduct;
 using Products.Application.Products.GetProductAudit;
+using Products.Application.Products.GetProductImageSizes;
 using Products.Application.Products.ImportProducts;
 using Products.Application.Products.ListProducts;
 using Products.Application.Products.PatchProduct;
@@ -104,6 +105,13 @@ public sealed class ProductsController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default) =>
         _mediator.Send(new GetProductAuditQuery(id, page, pageSize), cancellationToken);
+
+    [HttpGet("image-sizes")]
+    [Authorize]
+    public Task<IReadOnlyDictionary<Guid, long?>> GetImageSizes(
+        [FromQuery] Guid[] ids,
+        CancellationToken cancellationToken) =>
+        _mediator.Send(new GetProductImageSizesQuery(ids), cancellationToken);
 
     [HttpPost]
     [Authorize]

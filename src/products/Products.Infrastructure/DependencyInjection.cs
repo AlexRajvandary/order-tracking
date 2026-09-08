@@ -5,6 +5,7 @@ using Products.Application.Common.Interfaces;
 using Products.Infrastructure.Persistence;
 using Products.Infrastructure.Persistence.Interceptors;
 using Products.Infrastructure.Persistence.Repositories;
+using Products.Infrastructure.Services;
 
 namespace Products.Infrastructure;
 
@@ -39,6 +40,14 @@ public static class DependencyInjection
         services.AddScoped<IShopRepository, ShopRepository>();
         services.AddScoped<IProductAuditWriter, ProductAuditWriter>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddHttpClient<IProductImageSizeReader, ProductImageSizeReader>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(8);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("OrderTracking-ImageSize/1.0");
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            AllowAutoRedirect = false,
+        });
 
         return services;
     }
