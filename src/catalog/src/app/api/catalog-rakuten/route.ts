@@ -11,7 +11,8 @@ export async function GET(request: Request) {
     const response = await fetch(target, { cache: "no-store", signal: AbortSignal.timeout(18_000) });
     const body = await response.text();
     const contentType = response.headers.get("Content-Type") || "";
-    if (!contentType.includes("application/json")) {
+    const isJson = contentType.includes("application/json") || contentType.includes("+json");
+    if (!isJson) {
       return NextResponse.json({ title: "Ошибка сервера каталога", detail: `Products API вернул HTTP ${response.status} вместо JSON. Проверьте логи products-api.` }, { status: response.ok ? 502 : response.status });
     }
     return new NextResponse(body, { status: response.status, headers: { "Content-Type": "application/json" } });
