@@ -3,6 +3,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { FavoriteButton } from "@/components/favorite-button";
 import type { CatalogProduct } from "@/lib/catalog-products";
 import { formatPrice } from "@/lib/products";
+import { RakutenCartButton } from "@/components/rakuten-cart-button";
 
 type ProductCardProps = {
   product: CatalogProduct;
@@ -49,6 +50,7 @@ export function ProductCard({ product }: ProductCardProps) {
       </Link>
 
       {product.source !== "Rakuten" ? <FavoriteButton productId={product.id} product={product} /> : null}
+      {product.source === "Rakuten" ? <RakutenCartButton product={product} /> : null}
     </Card>
   );
 }

@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronRight, Search } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { CatalogSearchSuggestions } from "@/components/catalog-search-suggestions";
 import type { ApiCategory } from "@/lib/categories-api";
 import { categoryHref } from "@/lib/categories-api";
 import { cn } from "@/lib/utils";
@@ -103,20 +104,7 @@ export function CategoryTree({
         Категории
       </p>
 
-      <label className="relative mb-3 block">
-        <span className="sr-only">Поиск категорий</span>
-        <input
-          type="search"
-          value={query}
-          placeholder="Поиск категорий"
-          className="h-9 w-full rounded-md border border-[#D1D5DB] bg-transparent px-3 pr-9 text-sm text-[#1F2937] outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-[#9CA3AF]"
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        <Search
-          aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-[#9CA3AF]"
-        />
-      </label>
+      <CatalogSearchSuggestions categories={categories} value={query} onChange={setQuery} onNavigate={onNavigate} />
 
       {categories.length === 0 ? (
         <p className="text-sm text-muted-foreground">Категории пока не загружены</p>

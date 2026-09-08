@@ -13,6 +13,8 @@ import {
 import {
   fetchAllCatalogPage,
   fetchCatalogPage,
+  fetchRakutenCategoryPage,
+  mapRakutenProductToCatalog,
   PRODUCTS_PAGE_SIZE,
 } from "@/lib/products-api";
 import {
@@ -131,13 +133,21 @@ export default async function CategorySectionPage({
     brandsPromise,
   ]);
 
+  const showRakutenTcg = root?.slug === "tcg" && !child
+    && selectedBrandSlugs.length === 0 && selectedShopSlugs.length === 0;
+  const rakutenProducts = showRakutenTcg
+    ? await fetchRakutenCategoryPage({ genreId: 406864, page, pageSize: 20 })
+        .then(result => result.items.map(mapRakutenProductToCatalog))
+        .catch(() => [])
+    : [];
+
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-6 sm:px-8 lg:px-10">
         <Suspense fallback={<p className="text-sm text-muted-foreground">Загрузка…</p>}>
           <CatalogBrowser
-            products={catalog.products}
+            products={[...catalog.products, ...rakutenProducts]}
             title={isAllCategories ? "Все товары" : (child?.name ?? root!.name)}
             parentBreadcrumb={
               child && root

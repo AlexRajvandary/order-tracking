@@ -37,6 +37,17 @@ export type ApiProductListResult = {
   pageSize: number;
 };
 
+export type ApiExternalProduct = {
+  id: string; source: "Rakuten"; externalId: string; name: string;
+  description: string | null; price: number; currencyCode: string;
+  imageUrl: string | null; sourceUrl: string | null; affiliateUrl: string | null;
+  shopName: string | null; available: boolean; rating: number | null; reviewCount: number | null;
+};
+
+type ApiExternalProductListResult = {
+  items: ApiExternalProduct[]; total: number; page: number; pageSize: number; totalPages: number;
+};
+
 export type ApiProductVariant = {
   id: string;
   productId: string;
@@ -275,6 +286,36 @@ export async function fetchCatalogPage(options: {
     page: result.page,
     pageSize: result.pageSize,
   };
+}
+
+export function mapRakutenProductToCatalog(product: ApiExternalProduct): CatalogProduct {
+  const description = product.description?.trim() || product.name;
+  return {
+    id: product.id, slug: product.id, source: "Rakuten", externalId: product.externalId,
+    originalUnitPrice: product.price, originalCurrencyCode: product.currencyCode,
+    affiliateUrl: product.affiliateUrl ?? undefined, name: product.name,
+    category: "Коллекционные карточные игры", sectionId: "tcg", categorySlug: "tcg",
+    priceRub: convertPriceToRub(product.price, product.currencyCode) ?? 0, currency: "RUB",
+    shortDescription: description.split("\n")[0] ?? product.name, description,
+    tags: ["rakuten", "кки"], tint: "#bf0000", inStock: product.available,
+    imageUrl: product.imageUrl ?? undefined, shopName: product.shopName ?? undefined,
+    sourceUrl: product.sourceUrl ?? undefined, rating: product.rating ?? undefined,
+    reviewsCount: product.reviewCount ?? undefined,
+  };
+}
+
+export async function fetchRakutenCategoryPage(options: { genreId: number; page?: number; pageSize?: number }): Promise<ApiExternalProductListResult> {
+  const params = new URLSearchParams({ genreId: String(options.genreId), page: String(options.page ?? 1), pageSize: String(Math.min(options.pageSize ?? 20, 30)) });
+  const response = await fetch(`${productsApiBaseUrl()}/api/products/external/rakuten/search?${params}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Rakuten catalog API ${response.status}`);
+  return (await response.json()) as ApiExternalProductListResult;
+}
+
+export async function fetchRakutenSearch(keyword: string, pageSize = 10): Promise<ApiExternalProductListResult> {
+  const params = new URLSearchParams({ keyword, page: "1", pageSize: String(Math.min(pageSize, 30)) });
+  const response = await fetch(`${productsApiBaseUrl()}/api/products/external/rakuten/search?${params}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Rakuten search API ${response.status}`);
+  return (await response.json()) as ApiExternalProductListResult;
 }
 
 export async function fetchProductRelations(productId: string): Promise<{
