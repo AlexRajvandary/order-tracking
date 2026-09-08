@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, ImageOff, Languages, MoreHorizontal, PanelLeft, PanelLeftClose, Pencil, Plus, Trash2, X, Table2, LayoutGrid } from 'lucide-react'
+import { ArrowUpDown, CheckSquare, ChevronLeft, ChevronRight, EyeOff, ImageDown, ImageOff, Languages, MoreHorizontal, PanelLeft, PanelLeftClose, Pencil, Plus, Trash2, X, Table2, LayoutGrid } from 'lucide-react'
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -654,7 +654,7 @@ function ProductGridItem({
       >
         <div className="relative aspect-square bg-muted">
           <img
-            src={product.imageUrl}
+            src={product.localImageUrl || product.imageUrl}
             alt=""
             referrerPolicy="no-referrer"
             className="size-full object-cover"
@@ -734,7 +734,7 @@ export function ProductsPage() {
   const [editing, setEditing] = useState<Product | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
-  const [importDialogSource, setImportDialogSource] = useState<'json' | 'html' | 'crawler' | 'translation'>('json')
+  const [importDialogSource, setImportDialogSource] = useState<'json' | 'html' | 'crawler' | 'translation' | 'images'>('json')
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [categoriesPanelVisible, setCategoriesPanelVisible] = useState(true)
   const [columnsToolbarContainer, setColumnsToolbarContainer] = useState<HTMLDivElement | null>(null)
@@ -950,7 +950,7 @@ export function ProductsPage() {
     return [
       {
         id: 'image',
-        accessorFn: (row: Product) => row.imageUrl ?? '',
+        accessorFn: (row: Product) => row.localImageUrl || row.imageUrl || '',
         enableColumnFilter: false,
         enableSorting: false,
         meta: { label: 'Изображение' },
@@ -958,9 +958,9 @@ export function ProductsPage() {
         cell: ({ row }: any) => (
           <div className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted/40">
             <ImageOff className="size-4 text-muted-foreground/60" />
-            {row.original.imageUrl ? (
+            {row.original.localImageUrl || row.original.imageUrl ? (
               <img
-                src={row.original.imageUrl}
+                src={row.original.localImageUrl || row.original.imageUrl}
                 alt=""
                 className="absolute inset-0 size-full object-contain"
                 loading="lazy"
@@ -990,6 +990,7 @@ export function ProductsPage() {
       text('brand', 'Бренд'), text('condition', 'Состояние'), text('categoryName', 'Категория'),
       text('shopName', 'Магазин'), text('price', 'Цена'), text('originalPrice', 'Цена оригинала'),
       text('currencyCode', 'Валюта'), text('sourceUrl', 'Ссылка на источник'), text('isActive', 'Публичный'),
+      text('localImageUrl', 'MinIO URL'),
       text('createdAt', 'Создан'), text('updatedAt', 'Изменён'),
     ]
   }, [i18n.language, imageSizesQuery.data, imageSizesQuery.isLoading])
@@ -1298,6 +1299,10 @@ export function ProductsPage() {
           <Button type="button" size="sm" variant="outline" onClick={() => { setImportDialogSource('translation'); setImportDialogOpen(true) }}>
             <Languages />
             Перевод
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => { setImportDialogSource('images'); setImportDialogOpen(true) }}>
+            <ImageDown />
+            Загрузить фото
           </Button>
           <Button
             type="button"

@@ -22,6 +22,7 @@ public sealed record ProductDto(
     decimal? OriginalPrice,
     string? OriginalCurrencyCode,
     string ImageUrl,
+    string? LocalImageUrl,
     string? SourceUrl,
     bool IsActive,
     DateTimeOffset CreatedAt,

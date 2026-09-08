@@ -13,6 +13,7 @@ using Products.Application.Products.PatchProduct;
 using Products.Application.Products.SetProductsVisibility;
 using Products.Application.Products.UpdateProduct;
 using Products.Application.Products.Translations;
+using Products.Infrastructure.Services;
 
 namespace Products.Api.Controllers;
 
@@ -21,8 +22,13 @@ namespace Products.Api.Controllers;
 public sealed class ProductsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ProductImageStorage _imageStorage;
 
-    public ProductsController(IMediator mediator) => _mediator = mediator;
+    public ProductsController(IMediator mediator, ProductImageStorage imageStorage)
+    {
+        _mediator = mediator;
+        _imageStorage = imageStorage;
+    }
 
     [HttpGet]
     [AllowAnonymous]
@@ -70,6 +76,15 @@ public sealed class ProductsController : ControllerBase
         Guid id,
         CancellationToken cancellationToken) =>
         _mediator.Send(new GetProductByIdQuery(id), cancellationToken);
+
+    [HttpGet("{id:guid}/image/{fileName}")]
+    [AllowAnonymous]
+    [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)]
+    public async Task<IActionResult> GetLocalImage(Guid id, string fileName, CancellationToken cancellationToken)
+    {
+        var image = await _imageStorage.GetAsync(id, fileName, cancellationToken);
+        return File(image.Content, image.ContentType, enableRangeProcessing: true);
+    }
 
     [HttpGet("by-slug/{*slug}")]
     [AllowAnonymous]

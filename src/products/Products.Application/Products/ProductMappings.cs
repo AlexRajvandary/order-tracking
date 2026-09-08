@@ -29,6 +29,7 @@ internal static class ProductMappings
             product.OriginalPrice,
             product.OriginalCurrencyCode,
             product.ImageUrl,
+            product.LocalImageUrl,
             product.SourceUrl,
             product.IsActive,
             product.CreatedAt,

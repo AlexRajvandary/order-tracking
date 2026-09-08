@@ -26,6 +26,7 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.OriginalPrice).HasPrecision(18, 2);
         builder.Property(x => x.OriginalCurrencyCode).HasMaxLength(3).IsFixedLength();
         builder.Property(x => x.ImageUrl).HasMaxLength(2000).IsRequired();
+        builder.Property(x => x.LocalImageUrl).HasMaxLength(2000);
         builder.Property(x => x.SourceUrl).HasMaxLength(2000);
 
         builder.HasOne(x => x.BrandEntity)

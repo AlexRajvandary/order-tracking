@@ -1,4 +1,4 @@
-import { ExternalLink, FileCode2, FileJson, ImageOff, Languages, ListTodo, Upload } from 'lucide-react'
+import { ExternalLink, FileCode2, FileJson, ImageDown, ImageOff, Languages, ListTodo, Upload } from 'lucide-react'
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
@@ -45,6 +45,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import { Textarea } from '@/shared/ui/textarea'
 import { CrawlerJobsPanel } from './CrawlerJobsPanel'
 import { TranslationJobsPanel } from './TranslationJobsPanel'
+import { ImageImportJobsPanel } from './ImageImportJobsPanel'
 
 const IMPORT_BATCH_SIZE = 100
 const CATEGORY_FROM_SOURCE = '__category_from_source__'
@@ -71,7 +72,7 @@ type ImportSummary = Omit<ImportProductsResult, 'total' | 'issues'> & {
   issues: ImportProductIssue[]
 }
 
-type ImportSource = 'json' | 'html' | 'crawler' | 'translation'
+type ImportSource = 'json' | 'html' | 'crawler' | 'translation' | 'images'
 
 type CategoryOption = {
   id: string
@@ -375,6 +376,9 @@ export function ProductsImportDialog({
               <TabsTrigger value="translation" disabled={isImporting}>
                 <Languages />Перевод
               </TabsTrigger>
+              <TabsTrigger value="images" disabled={isImporting}>
+                <ImageDown />Изображения
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -382,6 +386,8 @@ export function ProductsImportDialog({
             <CrawlerJobsPanel categories={categories} />
           ) : source === 'translation' ? (
             <TranslationJobsPanel />
+          ) : source === 'images' ? (
+            <ImageImportJobsPanel />
           ) : <>
           <p className="text-sm text-muted-foreground">
             {t(source === 'json' ? 'import.description' : 'import.htmlDescription')}

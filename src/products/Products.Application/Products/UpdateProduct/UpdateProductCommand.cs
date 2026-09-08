@@ -95,7 +95,12 @@ public sealed class UpdateProductCommandHandler : IRequestHandler<UpdateProductC
         product.OriginalCurrencyCode = string.IsNullOrWhiteSpace(request.OriginalCurrencyCode)
             ? null
             : request.OriginalCurrencyCode.Trim().ToUpperInvariant();
-        product.ImageUrl = request.ImageUrl.Trim();
+        var imageUrl = request.ImageUrl.Trim();
+        if (!string.Equals(product.ImageUrl, imageUrl, StringComparison.Ordinal))
+        {
+            product.ImageUrl = imageUrl;
+            product.LocalImageUrl = null;
+        }
         product.SourceUrl = string.IsNullOrWhiteSpace(request.SourceUrl) ? null : request.SourceUrl.Trim();
         product.IsActive = request.IsActive;
         if (!string.IsNullOrWhiteSpace(request.Condition)
@@ -130,6 +135,7 @@ public sealed class UpdateProductCommandHandler : IRequestHandler<UpdateProductC
             OriginalPrice = source.OriginalPrice,
             OriginalCurrencyCode = source.OriginalCurrencyCode,
             ImageUrl = source.ImageUrl,
+            LocalImageUrl = source.LocalImageUrl,
             SourceUrl = source.SourceUrl,
             IsActive = source.IsActive,
             CreatedAt = source.CreatedAt,

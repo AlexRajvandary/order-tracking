@@ -22,6 +22,7 @@ export type ApiProduct = {
   originalPrice: number | null;
   originalCurrencyCode: string | null;
   imageUrl: string;
+  localImageUrl: string | null;
   /** URL of this product on the source shop website */
   sourceUrl: string | null;
   isActive: boolean;
@@ -120,7 +121,7 @@ export function mapApiProductToCatalog(
     tags: [categoryName.toLowerCase(), ...(discount ? [discount] : [])],
     tint: "#0f3d4c",
     inStock: p.isActive,
-    imageUrl: p.imageUrl,
+    imageUrl: p.localImageUrl || p.imageUrl,
     brand: p.brand ?? undefined,
     brandId: p.brandId ?? undefined,
     brandSlug: p.brandSlug ?? undefined,

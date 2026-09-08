@@ -28,6 +28,8 @@ public class Product : AuditableEntity
     public decimal? OriginalPrice { get; set; }
     public string? OriginalCurrencyCode { get; set; }
     public string ImageUrl { get; set; } = string.Empty;
+    /// <summary>Locally hosted image URL. Original ImageUrl is always preserved.</summary>
+    public string? LocalImageUrl { get; set; }
     /// <summary>URL of this product on the source shop website.</summary>
     public string? SourceUrl { get; set; }
     public bool IsActive { get; set; } = true;

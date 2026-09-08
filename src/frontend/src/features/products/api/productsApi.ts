@@ -26,6 +26,8 @@ import type {
   StorefrontAnnouncement,
   CreateTranslationJobRequest,
   TranslationJob,
+  CreateImageImportJobRequest,
+  ImageImportJob,
 } from '../types'
 
 const PRODUCTS_API_BASE = '/api/products'
@@ -57,6 +59,7 @@ const MOCK_PRODUCTS: Product[] = Array.from({ length: 50 }, (_, index) => {
     originalPrice: 1200 + number * 300,
     originalCurrencyCode: 'JPY',
     imageUrl: '/assets/womens-dresses-wide.png',
+    localImageUrl: null,
     sourceUrl: `https://example.com/mock-product-${number}`,
     isActive: number % 9 !== 0,
     createdAt: timestamp,
@@ -275,6 +278,30 @@ export function cancelTranslationJob(id: string) {
   return authorizedJsonFromUrl<TranslationJob>(`${TRANSLATION_JOBS_API_BASE}/${id}/cancel`, {
     method: 'POST',
   })
+}
+
+const IMAGE_IMPORT_JOBS_API_BASE = '/api/products/image-import-jobs'
+
+export function listImageImportJobs(signal?: AbortSignal) {
+  return authorizedJsonFromUrl<ImageImportJob[]>(IMAGE_IMPORT_JOBS_API_BASE, { signal })
+}
+
+export function createImageImportJob(body: CreateImageImportJobRequest) {
+  return authorizedJsonFromUrl<ImageImportJob>(IMAGE_IMPORT_JOBS_API_BASE, {
+    method: 'POST', body: JSON.stringify(body),
+  })
+}
+
+export function pauseImageImportJob(id: string) {
+  return authorizedJsonFromUrl<ImageImportJob>(`${IMAGE_IMPORT_JOBS_API_BASE}/${id}/pause`, { method: 'POST' })
+}
+
+export function resumeImageImportJob(id: string) {
+  return authorizedJsonFromUrl<ImageImportJob>(`${IMAGE_IMPORT_JOBS_API_BASE}/${id}/resume`, { method: 'POST' })
+}
+
+export function cancelImageImportJob(id: string) {
+  return authorizedJsonFromUrl<ImageImportJob>(`${IMAGE_IMPORT_JOBS_API_BASE}/${id}/cancel`, { method: 'POST' })
 }
 
 export function setProductsVisibility(body: SetProductsVisibilityRequest) {

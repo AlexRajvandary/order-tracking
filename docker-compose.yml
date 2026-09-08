@@ -151,6 +151,8 @@ services:
     depends_on:
       products-postgres:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ConnectionStrings__DefaultConnection: Host=products-postgres;Port=5432;Database=${PRODUCTS_DB:-products};Username=${PRODUCTS_USER:-products};Password=${PRODUCTS_PASSWORD:-products}
@@ -159,6 +161,11 @@ services:
       Jwt__Audience: ${JWT_AUDIENCE:-ordertracking-admin}
       Crawler__ApiKey: ${CRAWLER_API_KEY:-dev-crawler-key-change-me}
       TranslationJobs__WorkerApiKey: ${CRAWLER_API_KEY:-dev-crawler-key-change-me}
+      Minio__Endpoint: minio:9000
+      Minio__AccessKey: ${MINIO_ROOT_USER:-minioadmin}
+      Minio__SecretKey: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      Minio__Bucket: ${MINIO_BUCKET:-order-tracking}
+      Minio__UseSsl: "false"
       Cors__Origins__0: ${CORS_ORIGIN:-http://localhost:5173}
       Cors__Origins__1: http://localhost:3001
     ports:

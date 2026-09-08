@@ -20,6 +20,7 @@ export type Product = {
   originalPrice: number | null
   originalCurrencyCode: string | null
   imageUrl: string
+  localImageUrl: string | null
   sourceUrl: string | null
   isActive: boolean
   createdAt: string
@@ -330,4 +331,31 @@ export type CreateTranslationJobRequest = {
   productIds?: string[] | null
   parallelism?: number
   limit?: number | null
+}
+
+export type ImageImportJobScope = 'AllMissing' | 'Selected'
+export type ImageImportJobStatus = TranslationJobStatus
+
+export type ImageImportJob = {
+  id: string
+  scope: ImageImportJobScope
+  status: ImageImportJobStatus
+  parallelism: number
+  totalItems: number
+  processedItems: number
+  succeededItems: number
+  failedItems: number
+  importedBytes: number
+  lastError: string | null
+  createdAt: string
+  startedAt: string | null
+  completedAt: string | null
+  progressPercent: number
+}
+
+export type CreateImageImportJobRequest = {
+  scope: ImageImportJobScope
+  parallelism?: number | null
+  limit?: number | null
+  productIds?: string[] | null
 }
