@@ -137,6 +137,10 @@ jobs:
             set_secret RAKUTEN_ACCESS_KEY "$RAKUTEN_ACCESS_KEY"
             set_secret RAKUTEN_AFFILIATE_ID "$RAKUTEN_AFFILIATE_ID"
             set_secret PRODUCTS_INTERNAL_API_KEY "$PRODUCTS_INTERNAL_API_KEY"
+            # Empty GitHub secrets arrive as exported empty variables and would override
+            # non-empty values already stored in the VPS .env file. Compose must read
+            # the final values from .env after the optional update above.
+            unset RAKUTEN_APPLICATION_ID RAKUTEN_ACCESS_KEY RAKUTEN_AFFILIATE_ID PRODUCTS_INTERNAL_API_KEY
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             echo "=== Caddyfile on VPS ==="
             cat docker/caddy/Caddyfile
