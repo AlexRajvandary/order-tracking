@@ -33,7 +33,7 @@ export function RakutenSearch() {
     <form className="flex gap-3" onSubmit={e => { e.preventDefault(); void search(); }}>
       <input value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="Найти товар на Rakuten"
         className="h-11 flex-1 border border-input bg-white px-4 outline-none focus:ring-2 focus:ring-[#bf0000]/30" />
-      <Button disabled={loading || !keyword.trim()}>{loading ? "Ищем…" : "Найти"}</Button>
+      <Button type="submit" disabled={loading || !keyword.trim()}>{loading ? "Ищем…" : "Найти"}</Button>
     </form>
     {error ? <p className="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
     {result ? <><p className="text-sm text-muted-foreground">Найдено: {result.total}</p>
