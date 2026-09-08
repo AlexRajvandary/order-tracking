@@ -102,10 +102,6 @@ services:
     environment:
       TranslationJobs__ApiUrl: http://products-api:8080/api/translation-jobs
       TranslationJobs__WorkerApiKey: ${CRAWLER_API_KEY}
-      ProductsApi__InternalApiKey: ${PRODUCTS_INTERNAL_API_KEY}
-      Rakuten__ApplicationId: ${RAKUTEN_APPLICATION_ID}
-      Rakuten__AccessKey: ${RAKUTEN_ACCESS_KEY}
-      Rakuten__AffiliateId: ${RAKUTEN_AFFILIATE_ID:-}
       TranslationJobs__PollIntervalSeconds: ${TRANSLATION_POLL_INTERVAL_SECONDS:-5}
       TranslationJobs__MaxRetries: ${TRANSLATION_MAX_RETRIES:-3}
       TranslationJobs__RetryBaseDelaySeconds: ${TRANSLATION_RETRY_BASE_DELAY_SECONDS:-2}
@@ -160,6 +156,10 @@ services:
       Jwt__Audience: ordertracking-admin
       Crawler__ApiKey: ${CRAWLER_API_KEY}
       TranslationJobs__WorkerApiKey: ${CRAWLER_API_KEY}
+      ProductsApi__InternalApiKey: ${PRODUCTS_INTERNAL_API_KEY}
+      Rakuten__ApplicationId: ${RAKUTEN_APPLICATION_ID}
+      Rakuten__AccessKey: ${RAKUTEN_ACCESS_KEY}
+      Rakuten__AffiliateId: ${RAKUTEN_AFFILIATE_ID:-}
       Minio__Endpoint: minio:9000
       Minio__AccessKey: ${MINIO_ROOT_USER}
       Minio__SecretKey: ${MINIO_ROOT_PASSWORD}
