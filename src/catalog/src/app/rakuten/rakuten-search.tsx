@@ -26,7 +26,10 @@ export function RakutenSearch() {
   async function search(page = 1) {
     if (!keyword.trim()) return; setLoading(true); setError("");
     try { const response = await fetch(`/api/rakuten?keyword=${encodeURIComponent(keyword)}&page=${page}&pageSize=20`);
-      const data = await response.json(); if (!response.ok) throw new Error(data.detail || data.title || "Поиск недоступен"); setResult(data); }
+      const text = await response.text(); let data: Result & { detail?: string; title?: string };
+      try { data = JSON.parse(text) as Result & { detail?: string; title?: string }; }
+      catch { throw new Error(`Сервер вернул некорректный ответ (HTTP ${response.status})`); }
+      if (!response.ok) throw new Error(data.detail || data.title || "Поиск недоступен"); setResult(data); }
     catch (e) { setError(e instanceof Error ? e.message : "Поиск недоступен"); } finally { setLoading(false); }
   }
   return <div className="space-y-8">

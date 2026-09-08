@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -51,9 +52,17 @@ internal sealed class RakutenCatalogClient : IRakutenCatalogClient
         var response = await SendAsync(BuildUri(query), cancellationToken);
         if (response.StatusCode == HttpStatusCode.NotFound)
             return new ExternalCatalogSearchResult([], 0, page, hits, 0);
-        response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<RakutenSearchResponse>(cancellationToken: cancellationToken)
-            ?? throw new ExternalCatalogUnavailableException("Rakuten returned an empty response.");
+        await EnsureSuccessAsync(response, cancellationToken);
+        RakutenSearchResponse body;
+        try
+        {
+            body = await response.Content.ReadFromJsonAsync<RakutenSearchResponse>(cancellationToken: cancellationToken)
+                ?? throw new ExternalCatalogUnavailableException("Rakuten returned an empty response.");
+        }
+        catch (JsonException ex)
+        {
+            throw new ExternalCatalogUnavailableException("Rakuten returned an invalid response.", ex);
+        }
         var result = new ExternalCatalogSearchResult(
             (body.Items ?? []).Select(Map).Where(x => x is not null).Select(x => x!).ToList(),
             body.Count, body.Page, body.Hits, Math.Min(body.PageCount, 100));
@@ -79,8 +88,10 @@ internal sealed class RakutenCatalogClient : IRakutenCatalogClient
             _cache.Set<ExternalCatalogProductDto?>(key, null, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60), Size = 1 });
             return null;
         }
-        response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<RakutenSearchResponse>(cancellationToken: cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        RakutenSearchResponse? body;
+        try { body = await response.Content.ReadFromJsonAsync<RakutenSearchResponse>(cancellationToken: cancellationToken); }
+        catch (JsonException ex) { throw new ExternalCatalogUnavailableException("Rakuten returned an invalid response.", ex); }
         var result = body?.Items?.Select(Map).FirstOrDefault(x => x is not null);
         _cache.Set(key, result, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(Math.Max(10, _settings.ItemCacheSeconds)), Size = 1 });
         return result;
@@ -123,6 +134,16 @@ internal sealed class RakutenCatalogClient : IRakutenCatalogClient
                 await Task.Delay(TimeSpan.FromMilliseconds(250 * Math.Pow(2, attempt) + Random.Shared.Next(50, 200)), cancellationToken);
             }
         }
+    }
+
+    private static async Task EnsureSuccessAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (response.IsSuccessStatusCode) return;
+        var message = response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
+            ? "Rakuten rejected the API credentials or request parameters. Check ApplicationId and AccessKey."
+            : $"Rakuten request failed with HTTP {(int)response.StatusCode}.";
+        await response.Content.ReadAsStringAsync(cancellationToken); // drain response; never log credentials/body
+        throw new ExternalCatalogUnavailableException(message);
     }
 
     private Dictionary<string, string> BaseQuery()

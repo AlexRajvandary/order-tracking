@@ -10,7 +10,11 @@ export async function GET(request: Request) {
   try {
     const response = await fetch(target, { cache: "no-store", signal: AbortSignal.timeout(18_000) });
     const body = await response.text();
-    return new NextResponse(body, { status: response.status, headers: { "Content-Type": response.headers.get("Content-Type") || "application/json" } });
+    const contentType = response.headers.get("Content-Type") || "";
+    if (!contentType.includes("application/json")) {
+      return NextResponse.json({ title: "Ошибка сервера каталога", detail: `Products API вернул HTTP ${response.status} вместо JSON. Проверьте логи products-api.` }, { status: response.ok ? 502 : response.status });
+    }
+    return new NextResponse(body, { status: response.status, headers: { "Content-Type": "application/json" } });
   } catch {
     return NextResponse.json({ title: "Rakuten временно недоступен" }, { status: 503 });
   }
