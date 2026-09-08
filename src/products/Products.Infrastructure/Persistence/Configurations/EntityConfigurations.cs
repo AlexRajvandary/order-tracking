@@ -233,6 +233,29 @@ public sealed class CatalogFavoriteConfiguration : IEntityTypeConfiguration<Cata
     }
 }
 
+public sealed class ExternalProductCartItemConfiguration : IEntityTypeConfiguration<ExternalProductCartItem>
+{
+    public void Configure(EntityTypeBuilder<ExternalProductCartItem> builder)
+    {
+        builder.ToTable("external_product_cart_items");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.VisitorKey).HasMaxLength(64);
+        builder.Property(x => x.Source).HasMaxLength(32).IsRequired();
+        builder.Property(x => x.ExternalId).HasMaxLength(255).IsRequired();
+        builder.Property(x => x.Name).HasMaxLength(1000).IsRequired();
+        builder.Property(x => x.Description).HasColumnType("text");
+        builder.Property(x => x.UnitPrice).HasPrecision(18, 2);
+        builder.Property(x => x.CurrencyCode).HasMaxLength(3).IsFixedLength();
+        builder.Property(x => x.ImageUrl).HasMaxLength(2000);
+        builder.Property(x => x.SourceUrl).HasMaxLength(2000);
+        builder.Property(x => x.AffiliateUrl).HasMaxLength(2000);
+        builder.Property(x => x.ShopCode).HasMaxLength(255);
+        builder.Property(x => x.ShopName).HasMaxLength(500);
+        builder.HasIndex(x => new { x.UserId, x.Source, x.ExternalId }).IsUnique().HasFilter("\"UserId\" IS NOT NULL");
+        builder.HasIndex(x => new { x.VisitorKey, x.Source, x.ExternalId }).IsUnique().HasFilter("\"VisitorKey\" IS NOT NULL");
+    }
+}
+
 public sealed class ProductVariantConfiguration : IEntityTypeConfiguration<ProductVariant>
 {
     public void Configure(EntityTypeBuilder<ProductVariant> builder)

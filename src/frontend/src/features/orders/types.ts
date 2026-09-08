@@ -29,6 +29,13 @@ export type OrderItem = {
   name: string
   description: string | null
   sourceUrl: string | null
+  productSource: string
+  catalogProductId: string | null
+  externalProductId: string | null
+  imageUrl: string | null
+  affiliateUrl: string | null
+  shopCode: string | null
+  shopName: string | null
   quantity: number
   unitPrice: number | null
   currencyCode: CurrencyCode | null

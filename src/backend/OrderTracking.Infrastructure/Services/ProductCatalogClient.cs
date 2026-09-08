@@ -7,10 +7,27 @@ namespace OrderTracking.Infrastructure.Services;
 public sealed class ProductCatalogClient : IProductCatalogClient
 {
     private readonly HttpClient _httpClient;
+    private readonly string? _internalApiKey;
 
-    public ProductCatalogClient(HttpClient httpClient)
+    public ProductCatalogClient(HttpClient httpClient, Microsoft.Extensions.Configuration.IConfiguration configuration)
     {
         _httpClient = httpClient;
+        _internalApiKey = configuration["ProductsApi:InternalApiKey"];
+    }
+
+    public async Task<CatalogCheckoutResolution> ResolveCheckoutAsync(IReadOnlyList<CatalogProductReference> items, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "api/products/external/rakuten/resolve-checkout")
+        {
+            Content = JsonContent.Create(new { items })
+        };
+        if (!string.IsNullOrWhiteSpace(_internalApiKey)) request.Headers.Add("X-Products-Api-Key", _internalApiKey);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.ServiceUnavailable)
+            throw new ExternalCatalogUnavailableException("Rakuten временно недоступен. Попробуйте ещё раз позже.");
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CatalogCheckoutResolution>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("Products API returned an empty checkout response.");
     }
 
     public async Task<CatalogProductSnapshot?> GetByIdAsync(

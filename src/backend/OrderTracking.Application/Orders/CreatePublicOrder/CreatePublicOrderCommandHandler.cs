@@ -36,36 +36,21 @@ public sealed class CreatePublicOrderCommandHandler
         CancellationToken cancellationToken)
     {
         var creator = await ResolveCreatorAsync(cancellationToken);
-        var products = new Dictionary<Guid, CatalogProductSnapshot>();
+        var resolution = await _productCatalogClient.ResolveCheckoutAsync(request.Items.Select(x =>
+            new CatalogProductReference(x.Source, x.ProductId, x.ExternalId, x.ExpectedUnitPrice, x.ExpectedCurrencyCode)).ToList(), cancellationToken);
+        if (resolution.Issues.Count > 0) throw new CatalogCheckoutException(resolution.Issues);
+        if (resolution.Items.Count != request.Items.Count) throw new CatalogCheckoutException(
+            [new("Unknown", "", "invalid_response", null, null, null)]);
 
-        foreach (var productId in request.Items.Select(x => x.ProductId).Distinct())
+        var items = request.Items.Zip(resolution.Items).Select(pair =>
         {
-            var product = await _productCatalogClient.GetByIdAsync(productId, cancellationToken)
-                ?? throw new KeyNotFoundException($"Product '{productId}' was not found");
-
-            if (!product.IsActive)
-            {
-                throw new InvalidOperationException($"Product '{productId}' is not available");
-            }
-
-            products.Add(productId, product);
-        }
-
-        var items = request.Items
-            .Select(item =>
-            {
-                var product = products[item.ProductId];
-
-                return new CreateOrderItemDto(
-                    OrderItemType.Product,
-                    string.IsNullOrWhiteSpace(product.NameRu) ? product.Name : product.NameRu,
-                    product.Description,
-                    item.Quantity,
-                    product.Price,
-                    product.CurrencyCode,
-                    product.SourceUrl);
-            })
-            .ToList();
+            var requestItem = pair.First;
+            var product = pair.Second;
+            return new CreateOrderItemDto(OrderItemType.Product, product.Name, product.Description,
+                requestItem.Quantity, product.Price, product.CurrencyCode, product.SourceUrl,
+                product.Source, product.ProductId, product.ExternalId, product.ImageUrl,
+                product.AffiliateUrl, product.ShopCode, product.ShopName);
+        }).ToList();
 
         var customer = new CreateOrderNewCustomerDto(
             null,

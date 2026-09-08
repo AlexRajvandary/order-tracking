@@ -24,7 +24,8 @@ public sealed class PublicOrdersController : ControllerBase
         [FromBody] CreatePublicOrderRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _mediator.Send(
+        OrderTracking.Application.Orders.Models.OrderDetailsDto result;
+        try { result = await _mediator.Send(
             new CreatePublicOrderCommand(
                 request.Name,
                 request.Phone,
@@ -33,9 +34,17 @@ public sealed class PublicOrdersController : ControllerBase
                 request.Vk,
                 request.Address,
                 (request.Items ?? []).Select(item => new PublicOrderItemDto(
-                    item.ProductId,
-                    item.Quantity)).ToList()),
-            cancellationToken);
+                    item.Source ?? "Internal", item.ProductId, item.ExternalId, item.Quantity,
+                    item.ExpectedUnitPrice, item.ExpectedCurrencyCode)).ToList()),
+            cancellationToken); }
+        catch (OrderTracking.Application.Common.Interfaces.CatalogCheckoutException ex)
+        {
+            return Conflict(new { code = "cart_changed", message = ex.Message, issues = ex.Issues });
+        }
+        catch (OrderTracking.Application.Common.Interfaces.ExternalCatalogUnavailableException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails { Title = "Внешний каталог временно недоступен", Detail = ex.Message });
+        }
 
         return StatusCode(
             StatusCodes.Status201Created,
@@ -52,6 +61,7 @@ public sealed record CreatePublicOrderRequest(
     string? Address,
     IReadOnlyList<CreatePublicOrderItemRequest>? Items);
 
-public sealed record CreatePublicOrderItemRequest(Guid ProductId, int Quantity);
+public sealed record CreatePublicOrderItemRequest(string? Source, Guid? ProductId, string? ExternalId, int Quantity,
+    decimal? ExpectedUnitPrice, string? ExpectedCurrencyCode);
 
 public sealed record CreatePublicOrderResponse(Guid OrderId, string TrackingCode);

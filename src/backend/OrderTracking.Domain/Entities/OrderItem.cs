@@ -11,6 +11,13 @@ public class OrderItem : AuditableEntity
     public string? Description { get; set; }
 
     public string? SourceUrl { get; set; }
+    public string ProductSource { get; set; } = "Internal";
+    public Guid? CatalogProductId { get; set; }
+    public string? ExternalProductId { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? AffiliateUrl { get; set; }
+    public string? ShopCode { get; set; }
+    public string? ShopName { get; set; }
 
     public int Quantity { get; set; } = 1;
     public decimal? UnitPrice { get; set; }

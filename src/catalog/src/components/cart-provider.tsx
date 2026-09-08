@@ -12,7 +12,11 @@ import {
 import type { Product } from "@/lib/products";
 
 export type CartItem = {
+  source: "Internal" | "Rakuten";
   productId: string;
+  externalId?: string;
+  expectedUnitPrice: number;
+  expectedCurrencyCode: string;
   slug: string;
   name: string;
   priceRub: number;
@@ -45,7 +49,7 @@ function loadCart(): CartItem[] {
       return [];
     }
     const parsed = JSON.parse(raw) as CartItem[];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(i => ({ ...i, source: i.source ?? "Internal", expectedUnitPrice: i.expectedUnitPrice ?? i.priceRub, expectedCurrencyCode: i.expectedCurrencyCode ?? "RUB" })) : [];
   } catch {
     return [];
   }
@@ -61,7 +65,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const localItems = loadCart();
       try {
         const response = await fetch("/api/catalog/cart", { cache: "no-store" });
-        const serverItems = response.ok ? ((await response.json()) as CartItem[]) : [];
+        const rawServerItems = response.ok ? ((await response.json()) as Array<Record<string, unknown>>) : [];
+        const serverItems = rawServerItems.map((value) => ({
+          source: (value.source as "Internal" | "Rakuten") ?? "Internal",
+          productId: String(value.productId ?? value.id), externalId: value.externalId ? String(value.externalId) : undefined,
+          slug: String(value.slug ?? value.id), name: String(value.name ?? ""),
+          priceRub: String(value.currencyCode) === "JPY" ? Math.round(Number(value.price) / 1.6) : Number(value.price),
+          expectedUnitPrice: Number(value.price), expectedCurrencyCode: String(value.currencyCode ?? "RUB"),
+          imageUrl: value.imageUrl ? String(value.imageUrl) : undefined, tint: "#0f3d4c", quantity: Number(value.quantity),
+        }));
         if (!cancelled) setItems(serverItems.length > 0 ? serverItems : localItems);
       } catch {
         if (!cancelled) setItems(localItems);
@@ -86,7 +98,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           fetch("/api/catalog/cart", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ productId: item.productId, quantity: item.quantity }),
+            body: JSON.stringify({ source: item.source, productId: item.productId, externalId: item.externalId, quantity: item.quantity }),
           }).catch(() => undefined),
         ),
       );
@@ -95,10 +107,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = useCallback((product: Product, quantity = 1) => {
     setItems((prev) => {
-      const existing = prev.find((i) => i.productId === product.id);
+      const source = product.source ?? "Internal";
+      const existing = prev.find((i) => i.productId === product.id && i.source === source);
       if (existing) {
         return prev.map((i) =>
-          i.productId === product.id
+          i.productId === product.id && i.source === source
             ? { ...i, quantity: i.quantity + quantity }
             : i,
         );
@@ -106,7 +119,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return [
         ...prev,
         {
+          source,
           productId: product.id,
+          externalId: product.externalId,
+          expectedUnitPrice: product.originalUnitPrice ?? product.priceRub,
+          expectedCurrencyCode: product.originalCurrencyCode ?? "RUB",
           slug: product.slug,
           name: product.name,
           priceRub: product.priceRub,

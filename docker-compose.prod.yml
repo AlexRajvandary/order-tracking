@@ -66,6 +66,7 @@ services:
       Fornex__OrderId: ${FORNEX_ORDER_ID:-}
       Crawler__ApiKey: ${CRAWLER_API_KEY}
       ProductsApi__BaseUrl: http://products-api:8080
+      ProductsApi__InternalApiKey: ${PRODUCTS_INTERNAL_API_KEY}
       PublicCheckout__CreatedByAdminLogin: ${PUBLIC_CHECKOUT_ADMIN_LOGIN:-admin}
       Monitoring__HostDiskPath: /host
     volumes:
@@ -101,6 +102,10 @@ services:
     environment:
       TranslationJobs__ApiUrl: http://products-api:8080/api/translation-jobs
       TranslationJobs__WorkerApiKey: ${CRAWLER_API_KEY}
+      ProductsApi__InternalApiKey: ${PRODUCTS_INTERNAL_API_KEY}
+      Rakuten__ApplicationId: ${RAKUTEN_APPLICATION_ID}
+      Rakuten__AccessKey: ${RAKUTEN_ACCESS_KEY}
+      Rakuten__AffiliateId: ${RAKUTEN_AFFILIATE_ID:-}
       TranslationJobs__PollIntervalSeconds: ${TRANSLATION_POLL_INTERVAL_SECONDS:-5}
       TranslationJobs__MaxRetries: ${TRANSLATION_MAX_RETRIES:-3}
       TranslationJobs__RetryBaseDelaySeconds: ${TRANSLATION_RETRY_BASE_DELAY_SECONDS:-2}

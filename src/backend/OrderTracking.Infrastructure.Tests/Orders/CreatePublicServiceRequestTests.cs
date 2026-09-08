@@ -291,6 +291,6 @@ public sealed class CreatePublicServiceRequestTests
 
     private static CreatePublicServiceRequestCommandValidator CreateValidator()
     {
-        return new CreatePublicServiceRequestCommandValidator(NullLogger.Instance);
+        return new CreatePublicServiceRequestCommandValidator();
     }
 }

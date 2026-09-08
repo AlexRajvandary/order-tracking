@@ -11,7 +11,8 @@ type ProductCardProps = {
 export function ProductCard({ product }: ProductCardProps) {
   return (
     <Card className="relative flex h-full flex-col gap-0 overflow-hidden rounded-none bg-transparent py-0 ring-0">
-      <Link href={`/products/${product.id}`} className="flex min-h-0 flex-1 flex-col">
+      <Link href={product.source === "Rakuten" ? (product.affiliateUrl || product.sourceUrl || "#") : `/products/${product.id}`}
+        target={product.source === "Rakuten" ? "_blank" : undefined} className="flex min-h-0 flex-1 flex-col">
         <div className="relative aspect-[4/5] shrink-0 overflow-hidden bg-muted">
           {product.imageUrl ? (
             // External marketplace URLs — load directly, no Next.js image proxy.
@@ -47,7 +48,7 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
       </Link>
 
-      <FavoriteButton productId={product.id} product={product} />
+      {product.source !== "Rakuten" ? <FavoriteButton productId={product.id} product={product} /> : null}
     </Card>
   );
 }

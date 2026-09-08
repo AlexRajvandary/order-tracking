@@ -71,6 +71,7 @@ public sealed class UpdateOrderStatusCommandHandler
                 i.CurrentStatusId,
                 i.CurrentStatusText,
                 i.CurrentStatusUpdatedAt,
-                i.SourceUrl)).ToList());
+                i.SourceUrl, i.ProductSource, i.CatalogProductId, i.ExternalProductId,
+                i.ImageUrl, i.AffiliateUrl, i.ShopCode, i.ShopName)).ToList());
     }
 }

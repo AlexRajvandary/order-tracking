@@ -108,6 +108,9 @@ export function mapApiProductToCatalog(
   const shortDescription = description.split("\n")[0] ?? p.name;
 
   return {
+    source: "Internal",
+    originalUnitPrice: p.price,
+    originalCurrencyCode: p.currencyCode,
     id: p.id,
     slug: p.slug,
     name: p.nameRu?.trim() || p.name,

@@ -1213,6 +1213,11 @@ export function OrderDetailsPage() {
                             {item.description}
                           </p>
                         ) : null}
+                        {item.productSource === 'Rakuten' ? (
+                          <p className="mt-1 text-xs font-medium text-[#bf0000]">
+                            Rakuten{item.shopName ? ` · ${item.shopName}` : ''}
+                          </p>
+                        ) : null}
                         {item.sourceUrl ? (
                           <a
                             className="mt-1 block text-sm text-primary hover:underline"

@@ -3,7 +3,10 @@ using OrderTracking.Application.Orders.Models;
 
 namespace OrderTracking.Application.Orders.CreatePublicOrder;
 
-public sealed record PublicOrderItemDto(Guid ProductId, int Quantity);
+public sealed record PublicOrderItemDto(string Source, Guid? ProductId, string? ExternalId, int Quantity, decimal? ExpectedUnitPrice, string? ExpectedCurrencyCode)
+{
+    public PublicOrderItemDto(Guid productId, int quantity) : this("Internal", productId, null, quantity, null, null) { }
+}
 
 public sealed record CreatePublicOrderCommand(
     string? Name,

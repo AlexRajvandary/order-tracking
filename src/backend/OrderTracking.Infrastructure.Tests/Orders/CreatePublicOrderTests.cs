@@ -29,7 +29,7 @@ public sealed class CreatePublicOrderTests
         var result = new CreatePublicOrderCommandValidator().Validate(command);
 
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, error => error.ErrorMessage.Contains("Duplicate product IDs"));
+        Assert.Contains(result.Errors, error => error.ErrorMessage.Contains("Duplicate products"));
         Assert.Contains(result.Errors, error => error.PropertyName.EndsWith("Quantity"));
     }
 
@@ -39,17 +39,11 @@ public sealed class CreatePublicOrderTests
         var productId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
         var productClient = new Mock<IProductCatalogClient>();
-        productClient
-            .Setup(client => client.GetByIdAsync(productId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CatalogProductSnapshot(
-                productId,
-                "日本語の商品名",
-                "Русское название",
-                "Описание",
-                "https://shop.example/product/1",
-                1500m,
-                "RUB",
-                true));
+        productClient.Setup(client => client.ResolveCheckoutAsync(It.IsAny<IReadOnlyList<CatalogProductReference>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CatalogCheckoutResolution([
+                new("Internal", productId, null, "Русское название", "Описание", 1500m, "RUB", null,
+                    "https://shop.example/product/1", null, null, null, true)
+            ], []));
 
         var admins = new Mock<IAdminUserRepository>();
         admins

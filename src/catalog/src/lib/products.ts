@@ -1,4 +1,9 @@
 export type Product = {
+  source?: "Internal" | "Rakuten";
+  externalId?: string;
+  originalUnitPrice?: number;
+  originalCurrencyCode?: string;
+  affiliateUrl?: string;
   id: string;
   slug: string;
   name: string;

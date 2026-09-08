@@ -2,10 +2,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Products.Application.Common.Interfaces;
+using Products.Application.ExternalProducts;
 using Products.Infrastructure.Persistence;
 using Products.Infrastructure.Persistence.Interceptors;
 using Products.Infrastructure.Persistence.Repositories;
 using Products.Infrastructure.Services;
+using Products.Infrastructure.Rakuten;
 using Minio;
 
 namespace Products.Infrastructure;
@@ -65,6 +67,14 @@ public static class DependencyInjection
             client.DefaultRequestHeaders.UserAgent.ParseAdd("OrderTracking-ImageImport/1.0");
         }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
         services.AddHostedService<ProductImageImportHostedService>();
+        services.Configure<RakutenSettings>(configuration.GetSection(RakutenSettings.SectionName));
+        services.AddHttpClient<IRakutenCatalogClient, RakutenCatalogClient>((sp, client) =>
+        {
+            var settings = configuration.GetSection(RakutenSettings.SectionName).Get<RakutenSettings>() ?? new RakutenSettings();
+            client.BaseAddress = new Uri(settings.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(Math.Clamp(settings.TimeoutSeconds, 2, 30));
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("TheGet-Rakuten/1.0");
+        });
 
         return services;
     }

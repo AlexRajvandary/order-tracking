@@ -67,7 +67,14 @@ public sealed record OrderItemRow(
     Guid? CurrentStatusId,
     string? CurrentStatusText,
     DateTimeOffset? CurrentStatusUpdatedAt,
-    string? SourceUrl);
+    string? SourceUrl,
+    string ProductSource,
+    Guid? CatalogProductId,
+    string? ExternalProductId,
+    string? ImageUrl,
+    string? AffiliateUrl,
+    string? ShopCode,
+    string? ShopName);
 
 public sealed record OrderAuditSnapshotRow(
     string TrackingCode,

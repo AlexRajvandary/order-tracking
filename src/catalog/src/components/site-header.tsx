@@ -20,6 +20,7 @@ const LEGACY_NAV_LINKS = [
 ] as const;
 
 const NAV_LINKS = [
+  { href: "/rakuten", label: "Rakuten" },
   { href: "/#figures", label: "Фигурки" },
   { href: "/#tcg", label: "ККИ" },
   { href: "/#women-fashion", label: "Одежда" },

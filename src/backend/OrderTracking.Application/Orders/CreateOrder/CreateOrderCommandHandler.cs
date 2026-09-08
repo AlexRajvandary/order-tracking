@@ -142,6 +142,13 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
                 Name = item.Name.Trim(),
                 Description = Normalize(item.Description),
                 SourceUrl = Normalize(item.SourceUrl),
+                ProductSource = string.IsNullOrWhiteSpace(item.ProductSource) ? "Internal" : item.ProductSource,
+                CatalogProductId = item.CatalogProductId,
+                ExternalProductId = Normalize(item.ExternalProductId),
+                ImageUrl = Normalize(item.ImageUrl),
+                AffiliateUrl = Normalize(item.AffiliateUrl),
+                ShopCode = Normalize(item.ShopCode),
+                ShopName = Normalize(item.ShopName),
                 Quantity = item.Quantity <= 0 ? 1 : item.Quantity,
                 UnitPrice = item.UnitPrice,
                 CurrencyCode = item.UnitPrice.HasValue
@@ -311,7 +318,14 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
             item.CurrentStatusId,
             item.CurrentStatusText,
             item.CurrentStatusUpdatedAt,
-            item.SourceUrl);
+            item.SourceUrl,
+            item.ProductSource,
+            item.CatalogProductId,
+            item.ExternalProductId,
+            item.ImageUrl,
+            item.AffiliateUrl,
+            item.ShopCode,
+            item.ShopName);
 
     private static string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

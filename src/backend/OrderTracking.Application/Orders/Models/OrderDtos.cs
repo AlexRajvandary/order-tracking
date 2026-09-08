@@ -30,7 +30,14 @@ public sealed record OrderItemDto(
     Guid? CurrentStatusId,
     string? CurrentStatusText,
     DateTimeOffset? CurrentStatusUpdatedAt,
-    string? SourceUrl);
+    string? SourceUrl,
+    string ProductSource = "Internal",
+    Guid? CatalogProductId = null,
+    string? ExternalProductId = null,
+    string? ImageUrl = null,
+    string? AffiliateUrl = null,
+    string? ShopCode = null,
+    string? ShopName = null);
 
 public sealed record OrderDetailsDto(
     Guid Id,
@@ -64,7 +71,14 @@ public sealed record CreateOrderItemDto(
     int Quantity = 1,
     decimal? UnitPrice = null,
     string? CurrencyCode = null,
-    string? SourceUrl = null);
+    string? SourceUrl = null,
+    string ProductSource = "Internal",
+    Guid? CatalogProductId = null,
+    string? ExternalProductId = null,
+    string? ImageUrl = null,
+    string? AffiliateUrl = null,
+    string? ShopCode = null,
+    string? ShopName = null);
 
 public sealed record CreateOrderDeliveryAddressDto(
     string? City,

@@ -27,6 +27,8 @@ public sealed class ProductsDbContext : DbContext
 
     public DbSet<CatalogCartItem> CatalogCartItems => Set<CatalogCartItem>();
 
+    public DbSet<ExternalProductCartItem> ExternalProductCartItems => Set<ExternalProductCartItem>();
+
     public DbSet<CatalogFavorite> CatalogFavorites => Set<CatalogFavorite>();
 
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();

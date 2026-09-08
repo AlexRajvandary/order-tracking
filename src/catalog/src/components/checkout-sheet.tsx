@@ -16,7 +16,11 @@ import { formatCartMoney } from "@/components/cart-provider";
 import { cn } from "@/lib/utils";
 
 export type CheckoutItem = {
+  source?: "Internal" | "Rakuten";
   productId: string;
+  externalId?: string;
+  expectedUnitPrice?: number;
+  expectedCurrencyCode?: string;
   name: string;
   quantity: number;
   priceRub: number;
@@ -111,15 +115,18 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
           whatsApp: null,
           vk: contacts.vk || null,
           address: form.get("address") || null,
-          items: items.map(({ productId, quantity }) => ({ productId, quantity })),
+          items: items.map(({ source, productId, externalId, quantity, priceRub, expectedUnitPrice, expectedCurrencyCode }) => ({
+            source: source ?? "Internal", productId: (source ?? "Internal") === "Internal" ? productId : null, externalId, quantity,
+            expectedUnitPrice: expectedUnitPrice ?? priceRub, expectedCurrencyCode: expectedCurrencyCode ?? "RUB",
+          })),
         }),
       });
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as
-          | { title?: string; detail?: string }
+          | { title?: string; detail?: string; message?: string }
           | null;
-        throw new Error(payload?.detail || payload?.title || "Не удалось оформить заявку");
+        throw new Error(payload?.message || payload?.detail || payload?.title || "Не удалось оформить заявку");
       }
 
       const created = (await response.json()) as CheckoutResult;
