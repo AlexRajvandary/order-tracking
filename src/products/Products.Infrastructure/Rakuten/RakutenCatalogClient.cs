@@ -1,6 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
-using System.Text.Json.Serialization;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -53,18 +51,19 @@ internal sealed class RakutenCatalogClient : IRakutenCatalogClient
         if (response.StatusCode == HttpStatusCode.NotFound)
             return new ExternalCatalogSearchResult([], 0, page, hits, 0);
         await EnsureSuccessAsync(response, cancellationToken);
-        RakutenSearchResponse body;
+        ParsedResponse body;
         try
         {
-            body = await response.Content.ReadFromJsonAsync<RakutenSearchResponse>(cancellationToken: cancellationToken)
-                ?? throw new ExternalCatalogUnavailableException("Rakuten returned an empty response.");
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            body = Parse(document.RootElement);
         }
         catch (JsonException ex)
         {
             throw new ExternalCatalogUnavailableException("Rakuten returned an invalid response.", ex);
         }
         var result = new ExternalCatalogSearchResult(
-            (body.Items ?? []).Select(Map).Where(x => x is not null).Select(x => x!).ToList(),
+            body.Items,
             body.Count, body.Page, body.Hits, Math.Min(body.PageCount, 100));
         _cache.Set(key, result, new MemoryCacheEntryOptions
         {
@@ -89,10 +88,15 @@ internal sealed class RakutenCatalogClient : IRakutenCatalogClient
             return null;
         }
         await EnsureSuccessAsync(response, cancellationToken);
-        RakutenSearchResponse? body;
-        try { body = await response.Content.ReadFromJsonAsync<RakutenSearchResponse>(cancellationToken: cancellationToken); }
+        ParsedResponse body;
+        try
+        {
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            body = Parse(document.RootElement);
+        }
         catch (JsonException ex) { throw new ExternalCatalogUnavailableException("Rakuten returned an invalid response.", ex); }
-        var result = body?.Items?.Select(Map).FirstOrDefault(x => x is not null);
+        var result = body.Items.FirstOrDefault();
         _cache.Set(key, result, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(Math.Max(10, _settings.ItemCacheSeconds)), Size = 1 });
         return result;
     }
@@ -173,23 +177,57 @@ internal sealed class RakutenCatalogClient : IRakutenCatalogClient
         "rating" => "-reviewAverage", "reviews" => "-reviewCount", _ => "standard",
     };
 
-    private static ExternalCatalogProductDto? Map(RakutenItem item)
+    private static ParsedResponse Parse(JsonElement root)
     {
-        if (string.IsNullOrWhiteSpace(item.ItemCode) || string.IsNullOrWhiteSpace(item.ItemName)) return null;
-        var image = item.MediumImageUrls?.Select(x => x.ImageUrl).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
-        return new ExternalCatalogProductDto(
-            "rakuten:" + Base64Url(item.ItemCode), ProductSource.Rakuten, null, item.ItemCode,
-            item.ItemName, item.ItemCaption, item.ItemPrice, "JPY", image, item.ItemUrl,
-            item.AffiliateUrl, item.ShopCode, item.ShopName, item.GenreId, item.Availability == 1,
-            item.ReviewAverage, item.ReviewCount, item.Availability == 1 && item.ItemPrice > 0);
+        var items = new List<ExternalCatalogProductDto>();
+        if (Property(root, "items") is { ValueKind: JsonValueKind.Array } array)
+        {
+            foreach (var raw in array.EnumerateArray())
+            {
+                var item = Property(raw, "item") is { ValueKind: JsonValueKind.Object } wrapped ? wrapped : raw;
+                var code = String(item, "itemCode"); var name = String(item, "itemName");
+                if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name)) continue;
+                var price = Decimal(item, "itemPrice"); var availability = Int(item, "availability", 1);
+                items.Add(new ExternalCatalogProductDto(
+                    "rakuten:" + Base64Url(code), ProductSource.Rakuten, null, code, name,
+                    String(item, "itemCaption"), price, "JPY", FirstImage(item), String(item, "itemUrl"),
+                    String(item, "affiliateUrl"), String(item, "shopCode"), String(item, "shopName"),
+                    LongNullable(item, "genreId"), availability == 1, DecimalNullable(item, "reviewAverage"),
+                    IntNullable(item, "reviewCount"), availability == 1 && price > 0));
+            }
+        }
+        return new ParsedResponse(Int(root, "count"), Int(root, "page", 1), Int(root, "hits", items.Count),
+            Int(root, "pageCount"), items);
+    }
+
+    private static JsonElement? Property(JsonElement element, string name)
+    {
+        if (element.ValueKind != JsonValueKind.Object) return null;
+        foreach (var property in element.EnumerateObject())
+            if (property.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) return property.Value;
+        return null;
+    }
+    private static string? String(JsonElement e, string n) => Property(e, n) is { } v
+        ? v.ValueKind == JsonValueKind.String ? v.GetString() : v.ToString() : null;
+    private static decimal Decimal(JsonElement e, string n) => DecimalNullable(e, n) ?? 0;
+    private static decimal? DecimalNullable(JsonElement e, string n) => Property(e, n) is { } v
+        ? v.ValueKind == JsonValueKind.Number && v.TryGetDecimal(out var number) ? number
+            : decimal.TryParse(v.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsed) ? parsed : null : null;
+    private static int Int(JsonElement e, string n, int fallback = 0) => IntNullable(e, n) ?? fallback;
+    private static int? IntNullable(JsonElement e, string n) => Property(e, n) is { } v && int.TryParse(v.ToString(), out var value) ? value : null;
+    private static long? LongNullable(JsonElement e, string n) => Property(e, n) is { } v && long.TryParse(v.ToString(), out var value) ? value : null;
+    private static string? FirstImage(JsonElement item)
+    {
+        if (Property(item, "mediumImageUrls") is not { ValueKind: JsonValueKind.Array } images) return null;
+        foreach (var image in images.EnumerateArray())
+        {
+            var url = image.ValueKind == JsonValueKind.String ? image.GetString() : image.ValueKind == JsonValueKind.Object ? String(image, "imageUrl") : null;
+            if (!string.IsNullOrWhiteSpace(url)) return url;
+        }
+        return null;
     }
 
     private static string Base64Url(string value) => Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(value)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
-    private sealed record RakutenSearchResponse(int Count, int Page, int Hits, int PageCount, IReadOnlyList<RakutenItem>? Items);
-    private sealed record RakutenItem(
-        string ItemName, string ItemCode, decimal ItemPrice, string? ItemCaption, string? ItemUrl,
-        string? AffiliateUrl, int Availability, long? GenreId, string? ShopCode, string? ShopName,
-        decimal? ReviewAverage, int? ReviewCount, IReadOnlyList<RakutenImage>? MediumImageUrls);
-    private sealed record RakutenImage([property: JsonPropertyName("imageUrl")] string ImageUrl);
+    private sealed record ParsedResponse(int Count, int Page, int Hits, int PageCount, IReadOnlyList<ExternalCatalogProductDto> Items);
 }
