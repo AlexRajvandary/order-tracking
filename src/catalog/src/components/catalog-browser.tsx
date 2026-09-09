@@ -780,13 +780,14 @@ export function CatalogBrowser({
       </div>
 
       <Sheet open={mobileCategoriesOpen} onOpenChange={setMobileCategoriesOpen}>
-        <SheetContent side="left" className="w-[min(100%,20rem)] gap-0 p-0">
+        <SheetContent initialFocus={false} side="left" className="w-[min(100%,20rem)] gap-0 p-0">
           <SheetHeader className="sr-only">
             <SheetTitle>Категории</SheetTitle>
             <SheetDescription>Выберите нужный раздел каталога</SheetDescription>
           </SheetHeader>
           <div className="overflow-y-auto px-4 py-5">
             <CategoryTree
+              key={mobileCategoriesOpen ? "categories-open" : "categories-closed"}
               categories={categoryTree ?? []}
               totalProductCount={allCategoriesProductCount}
               activeRootSlug={activeRootSlug}
