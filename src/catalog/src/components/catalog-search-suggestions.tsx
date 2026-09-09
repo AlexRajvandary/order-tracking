@@ -39,7 +39,7 @@ export function CatalogSearchSuggestions({ categories, value, onChange, onNaviga
     document.addEventListener("pointerdown", close); return () => document.removeEventListener("pointerdown", close); }, []);
 
   const hasResults = categoryMatches.length + suggestions.localProducts.length + suggestions.rakutenProducts.length > 0;
-  return <div ref={root} className="relative z-[100] mb-3">
+  return <div ref={root} className="relative z-[100] mb-3 w-full min-[992px]:w-[200%]">
     <label className="relative block"><span className="sr-only">Поиск по каталогу</span>
       <input type="search" value={value} placeholder="Категории и товары" autoComplete="off"
         className="h-9 w-full rounded-md border border-[#D1D5DB] bg-transparent px-3 pr-9 text-sm text-[#1F2937] outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-[#9CA3AF]"
