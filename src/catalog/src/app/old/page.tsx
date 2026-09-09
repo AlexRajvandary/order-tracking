@@ -28,12 +28,17 @@ function sectionRouteId(sectionId: string): string {
   return SECTION_TO_ROUTE[sectionId] ?? sectionId;
 }
 
+function matchesGender(category: Pick<ApiCategory, "name" | "slug">, gender: "women" | "men") {
+  const value = `${category.name} ${category.slug}`;
+  return gender === "women"
+    ? /жен|(?:^|[^a-z])(women|female)(?:[^a-z]|$)/i.test(value)
+    : /муж|(?:^|[^a-z])(men|male)(?:[^a-z]|$)/i.test(value);
+}
+
 function findFashionRoot(tree: ApiCategory[], gender: "women" | "men") {
-  const pattern = gender === "women" ? /жен|women|female/i : /муж|men|male/i;
-  const direct = tree.find((category) => pattern.test(`${category.name} ${category.slug}`));
+  const direct = tree.find((category) => matchesGender(category, gender));
   if (direct) return direct;
-  const clothing = tree.find((category) => /одеж|clothing|fashion/i.test(`${category.name} ${category.slug}`));
-  return clothing?.children.find((category) => pattern.test(`${category.name} ${category.slug}`));
+  return tree.find((category) => /одеж|clothing|fashion/i.test(`${category.name} ${category.slug}`));
 }
 
 function fallbackFashionCategories(sectionId: "women-fashion" | "men-fashion") {
@@ -62,16 +67,19 @@ function toFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | 
 function toWomenFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | "name" | "slug" | "description" | "imageUrl">>): FashionCategoryData[] {
   return toFashionCategories(categories).filter((category) =>
     !/\u0432\u0435\u0440\u0445\u043d\u044f\u044f\s+\u043e\u0434\u0435\u0436\u0434\u0430|outerwear|\u043a\u043e\u0441\u0442\u044e\u043c|suits?/i.test(`${category.name} ${category.slug}`),
-  ).map((category) =>
-    /kimono|\u043a\u0438\u043c\u043e\u043d/i.test(`${category.name} ${category.slug}`)
-      ? { ...category, imageUrl: "/catalog-assets/womens-kimono.png" }
-      : category,
-  );
+  ).map((category) => {
+    const key = `${category.name} ${category.slug}`;
+    if (/kimono|\u043a\u0438\u043c\u043e\u043d/i.test(key)) return { ...category, imageUrl: "/catalog-assets/womens-kimono.png" };
+    if (/dress|\u043f\u043b\u0430\u0442\u044c/i.test(key)) return { ...category, imageUrl: "/catalog-assets/womens-dresses-wide.png" };
+    if (/top|\u0432\u0435\u0440\u0445/i.test(key)) return { ...category, imageUrl: "/catalog-assets/womens-top-wide.png" };
+    if (/bottom|\u043d\u0438\u0437/i.test(key)) return { ...category, imageUrl: "/catalog-assets/womens-bottom-wide.png" };
+    return category;
+  });
 }
 
 function toMenFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | "name" | "slug" | "description" | "imageUrl">>): FashionCategoryData[] {
   return toFashionCategories(categories, "men")
-    .filter((category) => !/\u0432\u0435\u0440\u0445\u043d\u044f\u044f\s+\u043e\u0434\u0435\u0436\u0434\u0430|outerwear/i.test(`${category.name} ${category.slug}`))
+    .filter((category) => !/\u0432\u0435\u0440\u0445\u043d\u044f\u044f\s+\u043e\u0434\u0435\u0436\u0434\u0430|outerwear|\u043a\u0443\u0440\u0442\u043a|jackets?|\u043a\u043e\u0441\u0442\u044e\u043c|suits?/i.test(`${category.name} ${category.slug}`))
     .map((category) => {
       const key = `${category.name} ${category.slug}`;
       if (/kimono|\u043a\u0438\u043c\u043e\u043d/i.test(key)) return { ...category, imageUrl: "/catalog-assets/mens-kimono.png" };
@@ -86,9 +94,11 @@ export default async function HomePage() {
   const categoryTree = await fetchCategoryTree({ includeProductCounts: true, productsActiveOnly: true }).catch(() => []);
   const womenRoot = findFashionRoot(categoryTree, "women");
   const menRoot = findFashionRoot(categoryTree, "men");
+  const hardcodedWomenCategories = toWomenFashionCategories(fallbackFashionCategories("women-fashion"));
+  const hardcodedMenCategories = toMenFashionCategories(fallbackFashionCategories("men-fashion"));
   const fashionSections = new Map([
-    ["women-fashion", { root: womenRoot, categories: toWomenFashionCategories(womenRoot?.children?.length ? womenRoot.children : fallbackFashionCategories("women-fashion")) }],
-    ["men-fashion", { root: menRoot, categories: toMenFashionCategories(menRoot?.children?.length ? menRoot.children : fallbackFashionCategories("men-fashion")) }],
+    ["women-fashion", { root: womenRoot, categories: hardcodedWomenCategories }],
+    ["men-fashion", { root: menRoot, categories: hardcodedMenCategories }],
   ]);
   const visibleSections = categorySections.filter(
     (section) => section.id !== "stationery" && section.id !== "dvd",

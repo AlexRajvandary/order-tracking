@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { randomInt } from "node:crypto";
 import { notFound } from "next/navigation";
 import { CatalogBrowser } from "@/components/catalog-browser";
 import { SiteHeader } from "@/components/site-header";
@@ -76,7 +77,7 @@ export default async function CategorySectionPage({
   const requestedShuffleSeed =
     Number.isSafeInteger(parsedShuffleSeed) && parsedShuffleSeed >= 0
       ? parsedShuffleSeed
-      : Math.floor(Math.random() * 2_147_483_647);
+      : randomInt(0, 2_147_483_647);
   const shuffleSeed = isAllCategories || !subSlug
     ? requestedShuffleSeed
     : undefined;
