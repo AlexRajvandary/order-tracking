@@ -40,7 +40,7 @@ export function CatalogSearchSuggestions({ categories, value, onChange, onNaviga
     document.addEventListener("pointerdown", close); return () => document.removeEventListener("pointerdown", close); }, [onActiveChange]);
 
   const hasResults = categoryMatches.length + suggestions.localProducts.length + suggestions.rakutenProducts.length > 0;
-  return <div ref={root} className="relative z-[100] mb-3 w-full min-[992px]:w-[200%]">
+  return <div ref={root} className={`relative z-[100] mb-3 w-full min-[992px]:w-[200%] ${open ? "max-[991px]:flex max-[991px]:h-full max-[991px]:min-h-0 max-[991px]:flex-col" : ""}`}>
     <label className="relative block"><span className="sr-only">Поиск по каталогу</span>
       <input type="search" value={value} placeholder="Категории и товары" autoComplete="off"
         className="h-9 w-full rounded-md border border-[#D1D5DB] bg-transparent px-3 pr-9 text-sm text-[#1F2937] outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-[#9CA3AF]"
@@ -48,8 +48,8 @@ export function CatalogSearchSuggestions({ categories, value, onChange, onNaviga
       {loading ? <Loader2 className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-[#9CA3AF]" />
         : <Search className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-[#9CA3AF]" />}
     </label>
-    {open && normalized.length >= 2 ? <div className="relative z-[110] mt-2 w-full overflow-hidden rounded-xl border-0 border-[#E5E7EB] bg-white shadow-none min-[992px]:absolute min-[992px]:top-full min-[992px]:left-0 min-[992px]:w-[min(760px,calc(100vw-2rem))] min-[992px]:border min-[992px]:shadow-2xl">
-      {!loading && !hasResults ? <p className="p-5 text-sm text-muted-foreground">Ничего не найдено</p> : <div className="max-h-[70vh] overflow-y-auto p-4">
+    {open && normalized.length >= 2 ? <div className="relative z-[110] mt-2 w-full overflow-hidden rounded-xl border-0 border-[#E5E7EB] bg-white shadow-none max-[991px]:min-h-0 max-[991px]:flex-1 min-[992px]:absolute min-[992px]:top-full min-[992px]:left-0 min-[992px]:w-[min(760px,calc(100vw-2rem))] min-[992px]:border min-[992px]:shadow-2xl">
+      {!loading && !hasResults ? <p className="p-5 text-sm text-muted-foreground">Ничего не найдено</p> : <div className="h-full max-h-[70vh] overflow-y-auto p-4 max-[991px]:max-h-none">
         {categoryMatches.length ? <section><h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Категории</h3>
           <div className="grid gap-1 sm:grid-cols-2">{categoryMatches.map(item => <Link key={item.href} href={item.href} onClick={onNavigate} className="flex justify-between rounded-md px-3 py-2 text-sm hover:bg-muted"><span>{item.name}</span><span className="text-muted-foreground">{item.count}</span></Link>)}</div></section> : null}
         {suggestions.localProducts.length ? <section className="mt-4 border-t pt-4"><h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Товары TheGet <span className="font-normal tabular-nums">({suggestions.localTotal.toLocaleString("ru-RU")})</span></h3>
