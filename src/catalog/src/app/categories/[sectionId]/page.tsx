@@ -73,10 +73,12 @@ export default async function CategorySectionPage({
   const decodedSectionId = safeDecode(sectionId);
   const isAllCategories = decodedSectionId === "all";
   const parsedShuffleSeed = Number(shuffleSeedParam);
-  const shuffleSeed = isAllCategories
-    ? Number.isSafeInteger(parsedShuffleSeed) && parsedShuffleSeed >= 0
+  const requestedShuffleSeed =
+    Number.isSafeInteger(parsedShuffleSeed) && parsedShuffleSeed >= 0
       ? parsedShuffleSeed
-      : Math.floor(Math.random() * 2_147_483_647)
+      : Math.floor(Math.random() * 2_147_483_647);
+  const shuffleSeed = isAllCategories || !subSlug
+    ? requestedShuffleSeed
     : undefined;
 
   const categoryTreePromise = fetchCategoryTree({
@@ -106,6 +108,7 @@ export default async function CategorySectionPage({
         shopSlugs: selectedShopSlugs,
         categorySlug: subSlug,
         categoryName: subSlug,
+        shuffleSeed,
       });
 
   const categoryTree = await categoryTreePromise;
@@ -114,6 +117,9 @@ export default async function CategorySectionPage({
   if (!isAllCategories && !root) notFound();
 
   const child = root && subSlug ? findChildCategory(root, subSlug) : undefined;
+  const effectiveShuffleSeed = isAllCategories || !child
+    ? requestedShuffleSeed
+    : undefined;
 
   // Preserve the previous behaviour for an unknown `sub`: show the root
   // category rather than an empty result for the invalid child slug.
@@ -125,6 +131,7 @@ export default async function CategorySectionPage({
         pageSize: PRODUCTS_PAGE_SIZE,
         brandSlugs: selectedBrandSlugs,
         shopSlugs: selectedShopSlugs,
+        shuffleSeed: effectiveShuffleSeed,
       })
     : earlyCatalogPromise;
   const [catalog, shops, brands] = await Promise.all([
@@ -170,9 +177,9 @@ export default async function CategorySectionPage({
                 child?.slug,
                 selectedBrandSlugs,
                 selectedShopSlugs,
-                shuffleSeed,
+                effectiveShuffleSeed,
               ),
-              shuffleSeed,
+              shuffleSeed: effectiveShuffleSeed,
             }}
           />
         </Suspense>

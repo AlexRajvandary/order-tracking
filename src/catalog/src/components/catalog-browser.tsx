@@ -610,7 +610,7 @@ export function CatalogBrowser({
       </div>
 
       <div className="grid gap-x-6 gap-y-6 min-[992px]:grid-cols-[240px_minmax(0,1fr)] min-[1200px]:grid-cols-[260px_minmax(0,1fr)] min-[1200px]:gap-x-7">
-        <aside className="relative z-40 hidden h-fit min-[992px]:sticky min-[992px]:top-20 min-[992px]:block">
+        <aside className="relative z-40 hidden h-fit min-[992px]:block">
           <CategoryTree
             categories={categoryTree ?? []}
             totalProductCount={allCategoriesProductCount}

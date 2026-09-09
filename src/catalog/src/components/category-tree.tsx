@@ -99,9 +99,14 @@ export function CategoryTree({
     });
   }
 
+  function handleNavigate() {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    onNavigate?.();
+  }
+
   return (
     <nav aria-label="Категории" className={className}>
-      <CatalogSearchSuggestions categories={categories} value={query} onChange={setQuery} onNavigate={onNavigate} onActiveChange={setSearchActive} />
+      <CatalogSearchSuggestions categories={categories} value={query} onChange={setQuery} onNavigate={handleNavigate} onActiveChange={setSearchActive} />
 
       <div className={cn(searchActive && "max-[991px]:hidden")}>
       {categories.length === 0 ? (
@@ -112,7 +117,7 @@ export function CategoryTree({
             <li>
               <Link
                 href="/categories/all"
-                onClick={onNavigate}
+                onClick={handleNavigate}
                 className={cn(
                   "flex items-center gap-2 rounded-md px-2 py-2 transition-colors",
                   !activeRootSlug
@@ -154,7 +159,7 @@ export function CategoryTree({
                     )}
                     onClick={() => {
                       setAccordion({ selectionKey, expandedSlug: category.slug });
-                      onNavigate?.();
+                      handleNavigate();
                     }}
                   >
                     <span className="min-w-0 flex-1 truncate">{category.name}</span>
@@ -193,7 +198,7 @@ export function CategoryTree({
                             activeRootSlug === category.slug &&
                             activeChildSlug === child.slug
                           }
-                          onNavigate={onNavigate}
+                          onNavigate={handleNavigate}
                         />
                       </li>
                     ))}

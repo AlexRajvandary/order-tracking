@@ -251,6 +251,8 @@ export async function fetchCatalogPage(options: {
   /** Child subcategory slug, or omit for the whole root category tree. */
   categorySlug?: string;
   categoryName?: string;
+  /** Stable seed used to mix products across a root category and its children. */
+  shuffleSeed?: number;
 }): Promise<{
   products: CatalogProduct[];
   total: number;
@@ -271,6 +273,8 @@ export async function fetchCatalogPage(options: {
     categorySlug,
     includeCategoryChildren,
     activeOnly: true,
+    sort: options.shuffleSeed != null && includeCategoryChildren ? "mixed" : undefined,
+    shuffleSeed: includeCategoryChildren ? options.shuffleSeed : undefined,
   });
 
   return {
