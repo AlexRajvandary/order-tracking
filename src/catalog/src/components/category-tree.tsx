@@ -61,6 +61,7 @@ export function CategoryTree({
 }: CategoryTreeProps) {
   const selectionKey = `${activeRootSlug ?? ""}:${activeChildSlug ?? ""}`;
   const [query, setQuery] = useState("");
+  const [searchActive, setSearchActive] = useState(false);
   const [accordion, setAccordion] = useState({
     selectionKey,
     expandedSlug: activeRootSlug ?? null,
@@ -100,8 +101,9 @@ export function CategoryTree({
 
   return (
     <nav aria-label="Категории" className={className}>
-      <CatalogSearchSuggestions categories={categories} value={query} onChange={setQuery} onNavigate={onNavigate} />
+      <CatalogSearchSuggestions categories={categories} value={query} onChange={setQuery} onNavigate={onNavigate} onActiveChange={setSearchActive} />
 
+      <div className={cn(searchActive && "max-[991px]:hidden")}>
       {categories.length === 0 ? (
         <p className="text-sm text-muted-foreground">Категории пока не загружены</p>
       ) : (
@@ -206,6 +208,7 @@ export function CategoryTree({
       {categories.length > 0 && visibleCategories.length === 0 ? (
         <p className="px-2 py-3 text-sm text-[#6B7280]">Категории не найдены</p>
       ) : null}
+      </div>
     </nav>
   );
 }

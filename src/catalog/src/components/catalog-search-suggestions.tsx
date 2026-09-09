@@ -10,8 +10,9 @@ import { formatPrice } from "@/lib/products";
 
 type Suggestions = { localProducts: ApiProduct[]; rakutenProducts: ApiExternalProduct[]; localTotal: number; rakutenTotal: number };
 
-export function CatalogSearchSuggestions({ categories, value, onChange, onNavigate }: {
+export function CatalogSearchSuggestions({ categories, value, onChange, onNavigate, onActiveChange }: {
   categories: ApiCategory[]; value: string; onChange: (value: string) => void; onNavigate?: () => void;
+  onActiveChange?: (active: boolean) => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false); const [loading, setLoading] = useState(false);
@@ -35,19 +36,19 @@ export function CatalogSearchSuggestions({ categories, value, onChange, onNaviga
     return () => { window.clearTimeout(timer); controller.abort(); };
   }, [normalized, value]);
 
-  useEffect(() => { const close = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(false); };
-    document.addEventListener("pointerdown", close); return () => document.removeEventListener("pointerdown", close); }, []);
+  useEffect(() => { const close = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) { setOpen(false); onActiveChange?.(false); } };
+    document.addEventListener("pointerdown", close); return () => document.removeEventListener("pointerdown", close); }, [onActiveChange]);
 
   const hasResults = categoryMatches.length + suggestions.localProducts.length + suggestions.rakutenProducts.length > 0;
   return <div ref={root} className="relative z-[100] mb-3 w-full min-[992px]:w-[200%]">
     <label className="relative block"><span className="sr-only">Поиск по каталогу</span>
       <input type="search" value={value} placeholder="Категории и товары" autoComplete="off"
         className="h-9 w-full rounded-md border border-[#D1D5DB] bg-transparent px-3 pr-9 text-sm text-[#1F2937] outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-[#9CA3AF]"
-        onFocus={() => setOpen(true)} onChange={event => { onChange(event.target.value); setOpen(true); if (event.target.value.trim().length < 2) setLoading(false); }} />
+        onFocus={() => { setOpen(true); onActiveChange?.(true); }} onChange={event => { onChange(event.target.value); setOpen(true); if (event.target.value.trim().length < 2) setLoading(false); }} />
       {loading ? <Loader2 className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-[#9CA3AF]" />
         : <Search className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-[#9CA3AF]" />}
     </label>
-    {open && normalized.length >= 2 ? <div className="absolute top-full left-0 z-[110] mt-2 w-[min(760px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-2xl">
+    {open && normalized.length >= 2 ? <div className="relative z-[110] mt-2 w-full overflow-hidden rounded-xl border-0 border-[#E5E7EB] bg-white shadow-none min-[992px]:absolute min-[992px]:top-full min-[992px]:left-0 min-[992px]:w-[min(760px,calc(100vw-2rem))] min-[992px]:border min-[992px]:shadow-2xl">
       {!loading && !hasResults ? <p className="p-5 text-sm text-muted-foreground">Ничего не найдено</p> : <div className="max-h-[70vh] overflow-y-auto p-4">
         {categoryMatches.length ? <section><h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Категории</h3>
           <div className="grid gap-1 sm:grid-cols-2">{categoryMatches.map(item => <Link key={item.href} href={item.href} onClick={onNavigate} className="flex justify-between rounded-md px-3 py-2 text-sm hover:bg-muted"><span>{item.name}</span><span className="text-muted-foreground">{item.count}</span></Link>)}</div></section> : null}
