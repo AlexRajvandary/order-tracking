@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
 import { fetchCategoryTree } from "@/lib/categories-api";
 import { findCatalogProductBySlug, type CatalogProduct } from "@/lib/catalog-products";
-import { fetchCatalogPage, fetchProductById, fetchProductBySlug, fetchProductRelations, mapApiProductToCatalog } from "@/lib/products-api";
+import { fetchCatalogPage, fetchProductById, fetchProductBySlug, fetchProductRelations, fetchRakutenItem, mapApiProductToCatalog, mapRakutenProductToCatalog } from "@/lib/products-api";
 import { formatPrice, getProductById, type Product } from "@/lib/products";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -15,6 +15,10 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 
 async function resolveProduct(idOrSlug: string): Promise<CatalogProduct | Product | undefined> {
   const decoded = decodeURIComponent(idOrSlug);
+  if (decoded.startsWith("rakuten~")) {
+    const item = await fetchRakutenItem(decoded.slice("rakuten~".length));
+    return item ? mapRakutenProductToCatalog(item) : undefined;
+  }
   const demo = getProductById(decoded) ?? findCatalogProductBySlug(decoded);
   if (demo) return demo;
   try {
@@ -38,7 +42,9 @@ export default async function ProductPage({ params }: PageProps) {
   const product = await resolveProduct((await params).id);
   if (!product) notFound();
   const catalog = product as CatalogProduct;
-  const relations = await fetchProductRelations(product.id).catch(() => ({ variants: [], images: [] }));
+  const relations = product.source === "Rakuten"
+    ? { variants: [], images: [] }
+    : await fetchProductRelations(product.id).catch(() => ({ variants: [], images: [] }));
   const categoryTree = await fetchCategoryTree().catch(() => []);
   const categorySlug = "categorySlug" in product ? product.categorySlug : undefined;
   const root = categoryTree.find((item) => item.slug === categorySlug || item.children.some((child) => child.slug === categorySlug));

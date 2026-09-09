@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, ShoppingBag } from "lucide-react";
+import { ExternalLink, Minus, Plus, ShoppingBag } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/components/cart-provider";
@@ -15,7 +15,11 @@ export function ProductDetailActions({ product, variants }: { product: CatalogPr
   const [quantity, setQuantity] = useState(1);
 
   const checkoutItems = [{
+    source: product.source,
     productId: product.id,
+    externalId: product.externalId,
+    expectedUnitPrice: product.originalUnitPrice,
+    expectedCurrencyCode: product.originalCurrencyCode,
     name: product.name,
     quantity,
     priceRub: product.priceRub,
@@ -65,6 +69,17 @@ export function ProductDetailActions({ product, variants }: { product: CatalogPr
           trigger={<Button type="button" size="lg" className="h-11 rounded-none">Купить</Button>}
         />
       </div>
+      {product.source === "Rakuten" && (product.affiliateUrl || product.sourceUrl) ? (
+        <Button
+          render={<a href={product.affiliateUrl || product.sourceUrl} target="_blank" rel="noreferrer" />}
+          size="lg"
+          variant="outline"
+          className="h-11 w-full rounded-none"
+        >
+          <ExternalLink data-icon="inline-start" />
+          Смотреть на Rakuten
+        </Button>
+      ) : null}
       <p className="text-center text-xs text-muted-foreground">
         {selectedSize ? `Выбран размер: ${selectedSize}` : "Размер можно выбрать позже"}
       </p>

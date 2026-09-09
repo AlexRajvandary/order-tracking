@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 const LEGACY_NAV_LINKS = [
   { href: "/#figures", label: "Фигурки" },
-  { href: "/#tcg", label: "ККИ" },
+  { href: "/#tcg", label: "Коллекционные карточные игры" },
   { href: "/#women-fashion", label: "Одежда" },
   { href: "/#bags", label: "Сумки" },
   { href: "/#watches", label: "Аксессуары" },
@@ -21,7 +21,7 @@ const LEGACY_NAV_LINKS = [
 
 const NAV_LINKS = [
   { href: "/#figures", label: "Фигурки" },
-  { href: "/#tcg", label: "ККИ" },
+  { href: "/#tcg", label: "Коллекционные карточные игры" },
   { href: "/#women-fashion", label: "Одежда" },
   { href: "https://yandex.ru/profile/85406102943", label: "Отзывы" },
   { href: "https://theget.ru/media", label: "Издание" },

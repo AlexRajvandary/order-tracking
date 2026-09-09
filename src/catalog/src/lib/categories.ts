@@ -43,7 +43,7 @@ export const LEGACY_CATEGORY_SECTIONS: CategorySection[] = [
   },
   {
     id: "tcg",
-    title: "ККИ",
+    title: "Коллекционные карточные игры",
     columns: 6,
     items: [
       item("Pokemon", "https://static.zenmarket.jp/images/common-landing-pages/a1w1bj2f.dob"),

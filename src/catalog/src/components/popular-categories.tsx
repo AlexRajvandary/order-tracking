@@ -33,7 +33,7 @@ export const POPULAR_CATEGORIES: PopularCategory[] = [
   },
   {
     id: "tcg",
-    title: "ККИ",
+    title: "Коллекционные карточные игры",
     caption: "Pokemon, One Piece, Yu-Gi-Oh",
     href: "/categories/tcg",
     image: "/catalog-assets/popular-tcg.png",

@@ -3,17 +3,19 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { FavoriteButton } from "@/components/favorite-button";
 import type { CatalogProduct } from "@/lib/catalog-products";
 import { formatPrice } from "@/lib/products";
-import { RakutenCartButton } from "@/components/rakuten-cart-button";
 
 type ProductCardProps = {
   product: CatalogProduct;
 };
 
 export function ProductCard({ product }: ProductCardProps) {
+  const href = product.source === "Rakuten" && product.externalId
+    ? `/products/rakuten~${encodeURIComponent(product.externalId)}`
+    : `/products/${product.id}`;
+
   return (
     <Card className="relative flex h-full flex-col gap-0 overflow-hidden rounded-none bg-transparent py-0 ring-0">
-      <Link href={product.source === "Rakuten" ? (product.affiliateUrl || product.sourceUrl || "#") : `/products/${product.id}`}
-        target={product.source === "Rakuten" ? "_blank" : undefined} className="flex min-h-0 flex-1 flex-col">
+      <Link href={href} className="flex min-h-0 flex-1 flex-col">
         <div className="relative aspect-[4/5] shrink-0 overflow-hidden bg-muted">
           {product.imageUrl ? (
             // External marketplace URLs — load directly, no Next.js image proxy.
@@ -49,8 +51,7 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
       </Link>
 
-      {product.source !== "Rakuten" ? <FavoriteButton productId={product.id} product={product} /> : null}
-      {product.source === "Rakuten" ? <RakutenCartButton product={product} /> : null}
+      <FavoriteButton productId={product.id} product={product} />
     </Card>
   );
 }

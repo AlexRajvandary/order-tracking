@@ -322,6 +322,14 @@ export async function fetchRakutenSearch(keyword: string, pageSize = 10): Promis
   return (await response.json()) as ApiExternalProductListResult;
 }
 
+export async function fetchRakutenItem(itemCode: string): Promise<ApiExternalProduct | null> {
+  const params = new URLSearchParams({ itemCode });
+  const response = await fetch(`${productsApiBaseUrl()}/api/products/external/rakuten/item?${params}`, { cache: "no-store" });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Rakuten item API ${response.status}`);
+  return (await response.json()) as ApiExternalProduct;
+}
+
 export async function fetchProductRelations(productId: string): Promise<{
   variants: ApiProductVariant[];
   images: ApiProductImage[];

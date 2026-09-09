@@ -43,10 +43,18 @@ export async function fetchCategoryTree(options?: {
     if (!res.ok) return [];
 
     const data = (await res.json()) as ApiCategoryListResult;
-    return data.items ?? [];
+    return (data.items ?? []).map(normalizeCategoryTitle);
   } catch {
     return [];
   }
+}
+
+function normalizeCategoryTitle(category: ApiCategory): ApiCategory {
+  return {
+    ...category,
+    name: category.slug === "tcg" ? "Коллекционные карточные игры" : category.name,
+    children: category.children.map(normalizeCategoryTitle),
+  };
 }
 
 export function findRootCategory(

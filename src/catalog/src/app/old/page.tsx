@@ -123,7 +123,7 @@ export default async function HomePage() {
                   items={section.items}
                   sectionId={sectionRouteId(section.id)}
                   title={section.title}
-                  allLabel={section.id === "books" ? "Все книги и манга" : section.id === "tcg" ? "Все ККИ" : "Все фигурки"}
+                  allLabel={section.id === "books" ? "Все книги и манга" : section.id === "tcg" ? "Все карточные игры" : "Все фигурки"}
                 />
               ) : fashionSections.has(section.id) ? (() => {
                 const fashion = fashionSections.get(section.id)!;
