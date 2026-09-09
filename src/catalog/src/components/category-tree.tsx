@@ -100,10 +100,6 @@ export function CategoryTree({
 
   return (
     <nav aria-label="Категории" className={className}>
-      <p className="mb-2 text-[11px] font-semibold tracking-[0.08em] text-[#4B5563] uppercase">
-        Категории
-      </p>
-
       <CatalogSearchSuggestions categories={categories} value={query} onChange={setQuery} onNavigate={onNavigate} />
 
       {categories.length === 0 ? (
