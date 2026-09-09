@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 export type ApiCategory = {
   id: string;
   parentId: string | null;
@@ -25,25 +27,47 @@ function productsApiBaseUrl(): string {
   );
 }
 
-export async function fetchCategoryTree(options?: {
+type FetchCategoryTreeOptions = {
   popularOnly?: boolean;
   includeProductCounts?: boolean;
   productsActiveOnly?: boolean;
-}): Promise<ApiCategory[]> {
-  try {
+};
+
+const fetchCachedCategoryTree = unstable_cache(
+  async (
+    popularOnly: boolean,
+    includeProductCounts: boolean,
+    productsActiveOnly: boolean | null,
+  ): Promise<ApiCategory[]> => {
     const params = new URLSearchParams({ activeOnly: "true" });
-    if (options?.popularOnly) params.set("popularOnly", "true");
-    if (options?.includeProductCounts) params.set("includeProductCounts", "true");
-    if (options?.productsActiveOnly != null) {
-      params.set("productsActiveOnly", String(options.productsActiveOnly));
+    if (popularOnly) params.set("popularOnly", "true");
+    if (includeProductCounts) params.set("includeProductCounts", "true");
+    if (productsActiveOnly != null) {
+      params.set("productsActiveOnly", String(productsActiveOnly));
     }
 
     const url = `${productsApiBaseUrl()}/api/products/categories?${params}`;
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return [];
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Categories API returned HTTP ${res.status}`);
+    }
 
     const data = (await res.json()) as ApiCategoryListResult;
     return (data.items ?? []).map(normalizeCategoryTitle);
+  },
+  ["catalog-category-tree"],
+  { revalidate: 3600 },
+);
+
+export async function fetchCategoryTree(
+  options?: FetchCategoryTreeOptions,
+): Promise<ApiCategory[]> {
+  try {
+    return await fetchCachedCategoryTree(
+      options?.popularOnly ?? false,
+      options?.includeProductCounts ?? false,
+      options?.productsActiveOnly ?? null,
+    );
   } catch {
     return [];
   }
