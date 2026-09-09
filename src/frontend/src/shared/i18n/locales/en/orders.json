@@ -14,6 +14,12 @@
   "codeCopied": "Code copied",
   "delete": "Delete",
   "deleteConfirm": "Delete this order?",
+  "deleteError": "Failed to delete the order",
+  "deleteDialog": {
+    "title": "Delete order?",
+    "description": "Order #{{code}} will be removed from the active list. The action remains in the audit log, where the order can be restored.",
+    "deleting": "Deleting…"
+  },
   "columns": {
     "trackingCode": "Code",
     "customer": "Customer",

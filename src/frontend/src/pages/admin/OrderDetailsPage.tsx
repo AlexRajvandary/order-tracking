@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   Check,
   ChevronDown,
@@ -49,6 +49,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -752,6 +753,7 @@ function StatusUpdateDialog({
 
 export function OrderDetailsPage() {
   const { id = '' } = useParams()
+  const navigate = useNavigate()
   const { t, i18n } = useTranslation('orders')
   const { t: ts } = useTranslation('statuses')
   const queryClient = useQueryClient()
@@ -765,6 +767,8 @@ export function OrderDetailsPage() {
   const [expandedHistory, setExpandedHistory] = useState<Record<string, boolean>>({})
   const [customerEditOpen, setCustomerEditOpen] = useState(false)
   const [customerError, setCustomerError] = useState<string | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const invalidateOrder = () => {
     void queryClient.invalidateQueries({ queryKey: ['order', id] })
@@ -852,6 +856,18 @@ export function OrderDetailsPage() {
   const orderStatusMutation = useMutation({
     mutationFn: (status: OrderStatus) => ordersApi.updateOrderStatus(id, status),
     onSuccess: () => invalidateOrder(),
+  })
+
+  const deleteOrderMutation = useMutation({
+    mutationFn: () => ordersApi.deleteOrder(id),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: ['order', id] })
+      void queryClient.invalidateQueries({ queryKey: ['orders'] })
+      navigate('/admin/orders', { replace: true })
+    },
+    onError: (err: unknown) => {
+      setDeleteError(err instanceof ApiError ? err.message : t('deleteError'))
+    },
   })
 
   const updateOrderMutation = useMutation({
@@ -959,6 +975,17 @@ export function OrderDetailsPage() {
               </button>
             </h1>
           </div>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => {
+              setDeleteError(null)
+              setDeleteOpen(true)
+            }}
+          >
+            <Trash2 />
+            {t('delete')}
+          </Button>
         </div>
       </div>
 
@@ -1406,6 +1433,47 @@ export function OrderDetailsPage() {
           }
         />
       ) : null}
+
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (deleteOrderMutation.isPending) return
+          setDeleteOpen(open)
+          if (!open) setDeleteError(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('deleteDialog.title')}</DialogTitle>
+            <DialogDescription>
+              {t('deleteDialog.description', { code: order.trackingCode })}
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{deleteError}</AlertDescription>
+            </Alert>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleteOrderMutation.isPending}
+              onClick={() => setDeleteOpen(false)}
+            >
+              {t('cancel', { ns: 'common' })}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteOrderMutation.isPending}
+              onClick={() => deleteOrderMutation.mutate()}
+            >
+              {deleteOrderMutation.isPending ? t('deleteDialog.deleting') : t('delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
