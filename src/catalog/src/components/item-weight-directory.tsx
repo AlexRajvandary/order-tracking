@@ -1,9 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { Search, X } from "lucide-react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   ITEM_WEIGHT_GROUPS,
   WEIGHT_CATEGORIES,
@@ -28,21 +26,12 @@ function GenderValues({ item }: { item: WeightItem }) {
   );
 }
 
-export function ItemWeightDirectory({ initialQuery = "" }: { initialQuery?: string }) {
-  const [query, setQuery] = useState(initialQuery);
+export function ItemWeightDirectory() {
   const [category, setCategory] = useState<"all" | WeightCategoryId>("all");
   const resultsRef = useRef<HTMLDivElement>(null);
-  const normalized = query.trim().toLocaleLowerCase("ru-RU");
-
-  const groups = useMemo(() => ITEM_WEIGHT_GROUPS.flatMap((group) => {
-    if (category !== "all" && group.category !== category) return [];
-    const categoryLabel = WEIGHT_CATEGORIES.find((item) => item.id === group.category)?.label ?? "";
-    const wholeGroupMatches = normalized && `${categoryLabel} ${group.title}`.toLocaleLowerCase("ru-RU").includes(normalized);
-    const items = !normalized || wholeGroupMatches
-      ? group.items
-      : group.items.filter((item) => item.name.toLocaleLowerCase("ru-RU").includes(normalized));
-    return items.length ? [{ ...group, items }] : [];
-  }), [category, normalized]);
+  const groups = category === "all"
+    ? ITEM_WEIGHT_GROUPS
+    : ITEM_WEIGHT_GROUPS.filter((group) => group.category === category);
 
   const count = groups.reduce((sum, group) => sum + group.items.length, 0);
 
@@ -53,23 +42,7 @@ export function ItemWeightDirectory({ initialQuery = "" }: { initialQuery?: stri
 
   return (
     <>
-      <section aria-label="Поиск по справочнику" className="mt-8 space-y-5">
-        <div className="relative max-w-2xl">
-          <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Найти товар, например джинсы или рюкзак"
-            aria-label="Найти товар"
-            className="h-11 rounded-xl bg-background pr-11 pl-10"
-          />
-          {query ? (
-            <Button type="button" variant="ghost" size="icon-sm" aria-label="Очистить поиск" onClick={() => setQuery("")} className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full">
-              <X />
-            </Button>
-          ) : null}
-        </div>
-
+      <section aria-label="Категории справочника" className="mt-8">
         <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Категории товаров">
           {WEIGHT_CATEGORIES.map((item) => (
             <Button
@@ -89,12 +62,7 @@ export function ItemWeightDirectory({ initialQuery = "" }: { initialQuery?: stri
 
       <div ref={resultsRef} className="scroll-mt-6 pt-8">
         <p className="mb-5 text-sm tabular-nums text-muted-foreground">Найдено позиций: {count}</p>
-        {groups.length === 0 ? (
-          <div className="rounded-2xl border border-dashed px-5 py-16 text-center">
-            <p className="font-medium">Ничего не найдено. Попробуйте изменить запрос.</p>
-          </div>
-        ) : (
-          <div className="space-y-8">
+        <div className="space-y-8">
             {groups.map((group, groupIndex) => {
               const headingId = `weight-${group.category}-${groupIndex}`;
               return (
@@ -135,8 +103,7 @@ export function ItemWeightDirectory({ initialQuery = "" }: { initialQuery?: stri
               </section>
               );
             })}
-          </div>
-        )}
+        </div>
       </div>
     </>
   );
