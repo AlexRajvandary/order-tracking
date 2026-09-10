@@ -64,7 +64,7 @@ export function CatalogSearchSuggestions({ categories, value, onChange, onNaviga
     return () => document.removeEventListener("pointerdown", close);
   }, [onActiveChange]);
 
-  return <div ref={root} className={`relative z-[100] mb-3 w-full min-[992px]:w-[200%] ${open ? "max-[991px]:flex max-[991px]:h-full max-[991px]:min-h-0 max-[991px]:flex-col" : ""}`}>
+  return <div ref={root} className={`relative z-[100] mb-3 w-full min-[992px]:mb-0 min-[992px]:w-[200%] ${open ? "max-[991px]:flex max-[991px]:h-full max-[991px]:min-h-0 max-[991px]:flex-col" : ""}`}>
     <label className="relative block"><span className="sr-only">Поиск по каталогу</span>
       <input type="search" value={value} placeholder="Категории и товары" autoComplete="off"
         className="h-9 w-full rounded-md border border-[#D1D5DB] bg-transparent px-3 pr-9 text-sm text-[#1F2937] outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-[#9CA3AF]"

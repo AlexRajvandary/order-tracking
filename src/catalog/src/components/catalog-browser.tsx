@@ -599,7 +599,7 @@ export function CatalogBrowser({
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <Breadcrumb className="min-w-0 flex-1">
           <BreadcrumbList className="text-base font-bold sm:text-lg">
             <BreadcrumbItem>
@@ -627,19 +627,18 @@ export function CatalogBrowser({
         </p>
       </div>
 
-      <div className="grid gap-x-6 gap-y-6 min-[992px]:grid-cols-[240px_minmax(0,1fr)] min-[1200px]:grid-cols-[260px_minmax(0,1fr)] min-[1200px]:gap-x-7">
-        <aside className="relative z-40 hidden h-fit min-[992px]:block">
-          <CategoryTree
-            categories={categoryTree ?? []}
-            totalProductCount={allCategoriesProductCount}
-            activeRootSlug={activeRootSlug}
-            activeChildSlug={activeChildSlug}
-            onNavigate={() => setPendingDatasetKey(mobileDatasetKey)}
-          />
-        </aside>
+      <div className="grid gap-x-6 gap-y-6 min-[992px]:grid-cols-[240px_minmax(0,1fr)] min-[992px]:grid-rows-[auto_auto] min-[992px]:gap-y-8 min-[1200px]:grid-cols-[260px_minmax(0,1fr)] min-[1200px]:gap-x-7">
+        <CategoryTree
+          className="relative z-40 hidden min-[992px]:row-span-2 min-[992px]:grid min-[992px]:[grid-template-rows:subgrid]"
+          categories={categoryTree ?? []}
+          totalProductCount={allCategoriesProductCount}
+          activeRootSlug={activeRootSlug}
+          activeChildSlug={activeChildSlug}
+          onNavigate={() => setPendingDatasetKey(mobileDatasetKey)}
+        />
 
-        <div className="min-w-0">
-          <div className="mb-3 flex flex-wrap items-center gap-2 min-[992px]:pt-[25px] min-[992px]:flex-nowrap min-[992px]:gap-2.5">
+        <div className="min-w-0 min-[992px]:row-span-2 min-[992px]:grid min-[992px]:[grid-template-rows:subgrid]">
+          <div className="mb-3 flex flex-wrap items-center gap-2 min-[992px]:mb-0 min-[992px]:flex-nowrap min-[992px]:gap-2.5">
             <Button
               type="button"
               variant="outline"
