@@ -120,7 +120,7 @@ export function CategoryTree({
     <nav aria-label="Категории" className={className}>
       <CatalogSearchSuggestions categories={categories} value={query} onChange={setQuery} onNavigate={handleNavigate} onActiveChange={setSearchActive} />
 
-      <div className={cn(searchActive && "max-[991px]:hidden")}>
+      <div className={cn("w-full min-w-0", searchActive && "max-[991px]:hidden")}>
       {categories.length === 0 ? (
         <p className="text-sm text-muted-foreground">Категории пока не загружены</p>
       ) : (

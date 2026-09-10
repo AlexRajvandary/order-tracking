@@ -629,7 +629,7 @@ export function CatalogBrowser({
 
       <div className="grid gap-x-6 gap-y-6 min-[992px]:grid-cols-[240px_minmax(0,1fr)] min-[992px]:grid-rows-[auto_auto] min-[992px]:gap-y-8 min-[1200px]:grid-cols-[260px_minmax(0,1fr)] min-[1200px]:gap-x-7">
         <CategoryTree
-          className="relative z-40 hidden w-full min-w-0 min-[992px]:row-span-2 min-[992px]:grid min-[992px]:[grid-template-rows:subgrid]"
+          className="relative z-40 hidden w-full min-w-0 min-[992px]:row-span-2 min-[992px]:grid min-[992px]:grid-cols-[minmax(0,1fr)] min-[992px]:[grid-template-rows:subgrid]"
           categories={categoryTree ?? []}
           totalProductCount={allCategoriesProductCount}
           activeRootSlug={activeRootSlug}
