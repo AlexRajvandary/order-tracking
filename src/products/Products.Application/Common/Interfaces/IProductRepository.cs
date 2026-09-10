@@ -7,6 +7,7 @@ namespace Products.Application.Common.Interfaces;
 public interface IProductRepository
 {
     Task<(IReadOnlyList<Brand> Brands, IReadOnlyList<Shop> Shops)> ListFacetsAsync(
+        Guid? categoryId,
         string? categorySlug,
         bool includeCategoryChildren,
         bool? activeOnly,

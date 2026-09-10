@@ -6,6 +6,7 @@ using Products.Application.Shops.Models;
 namespace Products.Application.Products.ListProductFacets;
 
 public sealed record ListProductFacetsQuery(
+    Guid? CategoryId,
     string? Category,
     bool IncludeCategoryChildren = true,
     bool? ActiveOnly = true) : IRequest<ProductFacetsResult>;
@@ -22,6 +23,7 @@ public sealed class ListProductFacetsQueryHandler(IProductRepository products)
         CancellationToken cancellationToken)
     {
         var (brands, shops) = await products.ListFacetsAsync(
+            request.CategoryId,
             request.Category,
             request.IncludeCategoryChildren,
             request.ActiveOnly,

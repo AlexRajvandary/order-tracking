@@ -40,6 +40,7 @@ export async function fetchBrands(): Promise<ApiBrand[]> {
 }
 
 export async function fetchCatalogFacets(
+  categoryId?: string,
   categorySlug?: string,
   includeCategoryChildren = true,
 ): Promise<ApiCatalogFacets> {
@@ -48,6 +49,7 @@ export async function fetchCatalogFacets(
     includeCategoryChildren: String(includeCategoryChildren),
   });
   if (categorySlug) params.set("category", categorySlug);
+  if (categoryId) params.set("categoryId", categoryId);
 
   const url = `${productsApiBaseUrl()}/api/products/facets?${params}`;
   const res = await fetch(url, { cache: "no-store" });

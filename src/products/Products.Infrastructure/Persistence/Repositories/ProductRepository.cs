@@ -593,13 +593,14 @@ public sealed class ProductRepository : IProductRepository
     }
 
     public async Task<(IReadOnlyList<Brand> Brands, IReadOnlyList<Shop> Shops)> ListFacetsAsync(
+        Guid? categoryId,
         string? categorySlug,
         bool includeCategoryChildren,
         bool? activeOnly,
         CancellationToken cancellationToken = default)
     {
         var query = await BuildFilterQueryAsync(
-            null, activeOnly, null, null, null, null, null, null,
+            null, activeOnly, null, null, null, null, null, categoryId,
             categorySlug, includeCategoryChildren, null, null, cancellationToken);
 
         var brandIds = await query

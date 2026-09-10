@@ -157,6 +157,7 @@ export async function fetchProductsPage(options?: {
   brandSlugs?: string[];
   shopSlugs?: string[];
   conditions?: Array<"new" | "used">;
+  categoryId?: string;
   categorySlug?: string;
   includeCategoryChildren?: boolean;
   sort?: "mixed";
@@ -187,6 +188,9 @@ export async function fetchProductsPage(options?: {
   }
   if (options?.categorySlug) {
     params.set("category", options.categorySlug);
+  }
+  if (options?.categoryId) {
+    params.set("categoryId", options.categoryId);
   }
   if (options?.includeCategoryChildren) {
     params.set("includeCategoryChildren", "true");
@@ -241,6 +245,7 @@ export async function fetchProductBySlug(
 }
 
 export async function fetchCatalogPage(options: {
+  rootCategoryId?: string;
   rootCategorySlug: string;
   rootCategoryName: string;
   page?: number;
@@ -249,6 +254,7 @@ export async function fetchCatalogPage(options: {
   shopSlugs?: string[];
   conditions?: Array<"new" | "used">;
   /** Child subcategory slug, or omit for the whole root category tree. */
+  categoryId?: string;
   categorySlug?: string;
   categoryName?: string;
   /** Stable seed used to mix products across a root category and its children. */
@@ -270,7 +276,8 @@ export async function fetchCatalogPage(options: {
     brandSlugs: options.brandSlugs,
     shopSlugs: options.shopSlugs,
     conditions: options.conditions,
-    categorySlug,
+    categoryId: options.categoryId ?? options.rootCategoryId,
+    categorySlug: options.categoryId || options.rootCategoryId ? undefined : categorySlug,
     includeCategoryChildren,
     activeOnly: true,
     sort: options.shuffleSeed != null && includeCategoryChildren ? "mixed" : undefined,

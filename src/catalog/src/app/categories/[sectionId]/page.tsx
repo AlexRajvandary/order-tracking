@@ -96,17 +96,15 @@ export default async function CategorySectionPage({
         shopSlugs: selectedShopSlugs,
         shuffleSeed,
       })
-    : fetchCatalogPage({
+    : !subSlug ? fetchCatalogPage({
         rootCategorySlug: decodedSectionId,
         rootCategoryName: decodedSectionId,
         page,
         pageSize: PRODUCTS_PAGE_SIZE,
         brandSlugs: selectedBrandSlugs,
         shopSlugs: selectedShopSlugs,
-        categorySlug: subSlug,
-        categoryName: subSlug,
         shuffleSeed,
-      });
+      }) : null;
 
   const categoryTree = await categoryTreePromise;
 
@@ -115,6 +113,7 @@ export default async function CategorySectionPage({
 
   const child = root && subSlug ? findChildCategory(root, subSlug) : undefined;
   const facetsPromise = fetchCatalogFacets(
+    child?.id ?? root?.id,
     child?.slug ?? root?.slug,
     !child,
   ).catch(() => ({ brands: [], shops: [] }));
@@ -134,7 +133,20 @@ export default async function CategorySectionPage({
         shopSlugs: selectedShopSlugs,
         shuffleSeed: effectiveShuffleSeed,
       })
-    : earlyCatalogPromise;
+    : child && root
+      ? fetchCatalogPage({
+          rootCategoryId: root.id,
+          rootCategorySlug: root.slug,
+          rootCategoryName: root.name,
+          page,
+          pageSize: PRODUCTS_PAGE_SIZE,
+          brandSlugs: selectedBrandSlugs,
+          shopSlugs: selectedShopSlugs,
+          categoryId: child.id,
+          categorySlug: child.slug,
+          categoryName: child.name,
+        })
+      : earlyCatalogPromise!;
   const [catalog, facets] = await Promise.all([
     catalogPromise,
     facetsPromise,

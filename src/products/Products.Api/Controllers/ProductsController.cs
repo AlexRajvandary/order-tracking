@@ -74,12 +74,13 @@ public sealed class ProductsController : ControllerBase
     [HttpGet("facets")]
     [AllowAnonymous]
     public Task<ProductFacetsResult> ListFacets(
+        [FromQuery] Guid? categoryId,
         [FromQuery] string? category,
         [FromQuery] bool includeCategoryChildren = true,
         [FromQuery] bool? activeOnly = true,
         CancellationToken cancellationToken = default) =>
         _mediator.Send(
-            new ListProductFacetsQuery(category, includeCategoryChildren, activeOnly),
+            new ListProductFacetsQuery(categoryId, category, includeCategoryChildren, activeOnly),
             cancellationToken);
 
     [HttpGet("{id:guid}")]
