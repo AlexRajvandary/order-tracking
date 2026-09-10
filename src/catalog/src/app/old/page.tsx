@@ -53,6 +53,7 @@ type FashionCategoryData = {
   slug: string;
   description: string | null;
   imageUrl: string | null;
+  href?: string;
 };
 
 function toFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | "name" | "slug" | "description" | "imageUrl">>, gender?: "women" | "men"): FashionCategoryData[] {
@@ -66,7 +67,7 @@ function toFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | 
 }
 
 function toWomenFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | "name" | "slug" | "description" | "imageUrl">>): FashionCategoryData[] {
-  return toFashionCategories(categories).filter((category) =>
+  const mapped = toFashionCategories(categories).filter((category) =>
     !/\u0432\u0435\u0440\u0445\u043d\u044f\u044f\s+\u043e\u0434\u0435\u0436\u0434\u0430|outerwear|\u043a\u043e\u0441\u0442\u044e\u043c|suits?/i.test(`${category.name} ${category.slug}`),
   ).map((category) => {
     const key = `${category.name} ${category.slug}`;
@@ -76,6 +77,18 @@ function toWomenFashionCategories(categories: Array<Pick<FashionCategoryData, "i
     if (/bottom|\u043d\u0438\u0437/i.test(key)) return { ...category, imageUrl: "/catalog-assets/womens-bottom-wide.png" };
     return category;
   });
+
+  return [
+    ...mapped,
+    {
+      id: "women-bags",
+      name: "Сумки",
+      slug: "bags",
+      description: null,
+      imageUrl: "/catalog-assets/womens-bags-wide.png",
+      href: "/categories/bags",
+    },
+  ];
 }
 
 function toMenFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | "name" | "slug" | "description" | "imageUrl">>): FashionCategoryData[] {
@@ -102,7 +115,10 @@ export default async function HomePage() {
     ["men-fashion", { root: menRoot, categories: hardcodedMenCategories }],
   ]);
   const visibleSections = categorySections.filter(
-    (section) => section.id !== "stationery" && section.id !== "dvd",
+    (section) =>
+      section.id !== "stationery" &&
+      section.id !== "dvd" &&
+      section.id !== "bags",
   );
   const orderedSections = [
     ...visibleSections.filter((section) => section.id === "women-fashion" || section.id === "men-fashion"),
