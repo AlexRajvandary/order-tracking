@@ -7,7 +7,7 @@ import { CatalogEntryScrollReset } from "@/components/home-catalog-navigation";
 import { fetchBrands, parseBrandSlugs } from "@/lib/brands-api";
 import {
   categoryHref,
-  fetchCategoryTree,
+  fetchFreshCategoryTree,
   findChildCategory,
   findRootCategory,
   safeDecode,
@@ -83,10 +83,10 @@ export default async function CategorySectionPage({
     ? requestedShuffleSeed
     : undefined;
 
-  const categoryTreePromise = fetchCategoryTree({
-    includeProductCounts: true,
-    productsActiveOnly: true,
-  });
+  // Catalog pages must always receive a fresh tree with current counts for every
+  // root category and subcategory. Client-side navigation keeps the previous
+  // snapshot visible while this uncached request is in flight.
+  const categoryTreePromise = fetchFreshCategoryTree().catch(() => []);
   const shopsPromise = fetchShops().catch(() => []);
   const brandsPromise = fetchBrands().catch(() => []);
 

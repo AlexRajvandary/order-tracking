@@ -88,11 +88,19 @@ function toWomenFashionCategories(categories: Array<Pick<FashionCategoryData, "i
       imageUrl: "/catalog-assets/womens-bags-wide.png",
       href: "/categories/bags",
     },
+    {
+      id: "women-watches",
+      name: "Часы",
+      slug: "watches",
+      description: null,
+      imageUrl: null,
+      href: "/categories/watches",
+    },
   ];
 }
 
 function toMenFashionCategories(categories: Array<Pick<FashionCategoryData, "id" | "name" | "slug" | "description" | "imageUrl">>): FashionCategoryData[] {
-  return toFashionCategories(categories, "men")
+  const mapped = toFashionCategories(categories, "men")
     .filter((category) => !/\u0432\u0435\u0440\u0445\u043d\u044f\u044f\s+\u043e\u0434\u0435\u0436\u0434\u0430|outerwear|\u043a\u0443\u0440\u0442\u043a|jackets?|\u043a\u043e\u0441\u0442\u044e\u043c|suits?/i.test(`${category.name} ${category.slug}`))
     .map((category) => {
       const key = `${category.name} ${category.slug}`;
@@ -101,6 +109,18 @@ function toMenFashionCategories(categories: Array<Pick<FashionCategoryData, "id"
       if (/\u043d\u0438\u0437|bottom/i.test(key)) return { ...category, imageUrl: "/catalog-assets/mens-bottom.png" };
       return category;
     });
+
+  return [
+    ...mapped,
+    {
+      id: "men-watches",
+      name: "Часы",
+      slug: "watches",
+      description: null,
+      imageUrl: null,
+      href: "/categories/watches",
+    },
+  ];
 }
 
 export default async function HomePage() {
@@ -118,7 +138,8 @@ export default async function HomePage() {
     (section) =>
       section.id !== "stationery" &&
       section.id !== "dvd" &&
-      section.id !== "bags",
+      section.id !== "bags" &&
+      section.id !== "watches",
   );
   const orderedSections = [
     ...visibleSections.filter((section) => section.id === "women-fashion" || section.id === "men-fashion"),
