@@ -2,17 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 
-const FIELD_MAP = new Map([
-  ["商品名", "name"],
-  ["商品URL", "sourceUrl"],
-  ["ブランド名", "brand"],
-  ["価格 (JPY)", "price"],
-  ["商品画像", "imageUrl"],
-  ["セール情報", "saleInfo"],
-]);
-
-const CATEGORY_NAME = "Женские сумки";
-const PARENT_CATEGORY_NAME = "Сумки";
+const REQUIRED_FIELDS = ["商品名", "商品URL", "ブランド名", "価格 (JPY)", "商品画像"];
 
 function createSku(sourceUrl) {
   const hash = createHash("sha256").update(sourceUrl).digest("hex").slice(0, 16);
@@ -33,10 +23,27 @@ function parsePrice(value, itemNumber) {
 function usage() {
   console.error(
     "Usage: node scripts/translate-thunderbit-json-fields.mjs <input.json> [output.json]",
+    "       [--category <name>] [--parent-category <name>] [--skip-incomplete]",
   );
 }
 
-const [, , inputArgument, outputArgument] = process.argv;
+const argumentsList = process.argv.slice(2);
+const inputArgument = argumentsList.shift();
+const outputArgument = argumentsList[0]?.startsWith("--") ? undefined : argumentsList.shift();
+
+function readOption(name, fallback) {
+  const index = argumentsList.indexOf(name);
+  if (index < 0) return fallback;
+  const value = argumentsList[index + 1];
+  if (!value || value.startsWith("--")) {
+    throw new Error(`Option ${name} requires a value.`);
+  }
+  return value;
+}
+
+const categoryName = readOption("--category", "Женские сумки");
+const parentCategoryName = readOption("--parent-category", "Сумки");
+const skipIncomplete = argumentsList.includes("--skip-incomplete");
 
 if (!inputArgument) {
   usage();
@@ -60,28 +67,31 @@ if (!Array.isArray(products)) {
   throw new Error("Expected the JSON root to be an array of products.");
 }
 
-const translatedProducts = products.map((product, index) => {
+const incompleteItems = [];
+const completeProducts = products.flatMap((product, index) => {
   if (product === null || Array.isArray(product) || typeof product !== "object") {
     throw new Error(`Item ${index + 1} must be a JSON object.`);
   }
 
-  const unknownFields = Object.keys(product).filter((field) => !FIELD_MAP.has(field));
-  if (unknownFields.length > 0) {
-    throw new Error(
-      `Item ${index + 1} contains unknown fields: ${unknownFields.join(", ")}`,
-    );
-  }
-
-  const missingFields = [...FIELD_MAP.keys()].filter(
-    (field) => !Object.prototype.hasOwnProperty.call(product, field),
+  const missingFields = REQUIRED_FIELDS.filter(
+    (field) =>
+      !Object.prototype.hasOwnProperty.call(product, field) ||
+      String(product[field] ?? "").trim().length === 0,
   );
   if (missingFields.length > 0) {
+    if (skipIncomplete) {
+      incompleteItems.push({ item: index + 1, fields: missingFields });
+      return [];
+    }
     throw new Error(
       `Item ${index + 1} is missing fields: ${missingFields.join(", ")}`,
     );
   }
 
-  const itemNumber = index + 1;
+  return [{ product, itemNumber: index + 1 }];
+});
+
+const translatedProducts = completeProducts.map(({ product, itemNumber }) => {
   const sourceUrl = product["商品URL"];
 
   if (typeof sourceUrl !== "string" || sourceUrl.trim().length === 0) {
@@ -96,8 +106,8 @@ const translatedProducts = products.map((product, index) => {
     sourceUrl,
     sku: createSku(sourceUrl),
     brand: product["ブランド名"],
-    categoryName: CATEGORY_NAME,
-    parentCategoryName: PARENT_CATEGORY_NAME,
+    categoryName,
+    parentCategoryName,
     condition: "new",
     isActive: true,
   };
@@ -107,4 +117,7 @@ fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(translatedProducts, null, 2)}\n`, "utf8");
 
 console.log(`Translated ${translatedProducts.length} products.`);
+if (incompleteItems.length > 0) {
+  console.log(`Skipped ${incompleteItems.length} incomplete products.`);
+}
 console.log(`Output: ${outputPath}`);
