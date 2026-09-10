@@ -171,8 +171,8 @@ export function PopularCategoryCard({
         "group relative block h-full min-h-[270px] overflow-hidden rounded-2xl",
         "border border-[#e5e7eb] bg-[#ffffff]",
         "shadow-[0_2px_10px_rgba(15,23,42,0.03)]",
-        "transition-[transform,box-shadow] duration-[250ms] ease",
-        "hover:-translate-y-1 hover:border-[#f24676] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]",
+        "transition-[border-color,box-shadow] duration-[250ms] ease",
+        "hover:border-[#f24676] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]",
         className,
       )}
     >
