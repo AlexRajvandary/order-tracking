@@ -303,18 +303,17 @@ function DesktopTwoRowSlider({
         <ChevronRight className="size-5" />
       </button>
 
-      {/* Progress bar like ZenMarket scrollbar */}
-      <DesktopScrollProgress scrollerRef={scrollerRef} />
+      <DesktopPaginationDots scrollerRef={scrollerRef} />
     </div>
   );
 }
 
-function DesktopScrollProgress({
+function DesktopPaginationDots({
   scrollerRef,
 }: {
   scrollerRef: RefObject<HTMLDivElement | null>;
 }) {
-  const [progress, setProgress] = useState({ left: 0, width: 100 });
+  const [pagination, setPagination] = useState({ activePage: 0, pageCount: 1 });
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -324,12 +323,16 @@ function DesktopScrollProgress({
       if (!el) return;
       const max = el.scrollWidth - el.clientWidth;
       if (max <= 0) {
-        setProgress({ left: 0, width: 100 });
+        setPagination({ activePage: 0, pageCount: 1 });
         return;
       }
-      const width = Math.max(12, (el.clientWidth / el.scrollWidth) * 100);
-      const left = (el.scrollLeft / max) * (100 - width);
-      setProgress({ left, width });
+
+      const pageCount = Math.ceil(max / el.clientWidth) + 1;
+      const activePage = Math.min(
+        pageCount - 1,
+        Math.round((el.scrollLeft / max) * (pageCount - 1)),
+      );
+      setPagination({ activePage, pageCount });
     }
 
     update();
@@ -342,12 +345,39 @@ function DesktopScrollProgress({
     };
   }, [scrollerRef]);
 
+  function goToPage(page: number) {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    const left = pagination.pageCount <= 1
+      ? 0
+      : (max * page) / (pagination.pageCount - 1);
+    el.scrollTo({ left, behavior: "smooth" });
+  }
+
+  if (pagination.pageCount <= 1) return null;
+
   return (
-    <div className="relative mx-auto mt-5 h-1 max-w-md overflow-hidden rounded-full bg-[#E5E7EB]">
-      <div
-        className="absolute top-0 h-full rounded-full bg-[#111827] transition-[left,width] duration-150"
-        style={{ left: `${progress.left}%`, width: `${progress.width}%` }}
-      />
+    <div
+      className="mt-5 flex items-center justify-center gap-2"
+      role="group"
+      aria-label="Страницы популярных категорий"
+    >
+      {Array.from({ length: pagination.pageCount }, (_, page) => (
+        <button
+          key={page}
+          type="button"
+          aria-label={`Перейти на страницу ${page + 1}`}
+          aria-current={pagination.activePage === page ? "page" : undefined}
+          onClick={() => goToPage(page)}
+          className={cn(
+            "size-2.5 cursor-pointer rounded-full transition-colors",
+            pagination.activePage === page
+              ? "bg-[#111827]"
+              : "bg-[#D1D5DB] hover:bg-[#9CA3AF]",
+          )}
+        />
+      ))}
     </div>
   );
 }
