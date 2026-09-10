@@ -12,6 +12,11 @@ export type ApiBrandListResult = {
   items: ApiBrand[];
 };
 
+export type ApiCatalogFacets = {
+  brands: ApiBrand[];
+  shops: import("@/lib/shops-api").ApiShop[];
+};
+
 function productsApiBaseUrl(): string {
   return (
     process.env.PRODUCTS_API_BASE_URL?.replace(/\/$/, "") ||
@@ -32,6 +37,24 @@ export async function fetchBrands(): Promise<ApiBrand[]> {
 
   const data = (await res.json()) as ApiBrandListResult;
   return data.items ?? [];
+}
+
+export async function fetchCatalogFacets(
+  categorySlug?: string,
+  includeCategoryChildren = true,
+): Promise<ApiCatalogFacets> {
+  const params = new URLSearchParams({
+    activeOnly: "true",
+    includeCategoryChildren: String(includeCategoryChildren),
+  });
+  if (categorySlug) params.set("category", categorySlug);
+
+  const url = `${productsApiBaseUrl()}/api/products/facets?${params}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Product facets API ${res.status}: ${url}`);
+
+  const data = (await res.json()) as ApiCatalogFacets;
+  return { brands: data.brands ?? [], shops: data.shops ?? [] };
 }
 
 export function parseBrandSlugs(raw: string | string[] | undefined): string[] {

@@ -9,6 +9,7 @@ using Products.Application.Products.GetProductAudit;
 using Products.Application.Products.GetProductImageSizes;
 using Products.Application.Products.ImportProducts;
 using Products.Application.Products.ListProducts;
+using Products.Application.Products.ListProductFacets;
 using Products.Application.Products.PatchProduct;
 using Products.Application.Products.SetProductsVisibility;
 using Products.Application.Products.UpdateProduct;
@@ -68,6 +69,17 @@ public sealed class ProductsController : ControllerBase
                 pageSize,
                 sort,
                 shuffleSeed),
+            cancellationToken);
+
+    [HttpGet("facets")]
+    [AllowAnonymous]
+    public Task<ProductFacetsResult> ListFacets(
+        [FromQuery] string? category,
+        [FromQuery] bool includeCategoryChildren = true,
+        [FromQuery] bool? activeOnly = true,
+        CancellationToken cancellationToken = default) =>
+        _mediator.Send(
+            new ListProductFacetsQuery(category, includeCategoryChildren, activeOnly),
             cancellationToken);
 
     [HttpGet("{id:guid}")]

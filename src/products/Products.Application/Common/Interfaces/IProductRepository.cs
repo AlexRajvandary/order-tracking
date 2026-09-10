@@ -6,6 +6,11 @@ namespace Products.Application.Common.Interfaces;
 
 public interface IProductRepository
 {
+    Task<(IReadOnlyList<Brand> Brands, IReadOnlyList<Shop> Shops)> ListFacetsAsync(
+        string? categorySlug,
+        bool includeCategoryChildren,
+        bool? activeOnly,
+        CancellationToken cancellationToken = default);
     Task<(IReadOnlyDictionary<Guid, int> ByCategory, int Total)> CountByCategoryAsync(
         bool? activeOnly,
         CancellationToken cancellationToken = default);

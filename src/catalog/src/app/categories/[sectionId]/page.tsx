@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { CatalogBrowser } from "@/components/catalog-browser";
 import { SiteHeader } from "@/components/site-header";
 import { CatalogEntryScrollReset } from "@/components/home-catalog-navigation";
-import { fetchBrands, parseBrandSlugs } from "@/lib/brands-api";
+import { fetchCatalogFacets, parseBrandSlugs } from "@/lib/brands-api";
 import {
   categoryHref,
   fetchFreshCategoryTree,
@@ -19,10 +19,7 @@ import {
   mapRakutenProductToCatalog,
   PRODUCTS_PAGE_SIZE,
 } from "@/lib/products-api";
-import {
-  fetchShops,
-  parseCsvParam,
-} from "@/lib/shops-api";
+import { parseCsvParam } from "@/lib/shops-api";
 
 type PageProps = {
   params: Promise<{ sectionId: string }>;
@@ -87,8 +84,6 @@ export default async function CategorySectionPage({
   // root category and subcategory. Client-side navigation keeps the previous
   // snapshot visible while this uncached request is in flight.
   const categoryTreePromise = fetchFreshCategoryTree().catch(() => []);
-  const shopsPromise = fetchShops().catch(() => []);
-  const brandsPromise = fetchBrands().catch(() => []);
 
   // Product requests do not depend on category metadata. Start them immediately
   // instead of putting products behind the categories/shops waterfall. Tree
@@ -119,6 +114,10 @@ export default async function CategorySectionPage({
   if (!isAllCategories && !root) notFound();
 
   const child = root && subSlug ? findChildCategory(root, subSlug) : undefined;
+  const facetsPromise = fetchCatalogFacets(
+    child?.slug ?? root?.slug,
+    !child,
+  ).catch(() => ({ brands: [], shops: [] }));
   const effectiveShuffleSeed = isAllCategories || !child
     ? requestedShuffleSeed
     : undefined;
@@ -136,10 +135,9 @@ export default async function CategorySectionPage({
         shuffleSeed: effectiveShuffleSeed,
       })
     : earlyCatalogPromise;
-  const [catalog, shops, brands] = await Promise.all([
+  const [catalog, facets] = await Promise.all([
     catalogPromise,
-    shopsPromise,
-    brandsPromise,
+    facetsPromise,
   ]);
 
   const showRakutenTcg = root?.slug === "tcg" && !child
@@ -167,9 +165,10 @@ export default async function CategorySectionPage({
             categoryTree={categoryTree}
             activeRootSlug={root?.slug}
             activeChildSlug={child?.slug}
-            brands={brands}
+            brands={facets.brands}
+            categoryFacetsScoped
             selectedBrandSlugs={selectedBrandSlugs}
-            shops={shops}
+            shops={facets.shops}
             selectedShopSlugs={selectedShopSlugs}
             pagination={{
               page: catalog.page,

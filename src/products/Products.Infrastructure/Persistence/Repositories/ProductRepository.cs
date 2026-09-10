@@ -592,6 +592,41 @@ public sealed class ProductRepository : IProductRepository
         return query;
     }
 
+    public async Task<(IReadOnlyList<Brand> Brands, IReadOnlyList<Shop> Shops)> ListFacetsAsync(
+        string? categorySlug,
+        bool includeCategoryChildren,
+        bool? activeOnly,
+        CancellationToken cancellationToken = default)
+    {
+        var query = await BuildFilterQueryAsync(
+            null, activeOnly, null, null, null, null, null, null,
+            categorySlug, includeCategoryChildren, null, null, cancellationToken);
+
+        var brandIds = await query
+            .Where(product => product.BrandId != null)
+            .Select(product => product.BrandId!.Value)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var shopIds = await query
+            .Where(product => product.ShopId != null)
+            .Select(product => product.ShopId!.Value)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var brands = await _db.Brands.AsNoTracking()
+            .Where(brand => brand.IsActive && brandIds.Contains(brand.Id))
+            .OrderBy(brand => brand.SortOrder)
+            .ThenBy(brand => brand.Name)
+            .ToListAsync(cancellationToken);
+        var shops = await _db.Shops.AsNoTracking()
+            .Where(shop => shop.IsActive && shopIds.Contains(shop.Id))
+            .OrderBy(shop => shop.SortOrder)
+            .ThenBy(shop => shop.Name)
+            .ToListAsync(cancellationToken);
+
+        return (brands, shops);
+    }
+
     public void Add(Product product) => _db.Products.Add(product);
 
     public void Remove(Product product) => _db.Products.Remove(product);

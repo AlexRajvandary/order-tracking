@@ -63,6 +63,7 @@ export type CatalogBrowserProps = {
   activeRootSlug?: string;
   activeChildSlug?: string;
   brands?: ApiBrand[];
+  categoryFacetsScoped?: boolean;
   selectedBrandSlugs?: string[];
   shops?: ApiShop[];
   selectedShopSlugs?: string[];
@@ -346,6 +347,7 @@ export function CatalogBrowser({
   activeRootSlug,
   activeChildSlug,
   brands = [],
+  categoryFacetsScoped = false,
   selectedBrandSlugs = [],
   shops,
   selectedShopSlugs = [],
@@ -359,6 +361,7 @@ export function CatalogBrowser({
       activeRootSlug,
       activeChildSlug,
       brands,
+      categoryFacetsScoped,
       selectedBrandSlugs,
       shops,
       selectedShopSlugs,
@@ -433,7 +436,7 @@ export function CatalogBrowser({
   }, [activeRootSlug, activeChildSlug, selectedCategoryKey]);
 
   const loadBrands = useCallback(async () => {
-    if (brands.length > 0 || brandOptions.length > 0 || brandsLoading) return;
+    if (categoryFacetsScoped || brands.length > 0 || brandOptions.length > 0 || brandsLoading) return;
     if (brandOptionsCache && brandOptionsCache.expiresAt > Date.now()) {
       setBrandOptions(brandOptionsCache.items);
       return;
@@ -452,7 +455,7 @@ export function CatalogBrowser({
     } finally {
       setBrandsLoading(false);
     }
-  }, [brands.length, brandOptions.length, brandsLoading]);
+  }, [categoryFacetsScoped, brands.length, brandOptions.length, brandsLoading]);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 639px)");
