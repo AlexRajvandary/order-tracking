@@ -7,14 +7,18 @@ using Products.Domain.Entities;
 
 namespace Products.Application.Categories.ManageCategories;
 
-public sealed record CreateCategoryCommand(string Name, Guid? ParentId) : IRequest<CategoryDto>;
-public sealed record RenameCategoryCommand(Guid Id, string Name) : IRequest<CategoryDto>;
+public sealed record CreateCategoryCommand(string Name, Guid? ParentId, string? Slug = null) : IRequest<CategoryDto>;
+public sealed record RenameCategoryCommand(Guid Id, string Name, string? Slug = null) : IRequest<CategoryDto>;
 public sealed record DeleteCategoryCommand(Guid Id) : IRequest<DeleteCategoryResult>;
 public sealed record DeleteCategoryResult(int DeletedCategoriesCount, int UnassignedProductsCount);
 
 public sealed class CreateCategoryCommandValidator : AbstractValidator<CreateCategoryCommand>
 {
-    public CreateCategoryCommandValidator() => RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
+    public CreateCategoryCommandValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.Slug).MaximumLength(200).When(x => x.Slug is not null);
+    }
 }
 
 public sealed class RenameCategoryCommandValidator : AbstractValidator<RenameCategoryCommand>
@@ -23,6 +27,7 @@ public sealed class RenameCategoryCommandValidator : AbstractValidator<RenameCat
     {
         RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.Slug).MaximumLength(200).When(x => x.Slug is not null);
     }
 }
 
@@ -49,9 +54,9 @@ public sealed class CreateCategoryCommandHandler : IRequestHandler<CreateCategor
         }
 
         var name = request.Name.Trim();
-        var slug = Slugify(name);
+        var slug = Slugify(string.IsNullOrWhiteSpace(request.Slug) ? name : request.Slug);
         if (await _categories.IsSlugTakenAsync(slug, parent?.Id, cancellationToken: cancellationToken))
-            throw new ValidationException("A category with this name already exists at this level.");
+            throw new ValidationException("A category with this link already exists at this level.");
 
         var category = new Category
         {
@@ -96,9 +101,10 @@ public sealed class RenameCategoryCommandHandler : IRequestHandler<RenameCategor
         var category = await _categories.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new NotFoundException($"Category {request.Id} was not found.");
         var name = request.Name.Trim();
-        var slug = CreateCategoryCommandHandler.Slugify(name);
+        var slug = CreateCategoryCommandHandler.Slugify(
+            string.IsNullOrWhiteSpace(request.Slug) ? category.Slug : request.Slug);
         if (await _categories.IsSlugTakenAsync(slug, category.ParentId, category.Id, cancellationToken))
-            throw new ValidationException("A category with this name already exists at this level.");
+            throw new ValidationException("A category with this link already exists at this level.");
 
         category.Name = name;
         category.Slug = slug;

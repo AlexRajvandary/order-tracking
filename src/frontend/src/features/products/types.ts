@@ -53,8 +53,8 @@ export type CategoryListResult = {
   totalProductCount: number
 }
 
-export type CreateCategoryRequest = { name: string; parentId?: string | null }
-export type RenameCategoryRequest = { name: string }
+export type CreateCategoryRequest = { name: string; parentId?: string | null; slug?: string | null }
+export type RenameCategoryRequest = { name: string; slug?: string | null }
 export type DeleteCategoryResult = {
   deletedCategoriesCount: number
   unassignedProductsCount: number

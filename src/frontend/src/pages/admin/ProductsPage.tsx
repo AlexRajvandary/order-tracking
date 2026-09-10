@@ -756,6 +756,7 @@ export function ProductsPage() {
   const [bulkError, setBulkError] = useState<string | null>(null)
   const [categoryAction, setCategoryAction] = useState<CategoryAction>(null)
   const [categoryName, setCategoryName] = useState('')
+  const [categoryLinkSlug, setCategoryLinkSlug] = useState('')
   const [categoryError, setCategoryError] = useState<string | null>(null)
   const [bulkEditOpen, setBulkEditOpen] = useState(false)
   const [bulkCategory, setBulkCategory] = useState(BULK_UNCHANGED)
@@ -1084,16 +1085,21 @@ export function ProductsPage() {
       const name = categoryName.trim()
       if (!name) throw new Error(t('categoryManagement.nameRequired'))
       if (action.kind === 'rename') {
-        return productsApi.renameCategory(action.category.id, { name })
+        return productsApi.renameCategory(action.category.id, {
+          name,
+          slug: categoryLinkSlug.trim(),
+        })
       }
       return productsApi.createCategory({
         name,
         parentId: action.parent?.id ?? null,
+        slug: categoryLinkSlug.trim() || null,
       })
     },
     onSuccess: async () => {
       setCategoryAction(null)
       setCategoryName('')
+      setCategoryLinkSlug('')
       setCategoryError(null)
       setCategorySlug(null)
       await Promise.all([
@@ -1173,6 +1179,7 @@ export function ProductsPage() {
   const openCategoryAction = (action: Exclude<CategoryAction, null>) => {
     setCategoryError(null)
     setCategoryName(action.kind === 'rename' ? action.category.name : '')
+    setCategoryLinkSlug(action.kind === 'rename' ? action.category.slug : '')
     setCategoryAction(action)
   }
 
@@ -1714,20 +1721,35 @@ export function ProductsPage() {
               })}
             </p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-4">
               {categoryAction?.kind === 'create' && categoryAction.parent ? (
                 <p className="text-sm text-muted-foreground">
                   {t('categoryManagement.parent', { name: categoryAction.parent.name })}
                 </p>
               ) : null}
-              <Label htmlFor="category-name">{t('categoryManagement.name')}</Label>
-              <Input
-                id="category-name"
-                value={categoryName}
-                autoFocus
-                maxLength={200}
-                onChange={(event) => setCategoryName(event.target.value)}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="category-name">{t('categoryManagement.name')}</Label>
+                <Input
+                  id="category-name"
+                  value={categoryName}
+                  autoFocus
+                  maxLength={200}
+                  onChange={(event) => setCategoryName(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="category-slug">{t('categoryManagement.slug')}</Label>
+                <Input
+                  id="category-slug"
+                  value={categoryLinkSlug}
+                  maxLength={200}
+                  placeholder={t('categoryManagement.slugPlaceholder')}
+                  onChange={(event) => setCategoryLinkSlug(event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('categoryManagement.slugHint')}
+                </p>
+              </div>
             </div>
           )}
           {categoryError ? (

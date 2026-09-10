@@ -37,7 +37,7 @@ public sealed class CategoriesController : ControllerBase
     public Task<Products.Application.Categories.Models.CategoryDto> Create(
         [FromBody] CreateCategoryRequest body,
         CancellationToken cancellationToken) =>
-        _mediator.Send(new CreateCategoryCommand(body.Name, body.ParentId), cancellationToken);
+        _mediator.Send(new CreateCategoryCommand(body.Name, body.ParentId, body.Slug), cancellationToken);
 
     [HttpPut("{id:guid}")]
     [Authorize]
@@ -45,7 +45,7 @@ public sealed class CategoriesController : ControllerBase
         Guid id,
         [FromBody] RenameCategoryRequest body,
         CancellationToken cancellationToken) =>
-        _mediator.Send(new RenameCategoryCommand(id, body.Name), cancellationToken);
+        _mediator.Send(new RenameCategoryCommand(id, body.Name, body.Slug), cancellationToken);
 
     [HttpDelete("{id:guid}")]
     [Authorize]
@@ -55,5 +55,5 @@ public sealed class CategoriesController : ControllerBase
         Ok(await _mediator.Send(new DeleteCategoryCommand(id), cancellationToken));
 }
 
-public sealed record CreateCategoryRequest(string Name, Guid? ParentId = null);
-public sealed record RenameCategoryRequest(string Name);
+public sealed record CreateCategoryRequest(string Name, Guid? ParentId = null, string? Slug = null);
+public sealed record RenameCategoryRequest(string Name, string? Slug = null);
