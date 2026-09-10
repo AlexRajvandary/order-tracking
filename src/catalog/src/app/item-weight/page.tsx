@@ -37,7 +37,7 @@ export default function ItemWeightPage() {
               width={420}
               height={420}
               priority
-              className="h-auto w-full max-w-[250px] object-contain lg:max-w-[330px]"
+              className="h-auto w-full max-w-[220px] object-contain lg:max-w-[270px]"
             />
           </div>
                </section>

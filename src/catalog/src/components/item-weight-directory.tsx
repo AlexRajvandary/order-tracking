@@ -33,8 +33,6 @@ export function ItemWeightDirectory() {
     ? ITEM_WEIGHT_GROUPS
     : ITEM_WEIGHT_GROUPS.filter((group) => group.category === category);
 
-  const count = groups.reduce((sum, group) => sum + group.items.length, 0);
-
   function selectCategory(next: "all" | WeightCategoryId) {
     setCategory(next);
     window.requestAnimationFrame(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -42,7 +40,7 @@ export function ItemWeightDirectory() {
 
   return (
     <>
-      <section aria-label="Категории справочника" className="mt-8">
+      <section aria-label="Категории справочника" className="mt-4 sm:mt-5">
         <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Категории товаров">
           {WEIGHT_CATEGORIES.map((item) => (
             <Button
@@ -60,8 +58,7 @@ export function ItemWeightDirectory() {
         </div>
       </section>
 
-      <div ref={resultsRef} className="scroll-mt-6 pt-8">
-        <p className="mb-5 text-sm tabular-nums text-muted-foreground">Найдено позиций: {count}</p>
+      <div ref={resultsRef} className="scroll-mt-6 pt-5 sm:pt-6">
         <div className="space-y-8">
             {groups.map((group, groupIndex) => {
               const headingId = `weight-${group.category}-${groupIndex}`;
