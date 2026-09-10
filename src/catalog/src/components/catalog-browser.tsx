@@ -379,6 +379,18 @@ export function CatalogBrowser({
   const [brandsLoading, setBrandsLoading] = useState(false);
   const [brandsError, setBrandsError] = useState(false);
   const [pendingDatasetKey, setPendingDatasetKey] = useState<string | null>(null);
+  const selectedCategoryKey = `${activeRootSlug ?? "all"}:${activeChildSlug ?? ""}`;
+  const [freshCategoryCount, setFreshCategoryCount] = useState<{
+    key: string;
+    count?: number;
+    loading: boolean;
+  }>({ key: selectedCategoryKey, loading: true });
+  const selectedCategoryCountLoading =
+    freshCategoryCount.key !== selectedCategoryKey || freshCategoryCount.loading;
+  const selectedCategoryCount =
+    freshCategoryCount.key === selectedCategoryKey
+      ? freshCategoryCount.count
+      : undefined;
   const effectiveBrandOptions = brands.length > 0 ? brands : brandOptions;
   const selectedBrandKey = selectedBrandSlugs.join(",");
   const [brandSelection, setBrandSelection] = useState({
@@ -389,6 +401,36 @@ export function CatalogBrowser({
     brandSelection.sourceKey === selectedBrandKey
       ? brandSelection.values
       : selectedBrandSlugs;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+    if (activeRootSlug) params.set("root", activeRootSlug);
+    if (activeChildSlug) params.set("child", activeChildSlug);
+
+    void fetch(`/api/catalog-category-count?${params}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Category count API ${response.status}`);
+        const result = (await response.json()) as { count?: unknown };
+        if (typeof result.count !== "number") {
+          throw new Error("Category count API returned an invalid count");
+        }
+        setFreshCategoryCount({
+          key: selectedCategoryKey,
+          count: result.count,
+          loading: false,
+        });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setFreshCategoryCount({ key: selectedCategoryKey, loading: false });
+      });
+
+    return () => controller.abort();
+  }, [activeRootSlug, activeChildSlug, selectedCategoryKey]);
 
   const loadBrands = useCallback(async () => {
     if (brands.length > 0 || brandOptions.length > 0 || brandsLoading) return;
@@ -635,6 +677,8 @@ export function CatalogBrowser({
           activeRootSlug={activeRootSlug}
           activeChildSlug={activeChildSlug}
           onNavigate={() => setPendingDatasetKey(mobileDatasetKey)}
+          selectedProductCount={selectedCategoryCount}
+          selectedProductCountLoading={selectedCategoryCountLoading}
         />
 
         <div className="min-w-0 min-[992px]:row-span-2 min-[992px]:grid min-[992px]:[grid-template-rows:subgrid]">
@@ -810,6 +854,8 @@ export function CatalogBrowser({
               totalProductCount={allCategoriesProductCount}
               activeRootSlug={activeRootSlug}
               activeChildSlug={activeChildSlug}
+              selectedProductCount={selectedCategoryCount}
+              selectedProductCountLoading={selectedCategoryCountLoading}
               onNavigate={() => {
                 setPendingDatasetKey(mobileDatasetKey);
                 setMobileCategoriesOpen(false);

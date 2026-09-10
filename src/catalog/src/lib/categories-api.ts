@@ -33,27 +33,38 @@ type FetchCategoryTreeOptions = {
   productsActiveOnly?: boolean;
 };
 
+async function requestCategoryTree(
+  options: FetchCategoryTreeOptions,
+  init?: RequestInit,
+): Promise<ApiCategory[]> {
+  const params = new URLSearchParams({ activeOnly: "true" });
+  if (options.popularOnly) params.set("popularOnly", "true");
+  if (options.includeProductCounts) params.set("includeProductCounts", "true");
+  if (options.productsActiveOnly != null) {
+    params.set("productsActiveOnly", String(options.productsActiveOnly));
+  }
+
+  const url = `${productsApiBaseUrl()}/api/products/categories?${params}`;
+  const res = await fetch(url, init);
+  if (!res.ok) {
+    throw new Error(`Categories API returned HTTP ${res.status}`);
+  }
+
+  const data = (await res.json()) as ApiCategoryListResult;
+  return (data.items ?? []).map(normalizeCategoryTitle);
+}
+
 const fetchCachedCategoryTree = unstable_cache(
   async (
     popularOnly: boolean,
     includeProductCounts: boolean,
     productsActiveOnly: boolean | null,
   ): Promise<ApiCategory[]> => {
-    const params = new URLSearchParams({ activeOnly: "true" });
-    if (popularOnly) params.set("popularOnly", "true");
-    if (includeProductCounts) params.set("includeProductCounts", "true");
-    if (productsActiveOnly != null) {
-      params.set("productsActiveOnly", String(productsActiveOnly));
-    }
-
-    const url = `${productsApiBaseUrl()}/api/products/categories?${params}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`Categories API returned HTTP ${res.status}`);
-    }
-
-    const data = (await res.json()) as ApiCategoryListResult;
-    return (data.items ?? []).map(normalizeCategoryTitle);
+    return requestCategoryTree({
+      popularOnly,
+      includeProductCounts,
+      productsActiveOnly: productsActiveOnly ?? undefined,
+    });
   },
   ["catalog-category-tree"],
   { revalidate: 3600 },
@@ -71,6 +82,13 @@ export async function fetchCategoryTree(
   } catch {
     return [];
   }
+}
+
+export function fetchFreshCategoryTree(): Promise<ApiCategory[]> {
+  return requestCategoryTree(
+    { includeProductCounts: true, productsActiveOnly: true },
+    { cache: "no-store" },
+  );
 }
 
 function normalizeCategoryTitle(category: ApiCategory): ApiCategory {

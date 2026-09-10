@@ -50,6 +50,7 @@ export default async function ProductPage({ params }: PageProps) {
   const root = categoryTree.find((item) => item.slug === categorySlug || item.children.some((child) => child.slug === categorySlug));
   const child = root?.children.find((item) => item.slug === categorySlug);
   const rootSlug = root?.slug ?? categorySlug;
+  const showSizes = rootSlug === "clothing";
   const related = rootSlug ? await fetchCatalogPage({ rootCategorySlug: rootSlug, rootCategoryName: root?.name ?? product.category, page: 1, pageSize: 8, categorySlug: child?.slug, categoryName: child?.name }).then((result) => result.products.filter((item) => item.id !== product.id)).catch(() => []) : [];
   const condition = product.condition === "used" ? "Б/У" : product.condition === "new" ? "Новое" : "";
   const backHref = rootSlug ? `/categories/${rootSlug}${child ? `?sub=${encodeURIComponent(child.slug)}` : ""}` : "/";
@@ -68,7 +69,7 @@ export default async function ProductPage({ params }: PageProps) {
           <p className="text-sm text-muted-foreground">{[product.brand, product.shopName, condition].filter(Boolean).join(" · ")}</p>
           <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">{product.name}</h1>
           <div className="mt-5 flex flex-wrap items-baseline gap-3"><p className="text-2xl font-semibold">{formatPrice(product)}</p>{product.oldPriceRub ? <p className="text-lg text-muted-foreground line-through">{new Intl.NumberFormat("ru-RU", { style: "currency", currency: product.currency, maximumFractionDigits: 0 }).format(product.oldPriceRub)}</p> : null}{product.discountPercent ? <Badge variant="destructive">{product.discountPercent}</Badge> : null}</div>
-          <div className="mt-6"><ProductDetailActions product={catalog} variants={relations.variants} /></div>
+          <div className="mt-6"><ProductDetailActions product={catalog} variants={relations.variants} showSizes={showSizes} /></div>
           <div className="mt-6 space-y-3 bg-muted/40 p-5 text-sm"><p className="font-medium">Заказ из Японии</p><p className="text-muted-foreground">Товар будет выкуплен у японского магазина после оформления заказа.</p><div className="flex justify-between border-t border-border pt-3"><span>Доставка</span><span>7–14 дней</span></div><div className="flex justify-between"><span>Состояние</span><span>{condition || "—"}</span></div></div>
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, LoaderCircle } from "lucide-react";
 import { CatalogSearchSuggestions } from "@/components/catalog-search-suggestions";
 import type { ApiCategory } from "@/lib/categories-api";
 import { categoryHref } from "@/lib/categories-api";
@@ -15,6 +15,8 @@ type CategoryTreeProps = {
   activeChildSlug?: string;
   className?: string;
   onNavigate?: () => void;
+  selectedProductCount?: number;
+  selectedProductCountLoading?: boolean;
 };
 
 function formatCount(value: number): string {
@@ -26,11 +28,15 @@ function ChildLink({
   rootSlug,
   selected,
   onNavigate,
+  selectedProductCount,
+  selectedProductCountLoading = false,
 }: {
   category: ApiCategory;
   rootSlug: string;
   selected: boolean;
   onNavigate?: () => void;
+  selectedProductCount?: number;
+  selectedProductCountLoading?: boolean;
 }) {
   return (
     <Link
@@ -57,7 +63,11 @@ function ChildLink({
           selected ? "text-[var(--category-selected-muted)]" : "text-[#9CA3AF]",
         )}
       >
-        {formatCount(category.productCount)}
+        {selectedProductCountLoading ? (
+          <LoaderCircle aria-label="Обновление количества товаров" className="ml-auto size-3.5 animate-spin" />
+        ) : (
+          formatCount(selectedProductCount ?? category.productCount)
+        )}
       </span>
     </Link>
   );
@@ -70,6 +80,8 @@ export function CategoryTree({
   activeChildSlug,
   className,
   onNavigate,
+  selectedProductCount,
+  selectedProductCountLoading = false,
 }: CategoryTreeProps) {
   const selectionKey = `${activeRootSlug ?? ""}:${activeChildSlug ?? ""}`;
   const [query, setQuery] = useState("");
@@ -147,7 +159,15 @@ export function CategoryTree({
                         : "text-[#9CA3AF]",
                     )}
                   >
-                    {formatCount(totalProductCount)}
+                    {selectedProductCountLoading && !activeRootSlug ? (
+                      <LoaderCircle aria-label="Обновление количества товаров" className="ml-auto size-3.5 animate-spin" />
+                    ) : (
+                      formatCount(
+                        !activeRootSlug
+                          ? (selectedProductCount ?? totalProductCount)
+                          : totalProductCount,
+                      )
+                    )}
                   </span>
                 ) : null}
                 <span aria-hidden="true" className="w-8 shrink-0" />
@@ -202,7 +222,15 @@ export function CategoryTree({
                           : "text-[#9CA3AF]",
                       )}
                     >
-                      {formatCount(category.productCount)}
+                      {selectedProductCountLoading && isActive ? (
+                        <LoaderCircle aria-label="Обновление количества товаров" className="ml-auto size-3.5 animate-spin" />
+                      ) : (
+                        formatCount(
+                          isActive
+                            ? (selectedProductCount ?? category.productCount)
+                            : category.productCount,
+                        )
+                      )}
                     </span>
                   </Link>
 
@@ -232,19 +260,24 @@ export function CategoryTree({
 
                 {isExpanded && visibleChildren.length > 0 ? (
                   <ul className="mt-1 space-y-0.5">
-                    {visibleChildren.map((child) => (
+                    {visibleChildren.map((child) => {
+                      const selected =
+                        activeRootSlug === category.slug &&
+                        activeChildSlug === child.slug;
+
+                      return (
                       <li key={child.id}>
                         <ChildLink
                           category={child}
                           rootSlug={category.slug}
-                          selected={
-                            activeRootSlug === category.slug &&
-                            activeChildSlug === child.slug
-                          }
+                          selected={selected}
                           onNavigate={handleNavigate}
+                          selectedProductCount={selected ? selectedProductCount : undefined}
+                          selectedProductCountLoading={selected && selectedProductCountLoading}
                         />
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 ) : null}
               </li>
