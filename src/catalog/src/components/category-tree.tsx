@@ -43,7 +43,14 @@ function ChildLink({
           : "text-[#6B7280] hover:bg-[#F7F7F7] hover:text-[#1F2937]",
       )}
     >
-      <span className="min-w-0 flex-1 truncate">{category.name}</span>
+      <span
+        className={cn(
+          "min-w-0 flex-1",
+          rootSlug === "tcg" ? "line-clamp-2 leading-4" : "truncate",
+        )}
+      >
+        {category.name}
+      </span>
       <span className="w-[4.5rem] shrink-0 text-right text-xs font-normal tabular-nums text-[#9CA3AF]">
         {formatCount(category.productCount)}
       </span>
@@ -162,7 +169,16 @@ export function CategoryTree({
                       handleNavigate();
                     }}
                   >
-                    <span className="min-w-0 flex-1 truncate">{category.name}</span>
+                    <span
+                      className={cn(
+                        "min-w-0 flex-1",
+                        category.slug === "tcg"
+                          ? "line-clamp-2 leading-5"
+                          : "truncate",
+                      )}
+                    >
+                      {category.name}
+                    </span>
                     <span className="w-[4.5rem] shrink-0 text-right text-xs font-normal tabular-nums text-[#9CA3AF]">
                       {formatCount(category.productCount)}
                     </span>
