@@ -35,6 +35,7 @@ import {
   type ApiProductListResult,
 } from "@/lib/products-api";
 import type { ApiShop } from "@/lib/shops-api";
+import { rememberCatalogNavigation } from "@/lib/catalog-navigation-snapshot";
 import { cn } from "@/lib/utils";
 
 type SortOption = "relevance" | "price-asc" | "price-desc" | "name";
@@ -49,8 +50,9 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
 const BRAND_CACHE_TTL_MS = 60 * 1000;
 let brandOptionsCache: { items: ApiBrand[]; expiresAt: number } | null = null;
 
-type CatalogBrowserProps = {
+export type CatalogBrowserProps = {
   products: CatalogProduct[];
+  productsLoading?: boolean;
   title: string;
   parentBreadcrumb?: {
     label: string;
@@ -337,6 +339,7 @@ function SortDropdown({
 
 export function CatalogBrowser({
   products,
+  productsLoading = false,
   title,
   parentBreadcrumb,
   categoryTree,
@@ -348,6 +351,21 @@ export function CatalogBrowser({
   selectedShopSlugs = [],
   pagination,
 }: CatalogBrowserProps) {
+  if (!productsLoading) {
+    rememberCatalogNavigation({
+      title,
+      parentBreadcrumb,
+      categoryTree,
+      activeRootSlug,
+      activeChildSlug,
+      brands,
+      selectedBrandSlugs,
+      shops,
+      selectedShopSlugs,
+      pagination,
+    });
+  }
+
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -723,7 +741,7 @@ export function CatalogBrowser({
             ) : null}
           </div>
 
-          {productsPending ? (
+          {productsLoading || productsPending ? (
             <ProductGridSkeleton />
           ) : filtered.length === 0 ? (
             <div className="rounded-xl border border-[#E5E7EB] bg-white px-6 py-16 text-center">
