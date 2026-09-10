@@ -3,6 +3,7 @@ import { randomInt } from "node:crypto";
 import { notFound } from "next/navigation";
 import { CatalogBrowser } from "@/components/catalog-browser";
 import { SiteHeader } from "@/components/site-header";
+import { CatalogEntryScrollReset } from "@/components/home-catalog-navigation";
 import { fetchBrands, parseBrandSlugs } from "@/lib/brands-api";
 import {
   categoryHref,
@@ -151,6 +152,7 @@ export default async function CategorySectionPage({
 
   return (
     <div className="min-h-screen bg-background">
+      <CatalogEntryScrollReset />
       <SiteHeader />
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-6 sm:px-8 lg:px-10">
         <Suspense fallback={<p className="text-sm text-muted-foreground">Загрузка…</p>}>

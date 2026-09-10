@@ -8,6 +8,7 @@ import { ServiceRequestCards } from "@/components/service-request-cards";
 import { PopularCategories } from "@/components/popular-categories";
 import { SiteHeader } from "@/components/site-header";
 import { StorefrontAnnouncement } from "@/components/storefront-announcement";
+import { HomeCatalogNavigation } from "@/components/home-catalog-navigation";
 import { categorySections } from "@/lib/categories";
 import { fetchStorefrontAnnouncement } from "@/lib/storefront-announcement-api";
 import { fetchCategoryTree, type ApiCategory } from "@/lib/categories-api";
@@ -109,6 +110,7 @@ export default async function HomePage() {
   ];
 
   return (
+    <HomeCatalogNavigation>
     <div className="min-h-screen bg-[#F4F4F5]">
       <SiteHeader />
       <StorefrontAnnouncement text={announcement?.text} />
@@ -177,5 +179,6 @@ export default async function HomePage() {
         </main>
       </div>
     </div>
+    </HomeCatalogNavigation>
   );
 }
