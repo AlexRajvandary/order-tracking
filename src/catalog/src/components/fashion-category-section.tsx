@@ -26,7 +26,7 @@ export function FashionCategorySection({ title, subtitle, rootSlug, categories }
   if (!active) return null;
 
   return (
-    <section className="space-y-5 sm:space-y-7">
+    <section className="space-y-5 sm:space-y-7 xl:-mx-16">
       <div className="flex items-end justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2.5 text-[22px] font-bold tracking-tight text-[#111] sm:gap-3 sm:text-[30px]"><span className="inline-block h-[0.85em] w-1 shrink-0 rounded-full bg-[#F24676]" aria-hidden />{title}</h2>
