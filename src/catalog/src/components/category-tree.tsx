@@ -37,9 +37,9 @@ function ChildLink({
       href={categoryHref(rootSlug, category.slug)}
       onClick={onNavigate}
       className={cn(
-        "flex min-w-0 items-center gap-2 rounded-md py-1.5 pr-8 pl-4 text-[13px] leading-5 transition-colors",
+        "relative flex min-w-0 items-center gap-2 overflow-hidden rounded-md py-1.5 pr-8 pl-4 text-[13px] leading-5 transition-colors",
         selected
-          ? "bg-[#F5F5F5] font-medium text-[#1F2937]"
+          ? "bg-[var(--category-selected-bg)] font-semibold text-[var(--category-selected-text)] before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-[var(--category-selected-accent)]"
           : "text-[#6B7280] hover:bg-[#F7F7F7] hover:text-[#1F2937]",
       )}
     >
@@ -51,7 +51,12 @@ function ChildLink({
       >
         {category.name}
       </span>
-      <span className="w-[4.5rem] shrink-0 text-right text-xs font-normal tabular-nums text-[#9CA3AF]">
+      <span
+        className={cn(
+          "w-[4.5rem] shrink-0 text-right text-xs font-normal tabular-nums",
+          selected ? "text-[var(--category-selected-muted)]" : "text-[#9CA3AF]",
+        )}
+      >
         {formatCount(category.productCount)}
       </span>
     </Link>
@@ -126,15 +131,22 @@ export function CategoryTree({
                 href="/categories/all"
                 onClick={handleNavigate}
                 className={cn(
-                  "flex items-center gap-2 rounded-md px-2 py-2 transition-colors",
+                  "relative flex items-center gap-2 overflow-hidden rounded-md px-2 py-2 transition-colors",
                   !activeRootSlug
-                    ? "bg-[#F5F5F5] font-medium text-[#1F2937]"
+                    ? "bg-[var(--category-selected-bg)] font-semibold text-[var(--category-selected-text)] before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-[var(--category-selected-accent)]"
                     : "font-medium text-[#374151] hover:bg-[#F7F7F7]",
                 )}
               >
                 <span className="min-w-0 flex-1 truncate">Все категории</span>
                 {totalProductCount != null ? (
-                  <span className="w-[4.5rem] shrink-0 text-right text-xs font-normal tabular-nums text-[#9CA3AF]">
+                  <span
+                    className={cn(
+                      "w-[4.5rem] shrink-0 text-right text-xs font-normal tabular-nums",
+                      !activeRootSlug
+                        ? "text-[var(--category-selected-muted)]"
+                        : "text-[#9CA3AF]",
+                    )}
+                  >
                     {formatCount(totalProductCount)}
                   </span>
                 ) : null}
@@ -148,21 +160,24 @@ export function CategoryTree({
             const isExpanded = normalizedQuery
               ? visibleChildren.length > 0
               : expandedSlug === category.slug;
-            const isActive = activeRootSlug === category.slug;
+            const isActive =
+              activeRootSlug === category.slug && !activeChildSlug;
 
             return (
               <li key={category.id}>
                 <div
                   className={cn(
-                    "flex min-w-0 items-center rounded-md transition-colors hover:bg-[#F7F7F7]",
-                    (isExpanded || isActive) && "bg-[#F7F7F7]",
+                    "relative flex min-w-0 items-center overflow-hidden rounded-md transition-colors",
+                    isActive
+                      ? "bg-[var(--category-selected-bg)] before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-[var(--category-selected-accent)]"
+                      : "hover:bg-[#F7F7F7]",
                   )}
                 >
                   <Link
                     href={categoryHref(category.slug)}
                     className={cn(
                       "flex min-w-0 flex-1 items-center gap-2 py-2 pl-2 font-medium text-[#374151]",
-                      (isExpanded || isActive) && "font-semibold text-[#1F2937]",
+                      isActive && "font-semibold text-[var(--category-selected-text)]",
                     )}
                     onClick={() => {
                       setAccordion({ selectionKey, expandedSlug: category.slug });
@@ -179,7 +194,14 @@ export function CategoryTree({
                     >
                       {category.name}
                     </span>
-                    <span className="w-[4.5rem] shrink-0 text-right text-xs font-normal tabular-nums text-[#9CA3AF]">
+                    <span
+                      className={cn(
+                        "w-[4.5rem] shrink-0 text-right text-xs font-normal tabular-nums",
+                        isActive
+                          ? "text-[var(--category-selected-muted)]"
+                          : "text-[#9CA3AF]",
+                      )}
+                    >
                       {formatCount(category.productCount)}
                     </span>
                   </Link>
@@ -189,7 +211,12 @@ export function CategoryTree({
                       type="button"
                       aria-label={`${isExpanded ? "Свернуть" : "Развернуть"} категорию ${category.name}`}
                       aria-expanded={isExpanded}
-                      className="flex size-8 shrink-0 cursor-pointer items-center justify-center text-[#9CA3AF] transition-colors hover:text-[#4B5563]"
+                      className={cn(
+                        "flex size-8 shrink-0 cursor-pointer items-center justify-center transition-colors hover:text-[#4B5563]",
+                        isActive
+                          ? "text-[var(--category-selected-muted)]"
+                          : "text-[#9CA3AF]",
+                      )}
                       onClick={() => toggleCategory(category.slug)}
                     >
                       {isExpanded ? (
