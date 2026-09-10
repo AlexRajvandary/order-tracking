@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { Scale } from "lucide-react";
 import { NavigationBackButton } from "@/components/navigation-back-button";
 import { ProductDetailActions } from "@/components/product-detail-actions";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductCard } from "@/components/product-card";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { fetchCategoryTree } from "@/lib/categories-api";
 import { findCatalogProductBySlug, type CatalogProduct } from "@/lib/catalog-products";
 import { fetchCatalogPage, fetchProductById, fetchProductBySlug, fetchProductRelations, fetchRakutenItem, mapApiProductToCatalog, mapRakutenProductToCatalog } from "@/lib/products-api";
@@ -70,7 +73,7 @@ export default async function ProductPage({ params }: PageProps) {
           <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">{product.name}</h1>
           <div className="mt-5 flex flex-wrap items-baseline gap-3"><p className="text-2xl font-semibold">{formatPrice(product)}</p>{product.oldPriceRub ? <p className="text-lg text-muted-foreground line-through">{new Intl.NumberFormat("ru-RU", { style: "currency", currency: product.currency, maximumFractionDigits: 0 }).format(product.oldPriceRub)}</p> : null}{product.discountPercent ? <Badge variant="destructive">{product.discountPercent}</Badge> : null}</div>
           <div className="mt-6"><ProductDetailActions product={catalog} variants={relations.variants} showSizes={showSizes} /></div>
-          <div className="mt-6 space-y-3 bg-muted/40 p-5 text-sm"><p className="font-medium">Заказ из Японии</p><p className="text-muted-foreground">Товар будет выкуплен у японского магазина после оформления заказа.</p><div className="flex justify-between border-t border-border pt-3"><span>Доставка</span><span>7–14 дней</span></div><div className="flex justify-between"><span>Состояние</span><span>{condition || "—"}</span></div></div>
+          <div className="mt-6 space-y-3 bg-muted/40 p-5 text-sm"><p className="font-medium">Заказ из Японии</p><p className="text-muted-foreground">Товар будет выкуплен у японского магазина после оформления заказа.</p><div className="flex justify-between border-t border-border pt-3"><span>Доставка</span><span>7–14 дней</span></div><div className="flex justify-between"><span>Состояние</span><span>{condition || "—"}</span></div><Button render={<Link href={`/item-weight?q=${encodeURIComponent(product.category)}`} />} variant="outline" className="mt-2 w-full bg-background"><Scale data-icon="inline-start" />Примерный вес товара</Button></div>
         </div>
       </div>
       <section className="mt-16 grid gap-8 border-t border-border pt-8 md:grid-cols-[1fr_1.4fr]"><div><h2 className="text-xl font-semibold">О товаре</h2><p className="mt-4 max-w-md whitespace-pre-line text-sm leading-6 text-muted-foreground">{product.description || ""}</p></div><dl className="divide-y divide-border text-sm">{[["Бренд", product.brand], ["Магазин", product.shopName], ["Категория", product.category], ["Состояние", condition]].map(([label, value]) => <div key={label} className="flex justify-between gap-6 py-3"><dt className="text-muted-foreground">{label}</dt><dd className="text-right">{value || ""}</dd></div>)}</dl></section>
