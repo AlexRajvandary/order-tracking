@@ -71,8 +71,8 @@ function toWomenFashionCategories(categories: Array<Pick<FashionCategoryData, "i
   ).map((category) => {
     const key = `${category.name} ${category.slug}`;
     if (/kimono|\u043a\u0438\u043c\u043e\u043d/i.test(key)) return { ...category, imageUrl: "/catalog-assets/womens-kimono.png" };
-    if (/dress|\u043f\u043b\u0430\u0442\u044c/i.test(key)) return { ...category, imageUrl: "/catalog-assets/womens-dresses-wide.png" };
-    if (/top|\u0432\u0435\u0440\u0445/i.test(key)) return { ...category, imageUrl: "/catalog-assets/womens-top-wide.png" };
+    if (/dress|\u043f\u043b\u0430\u0442\u044c/i.test(key)) return { ...category, slug: "\u044e\u0431\u043a\u0438-\u0438-\u043f\u043b\u0430\u0442\u044c\u044f", imageUrl: "/catalog-assets/womens-dresses-wide.png" };
+    if (/top|\u0432\u0435\u0440\u0445/i.test(key)) return { ...category, slug: "\u0436\u0435\u043d\u0441\u043a\u0438\u0435-\u0440\u0443\u0431\u0430\u0448\u043a\u0438-\u0438-\u0431\u043b\u0443\u0437\u043a\u0438", imageUrl: "/catalog-assets/womens-top-wide.png" };
     if (/bottom|\u043d\u0438\u0437/i.test(key)) return { ...category, imageUrl: "/catalog-assets/womens-bottom-wide.png" };
     return category;
   });
