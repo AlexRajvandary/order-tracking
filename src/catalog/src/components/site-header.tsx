@@ -266,7 +266,7 @@ export function SiteHeader() {
                     categories.length > 0 ? (
                       <div className="grid grid-cols-3 gap-x-10 gap-y-8 lg:grid-cols-4 xl:grid-cols-5">
                         {categories.map((category) => (
-                          <section key={category.id} className="min-w-0">
+                          <div key={category.id} className="min-w-0">
                             <Link
                               href={categoryHref(category.slug)}
                               className="block text-[15px] font-semibold leading-5 text-[#111] transition-colors hover:text-[#F24676]"
@@ -274,22 +274,7 @@ export function SiteHeader() {
                             >
                               {category.name}
                             </Link>
-                            {category.children.length > 0 ? (
-                              <ul className="mt-3 space-y-2">
-                                {category.children.map((child) => (
-                                  <li key={child.id}>
-                                    <Link
-                                      href={categoryHref(category.slug, child.slug)}
-                                      className="block text-sm leading-5 text-[#666] transition-colors hover:text-[#111]"
-                                      onClick={() => setActiveMegaMenu(null)}
-                                    >
-                                      {child.name}
-                                    </Link>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : null}
-                          </section>
+                          </div>
                         ))}
                       </div>
                     ) : (
@@ -313,11 +298,8 @@ export function SiteHeader() {
                       aria-label="Загрузка категорий"
                     >
                       {Array.from({ length: 10 }, (_, index) => (
-                        <div key={index} className="space-y-3">
+                        <div key={index}>
                           <div className="h-5 w-3/4 animate-pulse rounded bg-[#ECEEF1]" />
-                          <div className="h-4 w-full animate-pulse rounded bg-[#F2F3F5]" />
-                          <div className="h-4 w-5/6 animate-pulse rounded bg-[#F2F3F5]" />
-                          <div className="h-4 w-2/3 animate-pulse rounded bg-[#F2F3F5]" />
                         </div>
                       ))}
                     </div>
