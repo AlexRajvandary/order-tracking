@@ -24,6 +24,12 @@ import { FavoriteSheet } from "@/components/favorite-sheet";
 import { useFavorites } from "@/components/favorites-provider";
 import type { ApiBrand } from "@/lib/brands-api";
 import { categoryHref, type ApiCategory } from "@/lib/categories-api";
+import type { CatalogProduct } from "@/lib/catalog-products";
+import {
+  mapApiProductToCatalog,
+  type ApiProductListResult,
+} from "@/lib/products-api";
+import { formatPrice } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
 const MEGA_MENU_ITEMS = ["Категории", "Бренды", "Магазины"] as const;
@@ -62,6 +68,24 @@ const CATEGORY_SERVICES = [
     icon: FileText,
   },
 ] as const;
+
+const megaMenuProductsCache = new Map<string, CatalogProduct[]>();
+
+function categoryShopSlug(category: Pick<ApiCategory, "name" | "slug">): string | null {
+  const normalizedName = category.name.trim().toLocaleLowerCase("ru");
+  return category.slug === "clothing" ||
+    category.slug === "bags" ||
+    normalizedName === "одежда" ||
+    normalizedName === "сумки"
+    ? "zozotown"
+    : null;
+}
+
+function categoryCatalogHref(category: Pick<ApiCategory, "name" | "slug">): string {
+  const href = categoryHref(category.slug);
+  const shopSlug = categoryShopSlug(category);
+  return shopSlug ? `${href}?shops=${encodeURIComponent(shopSlug)}` : href;
+}
 
 const NAV_LINKS = [
   { href: "https://yandex.ru/profile/85406102943", label: "Отзывы" },
@@ -154,6 +178,143 @@ function FavoriteIconButton() {
         </button>
       }
     />
+  );
+}
+
+function PopularCategoryProducts({
+  category,
+  onNavigate,
+}: {
+  category: ApiCategory;
+  onNavigate: () => void;
+}) {
+  const shopSlug = categoryShopSlug(category);
+  const cacheKey = `${category.slug}:${shopSlug ?? "all"}`;
+  const cachedProducts = megaMenuProductsCache.get(cacheKey);
+  const [requestState, setRequestState] = useState<{
+    key: string;
+    products: CatalogProduct[];
+    loading: boolean;
+    error: boolean;
+  }>(() => ({
+    key: cacheKey,
+    products: cachedProducts ?? [],
+    loading: !cachedProducts,
+    error: false,
+  }));
+
+  useEffect(() => {
+    const cached = megaMenuProductsCache.get(cacheKey);
+    if (cached) return;
+
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      page: "1",
+      pageSize: "5",
+      category: category.slug,
+      includeCategoryChildren: "true",
+    });
+    if (shopSlug) params.set("shops", shopSlug);
+
+    void fetch(`/api/catalog-products?${params}`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return (await response.json()) as ApiProductListResult;
+      })
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        const products = result.items
+          .slice(0, 5)
+          .map((product) =>
+            mapApiProductToCatalog(
+              product,
+              category.slug,
+              product.categorySlug ?? category.slug,
+              product.categoryName ?? category.name,
+            ),
+          );
+        megaMenuProductsCache.set(cacheKey, products);
+        setRequestState({ key: cacheKey, products, loading: false, error: false });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        console.error("Failed to load mega menu products", error);
+        setRequestState({ key: cacheKey, products: [], loading: false, error: true });
+      });
+
+    return () => controller.abort();
+  }, [cacheKey, category.name, category.slug, shopSlug]);
+
+  const isCurrentRequest = requestState.key === cacheKey;
+  const loading = !isCurrentRequest || requestState.loading;
+  const products = isCurrentRequest ? requestState.products : [];
+  const error = isCurrentRequest && requestState.error;
+
+  return (
+    <section className="mt-7 border-t border-[#ECECEC] pt-5" aria-label="Популярные товары">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <h3 className="text-base font-semibold text-[#111]">Популярные товары в категории</h3>
+        <Link
+          href={categoryCatalogHref(category)}
+          className="shrink-0 text-sm font-medium text-[#F24676] transition-colors hover:text-[#D92F5E]"
+          onClick={onNavigate}
+        >
+          Смотреть всё →
+        </Link>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-5 gap-3" aria-label="Загрузка товаров">
+          {Array.from({ length: 5 }, (_, index) => (
+            <div key={index} className="min-w-0">
+              <div className="aspect-[4/3] animate-pulse bg-[#ECEEF1]" />
+              <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-[#ECEEF1]" />
+              <div className="mt-2 h-8 animate-pulse rounded bg-[#F2F3F5]" />
+              <div className="mt-2 h-4 w-2/3 animate-pulse rounded bg-[#ECEEF1]" />
+            </div>
+          ))}
+        </div>
+      ) : products.length > 0 ? (
+        <div className="grid grid-cols-5 gap-3">
+          {products.map((product) => (
+            <Link
+              key={product.id}
+              href={`/products/${product.id}`}
+              className="group min-w-0"
+              onClick={onNavigate}
+            >
+              <div className="relative aspect-[4/3] overflow-hidden bg-[#F2F3F5]">
+                {product.imageUrl ? (
+                  // Product images can be hosted by external stores or MinIO.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={product.imageUrl}
+                    alt={product.name}
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                  />
+                ) : null}
+              </div>
+              <p className="mt-2 truncate text-[9px] leading-3 font-semibold tracking-[0.06em] text-[#858B95] uppercase">
+                {product.brand ?? "\u00A0"}
+              </p>
+              <p className="mt-1 line-clamp-2 min-h-9 text-xs leading-[18px] font-medium text-[#252A33]">
+                {product.name}
+              </p>
+              <p className="mt-1.5 text-sm font-bold tracking-tight text-[#111]">
+                {formatPrice(product)}
+              </p>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-[#888]">
+          {error ? "Не удалось загрузить товары" : "Нет товаров в этой категории"}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -262,6 +423,13 @@ function CategoryMegaMenu({
           ) : (
             <p className="text-sm text-[#888]">Подкатегории отсутствуют</p>
           )}
+          {activeCategory ? (
+            <PopularCategoryProducts
+              key={activeCategory.id}
+              category={activeCategory}
+              onNavigate={onNavigate}
+            />
+          ) : null}
         </section>
       </div>
 
