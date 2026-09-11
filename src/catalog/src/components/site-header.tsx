@@ -3,7 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown, Heart, Menu, ShoppingBag, User, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Heart,
+  Menu,
+  ShoppingBag,
+  User,
+  X,
+} from "lucide-react";
 import { CartSheet } from "@/components/cart-sheet";
 import { useCart } from "@/components/cart-provider";
 import { FavoriteSheet } from "@/components/favorite-sheet";
@@ -106,6 +115,173 @@ function FavoriteIconButton() {
         </button>
       }
     />
+  );
+}
+
+function CategoryMegaMenu({
+  categories,
+  error,
+  onRetry,
+  onNavigate,
+}: {
+  categories: ApiCategory[] | null;
+  error: boolean;
+  onRetry: () => void;
+  onNavigate: () => void;
+}) {
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [page, setPage] = useState(0);
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const updateItemsPerPage = () => {
+      setItemsPerPage(window.innerWidth >= 1280 ? 5 : window.innerWidth >= 1024 ? 4 : 3);
+    };
+    updateItemsPerPage();
+    window.addEventListener("resize", updateItemsPerPage);
+    return () => window.removeEventListener("resize", updateItemsPerPage);
+  }, []);
+
+  const pageCount = categories ? Math.max(1, Math.ceil(categories.length / itemsPerPage)) : 1;
+  const safePage = Math.min(page, pageCount - 1);
+  const visibleCategories = categories?.slice(
+    safePage * itemsPerPage,
+    (safePage + 1) * itemsPerPage,
+  );
+  const activeCategory =
+    visibleCategories?.find((category) => category.id === activeCategoryId) ??
+    visibleCategories?.[0];
+
+  const changePage = (nextPage: number) => {
+    if (!categories?.length) return;
+    const normalizedPage = Math.min(Math.max(nextPage, 0), pageCount - 1);
+    setPage(normalizedPage);
+    setActiveCategoryId(categories[normalizedPage * itemsPerPage]?.id ?? null);
+  };
+
+  if (error) {
+    return (
+      <button
+        type="button"
+        className="text-sm font-medium text-[#555] underline underline-offset-4 hover:text-[#111]"
+        onClick={onRetry}
+      >
+        Не удалось загрузить категории. Повторить
+      </button>
+    );
+  }
+
+  if (!categories) {
+    return (
+      <div aria-label="Загрузка категорий">
+        <div className="grid grid-cols-3 gap-4 lg:grid-cols-4 xl:grid-cols-5">
+          {Array.from({ length: 5 }, (_, index) => (
+            <div key={index} className="h-12 animate-pulse rounded-xl bg-[#ECEEF1]" />
+          ))}
+        </div>
+        <div className="mt-8 border-t border-[#ECECEC] pt-6">
+          <div className="mb-5 h-5 w-40 animate-pulse rounded bg-[#ECEEF1]" />
+          <div className="grid grid-cols-3 gap-x-8 gap-y-3 lg:grid-cols-4 xl:grid-cols-5">
+            {Array.from({ length: 10 }, (_, index) => (
+              <div key={index} className="h-4 animate-pulse rounded bg-[#F2F3F5]" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (categories.length === 0) {
+    return <p className="text-sm text-[#777]">Категории не найдены</p>;
+  }
+
+  return (
+    <div>
+      <section aria-label="Категории первого уровня">
+        <div className="grid grid-cols-3 gap-4 lg:grid-cols-4 xl:grid-cols-5">
+          {visibleCategories?.map((category) => {
+            const active = category.id === activeCategory?.id;
+            return (
+              <Link
+                key={category.id}
+                href={categoryHref(category.slug)}
+                className={cn(
+                  "flex min-h-12 items-center rounded-xl border px-4 py-3 text-[15px] font-semibold leading-5 transition-colors",
+                  active
+                    ? "border-[#D9DCE1] bg-[#F1F2F4] text-[#2F3540]"
+                    : "border-transparent text-[#111] hover:bg-[#F7F7F8] hover:text-[#F24676]",
+                )}
+                onMouseEnter={() => setActiveCategoryId(category.id)}
+                onFocus={() => setActiveCategoryId(category.id)}
+                onClick={onNavigate}
+              >
+                {category.name}
+              </Link>
+            );
+          })}
+        </div>
+
+        {pageCount > 1 ? (
+          <div className="mt-5 flex items-center justify-center gap-4">
+            <button
+              type="button"
+              className="inline-flex size-8 items-center justify-center rounded-full border border-[#E1E2E5] text-[#3F4652] transition-colors hover:bg-[#F1F2F4] disabled:cursor-default disabled:opacity-35"
+              aria-label="Предыдущая страница категорий"
+              disabled={safePage === 0}
+              onClick={() => changePage(safePage - 1)}
+            >
+              <ChevronLeft className="size-4" aria-hidden />
+            </button>
+            <div className="flex items-center gap-2" aria-label="Страницы категорий">
+              {Array.from({ length: pageCount }, (_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  className={cn(
+                    "size-2 rounded-full transition-all",
+                    index === safePage ? "w-5 bg-[#3F4652]" : "bg-[#D2D5DA] hover:bg-[#8B919C]",
+                  )}
+                  aria-label={`Страница ${index + 1}`}
+                  aria-current={index === safePage ? "page" : undefined}
+                  onClick={() => changePage(index)}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              className="inline-flex size-8 items-center justify-center rounded-full border border-[#E1E2E5] text-[#3F4652] transition-colors hover:bg-[#F1F2F4] disabled:cursor-default disabled:opacity-35"
+              aria-label="Следующая страница категорий"
+              disabled={safePage === pageCount - 1}
+              onClick={() => changePage(safePage + 1)}
+            >
+              <ChevronRight className="size-4" aria-hidden />
+            </button>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="mt-6 border-t border-[#ECECEC] pt-6" aria-label="Подкатегории">
+        <h2 className="mb-4 text-base font-semibold text-[#111]">
+          {activeCategory?.name}
+        </h2>
+        {activeCategory?.children.length ? (
+          <div className="grid grid-cols-3 gap-x-8 gap-y-3 lg:grid-cols-4 xl:grid-cols-5">
+            {activeCategory.children.map((child) => (
+              <Link
+                key={child.id}
+                href={categoryHref(activeCategory.slug, child.slug)}
+                className="text-sm leading-5 text-[#666] transition-colors hover:text-[#F24676]"
+                onClick={onNavigate}
+              >
+                {child.name}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-[#888]">Подкатегории отсутствуют</p>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -262,48 +438,16 @@ export function SiteHeader() {
             >
               <div className="mx-auto min-h-72 max-h-[calc(100dvh-7rem)] w-full max-w-[1440px] overflow-y-auto px-8 py-8 lg:px-10">
                 {activeMegaMenu === "Категории" ? (
-                  categories ? (
-                    categories.length > 0 ? (
-                      <div className="grid grid-cols-3 gap-x-10 gap-y-8 lg:grid-cols-4 xl:grid-cols-5">
-                        {categories.map((category) => (
-                          <div key={category.id} className="min-w-0">
-                            <Link
-                              href={categoryHref(category.slug)}
-                              className="block text-[15px] font-semibold leading-5 text-[#111] transition-colors hover:text-[#F24676]"
-                              onClick={() => setActiveMegaMenu(null)}
-                            >
-                              {category.name}
-                            </Link>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-[#777]">Категории не найдены</p>
-                    )
-                  ) : categoriesError ? (
-                    <button
-                      type="button"
-                      className="text-sm font-medium text-[#555] underline underline-offset-4 hover:text-[#111]"
-                      onClick={() => {
-                        categoriesRequestStarted.current = false;
-                        setCategoriesError(false);
-                        setCategoriesRetry((value) => value + 1);
-                      }}
-                    >
-                      Не удалось загрузить категории. Повторить
-                    </button>
-                  ) : (
-                    <div
-                      className="grid grid-cols-3 gap-x-10 gap-y-8 lg:grid-cols-4 xl:grid-cols-5"
-                      aria-label="Загрузка категорий"
-                    >
-                      {Array.from({ length: 10 }, (_, index) => (
-                        <div key={index}>
-                          <div className="h-5 w-3/4 animate-pulse rounded bg-[#ECEEF1]" />
-                        </div>
-                      ))}
-                    </div>
-                  )
+                  <CategoryMegaMenu
+                    categories={categories}
+                    error={categoriesError}
+                    onNavigate={() => setActiveMegaMenu(null)}
+                    onRetry={() => {
+                      categoriesRequestStarted.current = false;
+                      setCategoriesError(false);
+                      setCategoriesRetry((value) => value + 1);
+                    }}
+                  />
                 ) : null}
               </div>
             </div>
