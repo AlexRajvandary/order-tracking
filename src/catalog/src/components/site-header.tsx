@@ -251,7 +251,10 @@ function PopularCategoryProducts({
   const error = isCurrentRequest && requestState.error;
 
   return (
-    <section className="mt-7 border-t border-[#ECECEC] pt-5" aria-label="Популярные товары">
+    <section
+      className="mt-7 min-h-[250px] border-t border-[#ECECEC] pt-5"
+      aria-label="Популярные товары"
+    >
       <div className="mb-4 flex items-center justify-between gap-4">
         <h3 className="text-base font-semibold text-[#111]">Популярные товары в категории</h3>
         <Link
@@ -373,8 +376,7 @@ function CategoryMegaMenu({
   }
 
   return (
-    <div>
-      <div className="grid grid-cols-[minmax(220px,0.32fr)_minmax(0,1fr)] gap-10">
+    <div className="grid grid-cols-[minmax(220px,0.32fr)_minmax(0,1fr)] gap-10">
         <section
           className="border-r border-[#ECECEC] pr-8"
           aria-label="Категории первого уровня"
@@ -430,29 +432,27 @@ function CategoryMegaMenu({
               onNavigate={onNavigate}
             />
           ) : null}
-        </section>
-      </div>
-
-      <nav
-        className="mt-7 grid grid-cols-3 gap-3 border-t border-[#E4E5E8] pt-6 lg:grid-cols-5"
-        aria-label="Сервисы The Get"
-      >
-        {CATEGORY_SERVICES.map(({ href, title, description, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className="group flex min-h-[108px] items-start gap-3 rounded-xl border border-[#E5E6E9] bg-white p-3.5 transition-[background-color,border-color] duration-200 hover:border-[#E8C9D2] hover:bg-[#FFF8FA]"
-            onClick={onNavigate}
+          <nav
+            className="mt-7 grid grid-cols-3 gap-3 border-t border-[#E4E5E8] pt-6 lg:grid-cols-5"
+            aria-label="Сервисы The Get"
           >
-            <Icon className="mt-0.5 size-[18px] shrink-0 text-[#555C67]" strokeWidth={1.7} aria-hidden />
-            <span className="flex min-w-0 flex-1 flex-col self-stretch">
-              <span className="text-sm leading-5 font-semibold text-[#252A33]">{title}</span>
-              <span className="mt-1 text-xs leading-[17px] text-[#7A808A]">{description}</span>
-            </span>
-            <ArrowRight className="mt-0.5 size-4 shrink-0 text-[#F24676] transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
-          </Link>
-        ))}
-      </nav>
+            {CATEGORY_SERVICES.map(({ href, title, description, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="group flex min-h-[108px] items-start gap-3 rounded-xl border border-[#E5E6E9] bg-white p-3.5 transition-[background-color,border-color] duration-200 hover:border-[#E8C9D2] hover:bg-[#FFF8FA]"
+                onClick={onNavigate}
+              >
+                <Icon className="mt-0.5 size-[18px] shrink-0 text-[#555C67]" strokeWidth={1.7} aria-hidden />
+                <span className="flex min-w-0 flex-1 flex-col self-stretch">
+                  <span className="text-sm leading-5 font-semibold text-[#252A33]">{title}</span>
+                  <span className="mt-1 text-xs leading-[17px] text-[#7A808A]">{description}</span>
+                </span>
+                <ArrowRight className="mt-0.5 size-4 shrink-0 text-[#F24676] transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
+              </Link>
+            ))}
+          </nav>
+        </section>
     </div>
   );
 }
