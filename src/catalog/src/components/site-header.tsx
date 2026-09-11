@@ -448,7 +448,7 @@ function CategoryMegaMenu({
                   <span className="text-sm leading-5 font-semibold text-[#252A33]">{title}</span>
                   <span className="mt-1 text-xs leading-[17px] text-[#7A808A]">{description}</span>
                 </span>
-                <ArrowRight className="mt-0.5 size-4 shrink-0 text-[#F24676] transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
+                <ArrowRight className="mt-auto size-4 shrink-0 self-end text-[#F24676] transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
               </Link>
             ))}
           </nav>
