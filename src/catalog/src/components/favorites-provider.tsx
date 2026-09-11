@@ -14,6 +14,7 @@ import type { CatalogProduct } from "@/lib/catalog-products";
 type FavoritesContextValue = {
   ids: string[];
   products: Record<string, CatalogProduct>;
+  ready: boolean;
   has: (productId: string) => boolean;
   toggle: (productId: string, product?: CatalogProduct) => void;
 };
@@ -22,19 +23,37 @@ const STORAGE_KEY = "the-get-catalog-favorites";
 
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 
-function loadFavorites(): string[] {
+type StoredFavorites = {
+  ids: string[];
+  products: Record<string, CatalogProduct>;
+};
+
+function loadFavorites(): StoredFavorites {
   if (typeof window === "undefined") {
-    return [];
+    return { ids: [], products: {} };
   }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      return [];
+      return { ids: [], products: {} };
     }
-    const parsed = JSON.parse(raw) as string[];
-    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === "string") : [];
+    const parsed = JSON.parse(raw) as string[] | Partial<StoredFavorites>;
+    if (Array.isArray(parsed)) {
+      return {
+        ids: parsed.filter((id) => typeof id === "string"),
+        products: {},
+      };
+    }
+
+    const ids = Array.isArray(parsed.ids)
+      ? parsed.ids.filter((id): id is string => typeof id === "string")
+      : [];
+    const products = parsed.products && typeof parsed.products === "object"
+      ? parsed.products
+      : {};
+    return { ids, products };
   } catch {
-    return [];
+    return { ids: [], products: {} };
   }
 }
 
@@ -46,13 +65,22 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const localIds = loadFavorites();
+      const local = loadFavorites();
       try {
         const response = await fetch("/api/catalog/favorites", { cache: "no-store" });
         const serverIds = response.ok ? ((await response.json()) as string[]) : [];
-        if (!cancelled) setIds(serverIds.length > 0 ? serverIds : localIds);
+        if (!cancelled) {
+          const nextIds = serverIds.length > 0 ? serverIds : local.ids;
+          setIds(nextIds);
+          setProducts(Object.fromEntries(
+            nextIds.flatMap((id) => local.products[id] ? [[id, local.products[id]]] : []),
+          ));
+        }
       } catch {
-        if (!cancelled) setIds(localIds);
+        if (!cancelled) {
+          setIds(local.ids);
+          setProducts(local.products);
+        }
       } finally {
         if (!cancelled) setReady(true);
       }
@@ -66,8 +94,14 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     if (!ready) {
       return;
     }
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
-  }, [ids, ready]);
+    const persistedProducts = Object.fromEntries(
+      ids.flatMap((id) => products[id] ? [[id, products[id]]] : []),
+    );
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ids, products: persistedProducts } satisfies StoredFavorites),
+    );
+  }, [ids, products, ready]);
 
   const has = useCallback((productId: string) => ids.includes(productId), [ids]);
 
@@ -93,8 +127,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   }, [ids]);
 
   const value = useMemo<FavoritesContextValue>(
-    () => ({ ids, products, has, toggle }),
-    [ids, products, has, toggle],
+    () => ({ ids, products, ready, has, toggle }),
+    [ids, products, ready, has, toggle],
   );
 
   return (

@@ -57,7 +57,7 @@ export function CartSheet({ trigger }: CartSheetProps) {
           <SheetDescription>
             {itemCount === 0
               ? "Пока пусто — добавьте товары из каталога."
-              : `${itemCount} поз. · демо без оплаты`}
+              : `${itemCount} поз.`}
           </SheetDescription>
         </SheetHeader>
 

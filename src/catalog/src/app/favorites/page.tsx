@@ -1,38 +1,62 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { ProductCard } from "@/components/product-card";
 import { ProductGridSkeleton } from "@/components/product-grid-skeleton";
 import { useFavorites } from "@/components/favorites-provider";
 import { mapApiProductToCatalog, type ApiProduct } from "@/lib/products-api";
+import type { CatalogProduct } from "@/lib/catalog-products";
 
 export default function FavoritesPage() {
-  const { ids } = useFavorites();
-  const [products, setProducts] = useState<ApiProduct[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { ids, products: storedProducts, ready } = useFavorites();
+  const [loadedProducts, setLoadedProducts] = useState<Record<string, CatalogProduct>>({});
+  const [resolvedRequestKey, setResolvedRequestKey] = useState("");
+  const missingIds = useMemo(
+    () => ids.filter((id) => !storedProducts[id]),
+    [ids, storedProducts],
+  );
+  const requestKey = missingIds.join("|");
+  const loading = !ready || (missingIds.length > 0 && resolvedRequestKey !== requestKey);
 
   useEffect(() => {
     let cancelled = false;
+    if (missingIds.length === 0) {
+      return () => { cancelled = true; };
+    }
+
     void Promise.all(
-      ids.map(async (id) => {
+      missingIds.map(async (id) => {
         const response = await fetch(`/api/catalog/product/${encodeURIComponent(id)}`);
         return response.ok ? ((await response.json()) as ApiProduct) : null;
       }),
     )
       .then((items) => {
-        if (!cancelled) setProducts(items.filter((item): item is ApiProduct => item !== null));
+        if (!cancelled) {
+          setLoadedProducts((previous) => ({
+            ...previous,
+            ...Object.fromEntries(
+              items
+                .filter((item): item is ApiProduct => item !== null)
+                .map((item) => [item.id, mapApiProductToCatalog(item)]),
+            ),
+          }));
+        }
       })
       .catch(() => {
-        if (!cancelled) setProducts([]);
+        // Keep any products restored from local storage visible.
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setResolvedRequestKey(requestKey);
       });
     return () => {
       cancelled = true;
     };
-  }, [ids]);
+  }, [missingIds, requestKey]);
+
+  const products = ids
+    .map((id) => storedProducts[id] ?? loadedProducts[id])
+    .filter((product): product is CatalogProduct => product !== undefined);
 
   return (
     <div className="min-h-screen bg-background">
@@ -46,7 +70,7 @@ export default function FavoritesPage() {
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {products.map((product) => (
-              <ProductCard key={product.id} product={mapApiProductToCatalog(product)} />
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         )}
