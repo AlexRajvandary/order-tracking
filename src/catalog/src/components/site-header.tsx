@@ -8,6 +8,7 @@ import { CartSheet } from "@/components/cart-sheet";
 import { useCart } from "@/components/cart-provider";
 import { FavoriteSheet } from "@/components/favorite-sheet";
 import { useFavorites } from "@/components/favorites-provider";
+import { categoryHref, type ApiCategory } from "@/lib/categories-api";
 import { cn } from "@/lib/utils";
 
 const MEGA_MENU_ITEMS = ["Категории", "Бренды", "Магазины"] as const;
@@ -111,7 +112,11 @@ function FavoriteIconButton() {
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeMegaMenu, setActiveMegaMenu] = useState<MegaMenuItem | null>(null);
+  const [categories, setCategories] = useState<ApiCategory[] | null>(null);
+  const [categoriesError, setCategoriesError] = useState(false);
+  const [categoriesRetry, setCategoriesRetry] = useState(0);
   const megaMenuRef = useRef<HTMLDivElement>(null);
+  const categoriesRequestStarted = useRef(false);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -145,6 +150,29 @@ export function SiteHeader() {
       document.removeEventListener("pointerdown", closeOutside);
     };
   }, [activeMegaMenu]);
+
+  useEffect(() => {
+    if (
+      activeMegaMenu !== "Категории" ||
+      categories !== null ||
+      categoriesRequestStarted.current
+    ) {
+      return;
+    }
+
+    categoriesRequestStarted.current = true;
+    setCategoriesError(false);
+    void fetch("/api/catalog-categories")
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return (await response.json()) as { items?: ApiCategory[] };
+      })
+      .then((data) => setCategories(data.items ?? []))
+      .catch(() => {
+        categoriesRequestStarted.current = false;
+        setCategoriesError(true);
+      });
+  }, [activeMegaMenu, categories, categoriesRetry]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#ECECEC] bg-white/95 backdrop-blur-md supports-backdrop-filter:bg-white/90">
@@ -228,11 +256,74 @@ export function SiteHeader() {
           {activeMegaMenu ? (
             <div
               id="header-mega-menu"
-              className="absolute inset-x-0 top-full min-h-72 border-b border-[#E6E6E6] bg-white shadow-[0_18px_35px_rgba(0,0,0,0.10)]"
+              className="absolute inset-x-0 top-full border-b border-[#E6E6E6] bg-white shadow-[0_18px_35px_rgba(0,0,0,0.10)]"
               role="region"
               aria-label={activeMegaMenu}
             >
-              <div className="mx-auto min-h-72 w-full max-w-[1440px] px-8 lg:px-10" />
+              <div className="mx-auto min-h-72 max-h-[calc(100dvh-7rem)] w-full max-w-[1440px] overflow-y-auto px-8 py-8 lg:px-10">
+                {activeMegaMenu === "Категории" ? (
+                  categories ? (
+                    categories.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-x-10 gap-y-8 lg:grid-cols-4 xl:grid-cols-5">
+                        {categories.map((category) => (
+                          <section key={category.id} className="min-w-0">
+                            <Link
+                              href={categoryHref(category.slug)}
+                              className="block text-[15px] font-semibold leading-5 text-[#111] transition-colors hover:text-[#F24676]"
+                              onClick={() => setActiveMegaMenu(null)}
+                            >
+                              {category.name}
+                            </Link>
+                            {category.children.length > 0 ? (
+                              <ul className="mt-3 space-y-2">
+                                {category.children.map((child) => (
+                                  <li key={child.id}>
+                                    <Link
+                                      href={categoryHref(category.slug, child.slug)}
+                                      className="block text-sm leading-5 text-[#666] transition-colors hover:text-[#111]"
+                                      onClick={() => setActiveMegaMenu(null)}
+                                    >
+                                      {child.name}
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
+                          </section>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-[#777]">Категории не найдены</p>
+                    )
+                  ) : categoriesError ? (
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-[#555] underline underline-offset-4 hover:text-[#111]"
+                      onClick={() => {
+                        categoriesRequestStarted.current = false;
+                        setCategoriesError(false);
+                        setCategoriesRetry((value) => value + 1);
+                      }}
+                    >
+                      Не удалось загрузить категории. Повторить
+                    </button>
+                  ) : (
+                    <div
+                      className="grid grid-cols-3 gap-x-10 gap-y-8 lg:grid-cols-4 xl:grid-cols-5"
+                      aria-label="Загрузка категорий"
+                    >
+                      {Array.from({ length: 10 }, (_, index) => (
+                        <div key={index} className="space-y-3">
+                          <div className="h-5 w-3/4 animate-pulse rounded bg-[#ECEEF1]" />
+                          <div className="h-4 w-full animate-pulse rounded bg-[#F2F3F5]" />
+                          <div className="h-4 w-5/6 animate-pulse rounded bg-[#F2F3F5]" />
+                          <div className="h-4 w-2/3 animate-pulse rounded bg-[#F2F3F5]" />
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : null}
+              </div>
             </div>
           ) : null}
         </div>
