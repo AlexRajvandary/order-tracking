@@ -257,8 +257,8 @@ function BrandMegaMenu({
   }
 
   return (
-    <div>
-      <label className="relative block max-w-xl">
+    <div className="flex max-h-[calc(50dvh-4rem)] min-h-0 flex-col">
+      <label className="relative block max-w-xl shrink-0">
         <span className="sr-only">Поиск брендов</span>
         <Search
           className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-[#8B919C]"
@@ -273,7 +273,7 @@ function BrandMegaMenu({
         />
       </label>
 
-      <div className="mt-7 border-t border-[#ECECEC] pt-6">
+      <div className="mt-7 min-h-0 overflow-y-auto border-t border-[#ECECEC] pt-6 pr-2">
         {!brands ? (
           <div
             className="grid grid-cols-3 gap-x-10 gap-y-4 lg:grid-cols-4 xl:grid-cols-6"
@@ -483,7 +483,14 @@ export function SiteHeader() {
               role="region"
               aria-label={activeMegaMenu}
             >
-              <div className="mx-auto min-h-72 max-h-[calc(100dvh-7rem)] w-full max-w-[1440px] overflow-y-auto px-8 py-8 lg:px-10">
+              <div
+                className={cn(
+                  "mx-auto w-full max-w-[1440px] px-8 py-8 lg:px-10",
+                  activeMegaMenu === "Бренды"
+                    ? "max-h-[50dvh] overflow-hidden"
+                    : "min-h-72 max-h-[calc(100dvh-7rem)] overflow-y-auto",
+                )}
+              >
                 {activeMegaMenu === "Категории" ? (
                   <CategoryMegaMenu
                     categories={categories}
