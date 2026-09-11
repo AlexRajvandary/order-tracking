@@ -32,10 +32,10 @@ export function FavoriteButton({ productId, product, className }: FavoriteButton
     >
       <Heart
         className={cn(
-          "size-7 drop-shadow-sm transition-colors",
-          active ? "fill-red-500 text-red-500" : "fill-white text-white",
+          "size-7 text-black transition-colors",
+          active ? "fill-red-500" : "fill-white",
         )}
-        strokeWidth={1.75}
+        strokeWidth={1}
       />
     </button>
   );
