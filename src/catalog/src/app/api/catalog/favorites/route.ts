@@ -12,3 +12,7 @@ export async function PUT(request: Request) {
     body: JSON.stringify({ favorite: body.favorite === true }),
   });
 }
+
+export async function DELETE(request: Request) {
+  return proxyCatalogState(request, "/api/catalog/favorites", { method: "DELETE" });
+}

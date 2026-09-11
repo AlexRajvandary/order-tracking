@@ -17,6 +17,7 @@ type FavoritesContextValue = {
   ready: boolean;
   has: (productId: string) => boolean;
   toggle: (productId: string, product?: CatalogProduct) => void;
+  clear: () => void;
 };
 
 const STORAGE_KEY = "the-get-catalog-favorites";
@@ -126,9 +127,15 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     }).catch(() => undefined);
   }, [ids]);
 
+  const clear = useCallback(() => {
+    setIds([]);
+    setProducts({});
+    void fetch("/api/catalog/favorites", { method: "DELETE" }).catch(() => undefined);
+  }, []);
+
   const value = useMemo<FavoritesContextValue>(
-    () => ({ ids, products, ready, has, toggle }),
-    [ids, products, ready, has, toggle],
+    () => ({ ids, products, ready, has, toggle, clear }),
+    [ids, products, ready, has, toggle, clear],
   );
 
   return (

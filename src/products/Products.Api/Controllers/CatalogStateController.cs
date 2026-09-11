@@ -126,6 +126,18 @@ public sealed class CatalogStateController : ControllerBase
         return Ok(await _db.CatalogFavorites.AsNoTracking().Where(x => Matches(x.UserId, x.VisitorKey, owner.Value)).Select(x => x.ProductId).ToListAsync(cancellationToken));
     }
 
+    [HttpDelete("favorites")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ClearFavorites(CancellationToken cancellationToken)
+    {
+        var owner = ResolveOwner();
+        if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
+        await _db.CatalogFavorites
+            .Where(x => Matches(x.UserId, x.VisitorKey, owner.Value))
+            .ExecuteDeleteAsync(cancellationToken);
+        return NoContent();
+    }
+
     [HttpPut("favorites/{productId:guid}")]
     [AllowAnonymous]
     public async Task<IActionResult> SetFavorite(Guid productId, SetFavoriteRequest request, CancellationToken cancellationToken)

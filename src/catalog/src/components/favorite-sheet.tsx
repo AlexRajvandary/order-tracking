@@ -23,7 +23,7 @@ type FavoriteSheetProps = {
 };
 
 export function FavoriteSheet({ trigger }: FavoriteSheetProps) {
-  const { ids, products: favoriteProducts, toggle } = useFavorites();
+  const { ids, products: favoriteProducts, toggle, clear } = useFavorites();
   const [loadedProducts, setLoadedProducts] = useState<Record<string, CatalogProduct>>({});
 
   useEffect(() => {
@@ -114,6 +114,12 @@ export function FavoriteSheet({ trigger }: FavoriteSheetProps) {
                   </li>
                 ))}
               </ul>
+            </div>
+            <div className="border-t px-4 py-4">
+              <Button type="button" variant="outline" className="w-full" onClick={clear}>
+                <Trash2 data-icon="inline-start" />
+                Очистить избранное
+              </Button>
             </div>
           </>
         )}
