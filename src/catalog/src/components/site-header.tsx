@@ -4,11 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
+  ArrowRight,
   ChevronDown,
+  FileText,
+  Gavel,
   Heart,
+  Headphones,
   Menu,
+  MessageCircle,
   Search,
   ShoppingBag,
+  Ticket,
   User,
   X,
 } from "lucide-react";
@@ -23,6 +29,39 @@ import { cn } from "@/lib/utils";
 const MEGA_MENU_ITEMS = ["Категории", "Бренды", "Магазины"] as const;
 
 type MegaMenuItem = (typeof MEGA_MENU_ITEMS)[number];
+
+const CATEGORY_SERVICES = [
+  {
+    href: "/individual-request",
+    title: "Индивидуальный запрос",
+    description: "Не нашли нужный товар? Найдём его для вас в Японии",
+    icon: MessageCircle,
+  },
+  {
+    href: "/auction-request",
+    title: "Аукцион",
+    description: "Пришлите ссылку на лот и максимальную ставку",
+    icon: Gavel,
+  },
+  {
+    href: "/ticket-request",
+    title: "Билеты",
+    description: "Поможем найти и приобрести билеты на события в Японии",
+    icon: Ticket,
+  },
+  {
+    href: "/contact",
+    title: "Контакты",
+    description: "Telegram, WhatsApp и поддержка",
+    icon: Headphones,
+  },
+  {
+    href: "/item-weight",
+    title: "Справочная информация",
+    description: "Доставка, вес, сроки и полезная информация",
+    icon: FileText,
+  },
+] as const;
 
 const NAV_LINKS = [
   { href: "https://yandex.ru/profile/85406102943", label: "Отзывы" },
@@ -173,56 +212,79 @@ function CategoryMegaMenu({
   }
 
   return (
-    <div className="grid grid-cols-[minmax(220px,0.32fr)_minmax(0,1fr)] gap-10">
-      <section
-        className="border-r border-[#ECECEC] pr-8"
-        aria-label="Категории первого уровня"
-      >
-        <div className="space-y-1">
-          {categories.map((category) => {
-            const active = category.id === activeCategory?.id;
-            return (
-              <Link
-                key={category.id}
-                href={categoryHref(category.slug)}
-                className={cn(
-                  "flex min-h-10 items-center rounded-lg border px-3 py-2 text-[15px] font-semibold leading-5 transition-colors",
-                  active
-                    ? "border-[#D9DCE1] bg-[#F1F2F4] text-[#2F3540]"
-                    : "border-transparent text-[#111] hover:bg-[#F7F7F8] hover:text-[#F24676]",
-                )}
-                onMouseEnter={() => setActiveCategoryId(category.id)}
-                onFocus={() => setActiveCategoryId(category.id)}
-                onClick={onNavigate}
-              >
-                {category.name}
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="min-w-0" aria-label="Подкатегории">
-        <h2 className="mb-5 text-base font-semibold text-[#111]">
-          {activeCategory?.name}
-        </h2>
-        {activeCategory?.children.length ? (
-          <div className="grid grid-cols-2 gap-x-10 gap-y-4 lg:grid-cols-3 xl:grid-cols-4">
-            {activeCategory.children.map((child) => (
-              <Link
-                key={child.id}
-                href={categoryHref(activeCategory.slug, child.slug)}
-                className="text-sm leading-5 text-[#666] transition-colors hover:text-[#F24676]"
-                onClick={onNavigate}
-              >
-                {child.name}
-              </Link>
-            ))}
+    <div>
+      <div className="grid grid-cols-[minmax(220px,0.32fr)_minmax(0,1fr)] gap-10">
+        <section
+          className="border-r border-[#ECECEC] pr-8"
+          aria-label="Категории первого уровня"
+        >
+          <div className="space-y-1">
+            {categories.map((category) => {
+              const active = category.id === activeCategory?.id;
+              return (
+                <Link
+                  key={category.id}
+                  href={categoryHref(category.slug)}
+                  className={cn(
+                    "flex min-h-10 items-center rounded-lg border px-3 py-2 text-[15px] font-semibold leading-5 transition-colors",
+                    active
+                      ? "border-[#D9DCE1] bg-[#F1F2F4] text-[#2F3540]"
+                      : "border-transparent text-[#111] hover:bg-[#F7F7F8] hover:text-[#F24676]",
+                  )}
+                  onMouseEnter={() => setActiveCategoryId(category.id)}
+                  onFocus={() => setActiveCategoryId(category.id)}
+                  onClick={onNavigate}
+                >
+                  {category.name}
+                </Link>
+              );
+            })}
           </div>
-        ) : (
-          <p className="text-sm text-[#888]">Подкатегории отсутствуют</p>
-        )}
-      </section>
+        </section>
+
+        <section className="min-w-0" aria-label="Подкатегории">
+          <h2 className="mb-5 text-base font-semibold text-[#111]">
+            {activeCategory?.name}
+          </h2>
+          {activeCategory?.children.length ? (
+            <div className="grid grid-cols-2 gap-x-10 gap-y-4 lg:grid-cols-3 xl:grid-cols-4">
+              {activeCategory.children.map((child) => (
+                <Link
+                  key={child.id}
+                  href={categoryHref(activeCategory.slug, child.slug)}
+                  className="text-sm leading-5 text-[#666] transition-colors hover:text-[#F24676]"
+                  onClick={onNavigate}
+                >
+                  {child.name}
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-[#888]">Подкатегории отсутствуют</p>
+          )}
+        </section>
+      </div>
+
+      <nav
+        className="mt-7 grid grid-cols-3 gap-3 border-t border-[#E4E5E8] pt-6 lg:grid-cols-5"
+        aria-label="Сервисы The Get"
+      >
+        {CATEGORY_SERVICES.map(({ href, title, description, icon: Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className="group flex min-h-[108px] items-start gap-3 rounded-xl border border-[#E5E6E9] bg-white p-3.5 transition-[background-color,border-color] duration-200 hover:border-[#E8C9D2] hover:bg-[#FFF8FA]"
+            onClick={onNavigate}
+          >
+            <Icon className="mt-0.5 size-[18px] shrink-0 text-[#555C67]" strokeWidth={1.7} aria-hidden />
+            <span className="flex min-w-0 flex-1 flex-col self-stretch">
+              <span className="text-sm leading-5 font-semibold text-[#252A33]">{title}</span>
+              <span className="mt-1 text-xs leading-[17px] text-[#7A808A]">{description}</span>
+            </span>
+            <ArrowRight className="mt-0.5 size-4 shrink-0 text-[#F24676] transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
+          </Link>
+        ))}
+      </nav>
     </div>
   );
 }
