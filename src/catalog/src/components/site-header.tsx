@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Heart,
   Menu,
+  Search,
   ShoppingBag,
   User,
   X,
@@ -15,6 +16,7 @@ import { CartSheet } from "@/components/cart-sheet";
 import { useCart } from "@/components/cart-provider";
 import { FavoriteSheet } from "@/components/favorite-sheet";
 import { useFavorites } from "@/components/favorites-provider";
+import type { ApiBrand } from "@/lib/brands-api";
 import { categoryHref, type ApiCategory } from "@/lib/categories-api";
 import { cn } from "@/lib/utils";
 
@@ -225,14 +227,96 @@ function CategoryMegaMenu({
   );
 }
 
+function BrandMegaMenu({
+  brands,
+  error,
+  onRetry,
+  onNavigate,
+}: {
+  brands: ApiBrand[] | null;
+  error: boolean;
+  onRetry: () => void;
+  onNavigate: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLocaleLowerCase("ru");
+  const visibleBrands = brands
+    ?.filter((brand) => brand.name.toLocaleLowerCase("ru").includes(normalizedQuery))
+    .sort((left, right) => left.name.localeCompare(right.name, ["ru", "en"]));
+
+  if (error) {
+    return (
+      <button
+        type="button"
+        className="text-sm font-medium text-[#555] underline underline-offset-4 hover:text-[#111]"
+        onClick={onRetry}
+      >
+        Не удалось загрузить бренды. Повторить
+      </button>
+    );
+  }
+
+  return (
+    <div>
+      <label className="relative block max-w-xl">
+        <span className="sr-only">Поиск брендов</span>
+        <Search
+          className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-[#8B919C]"
+          aria-hidden
+        />
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Поиск брендов"
+          className="h-12 w-full rounded-xl border border-[#D9DCE1] bg-white pr-4 pl-12 text-[15px] text-[#111] outline-none transition-colors placeholder:text-[#9CA1AA] focus:border-[#3F4652]"
+        />
+      </label>
+
+      <div className="mt-7 border-t border-[#ECECEC] pt-6">
+        {!brands ? (
+          <div
+            className="grid grid-cols-3 gap-x-10 gap-y-4 lg:grid-cols-4 xl:grid-cols-6"
+            aria-label="Загрузка брендов"
+          >
+            {Array.from({ length: 18 }, (_, index) => (
+              <div key={index} className="h-5 animate-pulse rounded bg-[#ECEEF1]" />
+            ))}
+          </div>
+        ) : visibleBrands?.length ? (
+          <div className="grid grid-cols-3 gap-x-10 gap-y-4 lg:grid-cols-4 xl:grid-cols-6">
+            {visibleBrands.map((brand) => (
+              <Link
+                key={brand.id}
+                href={`/categories/all?brands=${encodeURIComponent(brand.slug)}`}
+                className="truncate text-[15px] font-medium text-[#333842] transition-colors hover:text-[#F24676]"
+                title={brand.name}
+                onClick={onNavigate}
+              >
+                {brand.name}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-[#777]">Бренды не найдены</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeMegaMenu, setActiveMegaMenu] = useState<MegaMenuItem | null>(null);
   const [categories, setCategories] = useState<ApiCategory[] | null>(null);
   const [categoriesError, setCategoriesError] = useState(false);
   const [categoriesRetry, setCategoriesRetry] = useState(0);
+  const [brands, setBrands] = useState<ApiBrand[] | null>(null);
+  const [brandsError, setBrandsError] = useState(false);
+  const [brandsRetry, setBrandsRetry] = useState(0);
   const megaMenuRef = useRef<HTMLDivElement>(null);
   const categoriesRequestStarted = useRef(false);
+  const brandsRequestStarted = useRef(false);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -289,6 +373,29 @@ export function SiteHeader() {
         setCategoriesError(true);
       });
   }, [activeMegaMenu, categories, categoriesRetry]);
+
+  useEffect(() => {
+    if (
+      activeMegaMenu !== "Бренды" ||
+      brands !== null ||
+      brandsRequestStarted.current
+    ) {
+      return;
+    }
+
+    brandsRequestStarted.current = true;
+    setBrandsError(false);
+    void fetch("/api/catalog-brands")
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return (await response.json()) as { items?: ApiBrand[] };
+      })
+      .then((data) => setBrands(data.items ?? []))
+      .catch(() => {
+        brandsRequestStarted.current = false;
+        setBrandsError(true);
+      });
+  }, [activeMegaMenu, brands, brandsRetry]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#ECECEC] bg-white/95 backdrop-blur-md supports-backdrop-filter:bg-white/90">
@@ -386,6 +493,18 @@ export function SiteHeader() {
                       categoriesRequestStarted.current = false;
                       setCategoriesError(false);
                       setCategoriesRetry((value) => value + 1);
+                    }}
+                  />
+                ) : null}
+                {activeMegaMenu === "Бренды" ? (
+                  <BrandMegaMenu
+                    brands={brands}
+                    error={brandsError}
+                    onNavigate={() => setActiveMegaMenu(null)}
+                    onRetry={() => {
+                      brandsRequestStarted.current = false;
+                      setBrandsError(false);
+                      setBrandsRetry((value) => value + 1);
                     }}
                   />
                 ) : null}
