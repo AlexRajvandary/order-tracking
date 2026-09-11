@@ -49,8 +49,13 @@ services:
       Jwt__Audience: ordertracking-admin
       Seed__AdminLogin: ${SEED_ADMIN_LOGIN}
       Seed__AdminPassword: ${SEED_ADMIN_PASSWORD}
-      App__BaseUrl: ${APP_BASE_URL}
-      Cors__Origins__0: ${APP_BASE_URL}
+      App__BaseUrl: ${ADMIN_BASE_URL:-https://admin.the-get.ru}
+      App__PublicBaseUrl: ${PUBLIC_BASE_URL:-https://the-get.ru}
+      App__AdminBaseUrl: ${ADMIN_BASE_URL:-https://admin.the-get.ru}
+      App__ApiBaseUrl: ${API_BASE_URL:-https://api.the-get.ru}
+      Cors__Origins__0: ${PUBLIC_BASE_URL:-https://the-get.ru}
+      Cors__Origins__1: ${WWW_BASE_URL:-https://www.the-get.ru}
+      Cors__Origins__2: ${ADMIN_BASE_URL:-https://admin.the-get.ru}
       Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
       Telegram__BotUsername: ${TELEGRAM_BOT_USERNAME:-}
       Telegram__WebhookSecret: ${TELEGRAM_WEBHOOK_SECRET:-}
@@ -165,7 +170,9 @@ services:
       Minio__SecretKey: ${MINIO_ROOT_PASSWORD}
       Minio__Bucket: order-tracking
       Minio__UseSsl: "false"
-      Cors__Origins__0: ${APP_BASE_URL}
+      Cors__Origins__0: ${PUBLIC_BASE_URL:-https://the-get.ru}
+      Cors__Origins__1: ${WWW_BASE_URL:-https://www.the-get.ru}
+      Cors__Origins__2: ${ADMIN_BASE_URL:-https://admin.the-get.ru}
     expose:
       - "8080"
 
@@ -178,7 +185,7 @@ services:
       - catalog
       - products-api
     environment:
-      SITE_ADDRESS: ${SITE_ADDRESS}
+      LEGACY_SITE_ADDRESS: ${LEGACY_SITE_ADDRESS:-89-127-208-99.sslip.io}
     ports:
       - "80:80"
       - "443:443"

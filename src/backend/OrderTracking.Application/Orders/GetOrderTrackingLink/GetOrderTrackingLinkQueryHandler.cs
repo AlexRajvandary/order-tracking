@@ -25,7 +25,9 @@ public sealed class GetOrderTrackingLinkQueryHandler : IRequestHandler<GetOrderT
         var order = await _orderRepository.GetByIdUntrackedAsync(request.OrderId, cancellationToken)
             ?? throw new KeyNotFoundException($"Order '{request.OrderId}' was not found");
 
-        var baseUrl = (_configuration["App:BaseUrl"] ?? "http://localhost:5173").TrimEnd('/');
+        var baseUrl = (_configuration["App:PublicBaseUrl"]
+            ?? _configuration["App:BaseUrl"]
+            ?? "http://localhost:5173").TrimEnd('/');
         var url = $"{baseUrl}/track/{order.TrackingCode}";
 
         return new TrackingLinkDto(order.TrackingCode, url);

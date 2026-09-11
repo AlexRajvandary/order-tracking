@@ -8,7 +8,7 @@ function productsApiBaseUrl(): string {
   return (
     process.env.PRODUCTS_API_BASE_URL?.replace(/\/$/, "") ||
     process.env.NEXT_PUBLIC_PRODUCTS_API_BASE_URL?.replace(/\/$/, "") ||
-    "https://89-127-208-99.sslip.io"
+    "https://api.the-get.ru"
   );
 }
 

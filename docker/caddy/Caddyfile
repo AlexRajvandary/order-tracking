@@ -1,8 +1,13 @@
-{$SITE_ADDRESS} {
-	encode zstd gzip
+www.the-get.ru {
+	redir https://the-get.ru{uri} permanent
+}
 
-	# Next.js catalog API routes (must be before the general /api* handler)
+the-get.ru {
+	encode zstd gzip
 	handle /api/catalog-* {
+		reverse_proxy catalog:3000
+	}
+	handle /api/catalog/* {
 		reverse_proxy catalog:3000
 	}
 	handle /api/individual-requests {
@@ -14,8 +19,28 @@
 	handle /api/ticket-requests {
 		reverse_proxy catalog:3000
 	}
+	handle /api/products* {
+		reverse_proxy products-api:8080
+	}
+	handle /api* {
+		reverse_proxy api:8080
+	}
+	handle /hubs* {
+		reverse_proxy api:8080
+	}
+	handle /health* {
+		reverse_proxy api:8080
+	}
+	handle /track* {
+		reverse_proxy api:8080
+	}
+	handle {
+		reverse_proxy catalog:3000
+	}
+}
 
-	# Products microservice (must be before /api*)
+admin.the-get.ru {
+	encode zstd gzip
 	handle /api/products* {
 		reverse_proxy products-api:8080
 	}
@@ -28,8 +53,6 @@
 	handle /api/internal/products* {
 		reverse_proxy products-api:8080
 	}
-
-	# ASP.NET API + SignalR + health
 	handle /api* {
 		reverse_proxy api:8080
 	}
@@ -39,21 +62,84 @@
 	handle /health* {
 		reverse_proxy api:8080
 	}
+	handle {
+		reverse_proxy api:8080
+	}
+}
 
-	# React admin SPA (bundled in API wwwroot) + public tracking
+api.the-get.ru {
+	encode zstd gzip
+	handle /api/products* {
+		reverse_proxy products-api:8080
+	}
+	handle /api/admin/translation-jobs* {
+		reverse_proxy products-api:8080
+	}
+	handle /api/translation-jobs* {
+		reverse_proxy products-api:8080
+	}
+	handle /api/internal/products* {
+		reverse_proxy products-api:8080
+	}
+	handle /api* {
+		reverse_proxy api:8080
+	}
+	handle /hubs* {
+		reverse_proxy api:8080
+	}
+	handle /health* {
+		reverse_proxy api:8080
+	}
+	handle {
+		reverse_proxy api:8080
+	}
+}
+
+# Temporary compatibility host. Remove after the real domains are verified.
+{$LEGACY_SITE_ADDRESS} {
+	encode zstd gzip
+	handle /api/catalog-* {
+		reverse_proxy catalog:3000
+	}
+	handle /api/catalog/* {
+		reverse_proxy catalog:3000
+	}
+	handle /api/individual-requests {
+		reverse_proxy catalog:3000
+	}
+	handle /api/auction-requests {
+		reverse_proxy catalog:3000
+	}
+	handle /api/ticket-requests {
+		reverse_proxy catalog:3000
+	}
+	handle /api/products* {
+		reverse_proxy products-api:8080
+	}
+	handle /api/admin/translation-jobs* {
+		reverse_proxy products-api:8080
+	}
+	handle /api/translation-jobs* {
+		reverse_proxy products-api:8080
+	}
+	handle /api/internal/products* {
+		reverse_proxy products-api:8080
+	}
+	handle /api* {
+		reverse_proxy api:8080
+	}
+	handle /hubs* {
+		reverse_proxy api:8080
+	}
+	handle /health* {
+		reverse_proxy api:8080
+	}
 	handle /admin* {
 		reverse_proxy api:8080
 	}
 	handle /track* {
 		reverse_proxy api:8080
 	}
-
-	# Public catalog static assets (kept separate from admin /assets)
-	handle /catalog-assets* {
-		reverse_proxy catalog:3000
-	}
-
-	# Vite build assets for the admin SPA (base: "/")
 	handle /assets* {
 		reverse_proxy api:8080
 	}
@@ -63,8 +149,6 @@
 	handle /favicon.ico {
 		reverse_proxy api:8080
 	}
-
-	# Next.js catalog storefront at domain root
 	handle {
 		reverse_proxy catalog:3000
 	}

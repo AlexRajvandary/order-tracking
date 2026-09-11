@@ -28,7 +28,9 @@ public sealed class GetOrderQrCodeQueryHandler : IRequestHandler<GetOrderQrCodeQ
         var order = await _orderRepository.GetByIdUntrackedAsync(request.OrderId, cancellationToken)
             ?? throw new KeyNotFoundException($"Order '{request.OrderId}' was not found");
 
-        var baseUrl = (_configuration["App:BaseUrl"] ?? "http://localhost:5173").TrimEnd('/');
+        var baseUrl = (_configuration["App:PublicBaseUrl"]
+            ?? _configuration["App:BaseUrl"]
+            ?? "http://localhost:5173").TrimEnd('/');
         var trackingUrl = $"{baseUrl}/track/{order.TrackingCode}";
         var png = _qrCodeGenerator.GeneratePng(trackingUrl);
 

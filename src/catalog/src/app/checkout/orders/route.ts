@@ -4,7 +4,7 @@ function orderApiBaseUrl(): string {
     process.env.NEXT_PUBLIC_ORDER_TRACKING_API_BASE_URL?.replace(/\/$/, "") ||
     (process.env.NODE_ENV === "development"
       ? "http://localhost:8080"
-      : "https://89-127-208-99.sslip.io")
+      : "https://api.the-get.ru")
   );
 }
 

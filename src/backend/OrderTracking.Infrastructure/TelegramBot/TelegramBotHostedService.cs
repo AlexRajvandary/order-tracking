@@ -36,7 +36,9 @@ public sealed class TelegramBotHostedService : BackgroundService
         }
 
         var usePolling = _configuration.GetValue("Telegram:UsePolling", false);
-        var baseUrl = (_configuration["App:BaseUrl"] ?? string.Empty).TrimEnd('/');
+        var baseUrl = (_configuration["App:ApiBaseUrl"]
+            ?? _configuration["App:BaseUrl"]
+            ?? string.Empty).TrimEnd('/');
         var secret = _configuration["Telegram:WebhookSecret"];
 
         if (!usePolling && !string.IsNullOrWhiteSpace(baseUrl) && baseUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))

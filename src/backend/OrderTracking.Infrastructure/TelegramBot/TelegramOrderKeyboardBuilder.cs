@@ -11,7 +11,9 @@ internal sealed class TelegramOrderKeyboardBuilder
 
     public TelegramOrderKeyboardBuilder(IConfiguration configuration)
     {
-        _baseUrl = (configuration["App:BaseUrl"] ?? "http://localhost:8080").TrimEnd('/');
+        _baseUrl = (configuration["App:AdminBaseUrl"]
+            ?? configuration["App:BaseUrl"]
+            ?? "http://localhost:8080").TrimEnd('/');
     }
 
     public InlineKeyboardMarkup BuildNotification(Guid orderId)

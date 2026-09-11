@@ -43,7 +43,9 @@ internal sealed class TelegramBotMenuScreen
 
     public Task RenderAdminLinkAsync(long chatId, int? messageId, CancellationToken cancellationToken)
     {
-        var baseUrl = (_configuration["App:BaseUrl"] ?? "http://localhost:8080").TrimEnd('/');
+        var baseUrl = (_configuration["App:AdminBaseUrl"]
+            ?? _configuration["App:BaseUrl"]
+            ?? "http://localhost:8080").TrimEnd('/');
         var url = $"{baseUrl}/admin/login";
         var text =
             "🔗 <b>Веб-админка</b>\n\n" +

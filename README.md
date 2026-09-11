@@ -80,11 +80,41 @@ App: `http://localhost:8080`
 
 ## Production routing (Caddy)
 
-| Path | Service |
-|------|---------|
-| `/` | Next.js catalog (`order-tracking-catalog`) |
-| `/admin`, `/track`, `/assets` | React SPA via API wwwroot |
-| `/api`, `/hubs`, `/health` | ASP.NET API |
+| Domain | Service |
+|--------|---------|
+| `https://the-get.ru` | Next.js catalog (`catalog:3000`) |
+| `https://www.the-get.ru` | Permanent redirect to `https://the-get.ru` |
+| `https://admin.the-get.ru` | React admin SPA bundled into `api:8080` |
+| `https://api.the-get.ru` | Order API and Products API |
+
+The legacy sslip.io host remains available through `LEGACY_SITE_ADDRESS` during
+the domain migration. Remove that Caddy block and variable only after all new
+domains have been verified.
+
+Production URL settings in the VPS `.env`:
+
+```dotenv
+PUBLIC_BASE_URL=https://the-get.ru
+WWW_BASE_URL=https://www.the-get.ru
+ADMIN_BASE_URL=https://admin.the-get.ru
+API_BASE_URL=https://api.the-get.ru
+LEGACY_SITE_ADDRESS=89-127-208-99.sslip.io
+```
+
+`App:ApiBaseUrl` is used for the Telegram webhook, `App:AdminBaseUrl` for
+admin links in the bot, and `App:PublicBaseUrl` for tracking and QR links.
+The webhook is registered automatically when the API container starts.
+
+After deployment, verify routing and certificates:
+
+```bash
+curl -I https://the-get.ru
+curl -I https://www.the-get.ru
+curl -I https://admin.the-get.ru
+curl -I https://api.the-get.ru/health/live
+docker logs order-tracking-caddy --tail=200
+sudo ufw status
+```
 
 ## Auth tokens (planned)
 
