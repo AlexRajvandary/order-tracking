@@ -28,11 +28,10 @@ public sealed class CatalogStateController : ControllerBase
     {
         var owner = ResolveOwner();
         if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
-        var rows = await _db.CatalogCartItems.AsNoTracking()
-            .Include(x => x.Product).Where(x => Matches(x.UserId, x.VisitorKey, owner.Value))
+        var rows = await OwnedBy(_db.CatalogCartItems.AsNoTracking()
+            .Include(x => x.Product), owner.Value)
             .OrderByDescending(x => x.UpdatedAt).ToListAsync(cancellationToken);
-        var external = await _db.ExternalProductCartItems.AsNoTracking()
-            .Where(x => Matches(x.UserId, x.VisitorKey, owner.Value))
+        var external = await OwnedBy(_db.ExternalProductCartItems.AsNoTracking(), owner.Value)
             .OrderByDescending(x => x.UpdatedAt).ToListAsync(cancellationToken);
         return Ok(rows.Select(MapCart).Concat(external.Select(MapExternalCart)).OrderByDescending(x => x.UpdatedAt).ToList());
     }
@@ -45,7 +44,8 @@ public sealed class CatalogStateController : ControllerBase
         if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
         var product = await _db.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Id == productId && x.IsActive, cancellationToken);
         if (product is null) return NotFound();
-        var row = await _db.CatalogCartItems.SingleOrDefaultAsync(x => x.ProductId == productId && Matches(x.UserId, x.VisitorKey, owner.Value), cancellationToken);
+        var row = await OwnedBy(_db.CatalogCartItems.Where(x => x.ProductId == productId), owner.Value)
+            .SingleOrDefaultAsync(cancellationToken);
         if (request.Quantity <= 0)
         {
             if (row is not null) { _db.CatalogCartItems.Remove(row); await _db.SaveChangesAsync(cancellationToken); }
@@ -71,8 +71,8 @@ public sealed class CatalogStateController : ControllerBase
         var owner = ResolveOwner();
         if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
         if (string.IsNullOrWhiteSpace(request.ExternalId)) return BadRequest(new ProblemDetails { Detail = "externalId is required." });
-        var row = await _db.ExternalProductCartItems.SingleOrDefaultAsync(x => x.Source == "Rakuten"
-            && x.ExternalId == request.ExternalId && Matches(x.UserId, x.VisitorKey, owner.Value), cancellationToken);
+        var row = await OwnedBy(_db.ExternalProductCartItems.Where(x => x.Source == "Rakuten"
+            && x.ExternalId == request.ExternalId), owner.Value).SingleOrDefaultAsync(cancellationToken);
         if (request.Quantity <= 0)
         {
             if (row is not null) { _db.ExternalProductCartItems.Remove(row); await _db.SaveChangesAsync(cancellationToken); }
@@ -112,8 +112,8 @@ public sealed class CatalogStateController : ControllerBase
     {
         var owner = ResolveOwner();
         if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
-        await _db.CatalogCartItems.Where(x => Matches(x.UserId, x.VisitorKey, owner.Value)).ExecuteDeleteAsync(cancellationToken);
-        await _db.ExternalProductCartItems.Where(x => Matches(x.UserId, x.VisitorKey, owner.Value)).ExecuteDeleteAsync(cancellationToken);
+        await OwnedBy(_db.CatalogCartItems, owner.Value).ExecuteDeleteAsync(cancellationToken);
+        await OwnedBy(_db.ExternalProductCartItems, owner.Value).ExecuteDeleteAsync(cancellationToken);
         return NoContent();
     }
 
@@ -123,7 +123,8 @@ public sealed class CatalogStateController : ControllerBase
     {
         var owner = ResolveOwner();
         if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
-        return Ok(await _db.CatalogFavorites.AsNoTracking().Where(x => Matches(x.UserId, x.VisitorKey, owner.Value)).Select(x => x.ProductId).ToListAsync(cancellationToken));
+        return Ok(await OwnedBy(_db.CatalogFavorites.AsNoTracking(), owner.Value)
+            .Select(x => x.ProductId).ToListAsync(cancellationToken));
     }
 
     [HttpDelete("favorites")]
@@ -132,8 +133,7 @@ public sealed class CatalogStateController : ControllerBase
     {
         var owner = ResolveOwner();
         if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
-        await _db.CatalogFavorites
-            .Where(x => Matches(x.UserId, x.VisitorKey, owner.Value))
+        await OwnedBy(_db.CatalogFavorites, owner.Value)
             .ExecuteDeleteAsync(cancellationToken);
         return NoContent();
     }
@@ -146,7 +146,8 @@ public sealed class CatalogStateController : ControllerBase
         if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
         if (request.Favorite && !await _db.Products.AnyAsync(x => x.Id == productId && x.IsActive, cancellationToken))
             return NotFound();
-        var row = await _db.CatalogFavorites.SingleOrDefaultAsync(x => x.ProductId == productId && Matches(x.UserId, x.VisitorKey, owner.Value), cancellationToken);
+        var row = await OwnedBy(_db.CatalogFavorites.Where(x => x.ProductId == productId), owner.Value)
+            .SingleOrDefaultAsync(cancellationToken);
         if (request.Favorite && row is null)
             _db.CatalogFavorites.Add(new CatalogFavorite { Id = Guid.NewGuid(), ProductId = productId, UserId = owner.Value.UserId, VisitorKey = owner.Value.VisitorKey, CreatedAt = DateTimeOffset.UtcNow });
         else if (!request.Favorite && row is not null) _db.CatalogFavorites.Remove(row);
@@ -203,7 +204,20 @@ public sealed class CatalogStateController : ControllerBase
     }
 
     private static bool IsValidVisitorKey(string? value) => value is not null && value.Length <= 64 && Regex.IsMatch(value, "^[A-Za-z0-9_-]+$");
-    private static bool Matches(Guid? userId, string? visitorKey, Owner owner) => owner.UserId is not null ? userId == owner.UserId : visitorKey == owner.VisitorKey;
+    private static IQueryable<CatalogCartItem> OwnedBy(IQueryable<CatalogCartItem> query, Owner owner) =>
+        owner.UserId is Guid userId
+            ? query.Where(x => x.UserId == userId)
+            : query.Where(x => x.VisitorKey == owner.VisitorKey);
+
+    private static IQueryable<ExternalProductCartItem> OwnedBy(IQueryable<ExternalProductCartItem> query, Owner owner) =>
+        owner.UserId is Guid userId
+            ? query.Where(x => x.UserId == userId)
+            : query.Where(x => x.VisitorKey == owner.VisitorKey);
+
+    private static IQueryable<CatalogFavorite> OwnedBy(IQueryable<CatalogFavorite> query, Owner owner) =>
+        owner.UserId is Guid userId
+            ? query.Where(x => x.UserId == userId)
+            : query.Where(x => x.VisitorKey == owner.VisitorKey);
     private static CartItemDto MapCart(CatalogCartItem item) => new("Internal", item.ProductId.ToString(), item.ProductId, null,
         item.Product.Slug, item.Product.NameRu ?? item.Product.Name, item.Product.Price, item.Product.CurrencyCode,
         item.Product.LocalImageUrl ?? item.Product.ImageUrl, item.Product.SourceUrl, null, item.Product.Shop?.Name,

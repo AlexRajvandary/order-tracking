@@ -29,7 +29,7 @@ the-get.ru {
 		reverse_proxy api:8080
 	}
 	handle /health* {
-		reverse_proxy api:8080
+		respond 404
 	}
 	handle /track* {
 		reverse_proxy api:8080
@@ -60,7 +60,7 @@ admin.the-get.ru {
 		reverse_proxy api:8080
 	}
 	handle /health* {
-		reverse_proxy api:8080
+		respond 404
 	}
 	handle {
 		reverse_proxy api:8080
@@ -88,7 +88,7 @@ api.the-get.ru {
 		reverse_proxy api:8080
 	}
 	handle /health* {
-		reverse_proxy api:8080
+		respond 404
 	}
 	handle {
 		reverse_proxy api:8080
@@ -132,7 +132,7 @@ api.the-get.ru {
 		reverse_proxy api:8080
 	}
 	handle /health* {
-		reverse_proxy api:8080
+		respond 404
 	}
 	handle /admin* {
 		reverse_proxy api:8080
