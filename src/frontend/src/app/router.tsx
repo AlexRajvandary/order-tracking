@@ -23,6 +23,18 @@ import { AuthProvider } from '@/features/auth/model/AuthContext'
 import { RequireAuth } from '@/features/auth/ui/RequireAuth'
 import { AdminRealtime } from '@/shared/realtime/AdminRealtime'
 
+function isTrackingHost() {
+  return window.location.hostname.toLowerCase() === 'tracking.the-get.ru'
+}
+
+function RootRoute() {
+  return isTrackingHost() ? <TrackingPage /> : <Navigate to="/admin/login" replace />
+}
+
+function TrackingHostRoute() {
+  return isTrackingHost() ? <TrackingPage /> : <NotFoundPage />
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
@@ -30,10 +42,11 @@ export function AppRouter() {
         <AdminRealtime />
         <Routes>
           {/* Storefront lives on Next.js at domain root; SPA root is unused. */}
-          <Route path="/" element={<Navigate to="/admin/login" replace />} />
+          <Route path="/" element={<RootRoute />} />
 
           <Route path="/track" element={<TrackingPage />} />
           <Route path="/track/:code" element={<TrackingPage />} />
+          <Route path="/:code" element={<TrackingHostRoute />} />
 
           <Route path="/admin/login" element={<LoginPage />} />
           <Route element={<RequireAuth />}>

@@ -76,7 +76,10 @@ export function TrackingPage() {
                 const input = form.elements.namedItem('trackingCode') as HTMLInputElement
                 const value = input.value.trim().toUpperCase()
                 if (value.length === 5) {
-                  navigate(`/track/${value}`)
+                  const path = window.location.hostname.toLowerCase() === 'tracking.the-get.ru'
+                    ? `/${value}`
+                    : `/track/${value}`
+                  navigate(path)
                 }
               }}
             >

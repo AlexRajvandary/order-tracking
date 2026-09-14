@@ -131,12 +131,10 @@ tracking.the-get.ru {
 		reverse_proxy api:8080
 	}
 	handle / {
-		rewrite * /track
 		reverse_proxy api:8080
 	}
 	@trackingCode path_regexp trackingCode ^/[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{5}/?$
 	handle @trackingCode {
-		rewrite * /track{uri}
 		reverse_proxy api:8080
 	}
 	handle {
