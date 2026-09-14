@@ -34,6 +34,13 @@ import { cn } from "@/lib/utils";
 
 const MEGA_MENU_ITEMS = ["Категории", "Бренды", "Магазины"] as const;
 
+// Temporary public header switches. Keep the implementations in place so these
+// entries can be restored without rebuilding their UI and behavior.
+const PUBLIC_HEADER_FEATURES = {
+  accountEntry: false,
+  shopsMenu: false,
+} as const;
+
 type MegaMenuItem = (typeof MEGA_MENU_ITEMS)[number];
 
 const CATEGORY_SERVICES = [
@@ -669,7 +676,9 @@ export function SiteHeader() {
             className="flex min-w-0 flex-1 items-center justify-center gap-6 lg:gap-7"
             aria-label="Основное меню"
           >
-            {MEGA_MENU_ITEMS.map((item) => (
+            {MEGA_MENU_ITEMS.filter(
+              (item) => item !== "Магазины" || PUBLIC_HEADER_FEATURES.shopsMenu,
+            ).map((item) => (
               <button
                 key={item}
                 type="button"
@@ -753,7 +762,9 @@ export function SiteHeader() {
         <div className="ml-auto flex items-center gap-4 sm:gap-6 lg:gap-7">
           <FavoriteIconButton />
           <CartIconButton />
-          <HeaderIconButton href="/login" label="Войти" icon={User} />
+          {PUBLIC_HEADER_FEATURES.accountEntry ? (
+            <HeaderIconButton href="/login" label="Войти" icon={User} />
+          ) : null}
         </div>
       </div>
 
@@ -771,7 +782,9 @@ export function SiteHeader() {
             className="absolute inset-x-0 top-0 max-h-[calc(100dvh-3.5rem)] overflow-y-auto border-b border-[#ECECEC] bg-white px-4 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
           >
             <ul className="flex flex-col">
-              {MEGA_MENU_ITEMS.map((item) => (
+              {MEGA_MENU_ITEMS.filter(
+                (item) => item !== "Магазины" || PUBLIC_HEADER_FEATURES.shopsMenu,
+              ).map((item) => (
                 <li key={item}>
                   <button
                     type="button"

@@ -27,52 +27,59 @@ function isTrackingHost() {
   return window.location.hostname.toLowerCase() === 'tracking.the-get.ru'
 }
 
-function RootRoute() {
-  return isTrackingHost() ? <TrackingPage /> : <Navigate to="/admin/login" replace />
+function PublicTrackingRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<TrackingPage />} />
+      <Route path="/:code" element={<TrackingPage />} />
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
+  )
 }
 
-function TrackingHostRoute() {
-  return isTrackingHost() ? <TrackingPage /> : <NotFoundPage />
+function AdminAndLegacyRoutes() {
+  return (
+    <AuthProvider>
+      <AdminRealtime />
+      <Routes>
+        {/* Storefront lives on Next.js at domain root; SPA root is unused. */}
+        <Route path="/" element={<Navigate to="/admin/login" replace />} />
+
+        <Route path="/track" element={<TrackingPage />} />
+        <Route path="/track/:code" element={<TrackingPage />} />
+
+        <Route path="/admin/login" element={<LoginPage />} />
+        <Route element={<RequireAuth />}>
+          <Route path="/admin" element={<AdminShell />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="audit" element={<AuditPage />} />
+            <Route path="audit/:id" element={<AuditDetailsPage />} />
+            <Route path="orders" element={<OrdersListPage />} />
+            <Route path="orders/new" element={<CreateOrderPage />} />
+            <Route path="orders/:id" element={<OrderDetailsPage />} />
+            <Route path="customers" element={<CustomersPage />} />
+            <Route path="customers/:id" element={<CustomerDetailsPage />} />
+            <Route path="products" element={<ProductsPage />} />
+            <Route path="products/:id" element={<ProductDetailsPage />} />
+            <Route path="changes" element={<ChangesPage />} />
+            <Route path="monitoring" element={<VpsMonitoringPage />} />
+            <Route path="storefront-announcement" element={<StorefrontAnnouncementPage />} />
+            <Route path="admins" element={<AdminsPage />} />
+            <Route path="statuses" element={<StatusManagementPage />} />
+            <Route path="help" element={<HelpPage />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </AuthProvider>
+  )
 }
 
 export function AppRouter() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AdminRealtime />
-        <Routes>
-          {/* Storefront lives on Next.js at domain root; SPA root is unused. */}
-          <Route path="/" element={<RootRoute />} />
-
-          <Route path="/track" element={<TrackingPage />} />
-          <Route path="/track/:code" element={<TrackingPage />} />
-          <Route path="/:code" element={<TrackingHostRoute />} />
-
-          <Route path="/admin/login" element={<LoginPage />} />
-          <Route element={<RequireAuth />}>
-            <Route path="/admin" element={<AdminShell />}>
-              <Route index element={<DashboardPage />} />
-              <Route path="audit" element={<AuditPage />} />
-              <Route path="audit/:id" element={<AuditDetailsPage />} />
-              <Route path="orders" element={<OrdersListPage />} />
-              <Route path="orders/new" element={<CreateOrderPage />} />
-              <Route path="orders/:id" element={<OrderDetailsPage />} />
-              <Route path="customers" element={<CustomersPage />} />
-              <Route path="customers/:id" element={<CustomerDetailsPage />} />
-              <Route path="products" element={<ProductsPage />} />
-              <Route path="products/:id" element={<ProductDetailsPage />} />
-              <Route path="changes" element={<ChangesPage />} />
-              <Route path="monitoring" element={<VpsMonitoringPage />} />
-              <Route path="storefront-announcement" element={<StorefrontAnnouncementPage />} />
-              <Route path="admins" element={<AdminsPage />} />
-              <Route path="statuses" element={<StatusManagementPage />} />
-              <Route path="help" element={<HelpPage />} />
-            </Route>
-          </Route>
-
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </AuthProvider>
+      {isTrackingHost() ? <PublicTrackingRoutes /> : <AdminAndLegacyRoutes />}
     </BrowserRouter>
   )
 }
