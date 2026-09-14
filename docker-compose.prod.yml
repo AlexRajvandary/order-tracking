@@ -53,9 +53,11 @@ services:
       App__PublicBaseUrl: ${PUBLIC_BASE_URL:-https://the-get.ru}
       App__AdminBaseUrl: ${ADMIN_BASE_URL:-https://admin.the-get.ru}
       App__ApiBaseUrl: ${API_BASE_URL:-https://api.the-get.ru}
+      App__TrackingBaseUrl: ${TRACKING_BASE_URL:-https://tracking.the-get.ru}
       Cors__Origins__0: ${PUBLIC_BASE_URL:-https://the-get.ru}
       Cors__Origins__1: ${WWW_BASE_URL:-https://www.the-get.ru}
       Cors__Origins__2: ${ADMIN_BASE_URL:-https://admin.the-get.ru}
+      Cors__Origins__3: ${TRACKING_BASE_URL:-https://tracking.the-get.ru}
       Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
       Telegram__BotUsername: ${TELEGRAM_BOT_USERNAME:-}
       Telegram__WebhookSecret: ${TELEGRAM_WEBHOOK_SECRET:-}

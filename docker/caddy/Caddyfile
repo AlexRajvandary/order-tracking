@@ -31,8 +31,11 @@ the-get.ru {
 	handle /health* {
 		respond 404
 	}
-	handle /track* {
-		reverse_proxy api:8080
+	handle /track {
+		redir https://tracking.the-get.ru permanent
+	}
+	handle_path /track/* {
+		redir https://tracking.the-get.ru{uri} permanent
 	}
 	handle {
 		reverse_proxy catalog:3000
@@ -41,6 +44,12 @@ the-get.ru {
 
 admin.the-get.ru {
 	encode zstd gzip
+	handle /track* {
+		respond 404
+	}
+	handle /tracking* {
+		respond 404
+	}
 	handle /api/products* {
 		reverse_proxy products-api:8080
 	}
@@ -69,6 +78,12 @@ admin.the-get.ru {
 
 api.the-get.ru {
 	encode zstd gzip
+	handle /track* {
+		respond 404
+	}
+	handle /tracking* {
+		respond 404
+	}
 	handle /api/products* {
 		reverse_proxy products-api:8080
 	}
@@ -92,6 +107,40 @@ api.the-get.ru {
 	}
 	handle {
 		reverse_proxy api:8080
+	}
+}
+
+tracking.the-get.ru {
+	encode zstd gzip
+	handle /api/v1/track* {
+		reverse_proxy api:8080
+	}
+	handle /api/v1/attachments/* {
+		reverse_proxy api:8080
+	}
+	handle /hubs/tracking* {
+		reverse_proxy api:8080
+	}
+	handle /assets* {
+		reverse_proxy api:8080
+	}
+	handle /favicon.svg {
+		reverse_proxy api:8080
+	}
+	handle /favicon.ico {
+		reverse_proxy api:8080
+	}
+	handle / {
+		rewrite * /track
+		reverse_proxy api:8080
+	}
+	@trackingCode path_regexp trackingCode ^/[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{5}/?$
+	handle @trackingCode {
+		rewrite * /track{uri}
+		reverse_proxy api:8080
+	}
+	handle {
+		respond 404
 	}
 }
 

@@ -28,10 +28,13 @@ public sealed class GetOrderQrCodeQueryHandler : IRequestHandler<GetOrderQrCodeQ
         var order = await _orderRepository.GetByIdUntrackedAsync(request.OrderId, cancellationToken)
             ?? throw new KeyNotFoundException($"Order '{request.OrderId}' was not found");
 
-        var baseUrl = (_configuration["App:PublicBaseUrl"]
+        var trackingBaseUrl = _configuration["App:TrackingBaseUrl"];
+        var baseUrl = (trackingBaseUrl
+            ?? _configuration["App:PublicBaseUrl"]
             ?? _configuration["App:BaseUrl"]
             ?? "http://localhost:5173").TrimEnd('/');
-        var trackingUrl = $"{baseUrl}/track/{order.TrackingCode}";
+        var legacyPath = string.IsNullOrWhiteSpace(trackingBaseUrl) ? "/track" : string.Empty;
+        var trackingUrl = $"{baseUrl}{legacyPath}/{order.TrackingCode}";
         var png = _qrCodeGenerator.GeneratePng(trackingUrl);
 
         return new OrderQrCodeResult(

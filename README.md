@@ -102,7 +102,7 @@ LEGACY_SITE_ADDRESS=89-127-208-99.sslip.io
 ```
 
 `App:ApiBaseUrl` is used for the Telegram webhook, `App:AdminBaseUrl` for
-admin links in the bot, and `App:PublicBaseUrl` for tracking and QR links.
+admin links in the bot, and `App:TrackingBaseUrl` for public tracking and QR links.
 The webhook is registered automatically when the API container starts.
 
 After deployment, verify routing and certificates:
