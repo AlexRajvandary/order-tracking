@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-export type ServiceRequestType = "individual" | "auction" | "ticket";
+export type ServiceRequestType = "find-product" | "individual" | "auction" | "ticket";
 type ContactType = "telegram" | "phone" | "whatsapp" | "vk";
 
 type RequestResult = {
@@ -23,6 +23,11 @@ const formConfig: Record<
   ServiceRequestType,
   { endpoint: string; submitLabel: string; pendingLabel: string }
 > = {
+  "find-product": {
+    endpoint: "/api/find-product-requests",
+    submitLabel: "Найти товар",
+    pendingLabel: "Отправляем…",
+  },
   individual: {
     endpoint: "/api/individual-requests",
     submitLabel: "Отправить запрос",
@@ -399,6 +404,34 @@ function RequestSpecificFields({
   type: ServiceRequestType;
   clearError: () => void;
 }) {
+  if (type === "find-product") {
+    return (
+      <>
+        <FormField
+          label="Ссылка или пример"
+          hint="Можно указать ссылку на похожий товар, если она есть"
+        >
+          <Input
+            name="productUrl"
+            maxLength={2000}
+            placeholder="Ссылка, название, бренд или другой ориентир"
+            className="h-11 px-3"
+            onChange={clearError}
+          />
+        </FormField>
+        <FormField label="Что подобрать">
+          <Textarea
+            name="description"
+            maxLength={4000}
+            placeholder="Опишите, что вы ищете, бюджет, важные характеристики, размер, цвет и другие пожелания"
+            className="min-h-36"
+            onChange={clearError}
+          />
+        </FormField>
+      </>
+    );
+  }
+
   if (type === "auction") {
     return (
       <>

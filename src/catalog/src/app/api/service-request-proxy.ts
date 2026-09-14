@@ -10,7 +10,7 @@ function orderApiBaseUrl(): string {
 
 export async function proxyServiceRequest(
   request: Request,
-  endpoint: "individual-requests" | "auction-requests" | "ticket-requests",
+  endpoint: "find-product-requests" | "individual-requests" | "auction-requests" | "ticket-requests",
 ) {
   const body = await request.arrayBuffer();
   const contentType = request.headers.get("content-type");

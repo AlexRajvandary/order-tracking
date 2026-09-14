@@ -13,6 +13,9 @@ the-get.ru {
 	handle /api/individual-requests {
 		reverse_proxy catalog:3000
 	}
+	handle /api/find-product-requests {
+		reverse_proxy catalog:3000
+	}
 	handle /api/auction-requests {
 		reverse_proxy catalog:3000
 	}

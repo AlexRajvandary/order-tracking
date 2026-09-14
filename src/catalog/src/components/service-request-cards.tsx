@@ -4,6 +4,13 @@ import { ArrowUpRight } from "lucide-react";
 
 const serviceRequests = [
   {
+    href: "/find-product",
+    title: "Найти товар",
+    description:
+      "Знаете, что вам нужно, но не выбрали конкретный товар? Расскажите о задаче — наш специалист подберёт подходящие варианты.",
+    image: "/catalog-assets/find-product.png",
+  },
+  {
     href: "/individual-request",
     title: "Индивидуальный запрос",
     description:
@@ -28,14 +35,14 @@ const serviceRequests = [
 
 export function ServiceRequestCards() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 sm:gap-5 lg:gap-6">
+    <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4 lg:gap-5">
       {serviceRequests.map((request) => (
         <Link
           key={request.href}
           href={request.href}
-          className="group relative flex aspect-square min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[#F24676] hover:shadow-lg active:translate-y-0 sm:p-6"
+          className="group relative flex aspect-square min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[#F24676] hover:shadow-lg active:translate-y-0"
         >
-          <ArrowUpRight className="absolute top-5 right-5 z-10 size-5 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[#F24676] sm:top-6 sm:right-6" />
+          <ArrowUpRight className="absolute top-5 right-5 z-10 size-5 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[#F24676]" />
           <div className="flex min-h-0 flex-1 items-center justify-center pt-2">
             <Image
               src={request.image}
@@ -46,7 +53,7 @@ export function ServiceRequestCards() {
             />
           </div>
           <div className="relative z-10 shrink-0">
-            <h2 className="pr-5 text-xl font-bold leading-tight tracking-tight text-[#111] lg:text-2xl">
+            <h2 className="pr-5 text-xl font-bold leading-tight tracking-tight text-[#111] xl:text-2xl">
               {request.title}
             </h2>
             <p className="mt-2 line-clamp-3 text-sm leading-5 text-muted-foreground">

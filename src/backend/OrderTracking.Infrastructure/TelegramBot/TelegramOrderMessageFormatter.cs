@@ -9,6 +9,7 @@ namespace OrderTracking.Infrastructure.TelegramBot;
 internal enum TelegramOrderKind
 {
     Standard,
+    FindProduct,
     IndividualRequest,
     Auction,
     Tickets,
@@ -19,6 +20,11 @@ internal static class TelegramOrderKindMapper
     public static TelegramOrderKind GetKind(Order order)
     {
         var source = order.AdminNotes ?? string.Empty;
+
+        if (source.Contains("Найти товар", StringComparison.OrdinalIgnoreCase))
+        {
+            return TelegramOrderKind.FindProduct;
+        }
 
         if (source.Contains("Аукцион", StringComparison.OrdinalIgnoreCase))
         {
@@ -47,6 +53,7 @@ internal static class TelegramOrderStatusMapper
         {
             return kind switch
             {
+                TelegramOrderKind.FindProduct => "🟠 <b>Требуется подбор</b>",
                 TelegramOrderKind.IndividualRequest => "🟠 <b>Требуется обработка</b>",
                 TelegramOrderKind.Auction => "🟠 <b>Требуется ставка</b>",
                 TelegramOrderKind.Tickets => "🔵 <b>Ищем билеты</b>",
@@ -89,6 +96,9 @@ internal sealed class TelegramOrderMessageFormatter
 
         switch (kind)
         {
+            case TelegramOrderKind.FindProduct:
+                AppendFindProductRequest(text, items.FirstOrDefault());
+                break;
             case TelegramOrderKind.IndividualRequest:
                 AppendIndividualRequest(text, items.FirstOrDefault());
                 break;
@@ -170,6 +180,7 @@ internal sealed class TelegramOrderMessageFormatter
     {
         var label = kind switch
         {
+            TelegramOrderKind.FindProduct => "🔎 <b>НАЙТИ ТОВАР",
             TelegramOrderKind.IndividualRequest => "💬 <b>НОВЫЙ ЗАПРОС",
             TelegramOrderKind.Auction => "🔨 <b>АУКЦИОН",
             TelegramOrderKind.Tickets => "🎫 <b>БИЛЕТЫ",
@@ -206,6 +217,14 @@ internal sealed class TelegramOrderMessageFormatter
         text.AppendLine("<b>Запрос клиента</b>");
         AppendOptional(text, item?.Description, string.Empty);
         AppendMoney(text, item?.UnitPrice, item?.CurrencyCode, "Бюджет", "до ");
+        AppendLinkOrText(text, item?.SourceUrl, "Открыть пример");
+        text.AppendLine();
+    }
+
+    private static void AppendFindProductRequest(StringBuilder text, OrderItem? item)
+    {
+        text.AppendLine("<b>Тип заявки: Найти товар</b>");
+        AppendOptional(text, item?.Description, string.Empty);
         AppendLinkOrText(text, item?.SourceUrl, "Открыть пример");
         text.AppendLine();
     }

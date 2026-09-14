@@ -5,6 +5,7 @@ namespace OrderTracking.Application.Orders.CreatePublicServiceRequest;
 
 public enum PublicServiceRequestType
 {
+    FindProduct,
     Individual,
     Auction,
     Ticket,

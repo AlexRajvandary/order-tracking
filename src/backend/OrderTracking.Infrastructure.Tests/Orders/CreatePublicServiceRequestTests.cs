@@ -189,6 +189,63 @@ public sealed class CreatePublicServiceRequestTests
     }
 
     [Fact]
+    public async Task Handler_PreservesFindProductAsDistinctRequestType()
+    {
+        var adminId = Guid.NewGuid();
+        var admins = new Mock<IAdminUserRepository>();
+        admins
+            .Setup(repository => repository.GetByLoginAsync(
+                "checkout",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AdminUser
+            {
+                Id = adminId,
+                Login = "checkout",
+                IsActive = true,
+            });
+
+        CreateOrderCommand? forwarded = null;
+        var mediator = new Mock<IMediator>();
+        mediator
+            .Setup(value => value.Send(
+                It.IsAny<CreateOrderCommand>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<IRequest<OrderDetailsDto>, CancellationToken>(
+                (request, _) => forwarded = (CreateOrderCommand)request)
+            .ReturnsAsync((OrderDetailsDto)null!);
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["PublicCheckout:CreatedByAdminLogin"] = "checkout",
+            })
+            .Build();
+
+        var handler = new CreatePublicServiceRequestCommandHandler(
+            admins.Object,
+            configuration,
+            mediator.Object,
+            Mock.Of<IImageCompressor>(),
+            Mock.Of<IObjectStorage>());
+
+        await handler.Handle(
+            new CreatePublicServiceRequestCommand(
+                PublicServiceRequestType.FindProduct,
+                "telegram",
+                "@buyer",
+                "Покупатель",
+                "https://example.com/reference",
+                "Нужен лёгкий городской рюкзак до 20 000 ₽"),
+            CancellationToken.None);
+
+        Assert.NotNull(forwarded);
+        Assert.Equal("Заявка из формы: Найти товар", forwarded!.AdminNotes);
+        var item = Assert.Single(forwarded.Items!);
+        Assert.Equal("Подбор товара", item.Name);
+        Assert.Equal("https://example.com/reference", item.SourceUrl);
+    }
+
+    [Fact]
     public async Task Handler_StoresImagesUnderRequestTypeAndOrderId()
     {
         var adminId = Guid.NewGuid();

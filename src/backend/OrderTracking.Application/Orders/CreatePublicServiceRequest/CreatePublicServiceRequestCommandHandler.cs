@@ -189,6 +189,14 @@ public sealed class CreatePublicServiceRequestCommandHandler
                 null,
                 null,
                 Normalize(request.SourceUrl)),
+            PublicServiceRequestType.FindProduct => new CreateOrderItemDto(
+                OrderItemType.Product,
+                "Подбор товара",
+                Normalize(request.Description),
+                1,
+                null,
+                null,
+                Normalize(request.SourceUrl)),
             _ => new CreateOrderItemDto(
                 OrderItemType.Product,
                 "Индивидуальный запрос",
@@ -239,6 +247,7 @@ public sealed class CreatePublicServiceRequestCommandHandler
     {
         return requestType switch
         {
+            PublicServiceRequestType.FindProduct => "Найти товар",
             PublicServiceRequestType.Auction => "Аукцион",
             PublicServiceRequestType.Ticket => "Билеты",
             _ => "Индивидуальный запрос",
