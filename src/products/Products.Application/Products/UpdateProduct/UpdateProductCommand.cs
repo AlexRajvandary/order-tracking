@@ -113,6 +113,7 @@ public sealed class UpdateProductCommandHandler : IRequestHandler<UpdateProductC
 
         await _audit.WriteAsync(product.Id, ProductAuditActions.Updated, oldSnapshot, product, cancellationToken);
         await _uow.SaveChangesAsync(cancellationToken);
+        _products.InvalidateCatalogCache();
 
         return product.ToDto();
     }

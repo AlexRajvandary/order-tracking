@@ -70,9 +70,11 @@ public interface IProductRepository
         bool updateShop,
         Guid? newShopId,
         CancellationToken cancellationToken = default);
-    Task<int> ClearCategoryAsync(
+    Task<int> ReassignCategoryAsync(
         IReadOnlyCollection<Guid> categoryIds,
+        Guid? targetCategoryId,
         CancellationToken cancellationToken = default);
+    void InvalidateCatalogCache();
     void Add(Product product);
     void Remove(Product product);
     Task<IReadOnlyList<ProductTranslationPendingDto>> GetPendingTranslationsAsync(int limit, CancellationToken cancellationToken = default);

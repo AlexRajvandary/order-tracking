@@ -131,13 +131,18 @@ public sealed class DeleteCategoryCommandHandler : IRequestHandler<DeleteCategor
 
     public async Task<DeleteCategoryResult> Handle(DeleteCategoryCommand request, CancellationToken cancellationToken)
     {
-        _ = await _categories.GetByIdAsync(request.Id, cancellationToken)
+        var category = await _categories.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new NotFoundException($"Category {request.Id} was not found.");
         var subtree = await _categories.ListSubtreeAsync(request.Id, cancellationToken);
-        var unassigned = await _products.ClearCategoryAsync(subtree.Select(x => x.Id).ToList(), cancellationToken);
-        foreach (var category in subtree)
-            _categories.Remove(category);
+        var movedProducts = await _products.ReassignCategoryAsync(
+            subtree.Select(x => x.Id).ToList(),
+            category.ParentId,
+            cancellationToken);
+        foreach (var subtreeCategory in subtree)
+            _categories.Remove(subtreeCategory);
         await _uow.SaveChangesAsync(cancellationToken);
-        return new DeleteCategoryResult(subtree.Count, unassigned);
+        return new DeleteCategoryResult(
+            subtree.Count,
+            category.ParentId is null ? movedProducts : 0);
     }
 }

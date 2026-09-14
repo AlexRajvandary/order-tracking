@@ -13,6 +13,8 @@ public sealed class ProductRepository : IProductRepository
 
     private static readonly SemaphoreSlim MixedCandidatesCacheLock = new(1, 1);
 
+    private static long _mixedCandidatesCacheVersion;
+
     private readonly ProductsDbContext _db;
 
     private readonly IMemoryCache _cache;
@@ -247,6 +249,7 @@ public sealed class ProductRepository : IProductRepository
         var parts = new[]
         {
             "products:mixed-candidates:v1",
+            Volatile.Read(ref _mixedCandidatesCacheVersion).ToString(),
             CachePart(search?.Trim()),
             CachePart(activeOnly?.ToString()),
             CachePart(JoinCacheValues(brandIds)),
@@ -375,11 +378,14 @@ public sealed class ProductRepository : IProductRepository
         query = query.Where(p => p.IsActive != isActive);
 
         var now = DateTimeOffset.UtcNow;
-        return await query.ExecuteUpdateAsync(
+        var updated = await query.ExecuteUpdateAsync(
             setters => setters
                 .SetProperty(p => p.IsActive, isActive)
                 .SetProperty(p => p.UpdatedAt, now),
             cancellationToken);
+        if (updated > 0)
+            InvalidateMixedCandidatesCache();
+        return updated;
     }
 
     public async Task<int> BulkUpdateRelationsAsync(
@@ -420,35 +426,46 @@ public sealed class ProductRepository : IProductRepository
         }
 
         var now = DateTimeOffset.UtcNow;
+        int updated;
         if (updateCategory && updateShop)
         {
-            return await query.ExecuteUpdateAsync(setters => setters
+            updated = await query.ExecuteUpdateAsync(setters => setters
                 .SetProperty(p => p.CategoryId, newCategoryId)
                 .SetProperty(p => p.ShopId, newShopId)
                 .SetProperty(p => p.UpdatedAt, now), cancellationToken);
         }
-        if (updateCategory)
+        else if (updateCategory)
         {
-            return await query.ExecuteUpdateAsync(setters => setters
+            updated = await query.ExecuteUpdateAsync(setters => setters
                 .SetProperty(p => p.CategoryId, newCategoryId)
                 .SetProperty(p => p.UpdatedAt, now), cancellationToken);
         }
-        return await query.ExecuteUpdateAsync(setters => setters
-            .SetProperty(p => p.ShopId, newShopId)
-            .SetProperty(p => p.UpdatedAt, now), cancellationToken);
+        else
+        {
+            updated = await query.ExecuteUpdateAsync(setters => setters
+                .SetProperty(p => p.ShopId, newShopId)
+                .SetProperty(p => p.UpdatedAt, now), cancellationToken);
+        }
+        if (updated > 0)
+            InvalidateMixedCandidatesCache();
+        return updated;
     }
 
-    public Task<int> ClearCategoryAsync(
+    public async Task<int> ReassignCategoryAsync(
         IReadOnlyCollection<Guid> categoryIds,
+        Guid? targetCategoryId,
         CancellationToken cancellationToken = default)
     {
         var ids = categoryIds.Distinct().ToList();
         var now = DateTimeOffset.UtcNow;
-        return _db.Products
+        var updated = await _db.Products
             .Where(product => product.CategoryId.HasValue && ids.Contains(product.CategoryId.Value))
             .ExecuteUpdateAsync(setters => setters
-                .SetProperty(product => product.CategoryId, (Guid?)null)
+                .SetProperty(product => product.CategoryId, targetCategoryId)
                 .SetProperty(product => product.UpdatedAt, now), cancellationToken);
+        if (updated > 0)
+            InvalidateMixedCandidatesCache();
+        return updated;
     }
 
     private async Task<IQueryable<Product>> BuildFilterQueryAsync(
@@ -522,11 +539,7 @@ public sealed class ProductRepository : IProductRepository
         {
             if (includeCategoryChildren)
             {
-                var categoryIds = await _db.Categories
-                    .AsNoTracking()
-                    .Where(c => c.Id == catId || c.ParentId == catId)
-                    .Select(c => c.Id)
-                    .ToListAsync(cancellationToken);
+                var categoryIds = await GetCategorySubtreeIdsAsync(catId, cancellationToken);
                 query = query.Where(p =>
                     p.CategoryId != null && categoryIds.Contains(p.CategoryId.Value));
             }
@@ -553,11 +566,7 @@ public sealed class ProductRepository : IProductRepository
                 var expandChildren = includeCategoryChildren || matched.ParentId is null;
                 if (expandChildren)
                 {
-                    var categoryIds = await _db.Categories
-                        .AsNoTracking()
-                        .Where(c => c.Id == matched.Id || c.ParentId == matched.Id)
-                        .Select(c => c.Id)
-                        .ToListAsync(cancellationToken);
+                    var categoryIds = await GetCategorySubtreeIdsAsync(matched.Id, cancellationToken);
                     query = query.Where(p =>
                         p.CategoryId != null && categoryIds.Contains(p.CategoryId.Value));
                 }
@@ -628,9 +637,44 @@ public sealed class ProductRepository : IProductRepository
         return (brands, shops);
     }
 
-    public void Add(Product product) => _db.Products.Add(product);
+    public void Add(Product product)
+    {
+        _db.Products.Add(product);
+        InvalidateMixedCandidatesCache();
+    }
 
-    public void Remove(Product product) => _db.Products.Remove(product);
+    public void InvalidateCatalogCache() => InvalidateMixedCandidatesCache();
+
+    public void Remove(Product product)
+    {
+        _db.Products.Remove(product);
+        InvalidateMixedCandidatesCache();
+    }
+
+    private async Task<List<Guid>> GetCategorySubtreeIdsAsync(
+        Guid rootId,
+        CancellationToken cancellationToken)
+    {
+        var categories = await _db.Categories
+            .AsNoTracking()
+            .Select(category => new { category.Id, category.ParentId })
+            .ToListAsync(cancellationToken);
+        var ids = new HashSet<Guid> { rootId };
+        var added = true;
+        while (added)
+        {
+            added = false;
+            foreach (var category in categories)
+            {
+                if (category.ParentId is { } parentId && ids.Contains(parentId))
+                    added |= ids.Add(category.Id);
+            }
+        }
+        return ids.ToList();
+    }
+
+    private static void InvalidateMixedCandidatesCache() =>
+        Interlocked.Increment(ref _mixedCandidatesCacheVersion);
 
     public async Task<IReadOnlyList<ProductTranslationPendingDto>> GetPendingTranslationsAsync(int limit, CancellationToken cancellationToken = default) =>
         await _db.Products.AsNoTracking()
