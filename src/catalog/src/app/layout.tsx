@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { CartProvider } from "@/components/cart-provider";
 import { FavoritesProvider } from "@/components/favorites-provider";
 import { Footer } from "@/components/footer";
 import { OrderProcess } from "@/components/order-process";
+import { YandexMetrika } from "@/components/yandex-metrika";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,6 +23,9 @@ export default function RootLayout({
   return (
     <html lang="ru" className="h-full">
       <body className="flex min-h-full flex-col bg-background font-sans antialiased">
+        <Suspense fallback={null}>
+          <YandexMetrika />
+        </Suspense>
         <CartProvider>
           <FavoritesProvider>
             <main className="flex min-h-full flex-1 flex-col bg-background">{children}</main>
