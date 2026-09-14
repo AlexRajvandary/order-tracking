@@ -9,11 +9,28 @@ import { YandexMetrika } from "@/components/yandex-metrika";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://the-get.ru"),
   title: {
-    default: "The Get — каталог",
+    default: "The Get — товары из Японии",
     template: "%s · The Get",
   },
-  description: "Демо-каталог товаров The Get. Пока данные в памяти приложения.",
+  description:
+    "Находите и заказывайте товары из японских магазинов и маркетплейсов. The Get поможет с выкупом, проверкой и доставкой товаров из Японии.",
+  openGraph: {
+    type: "website",
+    locale: "ru_RU",
+    url: "/",
+    siteName: "The Get",
+    title: "The Get — товары из Японии",
+    description:
+      "Находите и заказывайте товары из японских магазинов и маркетплейсов. The Get поможет с выкупом, проверкой и доставкой товаров из Японии.",
+  },
+  twitter: {
+    card: "summary",
+    title: "The Get — товары из Японии",
+    description:
+      "Находите и заказывайте товары из японских магазинов и маркетплейсов. The Get поможет с выкупом, проверкой и доставкой товаров из Японии.",
+  },
 };
 
 export default function RootLayout({

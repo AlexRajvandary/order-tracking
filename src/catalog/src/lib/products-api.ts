@@ -71,6 +71,8 @@ export type ApiProductImage = {
 const DEFAULT_PAGE_SIZE = 10;
 export const PRODUCTS_PAGE_SIZE = 50;
 const JPY_PER_RUB = 1.6;
+const RUB_PER_USD = 90;
+const RUB_PER_GBP = 120;
 
 function productsApiBaseUrl(): string {
   return (
@@ -89,7 +91,7 @@ function discountPercent(
   return pct > 0 ? `−${pct}%` : undefined;
 }
 
-function convertPriceToRub(
+export function convertPriceToRub(
   price: number | null | undefined,
   currencyCode: string | null | undefined,
 ): number | undefined {
@@ -98,9 +100,16 @@ function convertPriceToRub(
   const numericPrice = Number(price);
   if (!Number.isFinite(numericPrice)) return undefined;
 
-  return currencyCode?.trim().toUpperCase() === "JPY"
-    ? Math.round(numericPrice / JPY_PER_RUB)
-    : numericPrice;
+  switch (currencyCode?.trim().toUpperCase()) {
+    case "JPY":
+      return Math.round(numericPrice / JPY_PER_RUB);
+    case "USD":
+      return Math.round(numericPrice * RUB_PER_USD);
+    case "GBP":
+      return Math.round(numericPrice * RUB_PER_GBP);
+    default:
+      return numericPrice;
+  }
 }
 
 export function mapApiProductToCatalog(

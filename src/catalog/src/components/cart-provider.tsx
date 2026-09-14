@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Product } from "@/lib/products";
+import { convertPriceToRub } from "@/lib/products-api";
 
 export type CartItem = {
   source: "Internal" | "Rakuten";
@@ -70,7 +71,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
           source: (value.source as "Internal" | "Rakuten") ?? "Internal",
           productId: String(value.productId ?? value.id), externalId: value.externalId ? String(value.externalId) : undefined,
           slug: String(value.slug ?? value.id), name: String(value.name ?? ""),
-          priceRub: String(value.currencyCode) === "JPY" ? Math.round(Number(value.price) / 1.6) : Number(value.price),
+          priceRub: convertPriceToRub(
+            Number(value.price),
+            String(value.currencyCode ?? "RUB"),
+          ) ?? 0,
           expectedUnitPrice: Number(value.price), expectedCurrencyCode: String(value.currencyCode ?? "RUB"),
           imageUrl: value.imageUrl ? String(value.imageUrl) : undefined, tint: "#0f3d4c", quantity: Number(value.quantity),
         }));
