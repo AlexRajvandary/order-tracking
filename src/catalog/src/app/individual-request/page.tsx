@@ -12,7 +12,7 @@ export default async function IndividualRequestPage() {
   return (
     <ServiceRequestPage
       title="Индивидуальный запрос"
-      description="Не нашли нужный товар в каталоге? Оставьте заявку — мы попробуем найти и выкупить его для вас в Японии."
+      description="Не нашли нужный товар в каталоге? Оставьте заявку — мы попробуем найти и выкупить его для вас."
       hint="Пришлите ссылку, название или просто опишите, что вы ищете."
     >
       <IndividualRequestForm />

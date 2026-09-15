@@ -9,7 +9,7 @@ type HomeSectionHeadingProps = {
 export function HomeSectionHeading({
   title,
   href,
-  linkLabel = "Смотреть все",
+  linkLabel = "Все",
 }: HomeSectionHeadingProps) {
   return (
     <div className="mb-5 flex items-end justify-between gap-4 sm:mb-7">

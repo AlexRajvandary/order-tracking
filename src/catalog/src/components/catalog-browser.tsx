@@ -849,7 +849,7 @@ export function CatalogBrowser({
             <SheetTitle>Категории</SheetTitle>
             <SheetDescription>Выберите нужный раздел каталога</SheetDescription>
           </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-5 pt-16">
             <CategoryTree
               className="h-full"
               key={mobileCategoriesOpen ? "categories-open" : "categories-closed"}

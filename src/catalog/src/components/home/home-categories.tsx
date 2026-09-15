@@ -45,7 +45,7 @@ export function HomeCategories({
       <HomeSectionHeading
         title="Популярные категории"
         href="/categories/all"
-        linkLabel="Все категории"
+        linkLabel="Все"
       />
 
       {failed ? (

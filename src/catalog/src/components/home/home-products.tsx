@@ -24,7 +24,7 @@ export async function HomeProducts({ result }: HomeProductsProps) {
       <HomeSectionHeading
         title="Новинки"
         href="/categories/одежда"
-        linkLabel="Вся одежда"
+        linkLabel="Все"
       />
       {failed ? (
         <div className="border border-border px-5 py-12 text-center text-sm text-muted-foreground">
@@ -51,7 +51,7 @@ export function HomeProductsSkeleton() {
       <HomeSectionHeading
         title="Новинки"
         href="/categories/одежда"
-        linkLabel="Вся одежда"
+        linkLabel="Все"
       />
       <ProductGridSkeleton count={5} />
     </section>

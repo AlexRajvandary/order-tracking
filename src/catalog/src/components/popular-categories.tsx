@@ -407,7 +407,7 @@ export function PopularCategories({ className }: PopularCategoriesProps) {
           href="/#figures"
           className="group inline-flex shrink-0 items-center gap-1 text-[13px] text-[#666] transition-colors duration-200 hover:text-[#F24676] sm:text-[15px]"
         >
-          Смотреть все
+          Все
           <span
             aria-hidden
             className="inline-block transition-transform duration-200 group-hover:translate-x-1"

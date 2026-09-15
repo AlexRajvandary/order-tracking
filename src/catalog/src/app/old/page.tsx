@@ -162,7 +162,7 @@ export default async function HomePage() {
                   items={section.items}
                   sectionId={sectionRouteId(section.id)}
                   title={section.title}
-                  allLabel={section.id === "books" ? "Все книги и манга" : section.id === "tcg" ? "Все карточные игры" : "Все фигурки"}
+                  allLabel="Все"
                 />
               ) : fashionSections.has(section.id) ? (() => {
                 const fashion = fashionSections.get(section.id)!;
@@ -181,8 +181,7 @@ export default async function HomePage() {
                   href={`/categories/${sectionRouteId(section.id)}`}
                   className="group inline-flex shrink-0 items-center gap-1 text-[13px] text-[#666] transition-colors duration-200 hover:text-[#F24676] sm:text-[15px]"
                 >
-                  <span className="sm:hidden">Все</span>
-                  <span className="hidden sm:inline">Смотреть все</span>
+                  <span>Все</span>
                   <span
                     aria-hidden
                     className="inline-block transition-transform duration-200 group-hover:translate-x-1"

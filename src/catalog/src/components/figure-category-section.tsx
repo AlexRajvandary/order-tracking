@@ -23,7 +23,7 @@ export function FigureCategorySection({
   items,
   sectionId,
   title = "Фигурки",
-  allLabel = "Все фигурки",
+  allLabel = "Все",
 }: FigureCategorySectionProps) {
   const [swiper, setSwiper] = useState<SwiperInstance | null>(null);
 

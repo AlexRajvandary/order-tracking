@@ -5,7 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
+  ArrowLeft,
   ChevronDown,
+  ChevronRight,
   FileText,
   Gavel,
   Heart,
@@ -42,6 +44,7 @@ const PUBLIC_HEADER_FEATURES = {
 } as const;
 
 type MegaMenuItem = (typeof MEGA_MENU_ITEMS)[number];
+type MobileMenuScreen = "main" | "categories" | "brands";
 
 const CATEGORY_SERVICES = [
   {
@@ -542,8 +545,135 @@ function BrandMegaMenu({
   );
 }
 
+function MobileCategoriesMenu({
+  categories,
+  error,
+  onRetry,
+  onNavigate,
+}: {
+  categories: ApiCategory[] | null;
+  error: boolean;
+  onRetry: () => void;
+  onNavigate: () => void;
+}) {
+  if (error) {
+    return (
+      <button
+        type="button"
+        className="text-sm font-medium text-[#555] underline underline-offset-4"
+        onClick={onRetry}
+      >
+        Не удалось загрузить категории. Повторить
+      </button>
+    );
+  }
+
+  if (!categories) {
+    return (
+      <div className="space-y-2" aria-label="Загрузка категорий">
+        {Array.from({ length: 10 }, (_, index) => (
+          <div key={index} className="h-12 animate-pulse rounded-lg bg-[#ECEEF1]" />
+        ))}
+      </div>
+    );
+  }
+
+  if (categories.length === 0) {
+    return <p className="text-sm text-[#777]">Категории не найдены</p>;
+  }
+
+  return (
+    <ul>
+      {categories.map((category) => (
+        <li key={category.id}>
+          <Link
+            href={categoryHref(category.slug)}
+            className="flex min-h-12 items-center justify-between gap-3 border-b border-[#F0F0F0] py-3 text-[15px] font-semibold text-[#111] active:text-[#F24676]"
+            onClick={onNavigate}
+          >
+            <span>{category.name}</span>
+            <ChevronRight className="size-4 shrink-0 text-[#8B919C]" aria-hidden />
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function MobileBrandsMenu({
+  brands,
+  error,
+  onRetry,
+  onNavigate,
+}: {
+  brands: ApiBrand[] | null;
+  error: boolean;
+  onRetry: () => void;
+  onNavigate: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLocaleLowerCase("ru");
+  const visibleBrands = brands
+    ?.filter((brand) => brand.name.toLocaleLowerCase("ru").includes(normalizedQuery))
+    .sort((left, right) => left.name.localeCompare(right.name, ["ru", "en"]));
+
+  return (
+    <div className="flex min-h-full flex-col">
+      <label className="relative block shrink-0">
+        <span className="sr-only">Поиск брендов</span>
+        <Search
+          className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-[#8B919C]"
+          aria-hidden
+        />
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Поиск брендов"
+          className="h-11 w-full rounded-xl border border-[#D9DCE1] bg-white pr-4 pl-11 text-[15px] text-[#111] outline-none placeholder:text-[#9CA1AA] focus:border-[#3F4652]"
+        />
+      </label>
+
+      <div className="mt-4 min-h-0 flex-1">
+        {error ? (
+          <button
+            type="button"
+            className="text-sm font-medium text-[#555] underline underline-offset-4"
+            onClick={onRetry}
+          >
+            Не удалось загрузить бренды. Повторить
+          </button>
+        ) : !brands ? (
+          <div className="space-y-2" aria-label="Загрузка брендов">
+            {Array.from({ length: 12 }, (_, index) => (
+              <div key={index} className="h-10 animate-pulse rounded-lg bg-[#ECEEF1]" />
+            ))}
+          </div>
+        ) : visibleBrands?.length ? (
+          <ul>
+            {visibleBrands.map((brand) => (
+              <li key={brand.id}>
+                <Link
+                  href={`/categories/all?brands=${encodeURIComponent(brand.slug)}`}
+                  className="flex min-h-11 items-center border-b border-[#F0F0F0] py-2.5 text-[15px] font-medium text-[#333842] active:text-[#F24676]"
+                  onClick={onNavigate}
+                >
+                  {brand.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="py-3 text-sm text-[#777]">Бренды не найдены</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileMenuScreen, setMobileMenuScreen] = useState<MobileMenuScreen>("main");
   const [activeMegaMenu, setActiveMegaMenu] = useState<MegaMenuItem | null>(null);
   const [categories, setCategories] = useState<ApiCategory[] | null>(null);
   const [categoriesError, setCategoriesError] = useState(false);
@@ -590,7 +720,8 @@ export function SiteHeader() {
 
   useEffect(() => {
     if (
-      activeMegaMenu !== "Категории" ||
+      (activeMegaMenu !== "Категории" &&
+        !(menuOpen && mobileMenuScreen === "categories")) ||
       categories !== null ||
       categoriesRequestStarted.current
     ) {
@@ -609,11 +740,12 @@ export function SiteHeader() {
         categoriesRequestStarted.current = false;
         setCategoriesError(true);
       });
-  }, [activeMegaMenu, categories, categoriesRetry]);
+  }, [activeMegaMenu, categories, categoriesRetry, menuOpen, mobileMenuScreen]);
 
   useEffect(() => {
     if (
-      activeMegaMenu !== "Бренды" ||
+      (activeMegaMenu !== "Бренды" &&
+        !(menuOpen && mobileMenuScreen === "brands")) ||
       brands !== null ||
       brandsRequestStarted.current
     ) {
@@ -632,7 +764,7 @@ export function SiteHeader() {
         brandsRequestStarted.current = false;
         setBrandsError(true);
       });
-  }, [activeMegaMenu, brands, brandsRetry]);
+  }, [activeMegaMenu, brands, brandsRetry, menuOpen, mobileMenuScreen]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#ECECEC] bg-white/95 backdrop-blur-md supports-backdrop-filter:bg-white/90">
@@ -642,7 +774,14 @@ export function SiteHeader() {
           className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg text-[#111] transition-colors hover:bg-black/5 md:hidden"
           aria-label={menuOpen ? "Закрыть меню" : "Открыть меню"}
           aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}
+          onClick={() => {
+            if (menuOpen) {
+              setMenuOpen(false);
+            } else {
+              setMobileMenuScreen("main");
+              setMenuOpen(true);
+            }
+          }}
         >
           {menuOpen ? (
             <X className="size-6" strokeWidth={1.8} />
@@ -777,37 +916,134 @@ export function SiteHeader() {
             className="absolute inset-0 bg-black/35"
             onClick={() => setMenuOpen(false)}
           />
-          <nav
-            aria-label="Мобильное меню"
-            className="absolute inset-x-0 top-0 max-h-[calc(100dvh-3.5rem)] overflow-y-auto border-b border-[#ECECEC] bg-white px-4 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
-          >
-            <ul className="flex flex-col">
-              {MEGA_MENU_ITEMS.filter(
-                (item) => item !== "Магазины" || PUBLIC_HEADER_FEATURES.shopsMenu,
-              ).map((item) => (
-                <li key={item}>
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between border-b border-[#F0F0F0] py-3.5 text-left text-[16px] font-semibold text-[#111] active:text-[#F24676]"
-                  >
-                    {item}
-                    <ChevronDown className="size-4" aria-hidden />
-                  </button>
-                </li>
-              ))}
-              {NAV_LINKS.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="flex items-center border-b border-[#F0F0F0] py-3.5 text-[16px] font-semibold text-[#111] last:border-b-0 active:text-[#F24676]"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          <div className="absolute inset-x-0 top-0 h-[calc(100dvh-3.5rem)] overflow-hidden border-b border-[#ECECEC] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
+            <div
+              className="flex h-full w-[300%] transition-transform duration-300 ease-out motion-reduce:transition-none"
+              style={{
+                transform: `translateX(-${
+                  mobileMenuScreen === "main"
+                    ? 0
+                    : mobileMenuScreen === "categories"
+                      ? 100 / 3
+                      : 200 / 3
+                }%)`,
+              }}
+            >
+              <nav
+                aria-label="Мобильное меню"
+                aria-hidden={mobileMenuScreen !== "main"}
+                className={cn(
+                  "h-full w-1/3 shrink-0 overflow-y-auto px-4 py-3",
+                  mobileMenuScreen !== "main" && "pointer-events-none",
+                )}
+              >
+                <ul className="flex flex-col">
+                  <li>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between border-b border-[#F0F0F0] py-3.5 text-left text-[16px] font-semibold text-[#111] active:text-[#F24676]"
+                      onClick={() => setMobileMenuScreen("categories")}
+                    >
+                      Категории
+                      <ChevronRight className="size-4 text-[#8B919C]" aria-hidden />
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between border-b border-[#F0F0F0] py-3.5 text-left text-[16px] font-semibold text-[#111] active:text-[#F24676]"
+                      onClick={() => setMobileMenuScreen("brands")}
+                    >
+                      Бренды
+                      <ChevronRight className="size-4 text-[#8B919C]" aria-hidden />
+                    </button>
+                  </li>
+                  {PUBLIC_HEADER_FEATURES.shopsMenu ? (
+                    <li>
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between border-b border-[#F0F0F0] py-3.5 text-left text-[16px] font-semibold text-[#111] active:text-[#F24676]"
+                      >
+                        Магазины
+                        <ChevronRight className="size-4 text-[#8B919C]" aria-hidden />
+                      </button>
+                    </li>
+                  ) : null}
+                  {NAV_LINKS.map((link) => (
+                    <li key={link.href}>
+                      <Link
+                        href={link.href}
+                        className="flex items-center border-b border-[#F0F0F0] py-3.5 text-[16px] font-semibold text-[#111] last:border-b-0 active:text-[#F24676]"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+
+              <section
+                aria-label="Категории"
+                aria-hidden={mobileMenuScreen !== "categories"}
+                className={cn(
+                  "h-full w-1/3 shrink-0 overflow-y-auto px-4 pb-5",
+                  mobileMenuScreen !== "categories" && "pointer-events-none",
+                )}
+              >
+                <button
+                  type="button"
+                  className="sticky top-0 z-10 flex min-h-14 w-full items-center gap-3 border-b border-[#ECECEC] bg-white text-left text-[17px] font-semibold text-[#111]"
+                  onClick={() => setMobileMenuScreen("main")}
+                >
+                  <ArrowLeft className="size-5" aria-hidden />
+                  Категории
+                </button>
+                <div className="pt-2">
+                  <MobileCategoriesMenu
+                    categories={categories}
+                    error={categoriesError}
+                    onNavigate={() => setMenuOpen(false)}
+                    onRetry={() => {
+                      categoriesRequestStarted.current = false;
+                      setCategoriesError(false);
+                      setCategoriesRetry((value) => value + 1);
+                    }}
+                  />
+                </div>
+              </section>
+
+              <section
+                aria-label="Бренды"
+                aria-hidden={mobileMenuScreen !== "brands"}
+                className={cn(
+                  "h-full w-1/3 shrink-0 overflow-y-auto px-4 pb-5",
+                  mobileMenuScreen !== "brands" && "pointer-events-none",
+                )}
+              >
+                <button
+                  type="button"
+                  className="sticky top-0 z-10 flex min-h-14 w-full items-center gap-3 border-b border-[#ECECEC] bg-white text-left text-[17px] font-semibold text-[#111]"
+                  onClick={() => setMobileMenuScreen("main")}
+                >
+                  <ArrowLeft className="size-5" aria-hidden />
+                  Бренды
+                </button>
+                <div className="pt-4">
+                  <MobileBrandsMenu
+                    brands={brands}
+                    error={brandsError}
+                    onNavigate={() => setMenuOpen(false)}
+                    onRetry={() => {
+                      brandsRequestStarted.current = false;
+                      setBrandsError(false);
+                      setBrandsRetry((value) => value + 1);
+                    }}
+                  />
+                </div>
+              </section>
+            </div>
+          </div>
         </div>
       ) : null}
     </header>

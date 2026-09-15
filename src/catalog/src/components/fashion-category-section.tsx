@@ -32,7 +32,7 @@ export function FashionCategorySection({ title, subtitle, rootSlug, categories }
           <h2 className="flex items-center gap-2.5 text-[22px] font-bold tracking-tight text-[#111] sm:gap-3 sm:text-[30px]"><span className="inline-block h-[0.85em] w-1 shrink-0 rounded-full bg-[#F24676]" aria-hidden />{title}</h2>
           <p className="mt-1 text-sm text-[#666] sm:mt-2 sm:text-base">{subtitle}</p>
         </div>
-        <Link href={categoryHref(rootSlug)} className="group inline-flex shrink-0 items-center gap-1 text-[13px] text-[#666] transition-colors hover:text-[#F24676] sm:text-[15px]">Смотреть все <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></Link>
+        <Link href={categoryHref(rootSlug)} className="group inline-flex shrink-0 items-center gap-1 text-[13px] text-[#666] transition-colors hover:text-[#F24676] sm:text-[15px]">Все <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></Link>
       </div>
 
       <div className="grid overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)] lg:grid-cols-[minmax(210px,0.34fr)_minmax(0,1fr)]">
