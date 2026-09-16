@@ -187,7 +187,7 @@
 
 .mega-menu-categories-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #111 transparent;
+  scrollbar-color: #3a3a3a transparent;
 }
 
 .mega-menu-categories-scrollbar::-webkit-scrollbar {
@@ -199,13 +199,18 @@
 }
 
 .mega-menu-categories-scrollbar::-webkit-scrollbar-thumb {
-  border-right: 2px solid transparent;
-  border-left: 2px solid transparent;
+  border-right: 2.5px solid transparent;
+  border-left: 2.5px solid transparent;
   border-radius: 999px;
-  background: #111;
+  background: #3a3a3a;
   background-clip: padding-box;
   box-shadow: none;
   outline: none;
+}
+
+.mega-menu-categories-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #222;
+  background-clip: padding-box;
 }
 
 .mega-menu-categories-scrollbar::-webkit-scrollbar-button {
