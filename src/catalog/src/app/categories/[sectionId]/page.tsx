@@ -28,6 +28,7 @@ type PageProps = {
     sub?: string;
     brands?: string;
     shops?: string;
+    genders?: string;
     shuffleSeed?: string;
   }>;
 };
@@ -42,12 +43,14 @@ function buildBasePath(
   subSlug?: string,
   brandSlugs?: string[],
   shopSlugs?: string[],
+  genders?: string[],
   shuffleSeed?: number,
 ) {
   const qs = new URLSearchParams();
   if (subSlug) qs.set("sub", subSlug);
   if (brandSlugs && brandSlugs.length > 0) qs.set("brands", brandSlugs.join(","));
   if (shopSlugs && shopSlugs.length > 0) qs.set("shops", shopSlugs.join(","));
+  if (genders && genders.length > 0) qs.set("genders", genders.join(","));
   if (shuffleSeed != null) qs.set("shuffleSeed", String(shuffleSeed));
   const search = qs.toString();
   return search ? `/categories/${rootSlug}?${search}` : `/categories/${rootSlug}`;
@@ -63,6 +66,7 @@ export default async function CategorySectionPage({
     sub: subParam,
     brands: brandsParam,
     shops: shopsParam,
+    genders: gendersParam,
     shuffleSeed: shuffleSeedParam,
   } = await searchParams;
   const page = parsePage(pageParam);
@@ -71,6 +75,10 @@ export default async function CategorySectionPage({
   const selectedShopSlugs = parseCsvParam(shopsParam);
   const decodedSectionId = safeDecode(sectionId);
   const isAllCategories = decodedSectionId === "all";
+  const isShoesCategory = ["shoes", "obuv", "обувь"].includes(decodedSectionId.toLowerCase());
+  const selectedGenders = (isShoesCategory ? parseCsvParam(gendersParam) : []).filter((value) =>
+    ["unisex", "men", "women", "kids"].includes(value),
+  ) as Array<"unisex" | "men" | "women" | "kids">;
   const parsedShuffleSeed = Number(shuffleSeedParam);
   const requestedShuffleSeed =
     Number.isSafeInteger(parsedShuffleSeed) && parsedShuffleSeed >= 0
@@ -94,6 +102,7 @@ export default async function CategorySectionPage({
         pageSize: PRODUCTS_PAGE_SIZE,
         brandSlugs: selectedBrandSlugs,
         shopSlugs: selectedShopSlugs,
+        genders: selectedGenders,
         shuffleSeed,
       })
     : !subSlug ? fetchCatalogPage({
@@ -103,6 +112,7 @@ export default async function CategorySectionPage({
         pageSize: PRODUCTS_PAGE_SIZE,
         brandSlugs: selectedBrandSlugs,
         shopSlugs: selectedShopSlugs,
+        genders: selectedGenders,
         shuffleSeed,
       }) : null;
 
@@ -131,6 +141,7 @@ export default async function CategorySectionPage({
         pageSize: PRODUCTS_PAGE_SIZE,
         brandSlugs: selectedBrandSlugs,
         shopSlugs: selectedShopSlugs,
+        genders: selectedGenders,
         shuffleSeed: effectiveShuffleSeed,
       })
     : child && root
@@ -142,6 +153,7 @@ export default async function CategorySectionPage({
           pageSize: PRODUCTS_PAGE_SIZE,
           brandSlugs: selectedBrandSlugs,
           shopSlugs: selectedShopSlugs,
+          genders: selectedGenders,
           categoryId: child.id,
           categorySlug: child.slug,
           categoryName: child.name,
@@ -182,6 +194,7 @@ export default async function CategorySectionPage({
             selectedBrandSlugs={selectedBrandSlugs}
             shops={facets.shops}
             selectedShopSlugs={selectedShopSlugs}
+            selectedGenders={selectedGenders}
             pagination={{
               page: catalog.page,
               pageSize: catalog.pageSize,
@@ -191,6 +204,7 @@ export default async function CategorySectionPage({
                 child?.slug,
                 selectedBrandSlugs,
                 selectedShopSlugs,
+                selectedGenders,
                 effectiveShuffleSeed,
               ),
               shuffleSeed: effectiveShuffleSeed,

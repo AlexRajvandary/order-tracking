@@ -47,6 +47,13 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "name", label: "По названию" },
 ];
 
+const GENDER_OPTIONS = [
+  { id: "unisex", slug: "unisex", name: "Унисекс" },
+  { id: "men", slug: "men", name: "Мужское" },
+  { id: "women", slug: "women", name: "Женское" },
+  { id: "kids", slug: "kids", name: "Детское" },
+];
+
 const BRAND_CACHE_TTL_MS = 60 * 1000;
 let brandOptionsCache: { items: ApiBrand[]; expiresAt: number } | null = null;
 
@@ -67,6 +74,7 @@ export type CatalogBrowserProps = {
   selectedBrandSlugs?: string[];
   shops?: ApiShop[];
   selectedShopSlugs?: string[];
+  selectedGenders?: string[];
   /** Server-side pagination (Products API). When set, `products` is the current page. */
   pagination?: {
     page: number;
@@ -351,6 +359,7 @@ export function CatalogBrowser({
   selectedBrandSlugs = [],
   shops,
   selectedShopSlugs = [],
+  selectedGenders = [],
   pagination,
 }: CatalogBrowserProps) {
   if (!productsLoading) {
@@ -383,6 +392,7 @@ export function CatalogBrowser({
   const [brandsError, setBrandsError] = useState(false);
   const [pendingDatasetKey, setPendingDatasetKey] = useState<string | null>(null);
   const selectedCategoryKey = `${activeRootSlug ?? "all"}:${activeChildSlug ?? ""}`;
+  const showGenderFilter = ["shoes", "obuv", "обувь"].includes(activeRootSlug?.toLowerCase() ?? "");
   const [freshCategoryCount, setFreshCategoryCount] = useState<{
     key: string;
     count?: number;
@@ -485,6 +495,7 @@ export function CatalogBrowser({
     activeChildSlug ?? "",
     selectedBrandSlugs.join(","),
     selectedShopSlugs.join(","),
+    selectedGenders.join(","),
     pagination?.shuffleSeed ?? "default",
     pagination?.page ?? 1,
   ].join("|");
@@ -547,6 +558,10 @@ export function CatalogBrowser({
     toggleCsvParam("shops", slug);
   }
 
+  function onToggleGender(slug: string) {
+    toggleCsvParam("genders", slug);
+  }
+
   const filterAndSort = useCallback((items: CatalogProduct[]) => {
     const parsedMin = Number(priceFrom);
     const parsedMax = Number(priceTo);
@@ -595,6 +610,7 @@ export function CatalogBrowser({
     if (activeRootSlug && !activeChildSlug) params.set("includeCategoryChildren", "true");
     if (selectedBrandSlugs.length > 0) params.set("brands", selectedBrandSlugs.join(","));
     if (selectedShopSlugs.length > 0) params.set("shops", selectedShopSlugs.join(","));
+    if (showGenderFilter && selectedGenders.length > 0) params.set("genders", selectedGenders.join(","));
     if (pagination.shuffleSeed != null) {
       params.set("sort", "mixed");
       params.set("shuffleSeed", String(pagination.shuffleSeed));
@@ -626,11 +642,13 @@ export function CatalogBrowser({
     setBrandSelection({ sourceKey: selectedBrandKey, values: [] });
     const hasQueryFilters =
       selectedBrandSlugs.length > 0 ||
-      selectedShopSlugs.length > 0;
+      selectedShopSlugs.length > 0 ||
+      selectedGenders.length > 0;
     if (hasQueryFilters) {
       replaceQuery((params) => {
         params.delete("brands");
         params.delete("shops");
+        params.delete("genders");
         params.delete("page");
       });
     }
@@ -640,7 +658,8 @@ export function CatalogBrowser({
   const activeCount =
     (priceActive ? 1 : 0) +
     (activeBrandSlugs.length > 0 ? 1 : 0) +
-    (selectedShopSlugs.length > 0 ? 1 : 0);
+    (selectedShopSlugs.length > 0 ? 1 : 0) +
+    (showGenderFilter && selectedGenders.length > 0 ? 1 : 0);
 
   return (
     <div>
@@ -764,6 +783,14 @@ export function CatalogBrowser({
                 error={brands.length === 0 && brandsError}
                 searchable
               />
+              {showGenderFilter ? (
+                <MultiSelectFilter
+                  label="Пол"
+                  options={GENDER_OPTIONS}
+                  selected={selectedGenders}
+                  onToggle={onToggleGender}
+                />
+              ) : null}
               <SortDropdown value={sort} onChange={setSort} />
               {activeCount > 0 ? (
                 <Button
@@ -921,6 +948,20 @@ export function CatalogBrowser({
                 searchable={false}
               />
             </section>
+
+            {showGenderFilter ? (
+              <section className="border-t pt-5">
+                <h3 className="mb-2 text-sm font-semibold">Пол</h3>
+                <MultiSelectOptions
+                  options={GENDER_OPTIONS}
+                  selected={selectedGenders}
+                  onToggle={onToggleGender}
+                  loading={false}
+                  error={false}
+                  searchable={false}
+                />
+              </section>
+            ) : null}
 
             <section className="border-t pt-5">
               <h3 className="mb-2 text-sm font-semibold">Бренд</h3>

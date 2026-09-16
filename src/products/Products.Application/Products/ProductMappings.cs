@@ -18,6 +18,7 @@ internal static class ProductMappings
             product.BrandId,
             product.BrandEntity?.Slug,
             ToConditionSlug(product.Condition),
+            product.Gender?.ToString().ToLowerInvariant(),
             product.ShopId,
             product.Shop?.Slug,
             product.Shop?.Name,

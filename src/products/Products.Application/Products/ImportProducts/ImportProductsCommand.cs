@@ -26,6 +26,7 @@ public sealed record ImportProductItem(
     string? OriginalCurrencyCode = null,
     string? SourceUrl = null,
     string? Condition = null,
+    string? Gender = null,
     Guid? ShopId = null,
     string? ShopName = null,
     string? ShopSlug = null,
@@ -200,6 +201,9 @@ public sealed class ImportProductsCommandHandler
                         item.Condition ?? "new", out var condition)
                         ? condition
                         : ProductCondition.New,
+                Gender = ListProducts.ListProductsQueryHandler.TryParseGender(item.Gender, out var gender)
+                    ? gender
+                    : null,
                 ShopId = shopResult.Shop?.Id,
                 CategoryId = categoryResult.Category?.Id,
                 IsActive = item.IsActive,
@@ -232,6 +236,9 @@ public sealed class ImportProductsCommandHandler
         if (item.Name.Trim().Length > 500) return "Name cannot exceed 500 characters.";
         if (Clean(item.Sku) is { Length: > 100 }) return "Sku cannot exceed 100 characters.";
         if (Clean(item.Brand) is { Length: > 200 }) return "Brand cannot exceed 200 characters.";
+        if (!string.IsNullOrWhiteSpace(item.Gender)
+            && !ListProducts.ListProductsQueryHandler.TryParseGender(item.Gender, out _))
+            return "Gender must be one of: unisex, men, women, kids.";
         if (!item.Price.HasValue || item.Price < 0) return "Price must be zero or greater.";
         if (string.IsNullOrWhiteSpace(item.ImageUrl)) return "ImageUrl is required.";
         if (item.ImageUrl.Trim().Length > 2000) return "ImageUrl cannot exceed 2000 characters.";

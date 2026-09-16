@@ -14,6 +14,7 @@ public sealed record ListProductsQuery(
     Guid? ShopId = null,
     string? Shop = null,
     string? Condition = null,
+    string? Gender = null,
     Guid? CategoryId = null,
     string? Category = null,
     bool IncludeCategoryChildren = false,
@@ -34,6 +35,7 @@ public sealed class ListProductsQueryValidator : AbstractValidator<ListProductsQ
         RuleFor(x => x.Brand).MaximumLength(200).When(x => !string.IsNullOrWhiteSpace(x.Brand));
         RuleFor(x => x.Shop).MaximumLength(200).When(x => !string.IsNullOrWhiteSpace(x.Shop));
         RuleFor(x => x.Condition).MaximumLength(64).When(x => !string.IsNullOrWhiteSpace(x.Condition));
+        RuleFor(x => x.Gender).MaximumLength(64).When(x => !string.IsNullOrWhiteSpace(x.Gender));
         RuleFor(x => x.Category).MaximumLength(200).When(x => !string.IsNullOrWhiteSpace(x.Category));
         RuleFor(x => x.Sort)
             .Must(value => string.IsNullOrWhiteSpace(value) || value.Equals("mixed", StringComparison.OrdinalIgnoreCase))
@@ -83,6 +85,19 @@ public sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery
                 conditions = parsed;
         }
 
+        IReadOnlyList<ProductGender>? genders = null;
+        if (!string.IsNullOrWhiteSpace(request.Gender))
+        {
+            var parsed = request.Gender
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(value => TryParseGender(value, out var gender) ? (ProductGender?)gender : null)
+                .Where(value => value.HasValue)
+                .Select(value => value!.Value)
+                .Distinct()
+                .ToList();
+            if (parsed.Count > 0) genders = parsed;
+        }
+
         var (items, total) = await _products.SearchAsync(
             request.Search,
             request.ActiveOnly,
@@ -91,6 +106,7 @@ public sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery
             shopIds,
             shopSlugs,
             conditions,
+            genders,
             request.CategoryId,
             request.Category,
             request.IncludeCategoryChildren,
@@ -130,5 +146,25 @@ public sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery
             default:
                 return Enum.TryParse(raw, ignoreCase: true, out condition);
         }
+    }
+
+    internal static bool TryParseGender(string? raw, out ProductGender gender)
+    {
+        gender = ProductGender.Unisex;
+        if (string.IsNullOrWhiteSpace(raw)) return false;
+        return raw.Trim().ToLowerInvariant() switch
+        {
+            "unisex" => Assign(ProductGender.Unisex, out gender),
+            "men" or "male" => Assign(ProductGender.Men, out gender),
+            "women" or "female" => Assign(ProductGender.Women, out gender),
+            "kids" or "children" => Assign(ProductGender.Kids, out gender),
+            _ => Enum.TryParse(raw, true, out gender),
+        };
+    }
+
+    private static bool Assign(ProductGender value, out ProductGender gender)
+    {
+        gender = value;
+        return true;
     }
 }

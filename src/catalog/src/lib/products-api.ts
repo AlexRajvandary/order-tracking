@@ -11,6 +11,7 @@ export type ApiProduct = {
   brandId: string | null;
   brandSlug: string | null;
   condition: string;
+  gender: "unisex" | "men" | "women" | "kids" | null;
   shopId: string | null;
   shopSlug: string | null;
   shopName: string | null;
@@ -166,6 +167,7 @@ export async function fetchProductsPage(options?: {
   brandSlugs?: string[];
   shopSlugs?: string[];
   conditions?: Array<"new" | "used">;
+  genders?: Array<"unisex" | "men" | "women" | "kids">;
   categoryId?: string;
   categorySlug?: string;
   includeCategoryChildren?: boolean;
@@ -197,6 +199,9 @@ export async function fetchProductsPage(options?: {
   }
   if (options?.categorySlug) {
     params.set("category", options.categorySlug);
+  }
+  if (options?.genders && options.genders.length > 0) {
+    params.set("gender", options.genders.join(","));
   }
   if (options?.categoryId) {
     params.set("categoryId", options.categoryId);
@@ -262,6 +267,7 @@ export async function fetchCatalogPage(options: {
   brandSlugs?: string[];
   shopSlugs?: string[];
   conditions?: Array<"new" | "used">;
+  genders?: Array<"unisex" | "men" | "women" | "kids">;
   /** Child subcategory slug, or omit for the whole root category tree. */
   categoryId?: string;
   categorySlug?: string;
@@ -285,6 +291,7 @@ export async function fetchCatalogPage(options: {
     brandSlugs: options.brandSlugs,
     shopSlugs: options.shopSlugs,
     conditions: options.conditions,
+    genders: options.genders,
     categoryId: options.categoryId ?? options.rootCategoryId,
     categorySlug: options.categoryId || options.rootCategoryId ? undefined : categorySlug,
     includeCategoryChildren,
@@ -367,6 +374,7 @@ export async function fetchAllCatalogPage(options?: {
   pageSize?: number;
   brandSlugs?: string[];
   shopSlugs?: string[];
+  genders?: Array<"unisex" | "men" | "women" | "kids">;
   shuffleSeed?: number;
 }): Promise<{
   products: CatalogProduct[];
@@ -379,6 +387,7 @@ export async function fetchAllCatalogPage(options?: {
     pageSize: options?.pageSize ?? DEFAULT_PAGE_SIZE,
     brandSlugs: options?.brandSlugs,
     shopSlugs: options?.shopSlugs,
+    genders: options?.genders,
     activeOnly: true,
     sort: "mixed",
     shuffleSeed: options?.shuffleSeed,

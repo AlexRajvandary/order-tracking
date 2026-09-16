@@ -27,6 +27,7 @@ public interface IProductRepository
         IReadOnlyList<Guid>? shopIds,
         IReadOnlyList<string>? shopSlugs,
         IReadOnlyList<ProductCondition>? conditions,
+        IReadOnlyList<ProductGender>? genders,
         Guid? categoryId,
         string? categorySlug,
         bool includeCategoryChildren,

@@ -21,6 +21,7 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasConversion<string>()
             .HasMaxLength(16)
             .IsRequired();
+        builder.Property(x => x.Gender).HasConversion<string>().HasMaxLength(16);
         builder.Property(x => x.Price).HasPrecision(18, 2);
         builder.Property(x => x.CurrencyCode).HasMaxLength(3).IsFixedLength().IsRequired();
         builder.Property(x => x.OriginalPrice).HasPrecision(18, 2);
@@ -48,6 +49,7 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.HasIndex(x => x.ShopId);
         builder.HasIndex(x => x.CategoryId);
         builder.HasIndex(x => x.Condition);
+        builder.HasIndex(x => x.Gender);
 
         builder.HasIndex(x => x.Slug)
             .IsUnique()

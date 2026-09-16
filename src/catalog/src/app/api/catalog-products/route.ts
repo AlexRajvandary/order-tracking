@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
       includeCategoryChildren: params.get("includeCategoryChildren") === "true",
       brandSlugs: csv(params.get("brands")),
       shopSlugs: csv(params.get("shops")),
+      genders: csv(params.get("genders")) as Array<"unisex" | "men" | "women" | "kids">,
       sort: params.get("sort") === "mixed" ? "mixed" : undefined,
       shuffleSeed: optionalInt(params.get("shuffleSeed")),
     });

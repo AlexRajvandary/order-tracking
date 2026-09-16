@@ -11,6 +11,7 @@ public sealed record ProductDto(
     Guid? BrandId,
     string? BrandSlug,
     string Condition,
+    string? Gender,
     Guid? ShopId,
     string? ShopSlug,
     string? ShopName,

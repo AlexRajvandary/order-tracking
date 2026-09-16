@@ -88,6 +88,7 @@ public sealed class ProductRepository : IProductRepository
         IReadOnlyList<Guid>? shopIds,
         IReadOnlyList<string>? shopSlugs,
         IReadOnlyList<ProductCondition>? conditions,
+        IReadOnlyList<ProductGender>? genders,
         Guid? categoryId,
         string? categorySlug,
         bool includeCategoryChildren,
@@ -114,6 +115,9 @@ public sealed class ProductRepository : IProductRepository
             priceMax,
             cancellationToken);
 
+        if (genders is { Count: > 0 })
+            query = query.Where(product => product.Gender.HasValue && genders.Contains(product.Gender.Value));
+
         if (mixCategories)
         {
             return await SearchMixedAsync(
@@ -126,6 +130,7 @@ public sealed class ProductRepository : IProductRepository
                     shopIds,
                     shopSlugs,
                     conditions,
+                    genders,
                     categoryId,
                     categorySlug,
                     includeCategoryChildren,
@@ -240,6 +245,7 @@ public sealed class ProductRepository : IProductRepository
         IReadOnlyList<Guid>? shopIds,
         IReadOnlyList<string>? shopSlugs,
         IReadOnlyList<ProductCondition>? conditions,
+        IReadOnlyList<ProductGender>? genders,
         Guid? categoryId,
         string? categorySlug,
         bool includeCategoryChildren,
@@ -257,6 +263,7 @@ public sealed class ProductRepository : IProductRepository
             CachePart(JoinCacheValues(shopIds)),
             CachePart(JoinCacheValues(shopSlugs, value => value.Trim().ToLowerInvariant())),
             CachePart(JoinCacheValues(conditions)),
+            CachePart(JoinCacheValues(genders)),
             CachePart(categoryId?.ToString("D")),
             CachePart(categorySlug?.Trim().ToLowerInvariant()),
             CachePart(includeCategoryChildren.ToString()),
@@ -383,6 +390,7 @@ public sealed class ProductRepository : IProductRepository
                 .SetProperty(p => p.IsActive, isActive)
                 .SetProperty(p => p.UpdatedAt, now),
             cancellationToken);
+
         if (updated > 0)
             InvalidateMixedCandidatesCache();
         return updated;

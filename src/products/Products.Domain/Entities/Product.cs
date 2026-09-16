@@ -22,6 +22,7 @@ public class Product : AuditableEntity
     public ICollection<ProductImage> ProductImages { get; set; } = new List<ProductImage>();
     /// <summary>New or used (Б/У).</summary>
     public ProductCondition Condition { get; set; } = ProductCondition.New;
+    public ProductGender? Gender { get; set; }
     public decimal Price { get; set; }
     public string CurrencyCode { get; set; } = "RUB";
     /// <summary>Price as listed at the source (before conversion).</summary>
