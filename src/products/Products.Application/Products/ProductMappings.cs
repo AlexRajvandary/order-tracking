@@ -34,7 +34,21 @@ internal static class ProductMappings
             product.SourceUrl,
             product.IsActive,
             product.CreatedAt,
-            product.UpdatedAt);
+            product.UpdatedAt,
+            product.LaptopSpecification is null ? null : new LaptopSpecificationDto(
+                product.LaptopSpecification.Model,
+                product.LaptopSpecification.ModelNumber,
+                product.LaptopSpecification.Color,
+                product.LaptopSpecification.Processor,
+                product.LaptopSpecification.RamGb,
+                product.LaptopSpecification.StorageType,
+                product.LaptopSpecification.StorageGb,
+                product.LaptopSpecification.ScreenSizeInches,
+                product.LaptopSpecification.OperatingSystem,
+                product.LaptopSpecification.Office,
+                product.LaptopSpecification.Graphics,
+                product.LaptopSpecification.HasCopilotPlus,
+                product.LaptopSpecification.ReleaseModel));
 
     public static string ToConditionSlug(ProductCondition condition) =>
         condition switch

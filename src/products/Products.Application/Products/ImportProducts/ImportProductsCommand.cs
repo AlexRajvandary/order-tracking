@@ -39,6 +39,20 @@ public sealed record ImportProductItem(
     string? ParentCategory = null,
     string? ParentCategoryName = null,
     string? ParentCategorySlug = null,
+    string? Model = null,
+    string? ModelNumber = null,
+    string? Color = null,
+    string? Processor = null,
+    int? RamGb = null,
+    string? StorageType = null,
+    int? StorageGb = null,
+    decimal? ScreenSizeInches = null,
+    string? OperatingSystem = null,
+    string? Office = null,
+    string? Graphics = null,
+    bool? CopilotPlus = null,
+    string? ReleaseModel = null,
+    IReadOnlyList<string>? RawSpecifications = null,
     bool IsActive = true);
 
 public sealed record ImportProductsResult(
@@ -207,6 +221,25 @@ public sealed class ImportProductsCommandHandler
                 ShopId = shopResult.Shop?.Id,
                 CategoryId = categoryResult.Category?.Id,
                 IsActive = item.IsActive,
+                LaptopSpecification = HasLaptopSpecification(item) ? new LaptopSpecification
+                {
+                    Model = Clean(item.Model),
+                    ModelNumber = Clean(item.ModelNumber),
+                    Color = Clean(item.Color),
+                    Processor = Clean(item.Processor),
+                    RamGb = item.RamGb,
+                    StorageType = Clean(item.StorageType)?.ToUpperInvariant(),
+                    StorageGb = item.StorageGb,
+                    ScreenSizeInches = item.ScreenSizeInches,
+                    OperatingSystem = Clean(item.OperatingSystem),
+                    Office = Clean(item.Office),
+                    Graphics = Clean(item.Graphics),
+                    HasCopilotPlus = item.CopilotPlus,
+                    ReleaseModel = Clean(item.ReleaseModel),
+                    RawSpecificationsJson = item.RawSpecifications is null
+                        ? null
+                        : System.Text.Json.JsonSerializer.Serialize(item.RawSpecifications),
+                } : null,
             };
 
             if (sku is not null) batchSkus.Add(sku);
@@ -253,8 +286,28 @@ public sealed class ImportProductsCommandHandler
             return "OriginalCurrencyCode is required when OriginalPrice is set.";
         if (Clean(item.OriginalCurrencyCode) is { Length: not 3 })
             return "OriginalCurrencyCode must contain 3 characters.";
+        if (item.RamGb is < 0 or > 1024) return "RamGb must be between 0 and 1024.";
+        if (item.StorageGb is < 0) return "StorageGb must be zero or greater.";
+        if (item.ScreenSizeInches is < 0 or > 100) return "ScreenSizeInches must be between 0 and 100.";
+        if (Clean(item.Model) is { Length: > 500 }) return "Model cannot exceed 500 characters.";
+        if (Clean(item.ModelNumber) is { Length: > 200 }) return "ModelNumber cannot exceed 200 characters.";
+        if (Clean(item.Color) is { Length: > 100 }) return "Color cannot exceed 100 characters.";
+        if (Clean(item.Processor) is { Length: > 200 }) return "Processor cannot exceed 200 characters.";
+        if (Clean(item.StorageType) is { Length: > 32 }) return "StorageType cannot exceed 32 characters.";
+        if (Clean(item.OperatingSystem) is { Length: > 200 }) return "OperatingSystem cannot exceed 200 characters.";
+        if (Clean(item.Office) is { Length: > 300 }) return "Office cannot exceed 300 characters.";
+        if (Clean(item.Graphics) is { Length: > 200 }) return "Graphics cannot exceed 200 characters.";
+        if (Clean(item.ReleaseModel) is { Length: > 200 }) return "ReleaseModel cannot exceed 200 characters.";
         return null;
     }
+
+    private static bool HasLaptopSpecification(ImportProductItem item) =>
+        item.Model is not null || item.ModelNumber is not null || item.Color is not null
+        || item.Processor is not null || item.RamGb.HasValue || item.StorageType is not null
+        || item.StorageGb.HasValue || item.ScreenSizeInches.HasValue
+        || item.OperatingSystem is not null || item.Office is not null || item.Graphics is not null
+        || item.CopilotPlus.HasValue || item.ReleaseModel is not null
+        || item.RawSpecifications is { Count: > 0 };
 
     private static string? ValidateReferences(
         ImportProductItem item,

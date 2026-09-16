@@ -15,6 +15,15 @@ export type ApiBrandListResult = {
 export type ApiCatalogFacets = {
   brands: ApiBrand[];
   shops: import("@/lib/shops-api").ApiShop[];
+  laptop: {
+    models: string[];
+    processors: string[];
+    ramGb: number[];
+    storageTypes: string[];
+    storageGb: number[];
+    screenSizes: number[];
+    operatingSystems: string[];
+  };
 };
 
 function productsApiBaseUrl(): string {
@@ -56,7 +65,14 @@ export async function fetchCatalogFacets(
   if (!res.ok) throw new Error(`Product facets API ${res.status}: ${url}`);
 
   const data = (await res.json()) as ApiCatalogFacets;
-  return { brands: data.brands ?? [], shops: data.shops ?? [] };
+  return {
+    brands: data.brands ?? [],
+    shops: data.shops ?? [],
+    laptop: data.laptop ?? {
+      models: [], processors: [], ramGb: [], storageTypes: [], storageGb: [],
+      screenSizes: [], operatingSystems: [],
+    },
+  };
 }
 
 export function parseBrandSlugs(raw: string | string[] | undefined): string[] {

@@ -2,6 +2,7 @@ using MediatR;
 using Products.Application.Brands.Models;
 using Products.Application.Common.Interfaces;
 using Products.Application.Shops.Models;
+using Products.Application.Products.Models;
 
 namespace Products.Application.Products.ListProductFacets;
 
@@ -13,7 +14,8 @@ public sealed record ListProductFacetsQuery(
 
 public sealed record ProductFacetsResult(
     IReadOnlyList<BrandDto> Brands,
-    IReadOnlyList<ShopDto> Shops);
+    IReadOnlyList<ShopDto> Shops,
+    LaptopFilterFacets Laptop);
 
 public sealed class ListProductFacetsQueryHandler(IProductRepository products)
     : IRequestHandler<ListProductFacetsQuery, ProductFacetsResult>
@@ -28,6 +30,14 @@ public sealed class ListProductFacetsQueryHandler(IProductRepository products)
             request.IncludeCategoryChildren,
             request.ActiveOnly,
             cancellationToken);
+        var laptop = string.Equals(request.Category, "laptops", StringComparison.OrdinalIgnoreCase)
+            ? await products.ListLaptopFacetsAsync(
+                request.CategoryId,
+                request.Category,
+                request.IncludeCategoryChildren,
+                request.ActiveOnly,
+                cancellationToken)
+            : new LaptopFilterFacets([], [], [], [], [], [], []);
 
         return new ProductFacetsResult(
             brands.Select(brand => new BrandDto(
@@ -45,6 +55,7 @@ public sealed class ListProductFacetsQueryHandler(IProductRepository products)
                 shop.WebsiteUrl,
                 shop.Description,
                 shop.SortOrder,
-                shop.IsActive)).ToList());
+                shop.IsActive)).ToList(),
+            laptop);
     }
 }

@@ -58,6 +58,21 @@ export type ApiProductVariant = {
   isAvailable: boolean | null;
   createdAt: string;
   updatedAt: string | null;
+  laptopSpecification: {
+    model: string | null;
+    modelNumber: string | null;
+    color: string | null;
+    processor: string | null;
+    ramGb: number | null;
+    storageType: string | null;
+    storageGb: number | null;
+    screenSizeInches: number | null;
+    operatingSystem: string | null;
+    office: string | null;
+    graphics: string | null;
+    hasCopilotPlus: boolean | null;
+    releaseModel: string | null;
+  } | null;
 };
 
 export type ApiProductImage = {
@@ -168,6 +183,13 @@ export async function fetchProductsPage(options?: {
   shopSlugs?: string[];
   conditions?: Array<"new" | "used">;
   genders?: Array<"unisex" | "men" | "women" | "kids">;
+  laptopModels?: string[];
+  laptopProcessors?: string[];
+  laptopRamGb?: string[];
+  laptopStorageTypes?: string[];
+  laptopStorageGb?: string[];
+  laptopScreenSizes?: string[];
+  laptopOperatingSystems?: string[];
   categoryId?: string;
   categorySlug?: string;
   includeCategoryChildren?: boolean;
@@ -202,6 +224,18 @@ export async function fetchProductsPage(options?: {
   }
   if (options?.genders && options.genders.length > 0) {
     params.set("gender", options.genders.join(","));
+  }
+  const laptopParams: Array<[string, string[] | undefined]> = [
+    ["laptopModel", options?.laptopModels],
+    ["laptopProcessor", options?.laptopProcessors],
+    ["laptopRamGb", options?.laptopRamGb],
+    ["laptopStorageType", options?.laptopStorageTypes],
+    ["laptopStorageGb", options?.laptopStorageGb],
+    ["laptopScreenSize", options?.laptopScreenSizes],
+    ["laptopOperatingSystem", options?.laptopOperatingSystems],
+  ];
+  for (const [key, values] of laptopParams) {
+    if (values && values.length > 0) params.set(key, values.join(","));
   }
   if (options?.categoryId) {
     params.set("categoryId", options.categoryId);
@@ -268,6 +302,10 @@ export async function fetchCatalogPage(options: {
   shopSlugs?: string[];
   conditions?: Array<"new" | "used">;
   genders?: Array<"unisex" | "men" | "women" | "kids">;
+  laptopFilters?: {
+    models?: string[]; processors?: string[]; ramGb?: string[]; storageTypes?: string[];
+    storageGb?: string[]; screenSizes?: string[]; operatingSystems?: string[];
+  };
   /** Child subcategory slug, or omit for the whole root category tree. */
   categoryId?: string;
   categorySlug?: string;
@@ -292,6 +330,13 @@ export async function fetchCatalogPage(options: {
     shopSlugs: options.shopSlugs,
     conditions: options.conditions,
     genders: options.genders,
+    laptopModels: options.laptopFilters?.models,
+    laptopProcessors: options.laptopFilters?.processors,
+    laptopRamGb: options.laptopFilters?.ramGb,
+    laptopStorageTypes: options.laptopFilters?.storageTypes,
+    laptopStorageGb: options.laptopFilters?.storageGb,
+    laptopScreenSizes: options.laptopFilters?.screenSizes,
+    laptopOperatingSystems: options.laptopFilters?.operatingSystems,
     categoryId: options.categoryId ?? options.rootCategoryId,
     categorySlug: options.categoryId || options.rootCategoryId ? undefined : categorySlug,
     includeCategoryChildren,

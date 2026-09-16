@@ -33,6 +33,13 @@ export async function GET(request: NextRequest) {
       brandSlugs: csv(params.get("brands")),
       shopSlugs: csv(params.get("shops")),
       genders: csv(params.get("genders")) as Array<"unisex" | "men" | "women" | "kids">,
+      laptopModels: csv(params.get("laptopModels")),
+      laptopProcessors: csv(params.get("laptopProcessors")),
+      laptopRamGb: csv(params.get("laptopRamGb")),
+      laptopStorageTypes: csv(params.get("laptopStorageTypes")),
+      laptopStorageGb: csv(params.get("laptopStorageGb")),
+      laptopScreenSizes: csv(params.get("laptopScreenSizes")),
+      laptopOperatingSystems: csv(params.get("laptopOperatingSystems")),
       sort: params.get("sort") === "mixed" ? "mixed" : undefined,
       shuffleSeed: optionalInt(params.get("shuffleSeed")),
     });

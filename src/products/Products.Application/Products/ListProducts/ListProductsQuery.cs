@@ -20,6 +20,13 @@ public sealed record ListProductsQuery(
     bool IncludeCategoryChildren = false,
     decimal? PriceMin = null,
     decimal? PriceMax = null,
+    string? LaptopModel = null,
+    string? LaptopProcessor = null,
+    string? LaptopRamGb = null,
+    string? LaptopStorageType = null,
+    string? LaptopStorageGb = null,
+    string? LaptopScreenSize = null,
+    string? LaptopOperatingSystem = null,
     int Page = 1,
     int PageSize = 20,
     string? Sort = null,
@@ -42,6 +49,9 @@ public sealed class ListProductsQueryValidator : AbstractValidator<ListProductsQ
             .WithMessage("Sort must be 'mixed'");
         RuleFor(x => x.PriceMin).GreaterThanOrEqualTo(0).When(x => x.PriceMin.HasValue);
         RuleFor(x => x.PriceMax).GreaterThanOrEqualTo(0).When(x => x.PriceMax.HasValue);
+        RuleFor(x => x.LaptopModel).MaximumLength(2000);
+        RuleFor(x => x.LaptopProcessor).MaximumLength(2000);
+        RuleFor(x => x.LaptopOperatingSystem).MaximumLength(2000);
     }
 }
 
@@ -112,6 +122,14 @@ public sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery
             request.IncludeCategoryChildren,
             request.PriceMin,
             request.PriceMax,
+            new LaptopFilterCriteria(
+                ParseStrings(request.LaptopModel),
+                ParseStrings(request.LaptopProcessor),
+                ParseInts(request.LaptopRamGb),
+                ParseStrings(request.LaptopStorageType),
+                ParseInts(request.LaptopStorageGb),
+                ParseDecimals(request.LaptopScreenSize),
+                ParseStrings(request.LaptopOperatingSystem)),
             request.Page,
             request.PageSize,
             request.Sort?.Equals("mixed", StringComparison.OrdinalIgnoreCase) == true,
@@ -123,6 +141,29 @@ public sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery
             total,
             request.Page,
             request.PageSize);
+    }
+
+    private static IReadOnlyList<string>? ParseStrings(string? value)
+    {
+        var values = value?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        return values is { Count: > 0 } ? values : null;
+    }
+
+    private static IReadOnlyList<int>? ParseInts(string? value)
+    {
+        var values = ParseStrings(value)?.Select(x => int.TryParse(x, out var n) ? (int?)n : null)
+            .Where(x => x.HasValue).Select(x => x!.Value).Distinct().ToList();
+        return values is { Count: > 0 } ? values : null;
+    }
+
+    private static IReadOnlyList<decimal>? ParseDecimals(string? value)
+    {
+        var values = ParseStrings(value)?.Select(x => decimal.TryParse(
+                x, System.Globalization.NumberStyles.Number,
+                System.Globalization.CultureInfo.InvariantCulture, out var n) ? (decimal?)n : null)
+            .Where(x => x.HasValue).Select(x => x!.Value).Distinct().ToList();
+        return values is { Count: > 0 } ? values : null;
     }
 
     internal static bool TryParseCondition(string raw, out ProductCondition condition)

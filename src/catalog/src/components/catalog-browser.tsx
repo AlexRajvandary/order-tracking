@@ -28,6 +28,7 @@ import {
 import { CatalogPagination } from "@/components/catalog-pagination";
 import { CategoryTree } from "@/components/category-tree";
 import type { ApiBrand, ApiBrandListResult } from "@/lib/brands-api";
+import type { ApiCatalogFacets } from "@/lib/brands-api";
 import type { ApiCategory } from "@/lib/categories-api";
 import type { CatalogProduct } from "@/lib/catalog-products";
 import {
@@ -75,6 +76,16 @@ export type CatalogBrowserProps = {
   shops?: ApiShop[];
   selectedShopSlugs?: string[];
   selectedGenders?: string[];
+  laptopFacets?: ApiCatalogFacets["laptop"];
+  selectedLaptopFilters?: {
+    models: string[];
+    processors: string[];
+    ramGb: string[];
+    storageTypes: string[];
+    storageGb: string[];
+    screenSizes: string[];
+    operatingSystems: string[];
+  };
   /** Server-side pagination (Products API). When set, `products` is the current page. */
   pagination?: {
     page: number;
@@ -90,11 +101,13 @@ function FilterDropdown({
   activeCount = 0,
   children,
   onOpen,
+  contentClassName,
 }: {
   label: string;
   activeCount?: number;
   children: ReactNode;
   onOpen?: () => void;
+  contentClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -145,11 +158,64 @@ function FilterDropdown({
       {open ? (
         <div
           id={contentId}
-          className="absolute right-0 z-30 mt-1.5 w-64 rounded-lg border border-[#E5E7EB] bg-white p-3"
+          className={cn("absolute right-0 z-30 mt-1.5 w-64 rounded-lg border border-[#E5E7EB] bg-white p-3", contentClassName)}
         >
           {children}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+type LaptopFilterSelection = NonNullable<CatalogBrowserProps["selectedLaptopFilters"]>;
+
+const emptyLaptopFilters: LaptopFilterSelection = {
+  models: [], processors: [], ramGb: [], storageTypes: [], storageGb: [],
+  screenSizes: [], operatingSystems: [],
+};
+
+function facetOptions(values: Array<string | number>) {
+  return values.map((value) => ({ id: String(value), slug: String(value), name: String(value) }));
+}
+
+function LaptopFiltersContent({
+  facets,
+  selected,
+  onToggle,
+  compact = false,
+}: {
+  facets: ApiCatalogFacets["laptop"];
+  selected: LaptopFilterSelection;
+  onToggle: (key: keyof LaptopFilterSelection, value: string) => void;
+  compact?: boolean;
+}) {
+  const groups: Array<{ key: keyof LaptopFilterSelection; label: string; suffix?: string; values: Array<string | number> }> = [
+    { key: "models", label: "Модель", values: facets.models },
+    { key: "processors", label: "Процессор", values: facets.processors },
+    { key: "ramGb", label: "Оперативная память", suffix: " ГБ", values: facets.ramGb },
+    { key: "storageTypes", label: "Тип накопителя", values: facets.storageTypes },
+    { key: "storageGb", label: "Объём накопителя", suffix: " ГБ", values: facets.storageGb },
+    { key: "screenSizes", label: "Диагональ", suffix: "″", values: facets.screenSizes },
+    { key: "operatingSystems", label: "Операционная система", values: facets.operatingSystems },
+  ];
+
+  return (
+    <div className={cn("grid gap-4", !compact && "max-h-[65vh] grid-cols-3 overflow-y-auto pr-1")}>
+      {groups.map((group) => (
+        <section key={group.key} className="min-w-0">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {group.label}
+          </h3>
+          <MultiSelectOptions
+            options={facetOptions(group.values).map((option) => ({ ...option, name: `${option.name}${group.suffix ?? ""}` }))}
+            selected={selected[group.key]}
+            onToggle={(value) => onToggle(group.key, value)}
+            loading={false}
+            error={false}
+            searchable={group.values.length > 12}
+          />
+        </section>
+      ))}
     </div>
   );
 }
@@ -360,6 +426,8 @@ export function CatalogBrowser({
   shops,
   selectedShopSlugs = [],
   selectedGenders = [],
+  laptopFacets = { models: [], processors: [], ramGb: [], storageTypes: [], storageGb: [], screenSizes: [], operatingSystems: [] },
+  selectedLaptopFilters = emptyLaptopFilters,
   pagination,
 }: CatalogBrowserProps) {
   if (!productsLoading) {
@@ -393,6 +461,7 @@ export function CatalogBrowser({
   const [pendingDatasetKey, setPendingDatasetKey] = useState<string | null>(null);
   const selectedCategoryKey = `${activeRootSlug ?? "all"}:${activeChildSlug ?? ""}`;
   const showGenderFilter = ["shoes", "obuv", "обувь"].includes(activeRootSlug?.toLowerCase() ?? "");
+  const showLaptopFilters = (activeChildSlug ?? activeRootSlug)?.toLowerCase() === "laptops";
   const [freshCategoryCount, setFreshCategoryCount] = useState<{
     key: string;
     count?: number;
@@ -496,6 +565,7 @@ export function CatalogBrowser({
     selectedBrandSlugs.join(","),
     selectedShopSlugs.join(","),
     selectedGenders.join(","),
+    ...Object.values(selectedLaptopFilters).map((values) => values.join(",")),
     pagination?.shuffleSeed ?? "default",
     pagination?.page ?? 1,
   ].join("|");
@@ -562,6 +632,19 @@ export function CatalogBrowser({
     toggleCsvParam("genders", slug);
   }
 
+  function onToggleLaptopFilter(key: keyof LaptopFilterSelection, value: string) {
+    const queryKeys: Record<keyof LaptopFilterSelection, string> = {
+      models: "laptopModels",
+      processors: "laptopProcessors",
+      ramGb: "laptopRamGb",
+      storageTypes: "laptopStorageTypes",
+      storageGb: "laptopStorageGb",
+      screenSizes: "laptopScreenSizes",
+      operatingSystems: "laptopOperatingSystems",
+    };
+    toggleCsvParam(queryKeys[key], value);
+  }
+
   const filterAndSort = useCallback((items: CatalogProduct[]) => {
     const parsedMin = Number(priceFrom);
     const parsedMax = Number(priceTo);
@@ -611,6 +694,16 @@ export function CatalogBrowser({
     if (selectedBrandSlugs.length > 0) params.set("brands", selectedBrandSlugs.join(","));
     if (selectedShopSlugs.length > 0) params.set("shops", selectedShopSlugs.join(","));
     if (showGenderFilter && selectedGenders.length > 0) params.set("genders", selectedGenders.join(","));
+    if (showLaptopFilters) {
+      const queryKeys: Record<keyof LaptopFilterSelection, string> = {
+        models: "laptopModels", processors: "laptopProcessors", ramGb: "laptopRamGb",
+        storageTypes: "laptopStorageTypes", storageGb: "laptopStorageGb",
+        screenSizes: "laptopScreenSizes", operatingSystems: "laptopOperatingSystems",
+      };
+      for (const key of Object.keys(queryKeys) as Array<keyof LaptopFilterSelection>) {
+        if (selectedLaptopFilters[key].length > 0) params.set(queryKeys[key], selectedLaptopFilters[key].join(","));
+      }
+    }
     if (pagination.shuffleSeed != null) {
       params.set("sort", "mixed");
       params.set("shuffleSeed", String(pagination.shuffleSeed));
@@ -644,11 +737,19 @@ export function CatalogBrowser({
       selectedBrandSlugs.length > 0 ||
       selectedShopSlugs.length > 0 ||
       selectedGenders.length > 0;
-    if (hasQueryFilters) {
+    const hasLaptopFilters = showLaptopFilters && Object.values(selectedLaptopFilters).some((values) => values.length > 0);
+    if (hasQueryFilters || hasLaptopFilters) {
       replaceQuery((params) => {
         params.delete("brands");
         params.delete("shops");
         params.delete("genders");
+        params.delete("laptopModels");
+        params.delete("laptopProcessors");
+        params.delete("laptopRamGb");
+        params.delete("laptopStorageTypes");
+        params.delete("laptopStorageGb");
+        params.delete("laptopScreenSizes");
+        params.delete("laptopOperatingSystems");
         params.delete("page");
       });
     }
@@ -660,6 +761,10 @@ export function CatalogBrowser({
     (activeBrandSlugs.length > 0 ? 1 : 0) +
     (selectedShopSlugs.length > 0 ? 1 : 0) +
     (showGenderFilter && selectedGenders.length > 0 ? 1 : 0);
+  const laptopActiveCount = showLaptopFilters
+    ? Object.values(selectedLaptopFilters).filter((values) => values.length > 0).length
+    : 0;
+  const totalActiveCount = activeCount + laptopActiveCount;
 
   return (
     <div>
@@ -728,9 +833,9 @@ export function CatalogBrowser({
             >
               <SlidersHorizontal className="size-4" />
               Фильтры
-              {activeCount > 0 ? (
+              {totalActiveCount > 0 ? (
                 <Badge variant="secondary" className="h-5 min-w-5 px-1.5 tabular-nums">
-                  {activeCount}
+                  {totalActiveCount}
                 </Badge>
               ) : null}
             </Button>
@@ -791,8 +896,21 @@ export function CatalogBrowser({
                   onToggle={onToggleGender}
                 />
               ) : null}
+              {showLaptopFilters ? (
+                <FilterDropdown
+                  label="Характеристики"
+                  activeCount={laptopActiveCount}
+                  contentClassName="w-[min(52rem,calc(100vw-3rem))]"
+                >
+                  <LaptopFiltersContent
+                    facets={laptopFacets}
+                    selected={selectedLaptopFilters}
+                    onToggle={onToggleLaptopFilter}
+                  />
+                </FilterDropdown>
+              ) : null}
               <SortDropdown value={sort} onChange={setSort} />
-              {activeCount > 0 ? (
+              {totalActiveCount > 0 ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -964,6 +1082,18 @@ export function CatalogBrowser({
                   loading={false}
                   error={false}
                   searchable={false}
+                />
+              </section>
+            ) : null}
+
+            {showLaptopFilters ? (
+              <section className="border-t pt-5">
+                <h3 className="mb-3 text-sm font-semibold">Характеристики ноутбука</h3>
+                <LaptopFiltersContent
+                  facets={laptopFacets}
+                  selected={selectedLaptopFilters}
+                  onToggle={onToggleLaptopFilter}
+                  compact
                 />
               </section>
             ) : null}

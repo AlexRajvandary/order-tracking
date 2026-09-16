@@ -29,6 +29,13 @@ type PageProps = {
     brands?: string;
     shops?: string;
     genders?: string;
+    laptopModels?: string;
+    laptopProcessors?: string;
+    laptopRamGb?: string;
+    laptopStorageTypes?: string;
+    laptopStorageGb?: string;
+    laptopScreenSizes?: string;
+    laptopOperatingSystems?: string;
     shuffleSeed?: string;
   }>;
 };
@@ -44,6 +51,7 @@ function buildBasePath(
   brandSlugs?: string[],
   shopSlugs?: string[],
   genders?: string[],
+  laptopFilters?: Record<string, string[]>,
   shuffleSeed?: number,
 ) {
   const qs = new URLSearchParams();
@@ -51,6 +59,9 @@ function buildBasePath(
   if (brandSlugs && brandSlugs.length > 0) qs.set("brands", brandSlugs.join(","));
   if (shopSlugs && shopSlugs.length > 0) qs.set("shops", shopSlugs.join(","));
   if (genders && genders.length > 0) qs.set("genders", genders.join(","));
+  for (const [key, values] of Object.entries(laptopFilters ?? {})) {
+    if (values.length > 0) qs.set(key, values.join(","));
+  }
   if (shuffleSeed != null) qs.set("shuffleSeed", String(shuffleSeed));
   const search = qs.toString();
   return search ? `/categories/${rootSlug}?${search}` : `/categories/${rootSlug}`;
@@ -67,6 +78,13 @@ export default async function CategorySectionPage({
     brands: brandsParam,
     shops: shopsParam,
     genders: gendersParam,
+    laptopModels,
+    laptopProcessors,
+    laptopRamGb,
+    laptopStorageTypes,
+    laptopStorageGb,
+    laptopScreenSizes,
+    laptopOperatingSystems,
     shuffleSeed: shuffleSeedParam,
   } = await searchParams;
   const page = parsePage(pageParam);
@@ -122,11 +140,24 @@ export default async function CategorySectionPage({
   if (!isAllCategories && !root) notFound();
 
   const child = root && subSlug ? findChildCategory(root, subSlug) : undefined;
+  const isLaptopCategory = (child?.slug ?? root?.slug)?.toLowerCase() === "laptops";
+  const selectedLaptopFilters = isLaptopCategory ? {
+    models: parseCsvParam(laptopModels),
+    processors: parseCsvParam(laptopProcessors),
+    ramGb: parseCsvParam(laptopRamGb),
+    storageTypes: parseCsvParam(laptopStorageTypes),
+    storageGb: parseCsvParam(laptopStorageGb),
+    screenSizes: parseCsvParam(laptopScreenSizes),
+    operatingSystems: parseCsvParam(laptopOperatingSystems),
+  } : { models: [], processors: [], ramGb: [], storageTypes: [], storageGb: [], screenSizes: [], operatingSystems: [] };
   const facetsPromise = fetchCatalogFacets(
     child?.id ?? root?.id,
     child?.slug ?? root?.slug,
     !child,
-  ).catch(() => ({ brands: [], shops: [] }));
+  ).catch(() => ({
+    brands: [], shops: [],
+    laptop: { models: [], processors: [], ramGb: [], storageTypes: [], storageGb: [], screenSizes: [], operatingSystems: [] },
+  }));
   const effectiveShuffleSeed = isAllCategories || !child
     ? requestedShuffleSeed
     : undefined;
@@ -142,6 +173,7 @@ export default async function CategorySectionPage({
         brandSlugs: selectedBrandSlugs,
         shopSlugs: selectedShopSlugs,
         genders: selectedGenders,
+        laptopFilters: selectedLaptopFilters,
         shuffleSeed: effectiveShuffleSeed,
       })
     : child && root
@@ -154,6 +186,7 @@ export default async function CategorySectionPage({
           brandSlugs: selectedBrandSlugs,
           shopSlugs: selectedShopSlugs,
           genders: selectedGenders,
+          laptopFilters: selectedLaptopFilters,
           categoryId: child.id,
           categorySlug: child.slug,
           categoryName: child.name,
@@ -195,6 +228,8 @@ export default async function CategorySectionPage({
             shops={facets.shops}
             selectedShopSlugs={selectedShopSlugs}
             selectedGenders={selectedGenders}
+            laptopFacets={facets.laptop}
+            selectedLaptopFilters={selectedLaptopFilters}
             pagination={{
               page: catalog.page,
               pageSize: catalog.pageSize,
@@ -205,6 +240,15 @@ export default async function CategorySectionPage({
                 selectedBrandSlugs,
                 selectedShopSlugs,
                 selectedGenders,
+                isLaptopCategory ? {
+                  laptopModels: selectedLaptopFilters.models,
+                  laptopProcessors: selectedLaptopFilters.processors,
+                  laptopRamGb: selectedLaptopFilters.ramGb,
+                  laptopStorageTypes: selectedLaptopFilters.storageTypes,
+                  laptopStorageGb: selectedLaptopFilters.storageGb,
+                  laptopScreenSizes: selectedLaptopFilters.screenSizes,
+                  laptopOperatingSystems: selectedLaptopFilters.operatingSystems,
+                } : undefined,
                 effectiveShuffleSeed,
               ),
               shuffleSeed: effectiveShuffleSeed,

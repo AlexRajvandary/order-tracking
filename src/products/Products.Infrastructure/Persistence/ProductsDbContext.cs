@@ -35,6 +35,8 @@ public sealed class ProductsDbContext : DbContext
 
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
 
+    public DbSet<LaptopSpecification> LaptopSpecifications => Set<LaptopSpecification>();
+
     public DbSet<ImageImportJob> ImageImportJobs => Set<ImageImportJob>();
 
     public DbSet<ImageImportJobItem> ImageImportJobItems => Set<ImageImportJobItem>();

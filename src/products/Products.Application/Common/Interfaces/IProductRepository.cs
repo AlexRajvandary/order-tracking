@@ -12,6 +12,12 @@ public interface IProductRepository
         bool includeCategoryChildren,
         bool? activeOnly,
         CancellationToken cancellationToken = default);
+    Task<LaptopFilterFacets> ListLaptopFacetsAsync(
+        Guid? categoryId,
+        string? categorySlug,
+        bool includeCategoryChildren,
+        bool? activeOnly,
+        CancellationToken cancellationToken = default);
     Task<(IReadOnlyDictionary<Guid, int> ByCategory, int Total)> CountByCategoryAsync(
         bool? activeOnly,
         CancellationToken cancellationToken = default);
@@ -33,6 +39,7 @@ public interface IProductRepository
         bool includeCategoryChildren,
         decimal? priceMin,
         decimal? priceMax,
+        LaptopFilterCriteria? laptopFilters,
         int page,
         int pageSize,
         bool mixCategories,

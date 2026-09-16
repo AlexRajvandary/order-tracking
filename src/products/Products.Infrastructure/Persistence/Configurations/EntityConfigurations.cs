@@ -293,3 +293,33 @@ public sealed class ProductImageConfiguration : IEntityTypeConfiguration<Product
         builder.HasIndex(x => x.ProductId);
     }
 }
+
+public sealed class LaptopSpecificationConfiguration : IEntityTypeConfiguration<LaptopSpecification>
+{
+    public void Configure(EntityTypeBuilder<LaptopSpecification> builder)
+    {
+        builder.ToTable("laptop_specifications");
+        builder.HasKey(x => x.ProductId);
+        builder.Property(x => x.Model).HasMaxLength(500);
+        builder.Property(x => x.ModelNumber).HasMaxLength(200);
+        builder.Property(x => x.Color).HasMaxLength(100);
+        builder.Property(x => x.Processor).HasMaxLength(200);
+        builder.Property(x => x.StorageType).HasMaxLength(32);
+        builder.Property(x => x.ScreenSizeInches).HasPrecision(5, 2);
+        builder.Property(x => x.OperatingSystem).HasMaxLength(200);
+        builder.Property(x => x.Office).HasMaxLength(300);
+        builder.Property(x => x.Graphics).HasMaxLength(200);
+        builder.Property(x => x.ReleaseModel).HasMaxLength(200);
+        builder.Property(x => x.RawSpecificationsJson).HasColumnType("jsonb");
+        builder.HasOne(x => x.Product)
+            .WithOne(x => x.LaptopSpecification)
+            .HasForeignKey<LaptopSpecification>(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(x => x.Model);
+        builder.HasIndex(x => x.Processor);
+        builder.HasIndex(x => x.RamGb);
+        builder.HasIndex(x => new { x.StorageType, x.StorageGb });
+        builder.HasIndex(x => x.ScreenSizeInches);
+        builder.HasIndex(x => x.OperatingSystem);
+    }
+}

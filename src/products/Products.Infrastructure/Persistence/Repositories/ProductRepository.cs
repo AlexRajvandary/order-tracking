@@ -52,6 +52,7 @@ public sealed class ProductRepository : IProductRepository
             .Include(p => p.Shop)
             .Include(p => p.BrandEntity)
             .Include(p => p.Category)
+            .Include(p => p.LaptopSpecification)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
     public Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
@@ -59,6 +60,7 @@ public sealed class ProductRepository : IProductRepository
             .Include(p => p.Shop)
             .Include(p => p.BrandEntity)
             .Include(p => p.Category)
+            .Include(p => p.LaptopSpecification)
             .FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
 
     public Task<bool> IsSlugTakenAsync(
@@ -94,6 +96,7 @@ public sealed class ProductRepository : IProductRepository
         bool includeCategoryChildren,
         decimal? priceMin,
         decimal? priceMax,
+        LaptopFilterCriteria? laptopFilters,
         int page,
         int pageSize,
         bool mixCategories,
@@ -118,6 +121,8 @@ public sealed class ProductRepository : IProductRepository
         if (genders is { Count: > 0 })
             query = query.Where(product => product.Gender.HasValue && genders.Contains(product.Gender.Value));
 
+        query = ApplyLaptopFilters(query, laptopFilters);
+
         if (mixCategories)
         {
             return await SearchMixedAsync(
@@ -135,7 +140,8 @@ public sealed class ProductRepository : IProductRepository
                     categorySlug,
                     includeCategoryChildren,
                     priceMin,
-                    priceMax),
+                    priceMax,
+                    laptopFilters),
                 page,
                 pageSize,
                 shuffleSeed,
@@ -147,6 +153,7 @@ public sealed class ProductRepository : IProductRepository
             .Include(p => p.Shop)
             .Include(p => p.BrandEntity)
             .Include(p => p.Category)
+            .Include(p => p.LaptopSpecification)
             .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -250,7 +257,8 @@ public sealed class ProductRepository : IProductRepository
         string? categorySlug,
         bool includeCategoryChildren,
         decimal? priceMin,
-        decimal? priceMax)
+        decimal? priceMax,
+        LaptopFilterCriteria? laptopFilters)
     {
         var parts = new[]
         {
@@ -269,6 +277,13 @@ public sealed class ProductRepository : IProductRepository
             CachePart(includeCategoryChildren.ToString()),
             CachePart(priceMin?.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             CachePart(priceMax?.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            CachePart(JoinCacheValues(laptopFilters?.Models)),
+            CachePart(JoinCacheValues(laptopFilters?.Processors)),
+            CachePart(JoinCacheValues(laptopFilters?.RamGb)),
+            CachePart(JoinCacheValues(laptopFilters?.StorageTypes)),
+            CachePart(JoinCacheValues(laptopFilters?.StorageGb)),
+            CachePart(JoinCacheValues(laptopFilters?.ScreenSizes)),
+            CachePart(JoinCacheValues(laptopFilters?.OperatingSystems)),
         };
 
         return string.Join('|', parts);
@@ -607,6 +622,76 @@ public sealed class ProductRepository : IProductRepository
         }
 
         return query;
+    }
+
+    private static IQueryable<Product> ApplyLaptopFilters(
+        IQueryable<Product> query,
+        LaptopFilterCriteria? filters)
+    {
+        if (filters is null) return query;
+        if (filters.Models is { Count: > 0 })
+        {
+            var values = filters.Models.Select(x => x.ToLower()).ToList();
+            query = query.Where(p => p.LaptopSpecification != null
+                && p.LaptopSpecification.Model != null
+                && values.Contains(p.LaptopSpecification.Model.ToLower()));
+        }
+        if (filters.Processors is { Count: > 0 })
+        {
+            var values = filters.Processors.Select(x => x.ToLower()).ToList();
+            query = query.Where(p => p.LaptopSpecification != null
+                && p.LaptopSpecification.Processor != null
+                && values.Contains(p.LaptopSpecification.Processor.ToLower()));
+        }
+        if (filters.RamGb is { Count: > 0 })
+            query = query.Where(p => p.LaptopSpecification != null
+                && p.LaptopSpecification.RamGb.HasValue
+                && filters.RamGb.Contains(p.LaptopSpecification.RamGb.Value));
+        if (filters.StorageTypes is { Count: > 0 })
+        {
+            var values = filters.StorageTypes.Select(x => x.ToLower()).ToList();
+            query = query.Where(p => p.LaptopSpecification != null
+                && p.LaptopSpecification.StorageType != null
+                && values.Contains(p.LaptopSpecification.StorageType.ToLower()));
+        }
+        if (filters.StorageGb is { Count: > 0 })
+            query = query.Where(p => p.LaptopSpecification != null
+                && p.LaptopSpecification.StorageGb.HasValue
+                && filters.StorageGb.Contains(p.LaptopSpecification.StorageGb.Value));
+        if (filters.ScreenSizes is { Count: > 0 })
+            query = query.Where(p => p.LaptopSpecification != null
+                && p.LaptopSpecification.ScreenSizeInches.HasValue
+                && filters.ScreenSizes.Contains(p.LaptopSpecification.ScreenSizeInches.Value));
+        if (filters.OperatingSystems is { Count: > 0 })
+        {
+            var values = filters.OperatingSystems.Select(x => x.ToLower()).ToList();
+            query = query.Where(p => p.LaptopSpecification != null
+                && p.LaptopSpecification.OperatingSystem != null
+                && values.Contains(p.LaptopSpecification.OperatingSystem.ToLower()));
+        }
+        return query;
+    }
+
+    public async Task<LaptopFilterFacets> ListLaptopFacetsAsync(
+        Guid? categoryId,
+        string? categorySlug,
+        bool includeCategoryChildren,
+        bool? activeOnly,
+        CancellationToken cancellationToken = default)
+    {
+        var products = await BuildFilterQueryAsync(
+            null, activeOnly, null, null, null, null, null, categoryId,
+            categorySlug, includeCategoryChildren, null, null, cancellationToken);
+        var specs = products.Where(p => p.LaptopSpecification != null)
+            .Select(p => p.LaptopSpecification!);
+        return new LaptopFilterFacets(
+            await specs.Where(x => x.Model != null).Select(x => x.Model!).Distinct().OrderBy(x => x).ToListAsync(cancellationToken),
+            await specs.Where(x => x.Processor != null).Select(x => x.Processor!).Distinct().OrderBy(x => x).ToListAsync(cancellationToken),
+            await specs.Where(x => x.RamGb != null).Select(x => x.RamGb!.Value).Distinct().OrderBy(x => x).ToListAsync(cancellationToken),
+            await specs.Where(x => x.StorageType != null).Select(x => x.StorageType!).Distinct().OrderBy(x => x).ToListAsync(cancellationToken),
+            await specs.Where(x => x.StorageGb != null).Select(x => x.StorageGb!.Value).Distinct().OrderBy(x => x).ToListAsync(cancellationToken),
+            await specs.Where(x => x.ScreenSizeInches != null).Select(x => x.ScreenSizeInches!.Value).Distinct().OrderBy(x => x).ToListAsync(cancellationToken),
+            await specs.Where(x => x.OperatingSystem != null).Select(x => x.OperatingSystem!).Distinct().OrderBy(x => x).ToListAsync(cancellationToken));
     }
 
     public async Task<(IReadOnlyList<Brand> Brands, IReadOnlyList<Shop> Shops)> ListFacetsAsync(

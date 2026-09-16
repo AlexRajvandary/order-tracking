@@ -27,7 +27,41 @@ public sealed record ProductDto(
     string? SourceUrl,
     bool IsActive,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt,
+    LaptopSpecificationDto? LaptopSpecification);
+
+public sealed record LaptopSpecificationDto(
+    string? Model,
+    string? ModelNumber,
+    string? Color,
+    string? Processor,
+    int? RamGb,
+    string? StorageType,
+    int? StorageGb,
+    decimal? ScreenSizeInches,
+    string? OperatingSystem,
+    string? Office,
+    string? Graphics,
+    bool? HasCopilotPlus,
+    string? ReleaseModel);
+
+public sealed record LaptopFilterCriteria(
+    IReadOnlyList<string>? Models,
+    IReadOnlyList<string>? Processors,
+    IReadOnlyList<int>? RamGb,
+    IReadOnlyList<string>? StorageTypes,
+    IReadOnlyList<int>? StorageGb,
+    IReadOnlyList<decimal>? ScreenSizes,
+    IReadOnlyList<string>? OperatingSystems);
+
+public sealed record LaptopFilterFacets(
+    IReadOnlyList<string> Models,
+    IReadOnlyList<string> Processors,
+    IReadOnlyList<int> RamGb,
+    IReadOnlyList<string> StorageTypes,
+    IReadOnlyList<int> StorageGb,
+    IReadOnlyList<decimal> ScreenSizes,
+    IReadOnlyList<string> OperatingSystems);
 
 public sealed record ProductTranslationPendingDto(Guid Id, string Name);
 public sealed record ProductTranslationResultDto(Guid Id, string NameRu);
