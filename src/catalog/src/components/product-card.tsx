@@ -6,17 +6,26 @@ import { formatPrice } from "@/lib/products";
 
 type ProductCardProps = {
   product: CatalogProduct;
+  containImage?: boolean;
 };
 
-export function ProductCard({ product }: ProductCardProps) {
+const SHOES_SECTION_SLUGS = new Set(["shoes", "obuv", "обувь"]);
+
+export function ProductCard({ product, containImage = false }: ProductCardProps) {
   const href = product.source === "Rakuten" && product.externalId
     ? `/products/rakuten~${encodeURIComponent(product.externalId)}`
     : `/products/${product.id}`;
+  const isShoesProduct =
+    containImage || SHOES_SECTION_SLUGS.has(product.sectionId.toLocaleLowerCase());
 
   return (
     <Card className="relative flex h-full flex-col gap-0 overflow-hidden rounded-none bg-transparent py-0 ring-0">
       <Link href={href} className="flex min-h-0 flex-1 flex-col">
-        <div className="relative aspect-[4/5] shrink-0 overflow-hidden bg-muted">
+        <div
+          className={`relative flex aspect-[4/5] shrink-0 items-center justify-center overflow-hidden ${
+            isShoesProduct ? "bg-white" : "bg-muted"
+          }`}
+        >
           {product.imageUrl ? (
             // External marketplace URLs — load directly, no Next.js image proxy.
             // eslint-disable-next-line @next/next/no-img-element
@@ -26,7 +35,9 @@ export function ProductCard({ product }: ProductCardProps) {
               loading="lazy"
               decoding="async"
               referrerPolicy="no-referrer"
-              className="absolute inset-0 h-full w-full object-cover"
+              className={`absolute inset-0 h-full w-full object-center ${
+                isShoesProduct ? "object-contain" : "object-cover"
+              }`}
             />
           ) : (
             <div
