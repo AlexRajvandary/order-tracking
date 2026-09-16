@@ -187,7 +187,7 @@
 
 .mega-menu-categories-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #3a3a3a transparent;
+  scrollbar-color: #111 transparent;
 }
 
 .mega-menu-categories-scrollbar::-webkit-scrollbar {
@@ -202,14 +202,14 @@
   border-right: 2.5px solid transparent;
   border-left: 2.5px solid transparent;
   border-radius: 999px;
-  background: #3a3a3a;
+  background: #111;
   background-clip: padding-box;
   box-shadow: none;
   outline: none;
 }
 
 .mega-menu-categories-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #222;
+  background: #111;
   background-clip: padding-box;
 }
 

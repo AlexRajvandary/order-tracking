@@ -835,11 +835,7 @@ export function CatalogBrowser({
                 )}
               >
                 {(isMobileLayout ? mobileProducts : filtered).map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    containImage={showGenderFilter}
-                  />
+                  <ProductCard key={product.id} product={product} />
                 ))}
               </div>
               {pagination && mobileHasMore ? (
