@@ -42,9 +42,9 @@ type CheckoutResult = {
 type ContactMethod = "phone" | "telegram" | "vk";
 
 const contactMethods: Array<{ value: ContactMethod; label: string }> = [
-  { value: "phone", label: "Телефон" },
   { value: "telegram", label: "Telegram" },
   { value: "vk", label: "VK" },
+  { value: "phone", label: "Телефон" },
 ];
 
 const contactFields: Record<
@@ -73,7 +73,7 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<CheckoutResult | null>(null);
-  const [contactMethod, setContactMethod] = useState<ContactMethod>("phone");
+  const [contactMethod, setContactMethod] = useState<ContactMethod>("telegram");
   const [contacts, setContacts] = useState<Record<ContactMethod, string>>({
     phone: "",
     telegram: "",
