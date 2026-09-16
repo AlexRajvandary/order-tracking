@@ -191,7 +191,7 @@
 }
 
 .mega-menu-categories-scrollbar::-webkit-scrollbar {
-  width: 5px;
+  width: 3px;
 }
 
 .mega-menu-categories-scrollbar::-webkit-scrollbar-track {
@@ -199,8 +199,8 @@
 }
 
 .mega-menu-categories-scrollbar::-webkit-scrollbar-thumb {
-  border-right: 1.5px solid transparent;
-  border-left: 1.5px solid transparent;
+  border-right: 1px solid transparent;
+  border-left: 1px solid transparent;
   border-radius: 999px;
   background: #111;
   background-clip: padding-box;
