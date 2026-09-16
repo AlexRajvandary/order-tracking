@@ -187,25 +187,27 @@
 
 .mega-menu-categories-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #b5b5b5 #f1f1f1;
+  scrollbar-color: #111 transparent;
 }
 
 .mega-menu-categories-scrollbar::-webkit-scrollbar {
-  width: 8px;
+  width: 5px;
 }
 
 .mega-menu-categories-scrollbar::-webkit-scrollbar-track {
-  border-radius: 999px;
-  background: #f1f1f1;
+  background: transparent;
 }
 
 .mega-menu-categories-scrollbar::-webkit-scrollbar-thumb {
+  border-right: 1.5px solid transparent;
+  border-left: 1.5px solid transparent;
   border-radius: 999px;
-  background: #b5b5b5;
+  background: #111;
+  background-clip: padding-box;
 }
 
-.mega-menu-categories-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #9d9d9d;
+.mega-menu-categories-scrollbar::-webkit-scrollbar-button {
+  display: none;
 }
 
 .figure-swiper {
