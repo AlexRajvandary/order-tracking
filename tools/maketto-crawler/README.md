@@ -70,4 +70,23 @@ CRAWLER_API_KEY=replace-with-a-long-random-secret
 docker compose up -d --build products-api crawler-worker
 ```
 
+## AmiAmi
+
+Сборщик AmiAmi запускает видимый Chromium, обнаруживает основные категории на английской версии сайта, ставит их в последовательную очередь и сохраняет товары из блока `Newly Added Items` каждой категории в формате импорта Product API:
+
+```powershell
+cd C:\Users\stark\Documents\order-tracking\tools\maketto-crawler
+npm run scrape:amiami
+```
+
+Результат по умолчанию: `imports/amiami-products.json` в корне репозитория. Повторяющиеся товары удаляются по SKU. Промежуточный результат перезаписывается после каждой категории, поэтому уже собранные данные остаются на диске при остановке.
+
+Только обнаружить и вывести категории без сбора товаров:
+
+```powershell
+npm run scrape:amiami -- --discover-only
+```
+
+Дополнительные параметры: `--output <путь>`, `--max-categories <n>`, `--delay-ms <n>`, `--timeout-ms <n>`, `--headless`.
+
 После запуска задачи создаются в админке: `Товары` → `Импорт JSON` → вкладка `Задачи crawler`. Там же видны очередь, прогресс, количество найденных и добавленных товаров и последние логи. Если worker пропал, Product API возвращает зависшее задание в очередь после истечения heartbeat; повторный импорт безопасно пропускает товары с уже существующим SKU.

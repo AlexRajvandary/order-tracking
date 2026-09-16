@@ -5,6 +5,11 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.mjs",
+    "scrape:amiami": "node src/amiami-cli.mjs",
+    "split:amiami": "node src/split-amiami-json.mjs",
+    "parse:onitsuka": "node src/onitsuka-html-cli.mjs",
+    "split:onitsuka": "node src/split-onitsuka-json.mjs",
+    "scrape:komodo": "node src/komodo-cli.mjs",
     "zozo": "node src/zozo-cli.mjs",
     "worker": "node src/worker.mjs",
     "test": "node --test src/*.test.mjs",
