@@ -388,7 +388,7 @@ function CategoryMegaMenu({
   return (
     <div className="grid h-[calc(100dvh-11rem)] max-h-[680px] min-h-[560px] grid-cols-[minmax(220px,0.32fr)_minmax(0,1fr)] gap-10 overflow-hidden">
         <section
-          className="min-h-0 overflow-y-auto border-r border-[#ECECEC] pr-8"
+          className="mega-menu-categories-scrollbar min-h-0 overflow-y-auto border-r border-[#ECECEC] pr-8"
           aria-label="Категории первого уровня"
         >
           <div className="space-y-1">

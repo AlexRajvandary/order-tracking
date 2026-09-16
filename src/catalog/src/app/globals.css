@@ -185,6 +185,29 @@
   animation: catalog-skeleton-shimmer 1.35s ease-in-out infinite;
 }
 
+.mega-menu-categories-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #b5b5b5 #f1f1f1;
+}
+
+.mega-menu-categories-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.mega-menu-categories-scrollbar::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: #f1f1f1;
+}
+
+.mega-menu-categories-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #b5b5b5;
+}
+
+.mega-menu-categories-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9d9d9d;
+}
+
 .figure-swiper {
   padding-bottom: 32px !important;
 }
