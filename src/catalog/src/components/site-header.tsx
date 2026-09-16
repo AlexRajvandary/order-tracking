@@ -386,9 +386,9 @@ function CategoryMegaMenu({
   }
 
   return (
-    <div className="grid grid-cols-[minmax(220px,0.32fr)_minmax(0,1fr)] gap-10">
+    <div className="grid h-[calc(100dvh-11rem)] max-h-[680px] min-h-[560px] grid-cols-[minmax(220px,0.32fr)_minmax(0,1fr)] gap-10 overflow-hidden">
         <section
-          className="border-r border-[#ECECEC] pr-8"
+          className="min-h-0 overflow-y-auto border-r border-[#ECECEC] pr-8"
           aria-label="Категории первого уровня"
         >
           <div className="space-y-1">
@@ -415,53 +415,58 @@ function CategoryMegaMenu({
           </div>
         </section>
 
-        <section className="min-w-0" aria-label="Подкатегории">
-          <h2 className="mb-5 text-base font-semibold text-[#111]">
-            {activeCategory?.name}
-          </h2>
-          {activeCategory?.children.length ? (
-            <div className="grid grid-cols-2 gap-x-10 gap-y-4 lg:grid-cols-3 xl:grid-cols-4">
-              {activeCategory.children.map((child) => (
+        <section className="flex min-h-0 min-w-0 flex-col" aria-label="Подкатегории">
+          <div className="flex min-h-0 flex-1 flex-col overflow-auto pr-2">
+            <h2 className="mb-5 shrink-0 text-base font-semibold text-[#111]">
+              {activeCategory?.name}
+            </h2>
+            {activeCategory?.children.length ? (
+              <div className="min-h-0 flex-1 columns-2 gap-x-10 [column-fill:auto] lg:columns-3 xl:columns-4">
+                {activeCategory.children.map((child) => (
+                  <Link
+                    key={child.id}
+                    href={categoryHref(activeCategory.slug, child.slug)}
+                    className="mb-4 block break-inside-avoid text-sm leading-5 text-[#666] transition-colors hover:text-[#F24676]"
+                    onClick={onNavigate}
+                  >
+                    {child.name}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-[#888]">Подкатегории отсутствуют</p>
+            )}
+          </div>
+
+          <div className="mt-auto shrink-0">
+            {activeCategory ? (
+              <PopularCategoryProducts
+                key={activeCategory.id}
+                category={activeCategory}
+                onNavigate={onNavigate}
+              />
+            ) : null}
+            <nav
+              className="mt-7 grid grid-cols-3 gap-3 border-t border-[#E4E5E8] pt-6 lg:grid-cols-5"
+              aria-label="Сервисы The Get"
+            >
+              {CATEGORY_SERVICES.map(({ href, title, description, icon: Icon }) => (
                 <Link
-                  key={child.id}
-                  href={categoryHref(activeCategory.slug, child.slug)}
-                  className="text-sm leading-5 text-[#666] transition-colors hover:text-[#F24676]"
+                  key={href}
+                  href={href}
+                  className="group flex min-h-[108px] items-start gap-3 rounded-xl border border-[#E5E6E9] bg-white p-3.5 transition-[background-color,border-color] duration-200 hover:border-[#E8C9D2] hover:bg-[#FFF8FA]"
                   onClick={onNavigate}
                 >
-                  {child.name}
+                  <Icon className="mt-0.5 size-[18px] shrink-0 text-[#555C67]" strokeWidth={1.7} aria-hidden />
+                  <span className="flex min-w-0 flex-1 flex-col self-stretch">
+                    <span className="text-sm leading-5 font-semibold text-[#252A33]">{title}</span>
+                    <span className="mt-1 text-xs leading-[17px] text-[#7A808A]">{description}</span>
+                  </span>
+                  <ArrowRight className="mt-auto size-4 shrink-0 self-end text-[#F24676] transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
                 </Link>
               ))}
-            </div>
-          ) : (
-            <p className="text-sm text-[#888]">Подкатегории отсутствуют</p>
-          )}
-          {activeCategory ? (
-            <PopularCategoryProducts
-              key={activeCategory.id}
-              category={activeCategory}
-              onNavigate={onNavigate}
-            />
-          ) : null}
-          <nav
-            className="mt-7 grid grid-cols-3 gap-3 border-t border-[#E4E5E8] pt-6 lg:grid-cols-5"
-            aria-label="Сервисы The Get"
-          >
-            {CATEGORY_SERVICES.map(({ href, title, description, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className="group flex min-h-[108px] items-start gap-3 rounded-xl border border-[#E5E6E9] bg-white p-3.5 transition-[background-color,border-color] duration-200 hover:border-[#E8C9D2] hover:bg-[#FFF8FA]"
-                onClick={onNavigate}
-              >
-                <Icon className="mt-0.5 size-[18px] shrink-0 text-[#555C67]" strokeWidth={1.7} aria-hidden />
-                <span className="flex min-w-0 flex-1 flex-col self-stretch">
-                  <span className="text-sm leading-5 font-semibold text-[#252A33]">{title}</span>
-                  <span className="mt-1 text-xs leading-[17px] text-[#7A808A]">{description}</span>
-                </span>
-                <ArrowRight className="mt-auto size-4 shrink-0 self-end text-[#F24676] transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
-              </Link>
-            ))}
-          </nav>
+            </nav>
+          </div>
         </section>
     </div>
   );
