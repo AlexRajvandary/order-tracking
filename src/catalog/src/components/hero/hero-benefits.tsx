@@ -15,8 +15,8 @@ export type HeroBenefit = {
 
 export const HERO_BENEFITS: HeroBenefit[] = [
   {
-    title: "Быстрая доставка",
-    description: "от 7 дней",
+    title: "Доставка",
+    description: "в любой город России",
     icon: Truck,
   },
   {

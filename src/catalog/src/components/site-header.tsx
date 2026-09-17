@@ -796,7 +796,7 @@ export function SiteHeader() {
         </button>
 
         <Link
-          href="/"
+          href="https://theget.ru"
           className="inline-flex shrink-0 items-center"
           aria-label="The Get"
           onClick={() => setMenuOpen(false)}
