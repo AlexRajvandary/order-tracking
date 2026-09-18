@@ -951,7 +951,8 @@ export function CatalogBrowser({
               ) : null}
             </Button>
 
-            <div className="ml-auto hidden max-w-full flex-wrap items-center justify-end gap-2 sm:flex min-[992px]:flex-nowrap">
+            <div className="ml-auto hidden max-w-full flex-col items-end gap-2 sm:flex">
+              <div className="flex max-w-full flex-wrap items-center justify-end gap-2 min-[992px]:flex-nowrap">
               {hasPriceData ? <FilterDropdown label="Цена" activeCount={priceActive ? 1 : 0}>
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Цена, ₽
@@ -1028,26 +1029,6 @@ export function CatalogBrowser({
                 label="Команда" options={facetOptions(tcgCrews)} selected={selectedTcgCrews}
                 onToggle={onToggleTcgCrew} searchable
               /> : null}
-              {showYuGiOhFilters && yugiohFacets.cardTypes.length > 0 ? <MultiSelectFilter
-                label="Тип карты" options={yuGiOhFacetOptions(yugiohFacets.cardTypes, yuGiOhCardTypeName)} selected={selectedYuGiOhFilters.cardTypes}
-                onToggle={(value) => onToggleYuGiOh("cardTypes", value)}
-              /> : null}
-              {showYuGiOhFilters && yugiohFacets.cardSubtypes.length > 0 ? <MultiSelectFilter
-                label="Подтип" options={yuGiOhFacetOptions(yugiohFacets.cardSubtypes, yuGiOhCardSubtypeName)} selected={selectedYuGiOhFilters.cardSubtypes}
-                onToggle={(value) => onToggleYuGiOh("cardSubtypes", value)} searchable
-              /> : null}
-              {showYuGiOhFilters && yugiohFacets.attributes.length > 0 ? <MultiSelectFilter
-                label="Атрибут" options={yuGiOhFacetOptions(yugiohFacets.attributes, yuGiOhAttributeName)} selected={selectedYuGiOhFilters.attributes}
-                onToggle={(value) => onToggleYuGiOh("attributes", value)}
-              /> : null}
-              {showYuGiOhFilters && yugiohFacets.monsterRaces.length > 0 ? <MultiSelectFilter
-                label="Раса" options={facetOptions(yugiohFacets.monsterRaces)} selected={selectedYuGiOhFilters.monsterRaces}
-                onToggle={(value) => onToggleYuGiOh("monsterRaces", value)} searchable
-              /> : null}
-              {showYuGiOhFilters && yugiohFacets.seriesTypes.length > 0 ? <MultiSelectFilter
-                label="Тип серии" options={yuGiOhFacetOptions(yugiohFacets.seriesTypes, yuGiOhSeriesTypeName)} selected={selectedYuGiOhFilters.seriesTypes}
-                onToggle={(value) => onToggleYuGiOh("seriesTypes", value)}
-              /> : null}
               {showLaptopFilters && hasLaptopFacetData ? (
                 <FilterDropdown
                   label="Характеристики"
@@ -1072,6 +1053,32 @@ export function CatalogBrowser({
                 >
                   Сбросить
                 </Button>
+              ) : null}
+              </div>
+
+              {showYuGiOhFilters ? (
+                <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
+                  {yugiohFacets.cardTypes.length > 0 ? <MultiSelectFilter
+                    label="Тип карты" options={yuGiOhFacetOptions(yugiohFacets.cardTypes, yuGiOhCardTypeName)} selected={selectedYuGiOhFilters.cardTypes}
+                    onToggle={(value) => onToggleYuGiOh("cardTypes", value)}
+                  /> : null}
+                  {yugiohFacets.cardSubtypes.length > 0 ? <MultiSelectFilter
+                    label="Подтип" options={yuGiOhFacetOptions(yugiohFacets.cardSubtypes, yuGiOhCardSubtypeName)} selected={selectedYuGiOhFilters.cardSubtypes}
+                    onToggle={(value) => onToggleYuGiOh("cardSubtypes", value)} searchable
+                  /> : null}
+                  {yugiohFacets.attributes.length > 0 ? <MultiSelectFilter
+                    label="Атрибут" options={yuGiOhFacetOptions(yugiohFacets.attributes, yuGiOhAttributeName)} selected={selectedYuGiOhFilters.attributes}
+                    onToggle={(value) => onToggleYuGiOh("attributes", value)}
+                  /> : null}
+                  {yugiohFacets.monsterRaces.length > 0 ? <MultiSelectFilter
+                    label="Раса" options={facetOptions(yugiohFacets.monsterRaces)} selected={selectedYuGiOhFilters.monsterRaces}
+                    onToggle={(value) => onToggleYuGiOh("monsterRaces", value)} searchable
+                  /> : null}
+                  {yugiohFacets.seriesTypes.length > 0 ? <MultiSelectFilter
+                    label="Тип серии" options={yuGiOhFacetOptions(yugiohFacets.seriesTypes, yuGiOhSeriesTypeName)} selected={selectedYuGiOhFilters.seriesTypes}
+                    onToggle={(value) => onToggleYuGiOh("seriesTypes", value)}
+                  /> : null}
+                </div>
               ) : null}
             </div>
 
