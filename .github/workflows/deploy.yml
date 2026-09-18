@@ -12,6 +12,10 @@ env:
   IMAGE_CRAWLER: ghcr.io/alexrajvandary/order-tracking-crawler
   IMAGE_TRANSLATION: ghcr.io/alexrajvandary/order-tracking-translation-worker
 
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -147,6 +151,6 @@ jobs:
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml config --quiet
             docker compose -f docker-compose.prod.yml run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
-            docker compose -f docker-compose.prod.yml up -d --force-recreate api catalog products-postgres products-api crawler-worker translation-worker caddy
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans api catalog products-postgres products-api crawler-worker translation-worker caddy
             docker compose -f docker-compose.prod.yml ps
             docker image prune -f
