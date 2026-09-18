@@ -106,6 +106,9 @@ public sealed class ProductRepository : IProductRepository
         decimal? priceMax,
         LaptopFilterCriteria? laptopFilters,
         IReadOnlyList<string>? tcgCharacters,
+        IReadOnlyList<string>? tcgSets,
+        IReadOnlyList<string>? tcgRarities,
+        IReadOnlyList<string>? tcgCrews,
         int page,
         int pageSize,
         bool mixCategories,
@@ -131,7 +134,7 @@ public sealed class ProductRepository : IProductRepository
             query = query.Where(product => product.Gender.HasValue && genders.Contains(product.Gender.Value));
 
         query = ApplyLaptopFilters(query, laptopFilters);
-        query = ApplyTcgFilters(query, tcgCharacters);
+        query = ApplyTcgFilters(query, tcgCharacters, tcgSets, tcgRarities, tcgCrews);
 
         if (mixCategories)
         {
@@ -152,7 +155,10 @@ public sealed class ProductRepository : IProductRepository
                     priceMin,
                     priceMax,
                     laptopFilters,
-                    tcgCharacters),
+                    tcgCharacters,
+                    tcgSets,
+                    tcgRarities,
+                    tcgCrews),
                 page,
                 pageSize,
                 shuffleSeed,
@@ -165,7 +171,10 @@ public sealed class ProductRepository : IProductRepository
             .Include(p => p.BrandEntity)
             .Include(p => p.Category)
             .Include(p => p.LaptopSpecification)
-            .Include(p => p.TcgCardSpecification)
+            .Include(p => p.TcgCardSpecification)!
+                .ThenInclude(x => x!.Characters)
+                    .ThenInclude(x => x.Character)
+                        .ThenInclude(x => x.OnePieceSpecification)
             .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -205,7 +214,10 @@ public sealed class ProductRepository : IProductRepository
             .Include(product => product.BrandEntity)
             .Include(product => product.Category)
             .Include(product => product.LaptopSpecification)
-            .Include(product => product.TcgCardSpecification)
+            .Include(product => product.TcgCardSpecification)!
+                .ThenInclude(x => x!.Characters)
+                    .ThenInclude(x => x.Character)
+                        .ThenInclude(x => x.OnePieceSpecification)
             .ToListAsync(cancellationToken);
         var productsById = products.ToDictionary(product => product.Id);
 
@@ -273,7 +285,10 @@ public sealed class ProductRepository : IProductRepository
         decimal? priceMin,
         decimal? priceMax,
         LaptopFilterCriteria? laptopFilters,
-        IReadOnlyList<string>? tcgCharacters)
+        IReadOnlyList<string>? tcgCharacters,
+        IReadOnlyList<string>? tcgSets,
+        IReadOnlyList<string>? tcgRarities,
+        IReadOnlyList<string>? tcgCrews)
     {
         var parts = new[]
         {
@@ -300,6 +315,9 @@ public sealed class ProductRepository : IProductRepository
             CachePart(JoinCacheValues(laptopFilters?.ScreenSizes)),
             CachePart(JoinCacheValues(laptopFilters?.OperatingSystems)),
             CachePart(JoinCacheValues(tcgCharacters, value => value.Trim().ToLowerInvariant())),
+            CachePart(JoinCacheValues(tcgSets, value => value.Trim().ToLowerInvariant())),
+            CachePart(JoinCacheValues(tcgRarities, value => value.Trim().ToLowerInvariant())),
+            CachePart(JoinCacheValues(tcgCrews, value => value.Trim().ToLowerInvariant())),
         };
 
         return string.Join('|', parts);
@@ -690,15 +708,44 @@ public sealed class ProductRepository : IProductRepository
 
     private static IQueryable<Product> ApplyTcgFilters(
         IQueryable<Product> query,
-        IReadOnlyList<string>? characters)
+        IReadOnlyList<string>? characters,
+        IReadOnlyList<string>? sets,
+        IReadOnlyList<string>? rarities,
+        IReadOnlyList<string>? crews)
     {
-        if (characters is not { Count: > 0 }) return query;
-        var values = characters.Select(x => x.ToLower()).ToList();
-        return query.Where(p => p.TcgCardSpecification != null
-            && ((p.TcgCardSpecification.CharacterName != null
-                    && values.Contains(p.TcgCardSpecification.CharacterName.ToLower()))
-                || p.TcgCardSpecification.Characters.Any(link =>
-                    values.Contains(link.Character.Name.ToLower()))));
+        if (characters is { Count: > 0 })
+        {
+            var values = characters.Select(x => x.ToLower()).ToList();
+            query = query.Where(p => p.TcgCardSpecification != null
+                && ((p.TcgCardSpecification.CharacterName != null
+                        && values.Contains(p.TcgCardSpecification.CharacterName.ToLower()))
+                    || p.TcgCardSpecification.Characters.Any(link =>
+                        values.Contains(link.Character.Name.ToLower()))));
+        }
+        if (sets is { Count: > 0 })
+        {
+            var values = sets.Select(x => x.ToLower()).ToList();
+            query = query.Where(p => p.TcgCardSpecification != null
+                && p.TcgCardSpecification.SetName != null
+                && values.Contains(p.TcgCardSpecification.SetName.ToLower()));
+        }
+        if (rarities is { Count: > 0 })
+        {
+            var values = rarities.Select(x => x.ToLower()).ToList();
+            query = query.Where(p => p.TcgCardSpecification != null
+                && p.TcgCardSpecification.Rarity != null
+                && values.Contains(p.TcgCardSpecification.Rarity.ToLower()));
+        }
+        if (crews is { Count: > 0 })
+        {
+            var values = crews.Select(x => x.ToLower()).ToList();
+            query = query.Where(p => p.TcgCardSpecification != null
+                && p.TcgCardSpecification.Characters.Any(link =>
+                    link.Character.OnePieceSpecification != null
+                    && link.Character.OnePieceSpecification.Crew != null
+                    && values.Contains(link.Character.OnePieceSpecification.Crew.ToLower())));
+        }
+        return query;
     }
 
     public async Task<LaptopFilterFacets> ListLaptopFacetsAsync(
@@ -746,7 +793,22 @@ public sealed class ProductRepository : IProductRepository
             .Distinct()
             .OrderBy(x => x)
             .ToListAsync(cancellationToken);
-        return new TcgFilterFacets(characters);
+        var sets = await products
+            .Where(p => p.TcgCardSpecification != null && p.TcgCardSpecification.SetName != null)
+            .Select(p => p.TcgCardSpecification!.SetName!)
+            .Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
+        var rarities = await products
+            .Where(p => p.TcgCardSpecification != null && p.TcgCardSpecification.Rarity != null)
+            .Select(p => p.TcgCardSpecification!.Rarity!)
+            .Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
+        var crews = await products
+            .Where(p => p.TcgCardSpecification != null)
+            .SelectMany(p => p.TcgCardSpecification!.Characters)
+            .Where(link => link.Character.OnePieceSpecification != null
+                && link.Character.OnePieceSpecification.Crew != null)
+            .Select(link => link.Character.OnePieceSpecification!.Crew!)
+            .Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
+        return new TcgFilterFacets(characters, sets, rarities, crews);
     }
 
     public async Task<(IReadOnlyList<Brand> Brands, IReadOnlyList<Shop> Shops)> ListFacetsAsync(

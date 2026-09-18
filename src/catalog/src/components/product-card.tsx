@@ -12,6 +12,9 @@ export function ProductCard({ product }: ProductCardProps) {
   const href = product.source === "Rakuten" && product.externalId
     ? `/products/rakuten~${encodeURIComponent(product.externalId)}`
     : `/products/${product.id}`;
+  const crew = product.tcgCard?.characters.find((character) =>
+    character.franchise === "one-piece" && character.onePieceSpecification?.crew,
+  )?.onePieceSpecification?.crew;
 
   return (
     <Card className="relative flex h-full flex-col gap-0 overflow-hidden rounded-none bg-transparent py-0 ring-0">
@@ -41,9 +44,10 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
 
         <div className="flex flex-1 flex-col gap-1.5 px-4 pt-4 pb-3">
-          <p className="h-4 truncate text-[10px] leading-4 font-semibold tracking-[0.06em] text-muted-foreground uppercase">
-            {product.tcgCard?.characterName ?? product.shopName ?? product.brand ?? "\u00A0"}
-          </p>
+          <div className="flex h-4 min-w-0 items-center justify-between gap-2 text-[10px] leading-4 font-semibold tracking-[0.06em] text-muted-foreground uppercase">
+            <span className="truncate">{product.tcgCard?.characterName ?? product.shopName ?? product.brand ?? "\u00A0"}</span>
+            {crew ? <span className="max-w-[48%] shrink-0 truncate text-right">{crew}</span> : null}
+          </div>
           <CardTitle className="h-11 line-clamp-2 text-[15px] leading-[1.375rem] font-medium">
             {product.name}
           </CardTitle>

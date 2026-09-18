@@ -41,6 +41,9 @@ export async function GET(request: NextRequest) {
       laptopScreenSizes: csv(params.get("laptopScreenSizes")),
       laptopOperatingSystems: csv(params.get("laptopOperatingSystems")),
       tcgCharacters: csv(params.get("tcgCharacters")),
+      tcgSets: csv(params.get("tcgSets")),
+      tcgRarities: csv(params.get("tcgRarities")),
+      tcgCrews: csv(params.get("tcgCrews")),
       sort: params.get("sort") === "mixed" ? "mixed" : undefined,
       shuffleSeed: optionalInt(params.get("shuffleSeed")),
     });

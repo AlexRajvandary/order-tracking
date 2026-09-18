@@ -28,6 +28,9 @@ public sealed record ListProductsQuery(
     string? LaptopScreenSize = null,
     string? LaptopOperatingSystem = null,
     string? TcgCharacter = null,
+    string? TcgSet = null,
+    string? TcgRarity = null,
+    string? TcgCrew = null,
     int Page = 1,
     int PageSize = 20,
     string? Sort = null,
@@ -54,6 +57,9 @@ public sealed class ListProductsQueryValidator : AbstractValidator<ListProductsQ
         RuleFor(x => x.LaptopProcessor).MaximumLength(2000);
         RuleFor(x => x.LaptopOperatingSystem).MaximumLength(2000);
         RuleFor(x => x.TcgCharacter).MaximumLength(4000);
+        RuleFor(x => x.TcgSet).MaximumLength(4000);
+        RuleFor(x => x.TcgRarity).MaximumLength(4000);
+        RuleFor(x => x.TcgCrew).MaximumLength(4000);
     }
 }
 
@@ -133,6 +139,9 @@ public sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery
                 ParseDecimals(request.LaptopScreenSize),
                 ParseStrings(request.LaptopOperatingSystem)),
             ParseStrings(request.TcgCharacter),
+            ParseStrings(request.TcgSet),
+            ParseStrings(request.TcgRarity),
+            ParseStrings(request.TcgCrew),
             request.Page,
             request.PageSize,
             request.Sort?.Equals("mixed", StringComparison.OrdinalIgnoreCase) == true,

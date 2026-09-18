@@ -213,6 +213,9 @@ export async function fetchProductsPage(options?: {
   laptopScreenSizes?: string[];
   laptopOperatingSystems?: string[];
   tcgCharacters?: string[];
+  tcgSets?: string[];
+  tcgRarities?: string[];
+  tcgCrews?: string[];
   categoryId?: string;
   categorySlug?: string;
   includeCategoryChildren?: boolean;
@@ -263,6 +266,9 @@ export async function fetchProductsPage(options?: {
   if (options?.tcgCharacters && options.tcgCharacters.length > 0) {
     params.set("tcgCharacter", options.tcgCharacters.join(","));
   }
+  if (options?.tcgSets && options.tcgSets.length > 0) params.set("tcgSet", options.tcgSets.join(","));
+  if (options?.tcgRarities && options.tcgRarities.length > 0) params.set("tcgRarity", options.tcgRarities.join(","));
+  if (options?.tcgCrews && options.tcgCrews.length > 0) params.set("tcgCrew", options.tcgCrews.join(","));
   if (options?.categoryId) {
     params.set("categoryId", options.categoryId);
   }
@@ -333,6 +339,9 @@ export async function fetchCatalogPage(options: {
     storageGb?: string[]; screenSizes?: string[]; operatingSystems?: string[];
   };
   tcgCharacters?: string[];
+  tcgSets?: string[];
+  tcgRarities?: string[];
+  tcgCrews?: string[];
   /** Child subcategory slug, or omit for the whole root category tree. */
   categoryId?: string;
   categorySlug?: string;
@@ -365,6 +374,9 @@ export async function fetchCatalogPage(options: {
     laptopScreenSizes: options.laptopFilters?.screenSizes,
     laptopOperatingSystems: options.laptopFilters?.operatingSystems,
     tcgCharacters: options.tcgCharacters,
+    tcgSets: options.tcgSets,
+    tcgRarities: options.tcgRarities,
+    tcgCrews: options.tcgCrews,
     categoryId: options.categoryId ?? options.rootCategoryId,
     categorySlug: options.categoryId || options.rootCategoryId ? undefined : categorySlug,
     includeCategoryChildren,

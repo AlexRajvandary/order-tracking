@@ -88,6 +88,12 @@ export type CatalogBrowserProps = {
   };
   tcgCharacters?: string[];
   selectedTcgCharacters?: string[];
+  tcgSets?: string[];
+  selectedTcgSets?: string[];
+  tcgRarities?: string[];
+  selectedTcgRarities?: string[];
+  tcgCrews?: string[];
+  selectedTcgCrews?: string[];
   /** Server-side pagination (Products API). When set, `products` is the current page. */
   pagination?: {
     page: number;
@@ -431,6 +437,12 @@ export function CatalogBrowser({
   selectedLaptopFilters = emptyLaptopFilters,
   tcgCharacters = [],
   selectedTcgCharacters = [],
+  tcgSets = [],
+  selectedTcgSets = [],
+  tcgRarities = [],
+  selectedTcgRarities = [],
+  tcgCrews = [],
+  selectedTcgCrews = [],
   pagination,
 }: CatalogBrowserProps) {
   if (!productsLoading) {
@@ -467,6 +479,7 @@ export function CatalogBrowser({
   const showLaptopFilters = (activeChildSlug ?? activeRootSlug)?.toLowerCase() === "laptops";
   const showTcgFilters = [activeRootSlug, activeChildSlug]
     .some((slug) => slug?.toLowerCase() === "tcg");
+  const showOnePieceFilters = ["one-piece", "onepiece"].includes(activeChildSlug?.toLowerCase() ?? "");
   const [freshCategoryCount, setFreshCategoryCount] = useState<{
     key: string;
     count?: number;
@@ -480,7 +493,7 @@ export function CatalogBrowser({
       : undefined;
   const effectiveBrandOptions = brands.length > 0 ? brands : brandOptions;
   const hasShopOptions = (shops?.length ?? 0) > 0;
-  const hasBrandOptions = effectiveBrandOptions.length > 0 || !categoryFacetsScoped;
+  const hasBrandOptions = effectiveBrandOptions.length > 1;
   const hasPriceData = products.length > 0;
   const hasTcgCharacterOptions = tcgCharacters.length > 0;
   const hasLaptopFacetData = [
@@ -583,6 +596,9 @@ export function CatalogBrowser({
     selectedShopSlugs.join(","),
     selectedGenders.join(","),
     selectedTcgCharacters.join(","),
+    selectedTcgSets.join(","),
+    selectedTcgRarities.join(","),
+    selectedTcgCrews.join(","),
     ...Object.values(selectedLaptopFilters).map((values) => values.join(",")),
     pagination?.shuffleSeed ?? "default",
     pagination?.page ?? 1,
@@ -654,6 +670,10 @@ export function CatalogBrowser({
     toggleCsvParam("tcgCharacters", character);
   }
 
+  function onToggleTcgSet(value: string) { toggleCsvParam("tcgSets", value); }
+  function onToggleTcgRarity(value: string) { toggleCsvParam("tcgRarities", value); }
+  function onToggleTcgCrew(value: string) { toggleCsvParam("tcgCrews", value); }
+
   function onToggleLaptopFilter(key: keyof LaptopFilterSelection, value: string) {
     const queryKeys: Record<keyof LaptopFilterSelection, string> = {
       models: "laptopModels",
@@ -717,6 +737,9 @@ export function CatalogBrowser({
     if (selectedShopSlugs.length > 0) params.set("shops", selectedShopSlugs.join(","));
     if (showGenderFilter && selectedGenders.length > 0) params.set("genders", selectedGenders.join(","));
     if (showTcgFilters && selectedTcgCharacters.length > 0) params.set("tcgCharacters", selectedTcgCharacters.join(","));
+    if (showOnePieceFilters && selectedTcgSets.length > 0) params.set("tcgSets", selectedTcgSets.join(","));
+    if (showOnePieceFilters && selectedTcgRarities.length > 0) params.set("tcgRarities", selectedTcgRarities.join(","));
+    if (showOnePieceFilters && selectedTcgCrews.length > 0) params.set("tcgCrews", selectedTcgCrews.join(","));
     if (showLaptopFilters) {
       const queryKeys: Record<keyof LaptopFilterSelection, string> = {
         models: "laptopModels", processors: "laptopProcessors", ramGb: "laptopRamGb",
@@ -760,7 +783,8 @@ export function CatalogBrowser({
       selectedBrandSlugs.length > 0 ||
       selectedShopSlugs.length > 0 ||
       selectedGenders.length > 0;
-    const hasTcgFilters = showTcgFilters && selectedTcgCharacters.length > 0;
+    const hasTcgFilters = showTcgFilters && (selectedTcgCharacters.length > 0
+      || selectedTcgSets.length > 0 || selectedTcgRarities.length > 0 || selectedTcgCrews.length > 0);
     const hasLaptopFilters = showLaptopFilters && Object.values(selectedLaptopFilters).some((values) => values.length > 0);
     if (hasQueryFilters || hasLaptopFilters || hasTcgFilters) {
       replaceQuery((params) => {
@@ -768,6 +792,9 @@ export function CatalogBrowser({
         params.delete("shops");
         params.delete("genders");
         params.delete("tcgCharacters");
+        params.delete("tcgSets");
+        params.delete("tcgRarities");
+        params.delete("tcgCrews");
         params.delete("laptopModels");
         params.delete("laptopProcessors");
         params.delete("laptopRamGb");
@@ -787,10 +814,13 @@ export function CatalogBrowser({
     (selectedShopSlugs.length > 0 ? 1 : 0) +
     (showGenderFilter && selectedGenders.length > 0 ? 1 : 0) +
     (showTcgFilters && selectedTcgCharacters.length > 0 ? 1 : 0);
+  const onePieceActiveCount = showOnePieceFilters
+    ? [selectedTcgSets, selectedTcgRarities, selectedTcgCrews].filter((values) => values.length > 0).length
+    : 0;
   const laptopActiveCount = showLaptopFilters
     ? Object.values(selectedLaptopFilters).filter((values) => values.length > 0).length
     : 0;
-  const totalActiveCount = activeCount + laptopActiveCount;
+  const totalActiveCount = activeCount + laptopActiveCount + onePieceActiveCount;
 
   return (
     <div>
@@ -931,6 +961,18 @@ export function CatalogBrowser({
                   searchable
                 />
               ) : null}
+              {showOnePieceFilters && tcgSets.length > 0 ? <MultiSelectFilter
+                label="Набор" options={facetOptions(tcgSets)} selected={selectedTcgSets}
+                onToggle={onToggleTcgSet} searchable
+              /> : null}
+              {showOnePieceFilters && tcgRarities.length > 0 ? <MultiSelectFilter
+                label="Редкость" options={facetOptions(tcgRarities)} selected={selectedTcgRarities}
+                onToggle={onToggleTcgRarity}
+              /> : null}
+              {showOnePieceFilters && tcgCrews.length > 0 ? <MultiSelectFilter
+                label="Команда" options={facetOptions(tcgCrews)} selected={selectedTcgCrews}
+                onToggle={onToggleTcgCrew} searchable
+              /> : null}
               {showLaptopFilters && hasLaptopFacetData ? (
                 <FilterDropdown
                   label="Характеристики"
@@ -1131,6 +1173,19 @@ export function CatalogBrowser({
                 />
               </section>
             ) : null}
+
+            {showOnePieceFilters && tcgSets.length > 0 ? <section className="border-t pt-5">
+              <h3 className="mb-2 text-sm font-semibold">Набор</h3>
+              <MultiSelectOptions options={facetOptions(tcgSets)} selected={selectedTcgSets} onToggle={onToggleTcgSet} loading={false} error={false} searchable />
+            </section> : null}
+            {showOnePieceFilters && tcgRarities.length > 0 ? <section className="border-t pt-5">
+              <h3 className="mb-2 text-sm font-semibold">Редкость</h3>
+              <MultiSelectOptions options={facetOptions(tcgRarities)} selected={selectedTcgRarities} onToggle={onToggleTcgRarity} loading={false} error={false} searchable={false} />
+            </section> : null}
+            {showOnePieceFilters && tcgCrews.length > 0 ? <section className="border-t pt-5">
+              <h3 className="mb-2 text-sm font-semibold">Команда</h3>
+              <MultiSelectOptions options={facetOptions(tcgCrews)} selected={selectedTcgCrews} onToggle={onToggleTcgCrew} loading={false} error={false} searchable />
+            </section> : null}
 
             {showLaptopFilters && hasLaptopFacetData ? (
               <section className="border-t pt-5">

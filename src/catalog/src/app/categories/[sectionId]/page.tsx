@@ -36,6 +36,9 @@ type PageProps = {
     laptopScreenSizes?: string;
     laptopOperatingSystems?: string;
     tcgCharacters?: string;
+    tcgSets?: string;
+    tcgRarities?: string;
+    tcgCrews?: string;
     shuffleSeed?: string;
   }>;
 };
@@ -53,6 +56,9 @@ function buildBasePath(
   genders?: string[],
   laptopFilters?: Record<string, string[]>,
   tcgCharacters?: string[],
+  tcgSets?: string[],
+  tcgRarities?: string[],
+  tcgCrews?: string[],
   shuffleSeed?: number,
 ) {
   const qs = new URLSearchParams();
@@ -64,6 +70,9 @@ function buildBasePath(
     if (values.length > 0) qs.set(key, values.join(","));
   }
   if (tcgCharacters && tcgCharacters.length > 0) qs.set("tcgCharacters", tcgCharacters.join(","));
+  if (tcgSets && tcgSets.length > 0) qs.set("tcgSets", tcgSets.join(","));
+  if (tcgRarities && tcgRarities.length > 0) qs.set("tcgRarities", tcgRarities.join(","));
+  if (tcgCrews && tcgCrews.length > 0) qs.set("tcgCrews", tcgCrews.join(","));
   if (shuffleSeed != null) qs.set("shuffleSeed", String(shuffleSeed));
   const search = qs.toString();
   return search ? `/categories/${rootSlug}?${search}` : `/categories/${rootSlug}`;
@@ -87,6 +96,9 @@ export default async function CategorySectionPage({
     laptopScreenSizes,
     laptopOperatingSystems,
     tcgCharacters: tcgCharactersParam,
+    tcgSets: tcgSetsParam,
+    tcgRarities: tcgRaritiesParam,
+    tcgCrews: tcgCrewsParam,
     shuffleSeed: shuffleSeedParam,
   } = await searchParams;
   const page = parsePage(pageParam);
@@ -98,6 +110,9 @@ export default async function CategorySectionPage({
   const selectedTcgCharacters = decodedSectionId.toLowerCase() === "tcg"
     ? parseCsvParam(tcgCharactersParam)
     : [];
+  const selectedTcgSets = decodedSectionId.toLowerCase() === "tcg" ? parseCsvParam(tcgSetsParam) : [];
+  const selectedTcgRarities = decodedSectionId.toLowerCase() === "tcg" ? parseCsvParam(tcgRaritiesParam) : [];
+  const selectedTcgCrews = decodedSectionId.toLowerCase() === "tcg" ? parseCsvParam(tcgCrewsParam) : [];
   const isShoesCategory = ["shoes", "obuv", "обувь"].includes(decodedSectionId.toLowerCase());
   const selectedGenders = (isShoesCategory ? parseCsvParam(gendersParam) : []).filter((value) =>
     ["unisex", "men", "women", "kids"].includes(value),
@@ -137,6 +152,9 @@ export default async function CategorySectionPage({
         shopSlugs: selectedShopSlugs,
         genders: selectedGenders,
         tcgCharacters: selectedTcgCharacters,
+        tcgSets: selectedTcgSets,
+        tcgRarities: selectedTcgRarities,
+        tcgCrews: selectedTcgCrews,
         shuffleSeed,
       }) : null;
 
@@ -163,7 +181,7 @@ export default async function CategorySectionPage({
   ).catch(() => ({
     brands: [], shops: [],
     laptop: { models: [], processors: [], ramGb: [], storageTypes: [], storageGb: [], screenSizes: [], operatingSystems: [] },
-    tcg: { characters: [] },
+    tcg: { characters: [], sets: [], rarities: [], crews: [] },
   }));
   const effectiveShuffleSeed = isAllCategories || !child
     ? requestedShuffleSeed
@@ -182,6 +200,9 @@ export default async function CategorySectionPage({
         genders: selectedGenders,
         laptopFilters: selectedLaptopFilters,
         tcgCharacters: selectedTcgCharacters,
+        tcgSets: selectedTcgSets,
+        tcgRarities: selectedTcgRarities,
+        tcgCrews: selectedTcgCrews,
         shuffleSeed: effectiveShuffleSeed,
       })
     : child && root
@@ -196,6 +217,9 @@ export default async function CategorySectionPage({
           genders: selectedGenders,
           laptopFilters: selectedLaptopFilters,
           tcgCharacters: selectedTcgCharacters,
+          tcgSets: selectedTcgSets,
+          tcgRarities: selectedTcgRarities,
+          tcgCrews: selectedTcgCrews,
           categoryId: child.id,
           categorySlug: child.slug,
           categoryName: child.name,
@@ -208,7 +232,10 @@ export default async function CategorySectionPage({
 
   const showRakutenTcg = root?.slug === "tcg" && !child
     && selectedBrandSlugs.length === 0 && selectedShopSlugs.length === 0
-    && selectedTcgCharacters.length === 0;
+    && selectedTcgCharacters.length === 0
+    && selectedTcgSets.length === 0
+    && selectedTcgRarities.length === 0
+    && selectedTcgCrews.length === 0;
   const rakutenProducts = showRakutenTcg
     ? await fetchRakutenCategoryPage({ genreId: 406864, page, pageSize: 20 })
         .then(result => result.items.map(mapRakutenProductToCatalog))
@@ -242,6 +269,12 @@ export default async function CategorySectionPage({
             selectedLaptopFilters={selectedLaptopFilters}
             tcgCharacters={facets.tcg.characters}
             selectedTcgCharacters={selectedTcgCharacters}
+            tcgSets={facets.tcg.sets}
+            selectedTcgSets={selectedTcgSets}
+            tcgRarities={facets.tcg.rarities}
+            selectedTcgRarities={selectedTcgRarities}
+            tcgCrews={facets.tcg.crews}
+            selectedTcgCrews={selectedTcgCrews}
             pagination={{
               page: catalog.page,
               pageSize: catalog.pageSize,
@@ -261,6 +294,9 @@ export default async function CategorySectionPage({
                   laptopOperatingSystems: selectedLaptopFilters.operatingSystems,
                 } : undefined,
                 selectedTcgCharacters,
+                selectedTcgSets,
+                selectedTcgRarities,
+                selectedTcgCrews,
                 effectiveShuffleSeed,
               ),
               shuffleSeed: effectiveShuffleSeed,

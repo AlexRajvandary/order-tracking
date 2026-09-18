@@ -87,7 +87,11 @@ public sealed record LaptopFilterFacets(
     IReadOnlyList<decimal> ScreenSizes,
     IReadOnlyList<string> OperatingSystems);
 
-public sealed record TcgFilterFacets(IReadOnlyList<string> Characters);
+public sealed record TcgFilterFacets(
+    IReadOnlyList<string> Characters,
+    IReadOnlyList<string> Sets,
+    IReadOnlyList<string> Rarities,
+    IReadOnlyList<string> Crews);
 
 public sealed record ProductTranslationPendingDto(Guid Id, string Name);
 public sealed record ProductTranslationResultDto(Guid Id, string NameRu);
