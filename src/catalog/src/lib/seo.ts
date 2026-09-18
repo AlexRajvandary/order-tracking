@@ -14,5 +14,5 @@ export function stablePositiveInt(value: string): number {
     hash ^= value.charCodeAt(index);
     hash = Math.imul(hash, 16777619);
   }
-  return hash >>> 0;
+  return (hash >>> 0) & 0x7fffffff;
 }

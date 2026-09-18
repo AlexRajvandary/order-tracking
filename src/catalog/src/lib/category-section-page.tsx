@@ -208,7 +208,9 @@ export default async function CategorySectionPage({
   ) as Array<"unisex" | "men" | "women" | "kids">;
   const parsedShuffleSeed = Number(shuffleSeedParam);
   const requestedShuffleSeed =
-    Number.isSafeInteger(parsedShuffleSeed) && parsedShuffleSeed >= 0
+    Number.isSafeInteger(parsedShuffleSeed)
+      && parsedShuffleSeed >= 0
+      && parsedShuffleSeed <= 2_147_483_647
       ? parsedShuffleSeed
       : stablePositiveInt(`catalog:${decodedSectionId}:${subSlug ?? "root"}`);
   const shuffleSeed = isAllCategories || !subSlug
