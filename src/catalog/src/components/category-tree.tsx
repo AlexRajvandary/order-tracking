@@ -140,7 +140,7 @@ export function CategoryTree({
           {!normalizedQuery ? (
             <li>
               <Link
-                href="/categories/all"
+                href="/catalog/all"
                 onClick={handleNavigate}
                 className={cn(
                   "relative flex items-center gap-2 overflow-hidden rounded-md px-2 py-2 transition-colors",

@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Scale } from "lucide-react";
@@ -8,12 +10,13 @@ import { ProductCard } from "@/components/product-card";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { fetchCategoryTree } from "@/lib/categories-api";
+import { categoryHref, fetchCategoryTree } from "@/lib/categories-api";
 import { findCatalogProductBySlug, type CatalogProduct } from "@/lib/catalog-products";
 import { fetchCatalogPage, fetchProductById, fetchProductBySlug, fetchProductRelations, fetchRakutenItem, mapApiProductToCatalog, mapRakutenProductToCatalog } from "@/lib/products-api";
 import { formatPrice, getProductById, type Product } from "@/lib/products";
 import { onePieceRarityName } from "@/lib/one-piece-rarity";
 import { yuGiOhAttributeName, yuGiOhCardSubtypeName, yuGiOhCardTypeName } from "@/lib/yugioh-labels";
+import { absoluteUrl, serializeJsonLd } from "@/lib/seo";
 
 type PageProps = { params: Promise<{ id: string }> };
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -29,7 +32,7 @@ const TCG_SHOP_NAMES: Record<string, string> = {
   yahoo_shopping: "Yahoo Shopping",
 };
 
-async function resolveProduct(idOrSlug: string): Promise<CatalogProduct | Product | undefined> {
+const resolveProduct = cache(async (idOrSlug: string): Promise<CatalogProduct | Product | undefined> => {
   const decoded = decodeURIComponent(idOrSlug);
   if (decoded.startsWith("rakuten~")) {
     const item = await fetchRakutenItem(decoded.slice("rakuten~".length));
@@ -45,13 +48,43 @@ async function resolveProduct(idOrSlug: string): Promise<CatalogProduct | Produc
     const bySlug = await fetchProductBySlug(decoded);
     return bySlug ? mapApiProductToCatalog(bySlug) : undefined;
   } catch { return undefined; }
-}
+});
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: PageProps) {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const product = await resolveProduct((await params).id);
-  return product ? { title: product.name, description: product.shortDescription } : { title: "Товар не найден" };
+  if (!product) {
+    return {
+      title: "Товар не найден",
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const canonical = `/products/${encodeURIComponent(product.slug)}`;
+  const description = product.shortDescription.trim() || product.description.trim() || product.name;
+  const isIndexable = product.source !== "Rakuten";
+
+  return {
+    title: product.name,
+    description,
+    alternates: { canonical },
+    robots: { index: isIndexable, follow: true },
+    openGraph: {
+      type: "website",
+      locale: "ru_RU",
+      url: canonical,
+      title: product.name,
+      description,
+      ...(product.imageUrl ? { images: [{ url: product.imageUrl, alt: product.name }] } : {}),
+    },
+    twitter: {
+      card: product.imageUrl ? "summary_large_image" : "summary",
+      title: product.name,
+      description,
+      ...(product.imageUrl ? { images: [product.imageUrl] } : {}),
+    },
+  };
 }
 
 export default async function ProductPage({ params }: PageProps) {
@@ -99,10 +132,67 @@ export default async function ProductPage({ params }: PageProps) {
     ["Количество карт в серии", yugioh?.declaredCardCount != null ? String(yugioh.declaredCardCount) : null],
   ].filter(([, value]) => typeof value === "string" && value.trim().length > 0);
   const tcgShopLinks = Object.entries(product.tcgCard?.shopLinks ?? {}).filter(([, url]) => /^https?:\/\//i.test(url));
-  const backHref = rootSlug ? `/categories/${rootSlug}${child ? `?sub=${encodeURIComponent(child.slug)}` : ""}` : "/";
+  const backHref = rootSlug ? categoryHref(rootSlug, child?.slug) : "/";
+  const canonicalUrl = absoluteUrl(`/products/${encodeURIComponent(product.slug)}`);
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description || product.shortDescription,
+    url: canonicalUrl,
+    ...(product.imageUrl ? { image: [product.imageUrl] } : {}),
+    ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
+    ...(product.id ? { sku: product.id } : {}),
+    ...(product.priceRub > 0
+      ? {
+          offers: {
+            "@type": "Offer",
+            url: canonicalUrl,
+            priceCurrency: product.currency,
+            price: product.priceRub,
+            availability: product.inStock
+              ? "https://schema.org/InStock"
+              : "https://schema.org/OutOfStock",
+            itemCondition: product.condition === "used"
+              ? "https://schema.org/UsedCondition"
+              : "https://schema.org/NewCondition",
+          },
+        }
+      : {}),
+  };
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Главная", item: absoluteUrl("/") },
+      ...(rootSlug
+        ? [{
+            "@type": "ListItem",
+            position: 2,
+            name: child?.name ?? root?.name ?? product.category,
+            item: absoluteUrl(backHref),
+          }]
+        : []),
+      {
+        "@type": "ListItem",
+        position: rootSlug ? 3 : 2,
+        name: product.name,
+        item: canonicalUrl,
+      },
+    ],
+  };
 
   return (
-    <div className="min-h-screen bg-background"><SiteHeader /><main className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
+    <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(productJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd) }}
+      />
+      <SiteHeader /><main className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
       <NavigationBackButton
         label="Назад к каталогу"
         fallbackHref={backHref}

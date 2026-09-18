@@ -533,7 +533,7 @@ function BrandMegaMenu({
             {visibleBrands.map((brand) => (
               <Link
                 key={brand.id}
-                href={`/categories/all?brands=${encodeURIComponent(brand.slug)}`}
+                href={`/catalog/all?brands=${encodeURIComponent(brand.slug)}`}
                 className="truncate text-[15px] font-medium text-[#333842] transition-colors hover:text-[#F24676]"
                 title={brand.name}
                 onClick={onNavigate}
@@ -659,7 +659,7 @@ function MobileBrandsMenu({
             {visibleBrands.map((brand) => (
               <li key={brand.id}>
                 <Link
-                  href={`/categories/all?brands=${encodeURIComponent(brand.slug)}`}
+                  href={`/catalog/all?brands=${encodeURIComponent(brand.slug)}`}
                   className="flex min-h-11 items-center border-b border-[#F0F0F0] py-2.5 text-[15px] font-medium text-[#333842] active:text-[#F24676]"
                   onClick={onNavigate}
                 >

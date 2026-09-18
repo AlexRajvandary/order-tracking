@@ -23,7 +23,7 @@ export async function HomeProducts({ result }: HomeProductsProps) {
     <section>
       <HomeSectionHeading
         title="Новинки"
-        href="/categories/одежда"
+        href="/catalog/%D0%BE%D0%B4%D0%B5%D0%B6%D0%B4%D0%B0"
         linkLabel="Все"
       />
       {failed ? (
@@ -50,7 +50,7 @@ export function HomeProductsSkeleton() {
     <section>
       <HomeSectionHeading
         title="Новинки"
-        href="/categories/одежда"
+        href="/catalog/%D0%BE%D0%B4%D0%B5%D0%B6%D0%B4%D0%B0"
         linkLabel="Все"
       />
       <ProductGridSkeleton count={5} />

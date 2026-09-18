@@ -22,7 +22,7 @@ export function HomeCatalogNavigation({ children }: { children: ReactNode }) {
     if (!link || link.target === "_blank" || link.hasAttribute("download")) return;
 
     const url = new URL(link.href, window.location.href);
-    if (url.origin !== window.location.origin || !url.pathname.startsWith("/categories/")) return;
+    if (url.origin !== window.location.origin || !url.pathname.startsWith("/catalog/")) return;
 
     sessionStorage.setItem(SCROLL_TO_TOP_KEY, "true");
   }

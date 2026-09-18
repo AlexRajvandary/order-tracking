@@ -124,7 +124,7 @@ export function safeDecode(value: string): string {
 }
 
 export function categoryHref(rootSlug: string, childSlug?: string): string {
-  if (!childSlug) return `/categories/${rootSlug}`;
-  // Cyrillic path segments break on some proxies → keep sub in query string.
-  return `/categories/${rootSlug}?sub=${encodeURIComponent(childSlug)}`;
+  const root = encodeURIComponent(rootSlug);
+  if (!childSlug) return `/catalog/${root}`;
+  return `/catalog/${root}/${encodeURIComponent(childSlug)}`;
 }

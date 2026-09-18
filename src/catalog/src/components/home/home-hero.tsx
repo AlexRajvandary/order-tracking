@@ -35,7 +35,7 @@ export function HomeHero() {
           </p>
           <div className="mt-7">
             <Link
-              href="/categories/all"
+              href="/catalog/all"
               className="inline-flex h-11 items-center justify-center bg-[#171717] px-5 text-sm font-medium text-white transition-colors hover:bg-[#e73e69]"
             >
               Перейти в каталог

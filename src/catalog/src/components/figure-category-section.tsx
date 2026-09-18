@@ -39,7 +39,7 @@ export function FigureCategorySection({
             <span>{title}</span>
           </h2>
           <Link
-            href={`/categories/${sectionId}`}
+            href={categoryHref(sectionId)}
             className="group inline-flex shrink-0 items-center gap-3 text-base font-medium text-[#666] transition-colors duration-200 hover:text-[#F24676]"
           >
             {allLabel}

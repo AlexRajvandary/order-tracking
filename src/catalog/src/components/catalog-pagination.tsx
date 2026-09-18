@@ -15,7 +15,7 @@ type CatalogPaginationProps = {
   page: number;
   pageSize: number;
   total: number;
-  /** Path without query, e.g. /categories/bags */
+  /** Path without query, e.g. /catalog/bags */
   basePath: string;
   className?: string;
 };

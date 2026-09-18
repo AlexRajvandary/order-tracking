@@ -49,7 +49,7 @@ export function HomeShops({ shops, failed = false }: HomeShopsProps) {
           {visibleShops.map((shop) => (
             <Link
               key={shop.id}
-              href={`/categories/all?shops=${encodeURIComponent(shop.slug)}`}
+              href={`/catalog/all?shops=${encodeURIComponent(shop.slug)}`}
               className="group flex min-h-32 flex-col justify-between border border-border bg-background p-4 transition-colors hover:border-foreground/30"
             >
               <span className="text-[11px] tracking-[0.14em] text-muted-foreground uppercase">

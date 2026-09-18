@@ -86,7 +86,7 @@ function toWomenFashionCategories(categories: Array<Pick<FashionCategoryData, "i
       slug: "bags",
       description: null,
       imageUrl: "/catalog-assets/womens-bags-wide.png",
-      href: "/categories/bags",
+      href: "/catalog/bags",
     },
     {
       id: "women-watches",
@@ -94,7 +94,7 @@ function toWomenFashionCategories(categories: Array<Pick<FashionCategoryData, "i
       slug: "watches",
       description: null,
       imageUrl: null,
-      href: "/categories/watches",
+      href: "/catalog/watches",
     },
   ];
 }
@@ -118,7 +118,7 @@ function toMenFashionCategories(categories: Array<Pick<FashionCategoryData, "id"
       slug: "watches",
       description: null,
       imageUrl: null,
-      href: "/categories/watches",
+      href: "/catalog/watches",
     },
   ];
 }
@@ -178,7 +178,7 @@ export default async function HomePage() {
                   <span className="truncate">{section.title}</span>
                 </h2>
                 <Link
-                  href={`/categories/${sectionRouteId(section.id)}`}
+                  href={`/catalog/${sectionRouteId(section.id)}`}
                   className="group inline-flex shrink-0 items-center gap-1 text-[13px] text-[#666] transition-colors duration-200 hover:text-[#F24676] sm:text-[15px]"
                 >
                   <span>Все</span>
