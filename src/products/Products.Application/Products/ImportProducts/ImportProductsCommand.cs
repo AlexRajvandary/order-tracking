@@ -66,7 +66,6 @@ public sealed record ImportProductItem(
     [property: JsonPropertyName("Field1")] string? OctoparseCharacterName = null,
     [property: JsonPropertyName("Text1")] string? OctoparseSetName = null,
     [property: JsonPropertyName("Text2")] string? OctoparseCardNumber = null,
-    [property: JsonPropertyName("Image_URL")] string? OctoparseImageUrl = null,
     [property: JsonPropertyName("URL")] string? YahooAuctionUrl = null,
     [property: JsonPropertyName("URL1")] string? MercariUrl = null,
     [property: JsonPropertyName("URL2")] string? MagiUrl = null,
@@ -351,7 +350,7 @@ public sealed class ImportProductsCommandHandler
             ?.Replace("No:", string.Empty, StringComparison.OrdinalIgnoreCase).Trim();
 
     private static string? ResolvedImageUrl(ImportProductItem item) =>
-        Clean(item.ImageUrl) ?? Clean(item.NormalizedImageUrl) ?? Clean(item.OctoparseImageUrl);
+        Clean(item.ImageUrl) ?? Clean(item.NormalizedImageUrl);
 
     private static Dictionary<string, string> ResolvedShopLinks(ImportProductItem item) =>
         (item.ShopLinks ?? item.NormalizedShopLinks ?? OctoparseShopLinks(item))
