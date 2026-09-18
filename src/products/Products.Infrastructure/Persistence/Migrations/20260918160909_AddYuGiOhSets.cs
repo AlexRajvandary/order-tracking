@@ -94,9 +94,9 @@ namespace Products.Infrastructure.Persistence.Migrations
                 UPDATE yugioh_card_specifications y
                 SET "SetId" = s."Id"
                 FROM tcg_card_specifications t
-                JOIN yugioh_sets s
-                  ON s."SourceKey" = upper(btrim(t."SetName")) || '|' || coalesce(to_char(y."ReleaseDate", 'YYYY-MM-DD'), '')
+                CROSS JOIN yugioh_sets s
                 WHERE t."ProductId" = y."ProductId"
+                  AND s."SourceKey" = upper(btrim(t."SetName")) || '|' || coalesce(to_char(y."ReleaseDate", 'YYYY-MM-DD'), '')
                   AND nullif(btrim(t."SetName"), '') IS NOT NULL;
                 """);
         }
