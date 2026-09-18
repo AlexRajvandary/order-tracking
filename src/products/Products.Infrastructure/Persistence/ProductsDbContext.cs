@@ -47,6 +47,8 @@ public sealed class ProductsDbContext : DbContext
 
     public DbSet<YuGiOhCardSpecification> YuGiOhCardSpecifications => Set<YuGiOhCardSpecification>();
 
+    public DbSet<YuGiOhSet> YuGiOhSets => Set<YuGiOhSet>();
+
     public DbSet<ImageImportJob> ImageImportJobs => Set<ImageImportJob>();
 
     public DbSet<ImageImportJobItem> ImageImportJobItems => Set<ImageImportJobItem>();

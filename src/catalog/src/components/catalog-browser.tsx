@@ -1063,7 +1063,7 @@ export function CatalogBrowser({
                     onToggle={(value) => onToggleYuGiOh("cardTypes", value)}
                   /> : null}
                   {yugiohFacets.cardSubtypes.length > 0 ? <MultiSelectFilter
-                    label="Подтип" options={yuGiOhFacetOptions(yugiohFacets.cardSubtypes, yuGiOhCardSubtypeName)} selected={selectedYuGiOhFilters.cardSubtypes}
+                    label="Вид карты" options={yuGiOhFacetOptions(yugiohFacets.cardSubtypes, yuGiOhCardSubtypeName)} selected={selectedYuGiOhFilters.cardSubtypes}
                     onToggle={(value) => onToggleYuGiOh("cardSubtypes", value)} searchable
                   /> : null}
                   {yugiohFacets.attributes.length > 0 ? <MultiSelectFilter
@@ -1075,7 +1075,7 @@ export function CatalogBrowser({
                     onToggle={(value) => onToggleYuGiOh("monsterRaces", value)} searchable
                   /> : null}
                   {yugiohFacets.seriesTypes.length > 0 ? <MultiSelectFilter
-                    label="Тип серии" options={yuGiOhFacetOptions(yugiohFacets.seriesTypes, yuGiOhSeriesTypeName)} selected={selectedYuGiOhFilters.seriesTypes}
+                    label="Тип выпуска" options={yuGiOhFacetOptions(yugiohFacets.seriesTypes, yuGiOhSeriesTypeName)} selected={selectedYuGiOhFilters.seriesTypes}
                     onToggle={(value) => onToggleYuGiOh("seriesTypes", value)}
                   /> : null}
                 </div>
@@ -1270,10 +1270,10 @@ export function CatalogBrowser({
             </section> : null}
             {showYuGiOhFilters ? ([
               ["cardTypes", "Тип карты", yugiohFacets.cardTypes, false, yuGiOhCardTypeName],
-              ["cardSubtypes", "Подтип", yugiohFacets.cardSubtypes, true, yuGiOhCardSubtypeName],
+              ["cardSubtypes", "Вид карты", yugiohFacets.cardSubtypes, true, yuGiOhCardSubtypeName],
               ["attributes", "Атрибут", yugiohFacets.attributes, false, yuGiOhAttributeName],
               ["monsterRaces", "Раса", yugiohFacets.monsterRaces, true, (value: string) => value],
-              ["seriesTypes", "Тип серии", yugiohFacets.seriesTypes, false, yuGiOhSeriesTypeName],
+              ["seriesTypes", "Тип выпуска", yugiohFacets.seriesTypes, false, yuGiOhSeriesTypeName],
             ] as const).map(([key, label, values, searchable, labelValue]) => values.length > 0 ? <section key={key} className="border-t pt-5">
               <h3 className="mb-2 text-sm font-semibold">{label}</h3>
               <MultiSelectOptions options={yuGiOhFacetOptions([...values], labelValue)} selected={selectedYuGiOhFilters[key]} onToggle={(value) => onToggleYuGiOh(key, value)} loading={false} error={false} searchable={searchable} />

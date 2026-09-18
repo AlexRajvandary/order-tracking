@@ -4,6 +4,8 @@ public sealed class YuGiOhCardSpecification
 {
     public Guid ProductId { get; set; }
     public TcgCardSpecification Card { get; set; } = null!;
+    public Guid? SetId { get; set; }
+    public YuGiOhSet? Set { get; set; }
 
     public string? JapaneseNameReading { get; set; }
     public string? SetNameRu { get; set; }

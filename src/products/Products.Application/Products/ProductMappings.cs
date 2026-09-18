@@ -70,7 +70,8 @@ internal static class ProductMappings
                     product.TcgCardSpecification.ShopLinksJson) ?? new Dictionary<string, string>(),
                 product.TcgCardSpecification.YuGiOhSpecification is null ? null : new YuGiOhCardSpecificationDto(
                     product.TcgCardSpecification.YuGiOhSpecification.JapaneseNameReading,
-                    product.TcgCardSpecification.YuGiOhSpecification.SetNameRu,
+                    product.TcgCardSpecification.YuGiOhSpecification.Set?.NameRu
+                        ?? product.TcgCardSpecification.YuGiOhSpecification.SetNameRu,
                     product.TcgCardSpecification.YuGiOhSpecification.CardType,
                     product.TcgCardSpecification.YuGiOhSpecification.CardSubtype,
                     product.TcgCardSpecification.YuGiOhSpecification.Attribute,
@@ -78,13 +79,20 @@ internal static class ProductMappings
                     product.TcgCardSpecification.YuGiOhSpecification.MonsterRaceRaw,
                     product.TcgCardSpecification.YuGiOhSpecification.MonsterRaceRu,
                     product.TcgCardSpecification.YuGiOhSpecification.DescriptionRu,
-                    product.TcgCardSpecification.YuGiOhSpecification.SeriesMetadataRaw,
-                    product.TcgCardSpecification.YuGiOhSpecification.SeriesAlternateName,
-                    product.TcgCardSpecification.YuGiOhSpecification.SeriesAlternateNameRu,
-                    product.TcgCardSpecification.YuGiOhSpecification.SeriesType,
-                    product.TcgCardSpecification.YuGiOhSpecification.SeriesTypeRu,
-                    product.TcgCardSpecification.YuGiOhSpecification.ReleaseDate,
-                    product.TcgCardSpecification.YuGiOhSpecification.DeclaredCardCount,
+                    product.TcgCardSpecification.YuGiOhSpecification.Set?.MetadataRaw
+                        ?? product.TcgCardSpecification.YuGiOhSpecification.SeriesMetadataRaw,
+                    product.TcgCardSpecification.YuGiOhSpecification.Set?.AlternateNameOriginal
+                        ?? product.TcgCardSpecification.YuGiOhSpecification.SeriesAlternateName,
+                    product.TcgCardSpecification.YuGiOhSpecification.Set?.AlternateNameRu
+                        ?? product.TcgCardSpecification.YuGiOhSpecification.SeriesAlternateNameRu,
+                    product.TcgCardSpecification.YuGiOhSpecification.Set?.ReleaseTypeCode
+                        ?? product.TcgCardSpecification.YuGiOhSpecification.SeriesType,
+                    product.TcgCardSpecification.YuGiOhSpecification.Set?.ReleaseTypeRu
+                        ?? product.TcgCardSpecification.YuGiOhSpecification.SeriesTypeRu,
+                    product.TcgCardSpecification.YuGiOhSpecification.Set?.ReleaseDate
+                        ?? product.TcgCardSpecification.YuGiOhSpecification.ReleaseDate,
+                    product.TcgCardSpecification.YuGiOhSpecification.Set?.DeclaredCardCount
+                        ?? product.TcgCardSpecification.YuGiOhSpecification.DeclaredCardCount,
                     product.TcgCardSpecification.YuGiOhSpecification.Level,
                     product.TcgCardSpecification.YuGiOhSpecification.Rank,
                     product.TcgCardSpecification.YuGiOhSpecification.LinkRating,

@@ -1,0 +1,446 @@
+{
+  "source_file": "C:\\Users\\stark\\Downloads\\All Pokemon Species — Browse Cards, Plush and Figures _ Japamart(2).json",
+  "input_rows": 1968,
+  "normalized_cards": 1967,
+  "unique_characters": 87,
+  "skipped_empty_rows": 1,
+  "removed_duplicates": 0,
+  "deduplication_enabled": true,
+  "characters": [
+    {
+      "pokemon_name": "Pikachu",
+      "card_count": 142,
+      "raw_rows": 142
+    },
+    {
+      "pokemon_name": "Raichu",
+      "card_count": 51,
+      "raw_rows": 51
+    },
+    {
+      "pokemon_name": "Charmander",
+      "card_count": 41,
+      "raw_rows": 41
+    },
+    {
+      "pokemon_name": "Magnemite",
+      "card_count": 40,
+      "raw_rows": 40
+    },
+    {
+      "pokemon_name": "Vulpix",
+      "card_count": 38,
+      "raw_rows": 38
+    },
+    {
+      "pokemon_name": "Magneton",
+      "card_count": 37,
+      "raw_rows": 37
+    },
+    {
+      "pokemon_name": "Growlithe",
+      "card_count": 36,
+      "raw_rows": 36
+    },
+    {
+      "pokemon_name": "Meowth",
+      "card_count": 36,
+      "raw_rows": 36
+    },
+    {
+      "pokemon_name": "Ninetales",
+      "card_count": 36,
+      "raw_rows": 36
+    },
+    {
+      "pokemon_name": "Slowpoke",
+      "card_count": 32,
+      "raw_rows": 32
+    },
+    {
+      "pokemon_name": "Charmeleon",
+      "card_count": 31,
+      "raw_rows": 31
+    },
+    {
+      "pokemon_name": "Clefairy",
+      "card_count": 30,
+      "raw_rows": 30
+    },
+    {
+      "pokemon_name": "Squirtle",
+      "card_count": 30,
+      "raw_rows": 30
+    },
+    {
+      "pokemon_name": "Charizard",
+      "card_count": 29,
+      "raw_rows": 29
+    },
+    {
+      "pokemon_name": "Zubat",
+      "card_count": 29,
+      "raw_rows": 29
+    },
+    {
+      "pokemon_name": "Arcanine",
+      "card_count": 28,
+      "raw_rows": 28
+    },
+    {
+      "pokemon_name": "Jigglypuff",
+      "card_count": 28,
+      "raw_rows": 28
+    },
+    {
+      "pokemon_name": "Ponyta",
+      "card_count": 28,
+      "raw_rows": 28
+    },
+    {
+      "pokemon_name": "Bulbasaur",
+      "card_count": 27,
+      "raw_rows": 27
+    },
+    {
+      "pokemon_name": "Diglett",
+      "card_count": 27,
+      "raw_rows": 27
+    },
+    {
+      "pokemon_name": "Machamp",
+      "card_count": 27,
+      "raw_rows": 27
+    },
+    {
+      "pokemon_name": "Oddish",
+      "card_count": 27,
+      "raw_rows": 27
+    },
+    {
+      "pokemon_name": "Rapidash",
+      "card_count": 27,
+      "raw_rows": 27
+    },
+    {
+      "pokemon_name": "Psyduck",
+      "card_count": 26,
+      "raw_rows": 26
+    },
+    {
+      "pokemon_name": "Gloom",
+      "card_count": 25,
+      "raw_rows": 25
+    },
+    {
+      "pokemon_name": "Machop",
+      "card_count": 25,
+      "raw_rows": 25
+    },
+    {
+      "pokemon_name": "Golbat",
+      "card_count": 24,
+      "raw_rows": 24
+    },
+    {
+      "pokemon_name": "Machoke",
+      "card_count": 23,
+      "raw_rows": 23
+    },
+    {
+      "pokemon_name": "Weedle",
+      "card_count": 23,
+      "raw_rows": 23
+    },
+    {
+      "pokemon_name": "Clefable",
+      "card_count": 22,
+      "raw_rows": 22
+    },
+    {
+      "pokemon_name": "Mankey",
+      "card_count": 22,
+      "raw_rows": 22
+    },
+    {
+      "pokemon_name": "Paras",
+      "card_count": 22,
+      "raw_rows": 22
+    },
+    {
+      "pokemon_name": "Primeape",
+      "card_count": 22,
+      "raw_rows": 22
+    },
+    {
+      "pokemon_name": "Butterfree",
+      "card_count": 21,
+      "raw_rows": 21
+    },
+    {
+      "pokemon_name": "Caterpie",
+      "card_count": 21,
+      "raw_rows": 21
+    },
+    {
+      "pokemon_name": "Parasect",
+      "card_count": 21,
+      "raw_rows": 21
+    },
+    {
+      "pokemon_name": "Wartortle",
+      "card_count": 21,
+      "raw_rows": 21
+    },
+    {
+      "pokemon_name": "Beedrill",
+      "card_count": 20,
+      "raw_rows": 20
+    },
+    {
+      "pokemon_name": "Ivysaur",
+      "card_count": 20,
+      "raw_rows": 20
+    },
+    {
+      "pokemon_name": "Kakuna",
+      "card_count": 20,
+      "raw_rows": 20
+    },
+    {
+      "pokemon_name": "Metapod",
+      "card_count": 20,
+      "raw_rows": 20
+    },
+    {
+      "pokemon_name": "Persian",
+      "card_count": 20,
+      "raw_rows": 20
+    },
+    {
+      "pokemon_name": "Vileplume",
+      "card_count": 20,
+      "raw_rows": 20
+    },
+    {
+      "pokemon_name": "Doduo",
+      "card_count": 19,
+      "raw_rows": 19
+    },
+    {
+      "pokemon_name": "Dugtrio",
+      "card_count": 19,
+      "raw_rows": 19
+    },
+    {
+      "pokemon_name": "Pidgey",
+      "card_count": 19,
+      "raw_rows": 19
+    },
+    {
+      "pokemon_name": "Poliwag",
+      "card_count": 19,
+      "raw_rows": 19
+    },
+    {
+      "pokemon_name": "Sandshrew",
+      "card_count": 19,
+      "raw_rows": 19
+    },
+    {
+      "pokemon_name": "Wigglytuff",
+      "card_count": 19,
+      "raw_rows": 19
+    },
+    {
+      "pokemon_name": "Blastoise",
+      "card_count": 18,
+      "raw_rows": 18
+    },
+    {
+      "pokemon_name": "Golduck",
+      "card_count": 18,
+      "raw_rows": 18
+    },
+    {
+      "pokemon_name": "Poliwhirl",
+      "card_count": 18,
+      "raw_rows": 18
+    },
+    {
+      "pokemon_name": "Poliwrath",
+      "card_count": 18,
+      "raw_rows": 18
+    },
+    {
+      "pokemon_name": "Rattata",
+      "card_count": 18,
+      "raw_rows": 18
+    },
+    {
+      "pokemon_name": "Slowbro",
+      "card_count": 18,
+      "raw_rows": 18
+    },
+    {
+      "pokemon_name": "Dodrio",
+      "card_count": 17,
+      "raw_rows": 17
+    },
+    {
+      "pokemon_name": "Graveler",
+      "card_count": 17,
+      "raw_rows": 17
+    },
+    {
+      "pokemon_name": "Grimer",
+      "card_count": 17,
+      "raw_rows": 17
+    },
+    {
+      "pokemon_name": "Pidgeotto",
+      "card_count": 17,
+      "raw_rows": 17
+    },
+    {
+      "pokemon_name": "Bellsprout",
+      "card_count": 16,
+      "raw_rows": 16
+    },
+    {
+      "pokemon_name": "Geodude",
+      "card_count": 16,
+      "raw_rows": 16
+    },
+    {
+      "pokemon_name": "Nidoking",
+      "card_count": 16,
+      "raw_rows": 16
+    },
+    {
+      "pokemon_name": "Sandslash",
+      "card_count": 16,
+      "raw_rows": 16
+    },
+    {
+      "pokemon_name": "Venusaur",
+      "card_count": 16,
+      "raw_rows": 16
+    },
+    {
+      "pokemon_name": "Ekans",
+      "card_count": 15,
+      "raw_rows": 15
+    },
+    {
+      "pokemon_name": "Shellder",
+      "card_count": 15,
+      "raw_rows": 15
+    },
+    {
+      "pokemon_name": "Weepinbell",
+      "card_count": 15,
+      "raw_rows": 15
+    },
+    {
+      "pokemon_name": "Arbok",
+      "card_count": 14,
+      "raw_rows": 14
+    },
+    {
+      "pokemon_name": "Dewgong",
+      "card_count": 14,
+      "raw_rows": 14
+    },
+    {
+      "pokemon_name": "Fearow",
+      "card_count": 14,
+      "raw_rows": 14
+    },
+    {
+      "pokemon_name": "Golem",
+      "card_count": 14,
+      "raw_rows": 14
+    },
+    {
+      "pokemon_name": "Muk",
+      "card_count": 14,
+      "raw_rows": 14
+    },
+    {
+      "pokemon_name": "Nidorino",
+      "card_count": 14,
+      "raw_rows": 14
+    },
+    {
+      "pokemon_name": "Seel",
+      "card_count": 14,
+      "raw_rows": 14
+    },
+    {
+      "pokemon_name": "Spearow",
+      "card_count": 14,
+      "raw_rows": 14
+    },
+    {
+      "pokemon_name": "Tentacruel",
+      "card_count": 14,
+      "raw_rows": 14
+    },
+    {
+      "pokemon_name": "Venonat",
+      "card_count": 14,
+      "raw_rows": 14
+    },
+    {
+      "pokemon_name": "Nidoqueen",
+      "card_count": 13,
+      "raw_rows": 13
+    },
+    {
+      "pokemon_name": "Tentacool",
+      "card_count": 13,
+      "raw_rows": 13
+    },
+    {
+      "pokemon_name": "Victreebel",
+      "card_count": 13,
+      "raw_rows": 13
+    },
+    {
+      "pokemon_name": "Abra",
+      "card_count": 12,
+      "raw_rows": 12
+    },
+    {
+      "pokemon_name": "Nidorina",
+      "card_count": 12,
+      "raw_rows": 12
+    },
+    {
+      "pokemon_name": "Pidgeot",
+      "card_count": 12,
+      "raw_rows": 12
+    },
+    {
+      "pokemon_name": "Raticate",
+      "card_count": 12,
+      "raw_rows": 12
+    },
+    {
+      "pokemon_name": "Alakazam",
+      "card_count": 10,
+      "raw_rows": 10
+    },
+    {
+      "pokemon_name": "Kadabra",
+      "card_count": 10,
+      "raw_rows": 10
+    },
+    {
+      "pokemon_name": "Venomoth",
+      "card_count": 10,
+      "raw_rows": 10
+    }
+  ]
+}

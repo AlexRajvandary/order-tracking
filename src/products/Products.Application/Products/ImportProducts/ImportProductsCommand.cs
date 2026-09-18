@@ -188,6 +188,7 @@ public sealed class ImportProductsCommandHandler
         var allBrands = (await _brands.ListAsync(false, cancellationToken)).ToList();
         var allShops = (await _shops.ListAsync(false, cancellationToken)).ToList();
         var allTcgCharacters = (await _products.ListTcgCharactersAsync(cancellationToken)).ToList();
+        var allYuGiOhSets = (await _products.ListYuGiOhSetsAsync(cancellationToken)).ToList();
         var issues = new List<ImportProductIssue>();
         var batchSkus = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var batchSlugs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -286,9 +287,12 @@ public sealed class ImportProductsCommandHandler
             if (tcgSpecification is not null && HasYuGiOhMetadata(item))
             {
                 tcgSpecification.Franchise ??= "yu-gi-oh";
+                var yuGiOhSet = ResolveYuGiOhSet(item, allYuGiOhSets);
                 tcgSpecification.YuGiOhSpecification = new YuGiOhCardSpecification
                 {
                     ProductId = productId,
+                    SetId = yuGiOhSet.Id,
+                    Set = yuGiOhSet,
                     JapaneseNameReading = Clean(item.JapaneseNameReading),
                     SetNameRu = Clean(item.SetNameRu),
                     CardType = NormalizeYuGiOhCardType(item.CardType),
@@ -460,6 +464,8 @@ public sealed class ImportProductsCommandHandler
             return "SeriesAlternateName cannot exceed 500 characters.";
         if (Clean(item.SeriesType) is { Length: > 100 } || Clean(item.SeriesTypeRu) is { Length: > 100 })
             return "Series type cannot exceed 100 characters.";
+        if (HasYuGiOhMetadata(item) && ResolvedSetName(item) is null)
+            return "SetName is required for a Yu-Gi-Oh card.";
         if (item.DeclaredCardCount < 0 || item.Level < 0 || item.Rank < 0 || item.LinkRating < 0
             || item.Attack < 0 || item.Defense < 0)
             return "Yu-Gi-Oh numeric fields cannot be negative.";
@@ -567,6 +573,48 @@ public sealed class ImportProductsCommandHandler
         if (value.Contains("Trap", StringComparison.OrdinalIgnoreCase)) return "Trap";
         return value;
     }
+
+    private YuGiOhSet ResolveYuGiOhSet(ImportProductItem item, List<YuGiOhSet> sets)
+    {
+        var nameOriginal = ResolvedSetName(item)!;
+        var sourceKey = YuGiOhSetSourceKey(nameOriginal, item.ReleaseDate);
+        var set = sets.FirstOrDefault(x =>
+            string.Equals(x.SourceKey, sourceKey, StringComparison.OrdinalIgnoreCase));
+
+        if (set is null)
+        {
+            set = new YuGiOhSet
+            {
+                Id = Guid.NewGuid(),
+                SourceKey = sourceKey,
+                NameOriginal = nameOriginal,
+                NameRu = Clean(item.SetNameRu),
+                MetadataRaw = Clean(item.SeriesMetadataRaw) ?? Clean(item.YuGiOhSeriesMetadataRaw),
+                AlternateNameOriginal = Clean(item.SeriesAlternateName),
+                AlternateNameRu = Clean(item.SeriesAlternateNameRu),
+                ReleaseTypeCode = Clean(item.SeriesType),
+                ReleaseTypeRu = Clean(item.SeriesTypeRu),
+                ReleaseDate = item.ReleaseDate,
+                DeclaredCardCount = item.DeclaredCardCount,
+            };
+            sets.Add(set);
+            _products.Add(set);
+            return set;
+        }
+
+        set.NameRu ??= Clean(item.SetNameRu);
+        set.MetadataRaw ??= Clean(item.SeriesMetadataRaw) ?? Clean(item.YuGiOhSeriesMetadataRaw);
+        set.AlternateNameOriginal ??= Clean(item.SeriesAlternateName);
+        set.AlternateNameRu ??= Clean(item.SeriesAlternateNameRu);
+        set.ReleaseTypeCode ??= Clean(item.SeriesType);
+        set.ReleaseTypeRu ??= Clean(item.SeriesTypeRu);
+        set.ReleaseDate ??= item.ReleaseDate;
+        set.DeclaredCardCount ??= item.DeclaredCardCount;
+        return set;
+    }
+
+    private static string YuGiOhSetSourceKey(string nameOriginal, DateOnly? releaseDate) =>
+        $"{nameOriginal.Trim().ToUpperInvariant()}|{releaseDate:yyyy-MM-dd}";
 
     private static IReadOnlyList<ImportTcgCharacter> ResolvedTcgCharacters(ImportProductItem item)
     {

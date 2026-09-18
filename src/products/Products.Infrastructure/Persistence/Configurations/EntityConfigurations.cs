@@ -420,6 +420,11 @@ public sealed class YuGiOhCardSpecificationConfiguration : IEntityTypeConfigurat
             .WithOne(x => x.YuGiOhSpecification)
             .HasForeignKey<YuGiOhCardSpecification>(x => x.ProductId)
             .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.Set)
+            .WithMany(x => x.Cards)
+            .HasForeignKey(x => x.SetId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(x => x.SetId);
         builder.HasIndex(x => x.CardType);
         builder.HasIndex(x => x.CardSubtype);
         builder.HasIndex(x => x.Attribute);
@@ -428,5 +433,25 @@ public sealed class YuGiOhCardSpecificationConfiguration : IEntityTypeConfigurat
         builder.HasIndex(x => x.Level);
         builder.HasIndex(x => x.Rank);
         builder.HasIndex(x => x.LinkRating);
+    }
+}
+
+public sealed class YuGiOhSetConfiguration : IEntityTypeConfiguration<YuGiOhSet>
+{
+    public void Configure(EntityTypeBuilder<YuGiOhSet> builder)
+    {
+        builder.ToTable("yugioh_sets");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.SourceKey).HasMaxLength(620).IsRequired();
+        builder.Property(x => x.NameOriginal).HasMaxLength(500).IsRequired();
+        builder.Property(x => x.NameRu).HasMaxLength(500);
+        builder.Property(x => x.MetadataRaw).HasMaxLength(500);
+        builder.Property(x => x.AlternateNameOriginal).HasMaxLength(500);
+        builder.Property(x => x.AlternateNameRu).HasMaxLength(500);
+        builder.Property(x => x.ReleaseTypeCode).HasMaxLength(100);
+        builder.Property(x => x.ReleaseTypeRu).HasMaxLength(100);
+        builder.HasIndex(x => x.SourceKey).IsUnique();
+        builder.HasIndex(x => x.ReleaseTypeCode);
+        builder.HasIndex(x => x.ReleaseDate);
     }
 }

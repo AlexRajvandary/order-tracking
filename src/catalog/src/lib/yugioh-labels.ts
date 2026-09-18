@@ -10,14 +10,14 @@ const CARD_SUBTYPES: Record<string, string> = {
   Ritual: "Ритуал",
   Fusion: "Слияние",
   Synchro: "Синхро",
-  Xyz: "Иксиз",
+  Xyz: "Xyz",
   Link: "Линк",
   Pendulum: "Маятник",
 };
 
 const ATTRIBUTES: Record<string, string> = {
   DARK: "Тьма", LIGHT: "Свет", EARTH: "Земля", WATER: "Вода",
-  FIRE: "Огонь", WIND: "Ветер", DIVINE: "Божество",
+  FIRE: "Огонь", WIND: "Ветер", DIVINE: "Божественный",
 };
 
 const SERIES_TYPES: Record<string, string> = {

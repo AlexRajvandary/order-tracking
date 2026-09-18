@@ -97,6 +97,8 @@ public interface IProductRepository
     void Add(Product product);
     Task<IReadOnlyList<TcgCharacter>> ListTcgCharactersAsync(CancellationToken cancellationToken = default);
     void Add(TcgCharacter character);
+    Task<IReadOnlyList<YuGiOhSet>> ListYuGiOhSetsAsync(CancellationToken cancellationToken = default);
+    void Add(YuGiOhSet set);
     void Remove(Product product);
     Task<IReadOnlyList<ProductTranslationPendingDto>> GetPendingTranslationsAsync(int limit, CancellationToken cancellationToken = default);
     Task<ProductTranslationStatsDto> GetTranslationStatsAsync(CancellationToken cancellationToken = default);
