@@ -42,14 +42,16 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <div className="flex flex-1 flex-col gap-1.5 px-4 pt-4 pb-3">
           <p className="h-4 truncate text-[10px] leading-4 font-semibold tracking-[0.06em] text-muted-foreground uppercase">
-            {product.brand ?? "\u00A0"}
+            {product.tcgCard?.characterName ?? product.shopName ?? product.brand ?? "\u00A0"}
           </p>
           <CardTitle className="h-11 line-clamp-2 text-[15px] leading-[1.375rem] font-medium">
             {product.name}
           </CardTitle>
-          <p className="mt-auto pt-2 text-lg font-bold tracking-tight text-foreground">
-            {formatPrice(product)}
-          </p>
+          {product.priceRub > 0 ? (
+            <p className="mt-auto pt-2 text-lg font-bold tracking-tight text-foreground">
+              {formatPrice(product)}
+            </p>
+          ) : null}
         </div>
       </Link>
 

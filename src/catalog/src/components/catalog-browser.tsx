@@ -465,7 +465,8 @@ export function CatalogBrowser({
   const selectedCategoryKey = `${activeRootSlug ?? "all"}:${activeChildSlug ?? ""}`;
   const showGenderFilter = ["shoes", "obuv", "обувь"].includes(activeRootSlug?.toLowerCase() ?? "");
   const showLaptopFilters = (activeChildSlug ?? activeRootSlug)?.toLowerCase() === "laptops";
-  const showTcgFilters = (activeChildSlug ?? activeRootSlug)?.toLowerCase() === "tcg";
+  const showTcgFilters = [activeRootSlug, activeChildSlug]
+    .some((slug) => slug?.toLowerCase() === "tcg");
   const [freshCategoryCount, setFreshCategoryCount] = useState<{
     key: string;
     count?: number;

@@ -39,14 +39,15 @@ public sealed class ListProductFacetsQueryHandler(IProductRepository products)
                 request.ActiveOnly,
                 cancellationToken)
             : new LaptopFilterFacets([], [], [], [], [], [], []);
-        var tcg = string.Equals(request.Category, "tcg", StringComparison.OrdinalIgnoreCase)
-            ? await products.ListTcgFacetsAsync(
-                request.CategoryId,
-                request.Category,
-                request.IncludeCategoryChildren,
-                request.ActiveOnly,
-                cancellationToken)
-            : new TcgFilterFacets([]);
+        // The category can be a TCG child (for example "pokemon"), so the
+        // repository query is always scoped by the requested category id/slug.
+        // The catalog only renders these facets for the TCG tree.
+        var tcg = await products.ListTcgFacetsAsync(
+            request.CategoryId,
+            request.Category,
+            request.IncludeCategoryChildren,
+            request.ActiveOnly,
+            cancellationToken);
 
         return new ProductFacetsResult(
             brands.Select(brand => new BrandDto(
