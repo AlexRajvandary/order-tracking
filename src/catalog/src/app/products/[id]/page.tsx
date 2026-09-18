@@ -12,6 +12,7 @@ import { fetchCategoryTree } from "@/lib/categories-api";
 import { findCatalogProductBySlug, type CatalogProduct } from "@/lib/catalog-products";
 import { fetchCatalogPage, fetchProductById, fetchProductBySlug, fetchProductRelations, fetchRakutenItem, mapApiProductToCatalog, mapRakutenProductToCatalog } from "@/lib/products-api";
 import { formatPrice, getProductById, type Product } from "@/lib/products";
+import { onePieceRarityName } from "@/lib/one-piece-rarity";
 
 type PageProps = { params: Promise<{ id: string }> };
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -77,7 +78,9 @@ export default async function ProductPage({ params }: PageProps) {
     ["Персонаж", product.tcgCard?.characterName],
     ["Набор", product.tcgCard?.setName],
     ["Номер карты", product.tcgCard?.cardNumber],
-    ["Редкость", product.tcgCard?.rarity],
+    ["Редкость", product.tcgCard?.franchise === "one-piece"
+      ? onePieceRarityName(product.tcgCard.rarity)
+      : product.tcgCard?.rarity],
     ["Команда", onePieceCharacter?.crew],
     ["Дьявольский фрукт", onePieceCharacter?.devilFruit],
     ["Роль", onePieceCharacter?.role],

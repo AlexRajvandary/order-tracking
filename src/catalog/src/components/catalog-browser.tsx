@@ -38,6 +38,7 @@ import {
 import type { ApiShop } from "@/lib/shops-api";
 import { rememberCatalogNavigation } from "@/lib/catalog-navigation-snapshot";
 import { cn } from "@/lib/utils";
+import { onePieceRarityOptions } from "@/lib/one-piece-rarity";
 
 type SortOption = "relevance" | "price-asc" | "price-desc" | "name";
 
@@ -966,7 +967,7 @@ export function CatalogBrowser({
                 onToggle={onToggleTcgSet} searchable
               /> : null}
               {showOnePieceFilters && tcgRarities.length > 0 ? <MultiSelectFilter
-                label="Редкость" options={facetOptions(tcgRarities)} selected={selectedTcgRarities}
+                label="Редкость" options={onePieceRarityOptions(tcgRarities)} selected={selectedTcgRarities}
                 onToggle={onToggleTcgRarity}
               /> : null}
               {showOnePieceFilters && tcgCrews.length > 0 ? <MultiSelectFilter
@@ -1180,7 +1181,7 @@ export function CatalogBrowser({
             </section> : null}
             {showOnePieceFilters && tcgRarities.length > 0 ? <section className="border-t pt-5">
               <h3 className="mb-2 text-sm font-semibold">Редкость</h3>
-              <MultiSelectOptions options={facetOptions(tcgRarities)} selected={selectedTcgRarities} onToggle={onToggleTcgRarity} loading={false} error={false} searchable={false} />
+              <MultiSelectOptions options={onePieceRarityOptions(tcgRarities)} selected={selectedTcgRarities} onToggle={onToggleTcgRarity} loading={false} error={false} searchable={false} />
             </section> : null}
             {showOnePieceFilters && tcgCrews.length > 0 ? <section className="border-t pt-5">
               <h3 className="mb-2 text-sm font-semibold">Команда</h3>
