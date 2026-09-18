@@ -51,8 +51,21 @@ internal static class ProductMappings
                 product.LaptopSpecification.ReleaseModel),
             product.TcgCardSpecification is null ? null : new TcgCardSpecificationDto(
                 product.TcgCardSpecification.CharacterName,
+                product.TcgCardSpecification.Franchise,
                 product.TcgCardSpecification.SetName,
                 product.TcgCardSpecification.CardNumber,
+                product.TcgCardSpecification.Rarity,
+                product.TcgCardSpecification.OfficialUrl,
+                product.TcgCardSpecification.Characters.Select(link => new TcgCharacterDto(
+                    link.Character.Id,
+                    link.Character.Franchise,
+                    link.Character.Name,
+                    link.Character.AlternateName,
+                    link.Character.OnePieceSpecification is null ? null : new OnePieceCharacterSpecificationDto(
+                        link.Character.OnePieceSpecification.Crew,
+                        link.Character.OnePieceSpecification.DevilFruit,
+                        link.Character.OnePieceSpecification.Role,
+                        link.Character.OnePieceSpecification.FirstAppearance))).ToList(),
                 System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
                     product.TcgCardSpecification.ShopLinksJson) ?? new Dictionary<string, string>()));
 

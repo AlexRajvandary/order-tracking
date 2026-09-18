@@ -33,8 +33,23 @@ export type Product = {
   isPremium?: boolean;
   tcgCard?: {
     characterName: string | null;
+    franchise: string | null;
     setName: string | null;
     cardNumber: string | null;
+    rarity: string | null;
+    officialUrl: string | null;
+    characters: Array<{
+      id: string;
+      franchise: string;
+      name: string;
+      alternateName: string | null;
+      onePieceSpecification: {
+        crew: string | null;
+        devilFruit: string | null;
+        role: string | null;
+        firstAppearance: string | null;
+      } | null;
+    }>;
     shopLinks: Record<string, string>;
   };
 };

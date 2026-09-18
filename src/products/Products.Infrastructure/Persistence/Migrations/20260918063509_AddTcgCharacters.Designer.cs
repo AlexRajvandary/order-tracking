@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Products.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Products.Infrastructure.Persistence;
 namespace Products.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ProductsDbContext))]
-    partial class ProductsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260918063509_AddTcgCharacters")]
+    partial class AddTcgCharacters
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -589,34 +592,6 @@ namespace Products.Infrastructure.Persistence.Migrations
                     b.ToTable("laptop_specifications", (string)null);
                 });
 
-            modelBuilder.Entity("Products.Domain.Entities.OnePieceCharacterSpecification", b =>
-                {
-                    b.Property<Guid>("CharacterId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Crew")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("DevilFruit")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<string>("FirstAppearance")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("Role")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.HasKey("CharacterId");
-
-                    b.HasIndex("Crew");
-
-                    b.ToTable("one_piece_character_specifications", (string)null);
-                });
-
             modelBuilder.Entity("Products.Domain.Entities.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -947,18 +922,6 @@ namespace Products.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("Franchise")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("OfficialUrl")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<string>("Rarity")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
                     b.Property<string>("SetName")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -970,8 +933,6 @@ namespace Products.Infrastructure.Persistence.Migrations
                     b.HasKey("ProductId");
 
                     b.HasIndex("CharacterName");
-
-                    b.HasIndex("Franchise");
 
                     b.HasIndex("SetName", "CardNumber");
 
@@ -1288,17 +1249,6 @@ namespace Products.Infrastructure.Persistence.Migrations
                     b.Navigation("Product");
                 });
 
-            modelBuilder.Entity("Products.Domain.Entities.OnePieceCharacterSpecification", b =>
-                {
-                    b.HasOne("Products.Domain.Entities.TcgCharacter", "Character")
-                        .WithOne("OnePieceSpecification")
-                        .HasForeignKey("Products.Domain.Entities.OnePieceCharacterSpecification", "CharacterId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Character");
-                });
-
             modelBuilder.Entity("Products.Domain.Entities.Product", b =>
                 {
                     b.HasOne("Products.Domain.Entities.Brand", "BrandEntity")
@@ -1448,8 +1398,6 @@ namespace Products.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Products.Domain.Entities.TcgCharacter", b =>
                 {
                     b.Navigation("Cards");
-
-                    b.Navigation("OnePieceSpecification");
                 });
 
             modelBuilder.Entity("Products.Domain.Entities.TranslationJob", b =>

@@ -48,9 +48,26 @@ public sealed record LaptopSpecificationDto(
 
 public sealed record TcgCardSpecificationDto(
     string? CharacterName,
+    string? Franchise,
     string? SetName,
     string? CardNumber,
+    string? Rarity,
+    string? OfficialUrl,
+    IReadOnlyList<TcgCharacterDto> Characters,
     IReadOnlyDictionary<string, string> ShopLinks);
+
+public sealed record TcgCharacterDto(
+    Guid Id,
+    string Franchise,
+    string Name,
+    string? AlternateName,
+    OnePieceCharacterSpecificationDto? OnePieceSpecification);
+
+public sealed record OnePieceCharacterSpecificationDto(
+    string? Crew,
+    string? DevilFruit,
+    string? Role,
+    string? FirstAppearance);
 
 public sealed record LaptopFilterCriteria(
     IReadOnlyList<string>? Models,

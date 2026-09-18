@@ -91,6 +91,8 @@ public interface IProductRepository
         CancellationToken cancellationToken = default);
     void InvalidateCatalogCache();
     void Add(Product product);
+    Task<IReadOnlyList<TcgCharacter>> ListTcgCharactersAsync(CancellationToken cancellationToken = default);
+    void Add(TcgCharacter character);
     void Remove(Product product);
     Task<IReadOnlyList<ProductTranslationPendingDto>> GetPendingTranslationsAsync(int limit, CancellationToken cancellationToken = default);
     Task<ProductTranslationStatsDto> GetTranslationStatsAsync(CancellationToken cancellationToken = default);

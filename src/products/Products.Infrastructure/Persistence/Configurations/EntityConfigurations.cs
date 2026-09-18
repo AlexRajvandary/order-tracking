@@ -331,14 +331,67 @@ public sealed class TcgCardSpecificationConfiguration : IEntityTypeConfiguration
         builder.ToTable("tcg_card_specifications");
         builder.HasKey(x => x.ProductId);
         builder.Property(x => x.CharacterName).HasMaxLength(200);
+        builder.Property(x => x.Franchise).HasMaxLength(100);
         builder.Property(x => x.SetName).HasMaxLength(200);
         builder.Property(x => x.CardNumber).HasMaxLength(100);
+        builder.Property(x => x.Rarity).HasMaxLength(100);
+        builder.Property(x => x.OfficialUrl).HasMaxLength(2000);
         builder.Property(x => x.ShopLinksJson).HasColumnType("jsonb");
         builder.HasOne(x => x.Product)
             .WithOne(x => x.TcgCardSpecification)
             .HasForeignKey<TcgCardSpecification>(x => x.ProductId)
             .OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(x => x.CharacterName);
+        builder.HasIndex(x => x.Franchise);
         builder.HasIndex(x => new { x.SetName, x.CardNumber });
+    }
+}
+
+public sealed class TcgCharacterConfiguration : IEntityTypeConfiguration<TcgCharacter>
+{
+    public void Configure(EntityTypeBuilder<TcgCharacter> builder)
+    {
+        builder.ToTable("tcg_characters");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Franchise).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.AlternateName).HasMaxLength(200);
+        builder.HasIndex(x => new { x.Franchise, x.Name }).IsUnique();
+    }
+}
+
+public sealed class TcgCardCharacterConfiguration : IEntityTypeConfiguration<TcgCardCharacter>
+{
+    public void Configure(EntityTypeBuilder<TcgCardCharacter> builder)
+    {
+        builder.ToTable("tcg_card_characters");
+        builder.HasKey(x => new { x.ProductId, x.CharacterId });
+        builder.HasOne(x => x.Card)
+            .WithMany(x => x.Characters)
+            .HasForeignKey(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.Character)
+            .WithMany(x => x.Cards)
+            .HasForeignKey(x => x.CharacterId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(x => x.CharacterId);
+    }
+}
+
+public sealed class OnePieceCharacterSpecificationConfiguration : IEntityTypeConfiguration<OnePieceCharacterSpecification>
+{
+    public void Configure(EntityTypeBuilder<OnePieceCharacterSpecification> builder)
+    {
+        builder.ToTable("one_piece_character_specifications");
+        builder.HasKey(x => x.CharacterId);
+        builder.Property(x => x.Crew).HasMaxLength(200);
+        builder.Property(x => x.DevilFruit).HasMaxLength(300);
+        builder.Property(x => x.Role).HasMaxLength(300);
+        builder.Property(x => x.FirstAppearance).HasMaxLength(200);
+        builder.HasOne(x => x.Character)
+            .WithOne(x => x.OnePieceSpecification)
+            .HasForeignKey<OnePieceCharacterSpecification>(x => x.CharacterId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(x => x.Crew);
     }
 }

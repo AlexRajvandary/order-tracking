@@ -213,6 +213,22 @@ export type ImportProductItem = {
   setName?: string | null
   cardNumber?: string | null
   shopLinks?: Record<string, string> | null
+  franchise?: string | null
+  rarity?: string | null
+  officialUrl?: string | null
+  crew?: string | null
+  devilFruit?: string | null
+  role?: string | null
+  firstAppearance?: string | null
+  tcgCharacters?: Array<{
+    name: string
+    franchise?: string | null
+    alternateName?: string | null
+    crew?: string | null
+    devilFruit?: string | null
+    role?: string | null
+    firstAppearance?: string | null
+  }> | null
   pokemon_name?: string | null
   image_url?: string | null
   card_number?: string | null

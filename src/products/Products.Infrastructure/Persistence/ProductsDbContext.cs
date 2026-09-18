@@ -39,6 +39,12 @@ public sealed class ProductsDbContext : DbContext
 
     public DbSet<TcgCardSpecification> TcgCardSpecifications => Set<TcgCardSpecification>();
 
+    public DbSet<TcgCharacter> TcgCharacters => Set<TcgCharacter>();
+
+    public DbSet<TcgCardCharacter> TcgCardCharacters => Set<TcgCardCharacter>();
+
+    public DbSet<OnePieceCharacterSpecification> OnePieceCharacterSpecifications => Set<OnePieceCharacterSpecification>();
+
     public DbSet<ImageImportJob> ImageImportJobs => Set<ImageImportJob>();
 
     public DbSet<ImageImportJobItem> ImageImportJobItems => Set<ImageImportJobItem>();

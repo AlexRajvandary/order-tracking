@@ -69,16 +69,22 @@ const EXAMPLE_JSON = `[
 
 function normalizeImportedProduct(item: ImportProductItem): ImportProductItem {
   const text = (key: string) => typeof item[key] === 'string' ? item[key].trim() : ''
-  const pokemonName = text('pokemon_name') || text('Field1') || text('Text')
-  const setName = text('set') || text('Text1')
-  const cardNumber = (text('card_number') || text('Text2')).replace(/^No:\s*/i, '')
+  const onePieceCharacter = text('Character')
+  const characterName = onePieceCharacter || text('pokemon_name') || text('Field1') || text('Text')
+  const explicitCardNumber = text('CardNumber') || text('card_number')
+  const legacyCardNumber = /^No:\s*|^[A-Z]{1,8}\d{0,3}-\d+/i.test(text('Text2')) ? text('Text2') : ''
+  const cardNumber = (explicitCardNumber || legacyCardNumber).replace(/^No:\s*/i, '')
+  const setName = text('set') || text('Text1') || cardNumber.split('-', 1)[0]
   const rawShopLinks: Record<string, string> = {
     yahoo_auction: text('URL'),
-    mercari: text('URL1'),
+    mercari: text('MercariLink') || text('URL1'),
     magi: text('URL2'),
     suruga_ya: text('URL3'),
-    rakuma: text('URL4'),
-    rakuten: text('URL5'),
+    rakuma: text('RakumaLink') || text('URL4'),
+    yahoo_flea_market: text('YahooLink'),
+    rakuten: text('RakutenLink') || text('URL5'),
+    amazon_japan: text('AmazonLink'),
+    yahoo_shopping: text('_Link5'),
   }
   const octoparseShopLinks = Object.fromEntries(
     Object.entries(rawShopLinks).filter(([, url]) => url),
@@ -86,27 +92,56 @@ function normalizeImportedProduct(item: ImportProductItem): ImportProductItem {
   const normalizedShopLinks = item.shop_links && typeof item.shop_links === 'object'
     ? item.shop_links
     : octoparseShopLinks
-  const isTcgCard = Boolean(pokemonName || setName || cardNumber || Object.keys(normalizedShopLinks).length)
+  const isTcgCard = Boolean(characterName || setName || cardNumber || Object.keys(normalizedShopLinks).length)
   if (!isTcgCard) return item
+
+  const rawDevilFruit = text('DevilFruit')
+  const rawRole = text('Role')
+  const rawFirstAppearance = text('FirstAppearance')
+  const looksLikeDevilFruit = (value: string) => /\bno Mi\b|Devil Fruit/i.test(value)
+  const looksLikeAppearance = (value: string) => /^(Chapter|Episode)\s+/i.test(value)
+  const looksLikeBounty = (value: string) => /^[฿¥$€£]/.test(value)
+  const devilFruit = looksLikeDevilFruit(rawDevilFruit) ? rawDevilFruit : ''
+  const role = rawRole && !looksLikeAppearance(rawRole) && !looksLikeBounty(rawRole)
+    ? rawRole
+    : rawDevilFruit && !looksLikeDevilFruit(rawDevilFruit) ? rawDevilFruit : ''
+  const firstAppearance = [rawFirstAppearance, rawRole].find(looksLikeAppearance) || ''
+  const franchise = onePieceCharacter ? 'one-piece' : text('franchise') || 'pokemon'
 
   return {
     ...item,
-    name: item.name || [pokemonName, setName, cardNumber ? `#${cardNumber}` : ''].filter(Boolean).join(' '),
+    name: item.name || [characterName, setName, cardNumber ? `#${cardNumber}` : ''].filter(Boolean).join(' '),
     price: item.price ?? 0,
     imageUrl: item.imageUrl || item.image_url || text('Image_URL') || null,
-    characterName: item.characterName || pokemonName || null,
+    sourceUrl: item.sourceUrl || text('OffialLink') || text('OfficialLink') || null,
+    characterName: item.characterName || characterName || null,
+    franchise: item.franchise || franchise,
     setName: item.setName || setName || null,
     cardNumber: item.cardNumber || cardNumber || null,
+    rarity: item.rarity || text('Rarity') || null,
+    officialUrl: item.officialUrl || text('OffialLink') || text('OfficialLink') || null,
+    crew: item.crew || text('Crew') || null,
+    devilFruit: item.devilFruit || devilFruit || null,
+    role: item.role || role || null,
+    firstAppearance: item.firstAppearance || firstAppearance || null,
+    tcgCharacters: item.tcgCharacters || (characterName ? [{
+      name: characterName,
+      franchise,
+      crew: text('Crew') || null,
+      devilFruit: devilFruit || null,
+      role: role || null,
+      firstAppearance: firstAppearance || null,
+    }] : null),
     shopLinks: item.shopLinks || normalizedShopLinks,
     categorySlug: item.categoryId || item.categoryName || item.categorySlug ? item.categorySlug : 'tcg',
   }
 }
 
 function isEmptyOctoparseTcgRow(item: ImportProductItem): boolean {
-  const hasOctoparseColumns = ['Field1', 'Image_URL', 'Text1', 'Text2', 'URL']
+  const hasOctoparseColumns = ['Field1', 'Image_URL', 'Text1', 'Text2', 'URL', 'Character', 'CardNumber']
     .some((key) => key in item)
   if (!hasOctoparseColumns) return false
-  return ['Field1', 'Text', 'Image_URL', 'Text1', 'Text2', 'URL', 'URL1', 'URL2', 'URL3', 'URL4', 'URL5']
+  return ['Field1', 'Text', 'Character', 'Image_URL', 'CardNumber', 'Text1', 'Text2', 'URL', 'URL1', 'URL2', 'URL3', 'URL4', 'URL5']
     .every((key) => typeof item[key] !== 'string' || item[key].trim() === '')
 }
 
@@ -150,7 +185,24 @@ function parseProducts(json: string): ImportProductItem[] {
     .filter((item) => !isEmptyOctoparseTcgRow(item))
     .map(normalizeImportedProduct)
   if (normalized.length === 0) throw new Error('empty')
-  return normalized
+
+  const merged = new Map<string, ImportProductItem>()
+  for (const item of normalized) {
+    const key = item.franchise === 'one-piece' && item.cardNumber
+      ? `one-piece|${item.cardNumber.toLowerCase()}`
+      : `row|${merged.size}`
+    const existing = merged.get(key)
+    if (!existing) {
+      merged.set(key, item)
+      continue
+    }
+    const characters = [...(existing.tcgCharacters || []), ...(item.tcgCharacters || [])]
+    existing.tcgCharacters = characters.filter((character, index) =>
+      characters.findIndex((candidate) =>
+        candidate.name.toLowerCase() === character.name.toLowerCase()
+        && (candidate.franchise || '').toLowerCase() === (character.franchise || '').toLowerCase()) === index)
+  }
+  return [...merged.values()]
 }
 
 function flattenCategoryOptions(

@@ -53,7 +53,10 @@ public sealed class ProductRepository : IProductRepository
             .Include(p => p.BrandEntity)
             .Include(p => p.Category)
             .Include(p => p.LaptopSpecification)
-            .Include(p => p.TcgCardSpecification)
+            .Include(p => p.TcgCardSpecification)!
+                .ThenInclude(x => x!.Characters)
+                    .ThenInclude(x => x.Character)
+                        .ThenInclude(x => x.OnePieceSpecification)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
     public Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
@@ -62,7 +65,10 @@ public sealed class ProductRepository : IProductRepository
             .Include(p => p.BrandEntity)
             .Include(p => p.Category)
             .Include(p => p.LaptopSpecification)
-            .Include(p => p.TcgCardSpecification)
+            .Include(p => p.TcgCardSpecification)!
+                .ThenInclude(x => x!.Characters)
+                    .ThenInclude(x => x.Character)
+                        .ThenInclude(x => x.OnePieceSpecification)
             .FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
 
     public Task<bool> IsSlugTakenAsync(
@@ -689,8 +695,10 @@ public sealed class ProductRepository : IProductRepository
         if (characters is not { Count: > 0 }) return query;
         var values = characters.Select(x => x.ToLower()).ToList();
         return query.Where(p => p.TcgCardSpecification != null
-            && p.TcgCardSpecification.CharacterName != null
-            && values.Contains(p.TcgCardSpecification.CharacterName.ToLower()));
+            && ((p.TcgCardSpecification.CharacterName != null
+                    && values.Contains(p.TcgCardSpecification.CharacterName.ToLower()))
+                || p.TcgCardSpecification.Characters.Any(link =>
+                    values.Contains(link.Character.Name.ToLower()))));
     }
 
     public async Task<LaptopFilterFacets> ListLaptopFacetsAsync(
@@ -725,10 +733,16 @@ public sealed class ProductRepository : IProductRepository
         var products = await BuildFilterQueryAsync(
             null, activeOnly, null, null, null, null, null, categoryId,
             categorySlug, includeCategoryChildren, null, null, cancellationToken);
-        var characters = await products
+        var legacyCharacters = products
             .Where(p => p.TcgCardSpecification != null
                 && p.TcgCardSpecification.CharacterName != null)
-            .Select(p => p.TcgCardSpecification!.CharacterName!)
+            .Select(p => p.TcgCardSpecification!.CharacterName!);
+        var normalizedCharacters = products
+            .Where(p => p.TcgCardSpecification != null)
+            .SelectMany(p => p.TcgCardSpecification!.Characters)
+            .Select(link => link.Character.Name);
+        var characters = await legacyCharacters
+            .Concat(normalizedCharacters)
             .Distinct()
             .OrderBy(x => x)
             .ToListAsync(cancellationToken);
@@ -776,6 +790,14 @@ public sealed class ProductRepository : IProductRepository
         _db.Products.Add(product);
         InvalidateMixedCandidatesCache();
     }
+
+    public async Task<IReadOnlyList<TcgCharacter>> ListTcgCharactersAsync(
+        CancellationToken cancellationToken = default) =>
+        await _db.TcgCharacters
+            .Include(x => x.OnePieceSpecification)
+            .ToListAsync(cancellationToken);
+
+    public void Add(TcgCharacter character) => _db.TcgCharacters.Add(character);
 
     public void InvalidateCatalogCache() => InvalidateMixedCandidatesCache();
 

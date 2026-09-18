@@ -12,6 +12,15 @@ public sealed record ImportProductsCommand(
     IReadOnlyList<ImportProductItem> Products,
     bool CreateMissingCategories = true) : IRequest<ImportProductsResult>;
 
+public sealed record ImportTcgCharacter(
+    string Name,
+    string? Franchise = null,
+    string? AlternateName = null,
+    string? Crew = null,
+    string? DevilFruit = null,
+    string? Role = null,
+    string? FirstAppearance = null);
+
 public sealed record ImportProductItem(
     string? Name,
     decimal? Price,
@@ -58,11 +67,20 @@ public sealed record ImportProductItem(
     string? SetName = null,
     string? CardNumber = null,
     IReadOnlyDictionary<string, string>? ShopLinks = null,
+    string? Franchise = null,
+    string? Rarity = null,
+    string? OfficialUrl = null,
+    string? Crew = null,
+    string? DevilFruit = null,
+    string? Role = null,
+    string? FirstAppearance = null,
+    IReadOnlyList<ImportTcgCharacter>? TcgCharacters = null,
     [property: JsonPropertyName("pokemon_name")] string? PokemonName = null,
     [property: JsonPropertyName("image_url")] string? NormalizedImageUrl = null,
     [property: JsonPropertyName("card_number")] string? NormalizedCardNumber = null,
     [property: JsonPropertyName("shop_links")] IReadOnlyDictionary<string, string>? NormalizedShopLinks = null,
     [property: JsonPropertyName("set")] string? NormalizedSetName = null,
+    [property: JsonPropertyName("Character")] string? OnePieceCharacterName = null,
     [property: JsonPropertyName("Field1")] string? OctoparseCharacterName = null,
     [property: JsonPropertyName("Text1")] string? OctoparseSetName = null,
     [property: JsonPropertyName("Text2")] string? OctoparseCardNumber = null,
@@ -72,6 +90,13 @@ public sealed record ImportProductItem(
     [property: JsonPropertyName("URL3")] string? SurugaYaUrl = null,
     [property: JsonPropertyName("URL4")] string? RakumaUrl = null,
     [property: JsonPropertyName("URL5")] string? RakutenUrl = null,
+    [property: JsonPropertyName("MercariLink")] string? OnePieceMercariUrl = null,
+    [property: JsonPropertyName("RakumaLink")] string? OnePieceRakumaUrl = null,
+    [property: JsonPropertyName("YahooLink")] string? OnePieceYahooFleaUrl = null,
+    [property: JsonPropertyName("RakutenLink")] string? OnePieceRakutenUrl = null,
+    [property: JsonPropertyName("AmazonLink")] string? OnePieceAmazonUrl = null,
+    [property: JsonPropertyName("_Link5")] string? OnePieceYahooShoppingUrl = null,
+    [property: JsonPropertyName("OffialLink")] string? MisspelledOfficialUrl = null,
     bool IsActive = true);
 
 public sealed record ImportProductsResult(
@@ -132,6 +157,7 @@ public sealed class ImportProductsCommandHandler
         var allCategories = (await _categories.ListAsync(false, cancellationToken)).ToList();
         var allBrands = (await _brands.ListAsync(false, cancellationToken)).ToList();
         var allShops = (await _shops.ListAsync(false, cancellationToken)).ToList();
+        var allTcgCharacters = (await _products.ListTcgCharactersAsync(cancellationToken)).ToList();
         var issues = new List<ImportProductIssue>();
         var batchSkus = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var batchSlugs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -214,9 +240,36 @@ public sealed class ImportProductsCommandHandler
             }
             if (shopResult.Created) shopsCreated++;
 
+            var productId = Guid.NewGuid();
+            var tcgSpecification = HasTcgSpecification(item) ? new TcgCardSpecification
+            {
+                ProductId = productId,
+                CharacterName = ResolvedCharacterName(item),
+                Franchise = ResolvedFranchise(item),
+                SetName = ResolvedSetName(item),
+                CardNumber = ResolvedCardNumber(item),
+                Rarity = Clean(item.Rarity),
+                OfficialUrl = ResolvedOfficialUrl(item),
+                ShopLinksJson = System.Text.Json.JsonSerializer.Serialize(ResolvedShopLinks(item)),
+            } : null;
+
+            if (tcgSpecification is not null)
+            {
+                foreach (var importedCharacter in ResolvedTcgCharacters(item))
+                {
+                    var character = ResolveTcgCharacter(importedCharacter, allTcgCharacters);
+                    tcgSpecification.Characters.Add(new TcgCardCharacter
+                    {
+                        ProductId = productId,
+                        CharacterId = character.Id,
+                        Character = character,
+                    });
+                }
+            }
+
             var product = new Product
             {
-                Id = Guid.NewGuid(),
+                Id = productId,
                 Name = name,
                 Slug = slug,
                 Description = Clean(item.Description),
@@ -260,13 +313,7 @@ public sealed class ImportProductsCommandHandler
                         ? null
                         : System.Text.Json.JsonSerializer.Serialize(item.RawSpecifications),
                 } : null,
-                TcgCardSpecification = HasTcgSpecification(item) ? new TcgCardSpecification
-                {
-                    CharacterName = ResolvedCharacterName(item),
-                    SetName = ResolvedSetName(item),
-                    CardNumber = ResolvedCardNumber(item),
-                    ShopLinksJson = System.Text.Json.JsonSerializer.Serialize(ResolvedShopLinks(item)),
-                } : null,
+                TcgCardSpecification = tcgSpecification,
             };
 
             if (sku is not null) batchSkus.Add(sku);
@@ -330,6 +377,22 @@ public sealed class ImportProductsCommandHandler
         if (ResolvedCharacterName(item) is { Length: > 200 }) return "CharacterName cannot exceed 200 characters.";
         if (ResolvedSetName(item) is { Length: > 200 }) return "SetName cannot exceed 200 characters.";
         if (ResolvedCardNumber(item) is { Length: > 100 }) return "CardNumber cannot exceed 100 characters.";
+        if (ResolvedFranchise(item) is { Length: > 100 }) return "Franchise cannot exceed 100 characters.";
+        if (Clean(item.Rarity) is { Length: > 100 }) return "Rarity cannot exceed 100 characters.";
+        if (ResolvedOfficialUrl(item) is { Length: > 2000 }) return "OfficialUrl cannot exceed 2000 characters.";
+        if (Clean(item.Crew) is { Length: > 200 }) return "Crew cannot exceed 200 characters.";
+        if (Clean(item.DevilFruit) is { Length: > 300 }) return "DevilFruit cannot exceed 300 characters.";
+        if (Clean(item.Role) is { Length: > 300 }) return "Role cannot exceed 300 characters.";
+        if (Clean(item.FirstAppearance) is { Length: > 200 }) return "FirstAppearance cannot exceed 200 characters.";
+        if (item.TcgCharacters?.Any(x => Clean(x.Name) is null
+                || Clean(x.Name)!.Length > 200
+                || Clean(x.Franchise) is { Length: > 100 }
+                || Clean(x.AlternateName) is { Length: > 200 }
+                || Clean(x.Crew) is { Length: > 200 }
+                || Clean(x.DevilFruit) is { Length: > 300 }
+                || Clean(x.Role) is { Length: > 300 }
+                || Clean(x.FirstAppearance) is { Length: > 200 }) == true)
+            return "One or more TCG character fields are invalid or too long.";
         if (ResolvedShopLinks(item).Any(x => x.Key.Length > 100 || x.Value.Length > 2000))
             return "Shop link names cannot exceed 100 characters and URLs cannot exceed 2000 characters.";
         return null;
@@ -340,10 +403,23 @@ public sealed class ImportProductsCommandHandler
         || ResolvedCardNumber(item) is not null || ResolvedShopLinks(item).Count > 0;
 
     private static string? ResolvedCharacterName(ImportProductItem item) =>
-        Clean(item.CharacterName) ?? Clean(item.PokemonName) ?? Clean(item.OctoparseCharacterName);
+        Clean(item.CharacterName) ?? Clean(item.PokemonName) ?? Clean(item.OnePieceCharacterName)
+        ?? Clean(item.OctoparseCharacterName);
+
+    private static string? ResolvedFranchise(ImportProductItem item) =>
+        Clean(item.Franchise)?.ToLowerInvariant()
+        ?? (Clean(item.OnePieceCharacterName) is not null || HasOnePieceMetadata(item) ? "one-piece" : null)
+        ?? (Clean(item.PokemonName) is not null ? "pokemon" : null);
 
     private static string? ResolvedSetName(ImportProductItem item) =>
-        Clean(item.SetName) ?? Clean(item.NormalizedSetName) ?? Clean(item.OctoparseSetName);
+        Clean(item.SetName) ?? Clean(item.NormalizedSetName) ?? Clean(item.OctoparseSetName)
+        ?? SetFromCardNumber(ResolvedCardNumber(item));
+
+    private static string? SetFromCardNumber(string? cardNumber)
+    {
+        var separator = cardNumber?.IndexOf('-') ?? -1;
+        return separator > 0 ? cardNumber![..separator] : null;
+    }
 
     private static string? ResolvedCardNumber(ImportProductItem item) =>
         (Clean(item.CardNumber) ?? Clean(item.NormalizedCardNumber) ?? Clean(item.OctoparseCardNumber))
@@ -362,12 +438,80 @@ public sealed class ImportProductsCommandHandler
         new Dictionary<string, string>
         {
             ["yahoo_auction"] = item.YahooAuctionUrl ?? string.Empty,
-            ["mercari"] = item.MercariUrl ?? string.Empty,
+            ["mercari"] = item.OnePieceMercariUrl ?? item.MercariUrl ?? string.Empty,
             ["magi"] = item.MagiUrl ?? string.Empty,
             ["suruga_ya"] = item.SurugaYaUrl ?? string.Empty,
-            ["rakuma"] = item.RakumaUrl ?? string.Empty,
-            ["rakuten"] = item.RakutenUrl ?? string.Empty,
+            ["rakuma"] = item.OnePieceRakumaUrl ?? item.RakumaUrl ?? string.Empty,
+            ["yahoo_flea_market"] = item.OnePieceYahooFleaUrl ?? string.Empty,
+            ["rakuten"] = item.OnePieceRakutenUrl ?? item.RakutenUrl ?? string.Empty,
+            ["amazon_japan"] = item.OnePieceAmazonUrl ?? string.Empty,
+            ["yahoo_shopping"] = item.OnePieceYahooShoppingUrl ?? string.Empty,
         };
+
+    private static string? ResolvedOfficialUrl(ImportProductItem item) =>
+        Clean(item.OfficialUrl) ?? Clean(item.MisspelledOfficialUrl);
+
+    private static bool HasOnePieceMetadata(ImportProductItem item) =>
+        Clean(item.Crew) is not null || Clean(item.DevilFruit) is not null
+        || Clean(item.Role) is not null || Clean(item.FirstAppearance) is not null
+        || Clean(item.MisspelledOfficialUrl) is not null;
+
+    private static IReadOnlyList<ImportTcgCharacter> ResolvedTcgCharacters(ImportProductItem item)
+    {
+        if (item.TcgCharacters is { Count: > 0 })
+            return item.TcgCharacters
+                .Where(x => Clean(x.Name) is not null)
+                .GroupBy(x => $"{Clean(x.Franchise)?.ToLowerInvariant()}|{Clean(x.Name)?.ToLowerInvariant()}")
+                .Select(x => x.First())
+                .ToList();
+        return ResolvedCharacterName(item) is { } name
+            ? [new ImportTcgCharacter(
+                name,
+                ResolvedFranchise(item),
+                Crew: Clean(item.Crew),
+                DevilFruit: Clean(item.DevilFruit),
+                Role: Clean(item.Role),
+                FirstAppearance: Clean(item.FirstAppearance))]
+            : [];
+    }
+
+    private TcgCharacter ResolveTcgCharacter(
+        ImportTcgCharacter imported,
+        List<TcgCharacter> characters)
+    {
+        var characterName = Clean(imported.Name)!;
+        var franchise = Clean(imported.Franchise)?.ToLowerInvariant() ?? "tcg";
+        var character = characters.FirstOrDefault(x =>
+            string.Equals(x.Franchise, franchise, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(x.Name, characterName, StringComparison.OrdinalIgnoreCase));
+        if (character is null)
+        {
+            character = new TcgCharacter
+            {
+                Id = Guid.NewGuid(),
+                Franchise = franchise,
+                Name = characterName,
+                AlternateName = Clean(imported.AlternateName),
+            };
+            characters.Add(character);
+            _products.Add(character);
+        }
+
+        if (string.Equals(franchise, "one-piece", StringComparison.OrdinalIgnoreCase))
+        {
+            character.OnePieceSpecification ??= new OnePieceCharacterSpecification
+            {
+                CharacterId = character.Id,
+                Character = character,
+            };
+            character.OnePieceSpecification.Crew ??= Clean(imported.Crew);
+            character.OnePieceSpecification.DevilFruit ??= Clean(imported.DevilFruit);
+            character.OnePieceSpecification.Role ??= Clean(imported.Role);
+            character.OnePieceSpecification.FirstAppearance ??= Clean(imported.FirstAppearance);
+        }
+
+        return character;
+    }
 
     private static string? ResolvedName(ImportProductItem item)
     {
