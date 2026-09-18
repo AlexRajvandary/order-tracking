@@ -21,6 +21,7 @@ public class Product : AuditableEntity
     public ICollection<ProductVariant> ProductVariants { get; set; } = new List<ProductVariant>();
     public ICollection<ProductImage> ProductImages { get; set; } = new List<ProductImage>();
     public LaptopSpecification? LaptopSpecification { get; set; }
+    public TcgCardSpecification? TcgCardSpecification { get; set; }
     /// <summary>New or used (Б/У).</summary>
     public ProductCondition Condition { get; set; } = ProductCondition.New;
     public ProductGender? Gender { get; set; }

@@ -27,6 +27,7 @@ public sealed record ListProductsQuery(
     string? LaptopStorageGb = null,
     string? LaptopScreenSize = null,
     string? LaptopOperatingSystem = null,
+    string? TcgCharacter = null,
     int Page = 1,
     int PageSize = 20,
     string? Sort = null,
@@ -52,6 +53,7 @@ public sealed class ListProductsQueryValidator : AbstractValidator<ListProductsQ
         RuleFor(x => x.LaptopModel).MaximumLength(2000);
         RuleFor(x => x.LaptopProcessor).MaximumLength(2000);
         RuleFor(x => x.LaptopOperatingSystem).MaximumLength(2000);
+        RuleFor(x => x.TcgCharacter).MaximumLength(4000);
     }
 }
 
@@ -130,6 +132,7 @@ public sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery
                 ParseInts(request.LaptopStorageGb),
                 ParseDecimals(request.LaptopScreenSize),
                 ParseStrings(request.LaptopOperatingSystem)),
+            ParseStrings(request.TcgCharacter),
             request.Page,
             request.PageSize,
             request.Sort?.Equals("mixed", StringComparison.OrdinalIgnoreCase) == true,

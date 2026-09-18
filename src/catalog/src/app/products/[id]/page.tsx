@@ -15,6 +15,14 @@ import { formatPrice, getProductById, type Product } from "@/lib/products";
 
 type PageProps = { params: Promise<{ id: string }> };
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const TCG_SHOP_NAMES: Record<string, string> = {
+  yahoo_auction: "Yahoo Auction",
+  mercari: "Mercari",
+  magi: "Magi",
+  suruga_ya: "Suruga-ya",
+  rakuma: "Rakuma",
+  rakuten: "Rakuten",
+};
 
 async function resolveProduct(idOrSlug: string): Promise<CatalogProduct | Product | undefined> {
   const decoded = decodeURIComponent(idOrSlug);
@@ -62,7 +70,11 @@ export default async function ProductPage({ params }: PageProps) {
     ["Магазин", product.shopName],
     ["Категория", product.category],
     ["Состояние", condition],
+    ["Персонаж", product.tcgCard?.characterName],
+    ["Набор", product.tcgCard?.setName],
+    ["Номер карты", product.tcgCard?.cardNumber],
   ].filter(([, value]) => typeof value === "string" && value.trim().length > 0);
+  const tcgShopLinks = Object.entries(product.tcgCard?.shopLinks ?? {}).filter(([, url]) => /^https?:\/\//i.test(url));
   const backHref = rootSlug ? `/categories/${rootSlug}${child ? `?sub=${encodeURIComponent(child.slug)}` : ""}` : "/";
 
   return (
@@ -83,7 +95,7 @@ export default async function ProductPage({ params }: PageProps) {
           <div className="mt-6 space-y-3 bg-muted/40 p-5 text-sm"><p className="font-medium">Заказ из Японии</p><p className="text-muted-foreground">Товар будет выкуплен у японского магазина после оформления заказа.</p>{condition ? <div className="flex justify-between border-t border-border pt-3"><span>Состояние</span><span>{condition}</span></div> : null}<Button render={<Link href="/item-weight" />} variant="outline" className="mt-2 w-full bg-background"><Scale data-icon="inline-start" />Примерный вес товара</Button></div>
         </div>
       </div>
-      <section className="mt-16 grid gap-8 border-t border-border pt-8 md:grid-cols-[1fr_1.4fr]"><div><h2 className="text-xl font-semibold">О товаре</h2>{product.description ? <p className="mt-4 max-w-md whitespace-pre-line text-sm leading-6 text-muted-foreground">{product.description}</p> : null}</div>{productDetails.length > 0 ? <dl className="divide-y divide-border text-sm">{productDetails.map(([label, value]) => <div key={label} className="flex justify-between gap-6 py-3"><dt className="text-muted-foreground">{label}</dt><dd className="text-right">{value}</dd></div>)}</dl> : null}</section>
+      <section className="mt-16 grid gap-8 border-t border-border pt-8 md:grid-cols-[1fr_1.4fr]"><div><h2 className="text-xl font-semibold">О товаре</h2>{product.description ? <p className="mt-4 max-w-md whitespace-pre-line text-sm leading-6 text-muted-foreground">{product.description}</p> : null}{tcgShopLinks.length > 0 ? <div className="mt-6"><p className="text-sm font-medium">Найти в магазинах</p><div className="mt-2 flex flex-wrap gap-2">{tcgShopLinks.map(([shop, url]) => <Button key={shop} render={<a href={url} target="_blank" rel="noreferrer" />} variant="outline" size="sm">{TCG_SHOP_NAMES[shop.toLowerCase()] ?? shop.replaceAll("_", " ")}</Button>)}</div></div> : null}</div>{productDetails.length > 0 ? <dl className="divide-y divide-border text-sm">{productDetails.map(([label, value]) => <div key={label} className="flex justify-between gap-6 py-3"><dt className="text-muted-foreground">{label}</dt><dd className="text-right">{value}</dd></div>)}</dl> : null}</section>
       {related.length > 0 ? <section className="mt-14 space-y-4"><h2 className="text-xl font-semibold">Вам также может понравиться</h2><div className="grid grid-cols-2 gap-3 md:grid-cols-4">{related.map((item) => <ProductCard key={item.id} product={item} />)}</div></section> : null}
     </main></div>
   );

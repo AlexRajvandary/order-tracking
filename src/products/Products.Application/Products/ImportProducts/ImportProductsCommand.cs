@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Products.Application.Common.Interfaces;
 using Products.Domain.Entities;
@@ -53,6 +54,25 @@ public sealed record ImportProductItem(
     bool? CopilotPlus = null,
     string? ReleaseModel = null,
     IReadOnlyList<string>? RawSpecifications = null,
+    string? CharacterName = null,
+    string? SetName = null,
+    string? CardNumber = null,
+    IReadOnlyDictionary<string, string>? ShopLinks = null,
+    [property: JsonPropertyName("pokemon_name")] string? PokemonName = null,
+    [property: JsonPropertyName("image_url")] string? NormalizedImageUrl = null,
+    [property: JsonPropertyName("card_number")] string? NormalizedCardNumber = null,
+    [property: JsonPropertyName("shop_links")] IReadOnlyDictionary<string, string>? NormalizedShopLinks = null,
+    [property: JsonPropertyName("set")] string? NormalizedSetName = null,
+    [property: JsonPropertyName("Field1")] string? OctoparseCharacterName = null,
+    [property: JsonPropertyName("Text1")] string? OctoparseSetName = null,
+    [property: JsonPropertyName("Text2")] string? OctoparseCardNumber = null,
+    [property: JsonPropertyName("Image_URL")] string? OctoparseImageUrl = null,
+    [property: JsonPropertyName("URL")] string? YahooAuctionUrl = null,
+    [property: JsonPropertyName("URL1")] string? MercariUrl = null,
+    [property: JsonPropertyName("URL2")] string? MagiUrl = null,
+    [property: JsonPropertyName("URL3")] string? SurugaYaUrl = null,
+    [property: JsonPropertyName("URL4")] string? RakumaUrl = null,
+    [property: JsonPropertyName("URL5")] string? RakutenUrl = null,
     bool IsActive = true);
 
 public sealed record ImportProductsResult(
@@ -125,21 +145,22 @@ public sealed class ImportProductsCommandHandler
         for (var index = 0; index < request.Products.Count; index++)
         {
             var item = request.Products[index];
+            var resolvedName = ResolvedName(item);
             var validationError = ValidateItem(item);
             if (validationError is not null)
             {
-                issues.Add(new ImportProductIssue(index, item.Name, "failed", validationError));
+                issues.Add(new ImportProductIssue(index, resolvedName, "failed", validationError));
                 continue;
             }
 
             var referenceError = ValidateReferences(item, allCategories, allBrands, allShops);
             if (referenceError is not null)
             {
-                issues.Add(new ImportProductIssue(index, item.Name, "failed", referenceError));
+                issues.Add(new ImportProductIssue(index, resolvedName, "failed", referenceError));
                 continue;
             }
 
-            var name = item.Name!.Trim();
+            var name = resolvedName!;
             var sku = Clean(item.Sku);
             var hasExplicitSlug = !string.IsNullOrWhiteSpace(item.Slug);
             var requestedSlug = ImportSlug(hasExplicitSlug ? item.Slug! : name);
@@ -203,11 +224,11 @@ public sealed class ImportProductsCommandHandler
                 Sku = sku,
                 Brand = brandResult.Brand?.Name ?? Clean(item.Brand),
                 BrandId = brandResult.Brand?.Id,
-                Price = item.Price!.Value,
+                Price = item.Price ?? 0,
                 CurrencyCode = (Clean(item.CurrencyCode) ?? "RUB").ToUpperInvariant(),
                 OriginalPrice = item.OriginalPrice,
                 OriginalCurrencyCode = Clean(item.OriginalCurrencyCode)?.ToUpperInvariant(),
-                ImageUrl = item.ImageUrl!.Trim(),
+                ImageUrl = ResolvedImageUrl(item)!,
                 SourceUrl = Clean(item.SourceUrl),
                 Condition = UsedInNamePattern.IsMatch(name)
                     ? ProductCondition.Used
@@ -240,6 +261,13 @@ public sealed class ImportProductsCommandHandler
                         ? null
                         : System.Text.Json.JsonSerializer.Serialize(item.RawSpecifications),
                 } : null,
+                TcgCardSpecification = HasTcgSpecification(item) ? new TcgCardSpecification
+                {
+                    CharacterName = ResolvedCharacterName(item),
+                    SetName = ResolvedSetName(item),
+                    CardNumber = ResolvedCardNumber(item),
+                    ShopLinksJson = System.Text.Json.JsonSerializer.Serialize(ResolvedShopLinks(item)),
+                } : null,
             };
 
             if (sku is not null) batchSkus.Add(sku);
@@ -265,16 +293,18 @@ public sealed class ImportProductsCommandHandler
 
     private static string? ValidateItem(ImportProductItem item)
     {
-        if (string.IsNullOrWhiteSpace(item.Name)) return "Name is required.";
-        if (item.Name.Trim().Length > 500) return "Name cannot exceed 500 characters.";
+        var name = ResolvedName(item);
+        var imageUrl = ResolvedImageUrl(item);
+        if (string.IsNullOrWhiteSpace(name)) return "Name is required (or provide pokemon_name for a TCG card).";
+        if (name.Length > 500) return "Name cannot exceed 500 characters.";
         if (Clean(item.Sku) is { Length: > 100 }) return "Sku cannot exceed 100 characters.";
         if (Clean(item.Brand) is { Length: > 200 }) return "Brand cannot exceed 200 characters.";
         if (!string.IsNullOrWhiteSpace(item.Gender)
             && !ListProducts.ListProductsQueryHandler.TryParseGender(item.Gender, out _))
             return "Gender must be one of: unisex, men, women, kids.";
-        if (!item.Price.HasValue || item.Price < 0) return "Price must be zero or greater.";
-        if (string.IsNullOrWhiteSpace(item.ImageUrl)) return "ImageUrl is required.";
-        if (item.ImageUrl.Trim().Length > 2000) return "ImageUrl cannot exceed 2000 characters.";
+        if ((!HasTcgSpecification(item) && !item.Price.HasValue) || item.Price < 0) return "Price must be zero or greater.";
+        if (string.IsNullOrWhiteSpace(imageUrl)) return "ImageUrl is required.";
+        if (imageUrl.Length > 2000) return "ImageUrl cannot exceed 2000 characters.";
         if (Clean(item.SourceUrl) is { Length: > 2000 }) return "SourceUrl cannot exceed 2000 characters.";
         if (Clean(item.ShopName) is { Length: > 200 }) return "ShopName cannot exceed 200 characters.";
         if (CategoryName(item) is { Length: > 200 }) return "Category name cannot exceed 200 characters.";
@@ -298,7 +328,60 @@ public sealed class ImportProductsCommandHandler
         if (Clean(item.Office) is { Length: > 300 }) return "Office cannot exceed 300 characters.";
         if (Clean(item.Graphics) is { Length: > 200 }) return "Graphics cannot exceed 200 characters.";
         if (Clean(item.ReleaseModel) is { Length: > 200 }) return "ReleaseModel cannot exceed 200 characters.";
+        if (ResolvedCharacterName(item) is { Length: > 200 }) return "CharacterName cannot exceed 200 characters.";
+        if (ResolvedSetName(item) is { Length: > 200 }) return "SetName cannot exceed 200 characters.";
+        if (ResolvedCardNumber(item) is { Length: > 100 }) return "CardNumber cannot exceed 100 characters.";
+        if (ResolvedShopLinks(item).Any(x => x.Key.Length > 100 || x.Value.Length > 2000))
+            return "Shop link names cannot exceed 100 characters and URLs cannot exceed 2000 characters.";
         return null;
+    }
+
+    private static bool HasTcgSpecification(ImportProductItem item) =>
+        ResolvedCharacterName(item) is not null || ResolvedSetName(item) is not null
+        || ResolvedCardNumber(item) is not null || ResolvedShopLinks(item).Count > 0;
+
+    private static string? ResolvedCharacterName(ImportProductItem item) =>
+        Clean(item.CharacterName) ?? Clean(item.PokemonName) ?? Clean(item.OctoparseCharacterName);
+
+    private static string? ResolvedSetName(ImportProductItem item) =>
+        Clean(item.SetName) ?? Clean(item.NormalizedSetName) ?? Clean(item.OctoparseSetName);
+
+    private static string? ResolvedCardNumber(ImportProductItem item) =>
+        (Clean(item.CardNumber) ?? Clean(item.NormalizedCardNumber) ?? Clean(item.OctoparseCardNumber))
+            ?.Replace("No:", string.Empty, StringComparison.OrdinalIgnoreCase).Trim();
+
+    private static string? ResolvedImageUrl(ImportProductItem item) =>
+        Clean(item.ImageUrl) ?? Clean(item.NormalizedImageUrl) ?? Clean(item.OctoparseImageUrl);
+
+    private static Dictionary<string, string> ResolvedShopLinks(ImportProductItem item) =>
+        (item.ShopLinks ?? item.NormalizedShopLinks ?? OctoparseShopLinks(item))
+            .Where(x => Clean(x.Key) is not null && Clean(x.Value) is not null)
+            .GroupBy(x => Clean(x.Key)!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => Clean(x.Last().Value)!, StringComparer.OrdinalIgnoreCase);
+
+    private static Dictionary<string, string> OctoparseShopLinks(ImportProductItem item) =>
+        new Dictionary<string, string>
+        {
+            ["yahoo_auction"] = item.YahooAuctionUrl ?? string.Empty,
+            ["mercari"] = item.MercariUrl ?? string.Empty,
+            ["magi"] = item.MagiUrl ?? string.Empty,
+            ["suruga_ya"] = item.SurugaYaUrl ?? string.Empty,
+            ["rakuma"] = item.RakumaUrl ?? string.Empty,
+            ["rakuten"] = item.RakutenUrl ?? string.Empty,
+        };
+
+    private static string? ResolvedName(ImportProductItem item)
+    {
+        var explicitName = Clean(item.Name);
+        if (explicitName is not null) return explicitName;
+        var character = ResolvedCharacterName(item);
+        if (character is null) return null;
+        return string.Join(" ", new[]
+        {
+            character,
+            ResolvedSetName(item),
+            ResolvedCardNumber(item) is { } number ? $"#{number}" : null,
+        }.Where(x => x is not null));
     }
 
     private static bool HasLaptopSpecification(ImportProductItem item) =>
@@ -341,6 +424,13 @@ public sealed class ImportProductsCommandHandler
 
         var name = CategoryName(item);
         var slugSource = Clean(item.CategorySlug) ?? name;
+        if (slugSource is null && HasTcgSpecification(item))
+        {
+            var tcg = all.FirstOrDefault(x => string.Equals(x.Slug, "tcg", StringComparison.OrdinalIgnoreCase));
+            return tcg is null
+                ? (null, 0, "Category with slug 'tcg' was not found. Select it in the import dialog.")
+                : (tcg, 0, null);
+        }
         if (slugSource is null) return (null, 0, null);
 
         var parentResult = ResolveParentCategory(item, all, createMissing);

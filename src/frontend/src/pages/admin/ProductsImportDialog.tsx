@@ -67,6 +67,49 @@ const EXAMPLE_JSON = `[
   }
 ]`
 
+function normalizeImportedProduct(item: ImportProductItem): ImportProductItem {
+  const text = (key: string) => typeof item[key] === 'string' ? item[key].trim() : ''
+  const pokemonName = text('pokemon_name') || text('Field1') || text('Text')
+  const setName = text('set') || text('Text1')
+  const cardNumber = (text('card_number') || text('Text2')).replace(/^No:\s*/i, '')
+  const rawShopLinks: Record<string, string> = {
+    yahoo_auction: text('URL'),
+    mercari: text('URL1'),
+    magi: text('URL2'),
+    suruga_ya: text('URL3'),
+    rakuma: text('URL4'),
+    rakuten: text('URL5'),
+  }
+  const octoparseShopLinks = Object.fromEntries(
+    Object.entries(rawShopLinks).filter(([, url]) => url),
+  )
+  const normalizedShopLinks = item.shop_links && typeof item.shop_links === 'object'
+    ? item.shop_links
+    : octoparseShopLinks
+  const isTcgCard = Boolean(pokemonName || setName || cardNumber || Object.keys(normalizedShopLinks).length)
+  if (!isTcgCard) return item
+
+  return {
+    ...item,
+    name: item.name || [pokemonName, setName, cardNumber ? `#${cardNumber}` : ''].filter(Boolean).join(' '),
+    price: item.price ?? 0,
+    imageUrl: item.imageUrl || item.image_url || text('Image_URL') || null,
+    characterName: item.characterName || pokemonName || null,
+    setName: item.setName || setName || null,
+    cardNumber: item.cardNumber || cardNumber || null,
+    shopLinks: item.shopLinks || normalizedShopLinks,
+    categorySlug: item.categoryId || item.categoryName || item.categorySlug ? item.categorySlug : 'tcg',
+  }
+}
+
+function isEmptyOctoparseTcgRow(item: ImportProductItem): boolean {
+  const hasOctoparseColumns = ['Field1', 'Image_URL', 'Text1', 'Text2', 'URL']
+    .some((key) => key in item)
+  if (!hasOctoparseColumns) return false
+  return ['Field1', 'Text', 'Image_URL', 'Text1', 'Text2', 'URL', 'URL1', 'URL2', 'URL3', 'URL4', 'URL5']
+    .every((key) => typeof item[key] !== 'string' || item[key].trim() === '')
+}
+
 type ImportSummary = Omit<ImportProductsResult, 'total' | 'issues'> & {
   total: number
   issues: ImportProductIssue[]
@@ -103,7 +146,11 @@ function parseProducts(json: string): ImportProductItem[] {
   if (products.some((item) => item == null || typeof item !== 'object' || Array.isArray(item))) {
     throw new Error('items')
   }
-  return products as ImportProductItem[]
+  const normalized = (products as ImportProductItem[])
+    .filter((item) => !isEmptyOctoparseTcgRow(item))
+    .map(normalizeImportedProduct)
+  if (normalized.length === 0) throw new Error('empty')
+  return normalized
 }
 
 function flattenCategoryOptions(

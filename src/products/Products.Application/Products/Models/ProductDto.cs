@@ -28,7 +28,8 @@ public sealed record ProductDto(
     bool IsActive,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt,
-    LaptopSpecificationDto? LaptopSpecification);
+    LaptopSpecificationDto? LaptopSpecification,
+    TcgCardSpecificationDto? TcgCardSpecification);
 
 public sealed record LaptopSpecificationDto(
     string? Model,
@@ -44,6 +45,12 @@ public sealed record LaptopSpecificationDto(
     string? Graphics,
     bool? HasCopilotPlus,
     string? ReleaseModel);
+
+public sealed record TcgCardSpecificationDto(
+    string? CharacterName,
+    string? SetName,
+    string? CardNumber,
+    IReadOnlyDictionary<string, string> ShopLinks);
 
 public sealed record LaptopFilterCriteria(
     IReadOnlyList<string>? Models,
@@ -62,6 +69,8 @@ public sealed record LaptopFilterFacets(
     IReadOnlyList<int> StorageGb,
     IReadOnlyList<decimal> ScreenSizes,
     IReadOnlyList<string> OperatingSystems);
+
+public sealed record TcgFilterFacets(IReadOnlyList<string> Characters);
 
 public sealed record ProductTranslationPendingDto(Guid Id, string Name);
 public sealed record ProductTranslationResultDto(Guid Id, string NameRu);

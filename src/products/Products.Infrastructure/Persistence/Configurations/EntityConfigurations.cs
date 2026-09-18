@@ -323,3 +323,22 @@ public sealed class LaptopSpecificationConfiguration : IEntityTypeConfiguration<
         builder.HasIndex(x => x.OperatingSystem);
     }
 }
+
+public sealed class TcgCardSpecificationConfiguration : IEntityTypeConfiguration<TcgCardSpecification>
+{
+    public void Configure(EntityTypeBuilder<TcgCardSpecification> builder)
+    {
+        builder.ToTable("tcg_card_specifications");
+        builder.HasKey(x => x.ProductId);
+        builder.Property(x => x.CharacterName).HasMaxLength(200);
+        builder.Property(x => x.SetName).HasMaxLength(200);
+        builder.Property(x => x.CardNumber).HasMaxLength(100);
+        builder.Property(x => x.ShopLinksJson).HasColumnType("jsonb");
+        builder.HasOne(x => x.Product)
+            .WithOne(x => x.TcgCardSpecification)
+            .HasForeignKey<TcgCardSpecification>(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(x => x.CharacterName);
+        builder.HasIndex(x => new { x.SetName, x.CardNumber });
+    }
+}

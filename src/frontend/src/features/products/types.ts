@@ -209,6 +209,15 @@ export type ImportProductItem = {
   parentCategory?: string | null
   parentCategoryName?: string | null
   parentCategorySlug?: string | null
+  characterName?: string | null
+  setName?: string | null
+  cardNumber?: string | null
+  shopLinks?: Record<string, string> | null
+  pokemon_name?: string | null
+  image_url?: string | null
+  card_number?: string | null
+  shop_links?: Record<string, string> | null
+  set?: string | null
   isActive?: boolean
   [key: string]: unknown
 }

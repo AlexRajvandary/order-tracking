@@ -29,6 +29,12 @@ export type ApiProduct = {
   isActive: boolean;
   createdAt: string;
   updatedAt: string | null;
+  tcgCardSpecification: {
+    characterName: string | null;
+    setName: string | null;
+    cardNumber: string | null;
+    shopLinks: Record<string, string>;
+  } | null;
 };
 
 export type ApiProductListResult = {
@@ -170,6 +176,7 @@ export function mapApiProductToCatalog(
     sourceUrl: p.sourceUrl ?? undefined,
     oldPriceRub,
     discountPercent: discount,
+    tcgCard: p.tcgCardSpecification ?? undefined,
   };
 }
 
@@ -190,6 +197,7 @@ export async function fetchProductsPage(options?: {
   laptopStorageGb?: string[];
   laptopScreenSizes?: string[];
   laptopOperatingSystems?: string[];
+  tcgCharacters?: string[];
   categoryId?: string;
   categorySlug?: string;
   includeCategoryChildren?: boolean;
@@ -236,6 +244,9 @@ export async function fetchProductsPage(options?: {
   ];
   for (const [key, values] of laptopParams) {
     if (values && values.length > 0) params.set(key, values.join(","));
+  }
+  if (options?.tcgCharacters && options.tcgCharacters.length > 0) {
+    params.set("tcgCharacter", options.tcgCharacters.join(","));
   }
   if (options?.categoryId) {
     params.set("categoryId", options.categoryId);
@@ -306,6 +317,7 @@ export async function fetchCatalogPage(options: {
     models?: string[]; processors?: string[]; ramGb?: string[]; storageTypes?: string[];
     storageGb?: string[]; screenSizes?: string[]; operatingSystems?: string[];
   };
+  tcgCharacters?: string[];
   /** Child subcategory slug, or omit for the whole root category tree. */
   categoryId?: string;
   categorySlug?: string;
@@ -337,6 +349,7 @@ export async function fetchCatalogPage(options: {
     laptopStorageGb: options.laptopFilters?.storageGb,
     laptopScreenSizes: options.laptopFilters?.screenSizes,
     laptopOperatingSystems: options.laptopFilters?.operatingSystems,
+    tcgCharacters: options.tcgCharacters,
     categoryId: options.categoryId ?? options.rootCategoryId,
     categorySlug: options.categoryId || options.rootCategoryId ? undefined : categorySlug,
     includeCategoryChildren,

@@ -53,6 +53,7 @@ public sealed class ProductRepository : IProductRepository
             .Include(p => p.BrandEntity)
             .Include(p => p.Category)
             .Include(p => p.LaptopSpecification)
+            .Include(p => p.TcgCardSpecification)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
     public Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
@@ -61,6 +62,7 @@ public sealed class ProductRepository : IProductRepository
             .Include(p => p.BrandEntity)
             .Include(p => p.Category)
             .Include(p => p.LaptopSpecification)
+            .Include(p => p.TcgCardSpecification)
             .FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
 
     public Task<bool> IsSlugTakenAsync(
@@ -97,6 +99,7 @@ public sealed class ProductRepository : IProductRepository
         decimal? priceMin,
         decimal? priceMax,
         LaptopFilterCriteria? laptopFilters,
+        IReadOnlyList<string>? tcgCharacters,
         int page,
         int pageSize,
         bool mixCategories,
@@ -122,6 +125,7 @@ public sealed class ProductRepository : IProductRepository
             query = query.Where(product => product.Gender.HasValue && genders.Contains(product.Gender.Value));
 
         query = ApplyLaptopFilters(query, laptopFilters);
+        query = ApplyTcgFilters(query, tcgCharacters);
 
         if (mixCategories)
         {
@@ -141,7 +145,8 @@ public sealed class ProductRepository : IProductRepository
                     includeCategoryChildren,
                     priceMin,
                     priceMax,
-                    laptopFilters),
+                    laptopFilters,
+                    tcgCharacters),
                 page,
                 pageSize,
                 shuffleSeed,
@@ -154,6 +159,7 @@ public sealed class ProductRepository : IProductRepository
             .Include(p => p.BrandEntity)
             .Include(p => p.Category)
             .Include(p => p.LaptopSpecification)
+            .Include(p => p.TcgCardSpecification)
             .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -192,6 +198,8 @@ public sealed class ProductRepository : IProductRepository
             .Include(product => product.Shop)
             .Include(product => product.BrandEntity)
             .Include(product => product.Category)
+            .Include(product => product.LaptopSpecification)
+            .Include(product => product.TcgCardSpecification)
             .ToListAsync(cancellationToken);
         var productsById = products.ToDictionary(product => product.Id);
 
@@ -258,7 +266,8 @@ public sealed class ProductRepository : IProductRepository
         bool includeCategoryChildren,
         decimal? priceMin,
         decimal? priceMax,
-        LaptopFilterCriteria? laptopFilters)
+        LaptopFilterCriteria? laptopFilters,
+        IReadOnlyList<string>? tcgCharacters)
     {
         var parts = new[]
         {
@@ -284,6 +293,7 @@ public sealed class ProductRepository : IProductRepository
             CachePart(JoinCacheValues(laptopFilters?.StorageGb)),
             CachePart(JoinCacheValues(laptopFilters?.ScreenSizes)),
             CachePart(JoinCacheValues(laptopFilters?.OperatingSystems)),
+            CachePart(JoinCacheValues(tcgCharacters, value => value.Trim().ToLowerInvariant())),
         };
 
         return string.Join('|', parts);
@@ -672,6 +682,17 @@ public sealed class ProductRepository : IProductRepository
         return query;
     }
 
+    private static IQueryable<Product> ApplyTcgFilters(
+        IQueryable<Product> query,
+        IReadOnlyList<string>? characters)
+    {
+        if (characters is not { Count: > 0 }) return query;
+        var values = characters.Select(x => x.ToLower()).ToList();
+        return query.Where(p => p.TcgCardSpecification != null
+            && p.TcgCardSpecification.CharacterName != null
+            && values.Contains(p.TcgCardSpecification.CharacterName.ToLower()));
+    }
+
     public async Task<LaptopFilterFacets> ListLaptopFacetsAsync(
         Guid? categoryId,
         string? categorySlug,
@@ -692,6 +713,26 @@ public sealed class ProductRepository : IProductRepository
             await specs.Where(x => x.StorageGb != null).Select(x => x.StorageGb!.Value).Distinct().OrderBy(x => x).ToListAsync(cancellationToken),
             await specs.Where(x => x.ScreenSizeInches != null).Select(x => x.ScreenSizeInches!.Value).Distinct().OrderBy(x => x).ToListAsync(cancellationToken),
             await specs.Where(x => x.OperatingSystem != null).Select(x => x.OperatingSystem!).Distinct().OrderBy(x => x).ToListAsync(cancellationToken));
+    }
+
+    public async Task<TcgFilterFacets> ListTcgFacetsAsync(
+        Guid? categoryId,
+        string? categorySlug,
+        bool includeCategoryChildren,
+        bool? activeOnly,
+        CancellationToken cancellationToken = default)
+    {
+        var products = await BuildFilterQueryAsync(
+            null, activeOnly, null, null, null, null, null, categoryId,
+            categorySlug, includeCategoryChildren, null, null, cancellationToken);
+        var characters = await products
+            .Where(p => p.TcgCardSpecification != null
+                && p.TcgCardSpecification.CharacterName != null)
+            .Select(p => p.TcgCardSpecification!.CharacterName!)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync(cancellationToken);
+        return new TcgFilterFacets(characters);
     }
 
     public async Task<(IReadOnlyList<Brand> Brands, IReadOnlyList<Shop> Shops)> ListFacetsAsync(

@@ -24,6 +24,7 @@ export type ApiCatalogFacets = {
     screenSizes: number[];
     operatingSystems: string[];
   };
+  tcg: { characters: string[] };
 };
 
 function productsApiBaseUrl(): string {
@@ -72,6 +73,7 @@ export async function fetchCatalogFacets(
       models: [], processors: [], ramGb: [], storageTypes: [], storageGb: [],
       screenSizes: [], operatingSystems: [],
     },
+    tcg: data.tcg ?? { characters: [] },
   };
 }
 

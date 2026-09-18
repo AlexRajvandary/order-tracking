@@ -31,6 +31,12 @@ export type Product = {
   rating?: number;
   reviewsCount?: number;
   isPremium?: boolean;
+  tcgCard?: {
+    characterName: string | null;
+    setName: string | null;
+    cardNumber: string | null;
+    shopLinks: Record<string, string>;
+  };
 };
 
 const products: Product[] = [

@@ -48,7 +48,13 @@ internal static class ProductMappings
                 product.LaptopSpecification.Office,
                 product.LaptopSpecification.Graphics,
                 product.LaptopSpecification.HasCopilotPlus,
-                product.LaptopSpecification.ReleaseModel));
+                product.LaptopSpecification.ReleaseModel),
+            product.TcgCardSpecification is null ? null : new TcgCardSpecificationDto(
+                product.TcgCardSpecification.CharacterName,
+                product.TcgCardSpecification.SetName,
+                product.TcgCardSpecification.CardNumber,
+                System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
+                    product.TcgCardSpecification.ShopLinksJson) ?? new Dictionary<string, string>()));
 
     public static string ToConditionSlug(ProductCondition condition) =>
         condition switch

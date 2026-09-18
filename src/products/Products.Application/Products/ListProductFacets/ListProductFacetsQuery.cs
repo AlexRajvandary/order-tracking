@@ -15,7 +15,8 @@ public sealed record ListProductFacetsQuery(
 public sealed record ProductFacetsResult(
     IReadOnlyList<BrandDto> Brands,
     IReadOnlyList<ShopDto> Shops,
-    LaptopFilterFacets Laptop);
+    LaptopFilterFacets Laptop,
+    TcgFilterFacets Tcg);
 
 public sealed class ListProductFacetsQueryHandler(IProductRepository products)
     : IRequestHandler<ListProductFacetsQuery, ProductFacetsResult>
@@ -38,6 +39,14 @@ public sealed class ListProductFacetsQueryHandler(IProductRepository products)
                 request.ActiveOnly,
                 cancellationToken)
             : new LaptopFilterFacets([], [], [], [], [], [], []);
+        var tcg = string.Equals(request.Category, "tcg", StringComparison.OrdinalIgnoreCase)
+            ? await products.ListTcgFacetsAsync(
+                request.CategoryId,
+                request.Category,
+                request.IncludeCategoryChildren,
+                request.ActiveOnly,
+                cancellationToken)
+            : new TcgFilterFacets([]);
 
         return new ProductFacetsResult(
             brands.Select(brand => new BrandDto(
@@ -56,6 +65,7 @@ public sealed class ListProductFacetsQueryHandler(IProductRepository products)
                 shop.Description,
                 shop.SortOrder,
                 shop.IsActive)).ToList(),
-            laptop);
+            laptop,
+            tcg);
     }
 }

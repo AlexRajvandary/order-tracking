@@ -86,6 +86,8 @@ export type CatalogBrowserProps = {
     screenSizes: string[];
     operatingSystems: string[];
   };
+  tcgCharacters?: string[];
+  selectedTcgCharacters?: string[];
   /** Server-side pagination (Products API). When set, `products` is the current page. */
   pagination?: {
     page: number;
@@ -189,15 +191,14 @@ function LaptopFiltersContent({
   onToggle: (key: keyof LaptopFilterSelection, value: string) => void;
   compact?: boolean;
 }) {
-  const groups: Array<{ key: keyof LaptopFilterSelection; label: string; suffix?: string; values: Array<string | number> }> = [
-    { key: "models", label: "Модель", values: facets.models },
+  const groups = ([
     { key: "processors", label: "Процессор", values: facets.processors },
     { key: "ramGb", label: "Оперативная память", suffix: " ГБ", values: facets.ramGb },
     { key: "storageTypes", label: "Тип накопителя", values: facets.storageTypes },
     { key: "storageGb", label: "Объём накопителя", suffix: " ГБ", values: facets.storageGb },
     { key: "screenSizes", label: "Диагональ", suffix: "″", values: facets.screenSizes },
     { key: "operatingSystems", label: "Операционная система", values: facets.operatingSystems },
-  ];
+  ] satisfies Array<{ key: keyof LaptopFilterSelection; label: string; suffix?: string; values: Array<string | number> }>).filter((group) => group.values.length > 0);
 
   return (
     <div className={cn("grid gap-4", !compact && "max-h-[65vh] grid-cols-3 overflow-y-auto pr-1")}>
@@ -428,6 +429,8 @@ export function CatalogBrowser({
   selectedGenders = [],
   laptopFacets = { models: [], processors: [], ramGb: [], storageTypes: [], storageGb: [], screenSizes: [], operatingSystems: [] },
   selectedLaptopFilters = emptyLaptopFilters,
+  tcgCharacters = [],
+  selectedTcgCharacters = [],
   pagination,
 }: CatalogBrowserProps) {
   if (!productsLoading) {
@@ -462,6 +465,7 @@ export function CatalogBrowser({
   const selectedCategoryKey = `${activeRootSlug ?? "all"}:${activeChildSlug ?? ""}`;
   const showGenderFilter = ["shoes", "obuv", "обувь"].includes(activeRootSlug?.toLowerCase() ?? "");
   const showLaptopFilters = (activeChildSlug ?? activeRootSlug)?.toLowerCase() === "laptops";
+  const showTcgFilters = (activeChildSlug ?? activeRootSlug)?.toLowerCase() === "tcg";
   const [freshCategoryCount, setFreshCategoryCount] = useState<{
     key: string;
     count?: number;
@@ -474,6 +478,18 @@ export function CatalogBrowser({
       ? freshCategoryCount.count
       : undefined;
   const effectiveBrandOptions = brands.length > 0 ? brands : brandOptions;
+  const hasShopOptions = (shops?.length ?? 0) > 0;
+  const hasBrandOptions = effectiveBrandOptions.length > 0 || !categoryFacetsScoped;
+  const hasPriceData = products.length > 0;
+  const hasTcgCharacterOptions = tcgCharacters.length > 0;
+  const hasLaptopFacetData = [
+    laptopFacets.processors,
+    laptopFacets.ramGb,
+    laptopFacets.storageTypes,
+    laptopFacets.storageGb,
+    laptopFacets.screenSizes,
+    laptopFacets.operatingSystems,
+  ].some((values) => values.length > 0);
   const selectedBrandKey = selectedBrandSlugs.join(",");
   const [brandSelection, setBrandSelection] = useState({
     sourceKey: selectedBrandKey,
@@ -565,6 +581,7 @@ export function CatalogBrowser({
     selectedBrandSlugs.join(","),
     selectedShopSlugs.join(","),
     selectedGenders.join(","),
+    selectedTcgCharacters.join(","),
     ...Object.values(selectedLaptopFilters).map((values) => values.join(",")),
     pagination?.shuffleSeed ?? "default",
     pagination?.page ?? 1,
@@ -632,6 +649,10 @@ export function CatalogBrowser({
     toggleCsvParam("genders", slug);
   }
 
+  function onToggleTcgCharacter(character: string) {
+    toggleCsvParam("tcgCharacters", character);
+  }
+
   function onToggleLaptopFilter(key: keyof LaptopFilterSelection, value: string) {
     const queryKeys: Record<keyof LaptopFilterSelection, string> = {
       models: "laptopModels",
@@ -694,6 +715,7 @@ export function CatalogBrowser({
     if (selectedBrandSlugs.length > 0) params.set("brands", selectedBrandSlugs.join(","));
     if (selectedShopSlugs.length > 0) params.set("shops", selectedShopSlugs.join(","));
     if (showGenderFilter && selectedGenders.length > 0) params.set("genders", selectedGenders.join(","));
+    if (showTcgFilters && selectedTcgCharacters.length > 0) params.set("tcgCharacters", selectedTcgCharacters.join(","));
     if (showLaptopFilters) {
       const queryKeys: Record<keyof LaptopFilterSelection, string> = {
         models: "laptopModels", processors: "laptopProcessors", ramGb: "laptopRamGb",
@@ -737,12 +759,14 @@ export function CatalogBrowser({
       selectedBrandSlugs.length > 0 ||
       selectedShopSlugs.length > 0 ||
       selectedGenders.length > 0;
+    const hasTcgFilters = showTcgFilters && selectedTcgCharacters.length > 0;
     const hasLaptopFilters = showLaptopFilters && Object.values(selectedLaptopFilters).some((values) => values.length > 0);
-    if (hasQueryFilters || hasLaptopFilters) {
+    if (hasQueryFilters || hasLaptopFilters || hasTcgFilters) {
       replaceQuery((params) => {
         params.delete("brands");
         params.delete("shops");
         params.delete("genders");
+        params.delete("tcgCharacters");
         params.delete("laptopModels");
         params.delete("laptopProcessors");
         params.delete("laptopRamGb");
@@ -760,7 +784,8 @@ export function CatalogBrowser({
     (priceActive ? 1 : 0) +
     (activeBrandSlugs.length > 0 ? 1 : 0) +
     (selectedShopSlugs.length > 0 ? 1 : 0) +
-    (showGenderFilter && selectedGenders.length > 0 ? 1 : 0);
+    (showGenderFilter && selectedGenders.length > 0 ? 1 : 0) +
+    (showTcgFilters && selectedTcgCharacters.length > 0 ? 1 : 0);
   const laptopActiveCount = showLaptopFilters
     ? Object.values(selectedLaptopFilters).filter((values) => values.length > 0).length
     : 0;
@@ -841,7 +866,7 @@ export function CatalogBrowser({
             </Button>
 
             <div className="ml-auto hidden max-w-full flex-wrap items-center justify-end gap-2 sm:flex min-[992px]:flex-nowrap">
-              <FilterDropdown label="Цена" activeCount={priceActive ? 1 : 0}>
+              {hasPriceData ? <FilterDropdown label="Цена" activeCount={priceActive ? 1 : 0}>
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Цена, ₽
                 </p>
@@ -871,14 +896,14 @@ export function CatalogBrowser({
                     />
                   </label>
                 </div>
-              </FilterDropdown>
-              <MultiSelectFilter
+              </FilterDropdown> : null}
+              {hasShopOptions ? <MultiSelectFilter
                 label="Магазин"
                 options={shops ?? []}
                 selected={selectedShopSlugs}
                 onToggle={onToggleShop}
-              />
-              <MultiSelectFilter
+              /> : null}
+              {hasBrandOptions ? <MultiSelectFilter
                 label="Бренд"
                 options={effectiveBrandOptions}
                 selected={activeBrandSlugs}
@@ -887,7 +912,7 @@ export function CatalogBrowser({
                 loading={brands.length === 0 && brandsLoading}
                 error={brands.length === 0 && brandsError}
                 searchable
-              />
+              /> : null}
               {showGenderFilter ? (
                 <MultiSelectFilter
                   label="Пол"
@@ -896,7 +921,16 @@ export function CatalogBrowser({
                   onToggle={onToggleGender}
                 />
               ) : null}
-              {showLaptopFilters ? (
+              {showTcgFilters && hasTcgCharacterOptions ? (
+                <MultiSelectFilter
+                  label="Персонаж"
+                  options={facetOptions(tcgCharacters)}
+                  selected={selectedTcgCharacters}
+                  onToggle={onToggleTcgCharacter}
+                  searchable
+                />
+              ) : null}
+              {showLaptopFilters && hasLaptopFacetData ? (
                 <FilterDropdown
                   label="Характеристики"
                   activeCount={laptopActiveCount}
@@ -1022,13 +1056,10 @@ export function CatalogBrowser({
         <SheetContent side="right" className="w-[min(100%,22rem)] gap-0 p-0">
           <SheetHeader className="border-b pr-14">
             <SheetTitle className="text-lg font-semibold">Фильтры</SheetTitle>
-            <SheetDescription>
-              Настройте параметры отображения товаров
-            </SheetDescription>
           </SheetHeader>
 
           <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5">
-            <section>
+            {hasPriceData ? <section>
               <h3 className="mb-3 text-sm font-semibold">Цена, ₽</h3>
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1.5">
@@ -1058,9 +1089,9 @@ export function CatalogBrowser({
                   />
                 </label>
               </div>
-            </section>
+            </section> : null}
 
-            <section className="border-t pt-5">
+            {hasShopOptions ? <section className="border-t pt-5">
               <h3 className="mb-2 text-sm font-semibold">Магазин</h3>
               <MultiSelectOptions
                 options={shops ?? []}
@@ -1070,7 +1101,7 @@ export function CatalogBrowser({
                 error={false}
                 searchable={false}
               />
-            </section>
+            </section> : null}
 
             {showGenderFilter ? (
               <section className="border-t pt-5">
@@ -1086,7 +1117,21 @@ export function CatalogBrowser({
               </section>
             ) : null}
 
-            {showLaptopFilters ? (
+            {showTcgFilters && hasTcgCharacterOptions ? (
+              <section className="border-t pt-5">
+                <h3 className="mb-2 text-sm font-semibold">Персонаж</h3>
+                <MultiSelectOptions
+                  options={facetOptions(tcgCharacters)}
+                  selected={selectedTcgCharacters}
+                  onToggle={onToggleTcgCharacter}
+                  loading={false}
+                  error={false}
+                  searchable
+                />
+              </section>
+            ) : null}
+
+            {showLaptopFilters && hasLaptopFacetData ? (
               <section className="border-t pt-5">
                 <h3 className="mb-3 text-sm font-semibold">Характеристики ноутбука</h3>
                 <LaptopFiltersContent
@@ -1098,7 +1143,7 @@ export function CatalogBrowser({
               </section>
             ) : null}
 
-            <section className="border-t pt-5">
+            {hasBrandOptions ? <section className="border-t pt-5">
               <h3 className="mb-2 text-sm font-semibold">Бренд</h3>
               <MultiSelectOptions
                 options={effectiveBrandOptions}
@@ -1108,7 +1153,7 @@ export function CatalogBrowser({
                 error={brands.length === 0 && brandsError}
                 searchable
               />
-            </section>
+            </section> : null}
 
             <section className="border-t pt-5">
               <h3 className="mb-2 text-sm font-semibold">Сортировка</h3>

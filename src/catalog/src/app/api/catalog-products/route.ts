@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
       laptopStorageGb: csv(params.get("laptopStorageGb")),
       laptopScreenSizes: csv(params.get("laptopScreenSizes")),
       laptopOperatingSystems: csv(params.get("laptopOperatingSystems")),
+      tcgCharacters: csv(params.get("tcgCharacters")),
       sort: params.get("sort") === "mixed" ? "mixed" : undefined,
       shuffleSeed: optionalInt(params.get("shuffleSeed")),
     });
