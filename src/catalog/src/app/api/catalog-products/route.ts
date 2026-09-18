@@ -44,6 +44,11 @@ export async function GET(request: NextRequest) {
       tcgSets: csv(params.get("tcgSets")),
       tcgRarities: csv(params.get("tcgRarities")),
       tcgCrews: csv(params.get("tcgCrews")),
+      yugiohCardTypes: csv(params.get("yugiohCardTypes")),
+      yugiohCardSubtypes: csv(params.get("yugiohCardSubtypes")),
+      yugiohAttributes: csv(params.get("yugiohAttributes")),
+      yugiohMonsterRaces: csv(params.get("yugiohMonsterRaces")),
+      yugiohSeriesTypes: csv(params.get("yugiohSeriesTypes")),
       sort: params.get("sort") === "mixed" ? "mixed" : undefined,
       shuffleSeed: optionalInt(params.get("shuffleSeed")),
     });

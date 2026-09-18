@@ -13,6 +13,7 @@ import { findCatalogProductBySlug, type CatalogProduct } from "@/lib/catalog-pro
 import { fetchCatalogPage, fetchProductById, fetchProductBySlug, fetchProductRelations, fetchRakutenItem, mapApiProductToCatalog, mapRakutenProductToCatalog } from "@/lib/products-api";
 import { formatPrice, getProductById, type Product } from "@/lib/products";
 import { onePieceRarityName } from "@/lib/one-piece-rarity";
+import { yuGiOhAttributeName, yuGiOhCardSubtypeName, yuGiOhCardTypeName } from "@/lib/yugioh-labels";
 
 type PageProps = { params: Promise<{ id: string }> };
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -70,13 +71,14 @@ export default async function ProductPage({ params }: PageProps) {
   const condition = product.condition === "used" ? "Б/У" : product.condition === "new" ? "Новое" : "";
   const summary = [product.brand, product.shopName, condition].filter(Boolean).join(" · ");
   const onePieceCharacter = product.tcgCard?.characters.find((item) => item.onePieceSpecification)?.onePieceSpecification;
+  const yugioh = product.tcgCard?.yuGiOhSpecification;
   const productDetails = [
     ["Бренд", product.brand],
     ["Магазин", product.shopName],
     ["Категория", product.category],
     ["Состояние", condition],
     ["Персонаж", product.tcgCard?.characterName],
-    ["Набор", product.tcgCard?.setName],
+    ["Набор", yugioh?.setNameRu ?? product.tcgCard?.setName],
     ["Номер карты", product.tcgCard?.cardNumber],
     ["Редкость", product.tcgCard?.franchise === "one-piece"
       ? onePieceRarityName(product.tcgCard.rarity)
@@ -85,6 +87,16 @@ export default async function ProductPage({ params }: PageProps) {
     ["Дьявольский фрукт", onePieceCharacter?.devilFruit],
     ["Роль", onePieceCharacter?.role],
     ["Первое появление", onePieceCharacter?.firstAppearance],
+    ["Японское написание", yugioh?.japaneseNameReading],
+    ["Тип карты", yuGiOhCardTypeName(yugioh?.cardType)],
+    ["Подтип", yuGiOhCardSubtypeName(yugioh?.cardSubtype)],
+    ["Атрибут", yuGiOhAttributeName(yugioh?.attribute)],
+    ["Характеристики", yugioh?.statsRaw],
+    ["Раса", yugioh?.monsterRaceRu ?? yugioh?.monsterRaceRaw],
+    ["Тип серии", yugioh?.seriesTypeRu ?? yugioh?.seriesType],
+    ["Альтернативное название серии", yugioh?.seriesAlternateNameRu ?? yugioh?.seriesAlternateName],
+    ["Дата выпуска", yugioh?.releaseDate],
+    ["Количество карт в серии", yugioh?.declaredCardCount != null ? String(yugioh.declaredCardCount) : null],
   ].filter(([, value]) => typeof value === "string" && value.trim().length > 0);
   const tcgShopLinks = Object.entries(product.tcgCard?.shopLinks ?? {}).filter(([, url]) => /^https?:\/\//i.test(url));
   const backHref = rootSlug ? `/categories/${rootSlug}${child ? `?sub=${encodeURIComponent(child.slug)}` : ""}` : "/";

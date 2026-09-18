@@ -51,6 +51,16 @@ export type Product = {
       } | null;
     }>;
     shopLinks: Record<string, string>;
+    yuGiOhSpecification: {
+      japaneseNameReading: string | null; setNameRu: string | null;
+      cardType: string | null; cardSubtype: string | null; attribute: string | null;
+      statsRaw: string | null; monsterRaceRaw: string | null; monsterRaceRu: string | null;
+      descriptionRu: string | null; seriesMetadataRaw: string | null;
+      seriesAlternateName: string | null; seriesAlternateNameRu: string | null;
+      seriesType: string | null; seriesTypeRu: string | null; releaseDate: string | null;
+      declaredCardCount: number | null; level: number | null; rank: number | null;
+      linkRating: number | null; attack: number | null; defense: number | null;
+    } | null;
   };
 };
 

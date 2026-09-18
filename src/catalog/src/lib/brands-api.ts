@@ -24,7 +24,13 @@ export type ApiCatalogFacets = {
     screenSizes: number[];
     operatingSystems: string[];
   };
-  tcg: { characters: string[]; sets: string[]; rarities: string[]; crews: string[] };
+  tcg: {
+    characters: string[]; sets: string[]; rarities: string[]; crews: string[];
+    yuGiOh: {
+      cardTypes: string[]; cardSubtypes: string[]; attributes: string[];
+      monsterRaces: string[]; seriesTypes: string[];
+    };
+  };
 };
 
 function productsApiBaseUrl(): string {
@@ -73,7 +79,10 @@ export async function fetchCatalogFacets(
       models: [], processors: [], ramGb: [], storageTypes: [], storageGb: [],
       screenSizes: [], operatingSystems: [],
     },
-    tcg: data.tcg ?? { characters: [], sets: [], rarities: [], crews: [] },
+    tcg: data.tcg ?? {
+      characters: [], sets: [], rarities: [], crews: [],
+      yuGiOh: { cardTypes: [], cardSubtypes: [], attributes: [], monsterRaces: [], seriesTypes: [] },
+    },
   };
 }
 

@@ -184,6 +184,7 @@ export type BulkUpdateProductsResult = { updatedCount: number }
 
 export type ImportProductItem = {
   name?: string | null
+  nameRu?: string | null
   price?: number | null
   imageUrl?: string | null
   slug?: string | null
@@ -220,6 +221,27 @@ export type ImportProductItem = {
   devilFruit?: string | null
   role?: string | null
   firstAppearance?: string | null
+  japaneseNameReading?: string | null
+  setNameRu?: string | null
+  cardType?: string | null
+  cardSubtype?: string | null
+  attribute?: string | null
+  statsRaw?: string | null
+  monsterRaceRaw?: string | null
+  monsterRaceRu?: string | null
+  descriptionRu?: string | null
+  seriesMetadataRaw?: string | null
+  seriesAlternateName?: string | null
+  seriesAlternateNameRu?: string | null
+  seriesType?: string | null
+  seriesTypeRu?: string | null
+  releaseDate?: string | null
+  declaredCardCount?: number | null
+  level?: number | null
+  rank?: number | null
+  linkRating?: number | null
+  attack?: number | null
+  defense?: number | null
   tcgCharacters?: Array<{
     name: string
     franchise?: string | null

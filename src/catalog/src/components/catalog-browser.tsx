@@ -39,6 +39,12 @@ import type { ApiShop } from "@/lib/shops-api";
 import { rememberCatalogNavigation } from "@/lib/catalog-navigation-snapshot";
 import { cn } from "@/lib/utils";
 import { onePieceRarityOptions } from "@/lib/one-piece-rarity";
+import {
+  yuGiOhAttributeName,
+  yuGiOhCardSubtypeName,
+  yuGiOhCardTypeName,
+  yuGiOhSeriesTypeName,
+} from "@/lib/yugioh-labels";
 
 type SortOption = "relevance" | "price-asc" | "price-desc" | "name";
 
@@ -95,6 +101,11 @@ export type CatalogBrowserProps = {
   selectedTcgRarities?: string[];
   tcgCrews?: string[];
   selectedTcgCrews?: string[];
+  yugiohFacets?: ApiCatalogFacets["tcg"]["yuGiOh"];
+  selectedYuGiOhFilters?: {
+    cardTypes: string[]; cardSubtypes: string[]; attributes: string[];
+    monsterRaces: string[]; seriesTypes: string[];
+  };
   /** Server-side pagination (Products API). When set, `products` is the current page. */
   pagination?: {
     page: number;
@@ -183,8 +194,21 @@ const emptyLaptopFilters: LaptopFilterSelection = {
   screenSizes: [], operatingSystems: [],
 };
 
+const emptyYuGiOhFilters = {
+  cardTypes: [], cardSubtypes: [], attributes: [], monsterRaces: [], seriesTypes: [],
+};
+
+const emptyYuGiOhFacets = { ...emptyYuGiOhFilters };
+
 function facetOptions(values: Array<string | number>) {
   return values.map((value) => ({ id: String(value), slug: String(value), name: String(value) }));
+}
+
+function yuGiOhFacetOptions(
+  values: string[],
+  label: (value: string) => string | null,
+) {
+  return values.map((value) => ({ id: value, slug: value, name: label(value) ?? value }));
 }
 
 function LaptopFiltersContent({
@@ -444,6 +468,8 @@ export function CatalogBrowser({
   selectedTcgRarities = [],
   tcgCrews = [],
   selectedTcgCrews = [],
+  yugiohFacets = emptyYuGiOhFacets,
+  selectedYuGiOhFilters = emptyYuGiOhFilters,
   pagination,
 }: CatalogBrowserProps) {
   if (!productsLoading) {
@@ -481,6 +507,7 @@ export function CatalogBrowser({
   const showTcgFilters = [activeRootSlug, activeChildSlug]
     .some((slug) => slug?.toLowerCase() === "tcg");
   const showOnePieceFilters = ["one-piece", "onepiece"].includes(activeChildSlug?.toLowerCase() ?? "");
+  const showYuGiOhFilters = ["yu-gi-oh", "yugioh"].includes(activeChildSlug?.toLowerCase() ?? "");
   const [freshCategoryCount, setFreshCategoryCount] = useState<{
     key: string;
     count?: number;
@@ -674,6 +701,14 @@ export function CatalogBrowser({
   function onToggleTcgSet(value: string) { toggleCsvParam("tcgSets", value); }
   function onToggleTcgRarity(value: string) { toggleCsvParam("tcgRarities", value); }
   function onToggleTcgCrew(value: string) { toggleCsvParam("tcgCrews", value); }
+  function onToggleYuGiOh(key: keyof typeof selectedYuGiOhFilters, value: string) {
+    const queryKeys: Record<keyof typeof selectedYuGiOhFilters, string> = {
+      cardTypes: "yugiohCardTypes", cardSubtypes: "yugiohCardSubtypes",
+      attributes: "yugiohAttributes", monsterRaces: "yugiohMonsterRaces",
+      seriesTypes: "yugiohSeriesTypes",
+    };
+    toggleCsvParam(queryKeys[key], value);
+  }
 
   function onToggleLaptopFilter(key: keyof LaptopFilterSelection, value: string) {
     const queryKeys: Record<keyof LaptopFilterSelection, string> = {
@@ -738,9 +773,19 @@ export function CatalogBrowser({
     if (selectedShopSlugs.length > 0) params.set("shops", selectedShopSlugs.join(","));
     if (showGenderFilter && selectedGenders.length > 0) params.set("genders", selectedGenders.join(","));
     if (showTcgFilters && selectedTcgCharacters.length > 0) params.set("tcgCharacters", selectedTcgCharacters.join(","));
-    if (showOnePieceFilters && selectedTcgSets.length > 0) params.set("tcgSets", selectedTcgSets.join(","));
-    if (showOnePieceFilters && selectedTcgRarities.length > 0) params.set("tcgRarities", selectedTcgRarities.join(","));
+    if ((showOnePieceFilters || showYuGiOhFilters) && selectedTcgSets.length > 0) params.set("tcgSets", selectedTcgSets.join(","));
+    if ((showOnePieceFilters || showYuGiOhFilters) && selectedTcgRarities.length > 0) params.set("tcgRarities", selectedTcgRarities.join(","));
     if (showOnePieceFilters && selectedTcgCrews.length > 0) params.set("tcgCrews", selectedTcgCrews.join(","));
+    if (showYuGiOhFilters) {
+      const keys: Record<keyof typeof selectedYuGiOhFilters, string> = {
+        cardTypes: "yugiohCardTypes", cardSubtypes: "yugiohCardSubtypes",
+        attributes: "yugiohAttributes", monsterRaces: "yugiohMonsterRaces",
+        seriesTypes: "yugiohSeriesTypes",
+      };
+      for (const key of Object.keys(keys) as Array<keyof typeof selectedYuGiOhFilters>) {
+        if (selectedYuGiOhFilters[key].length) params.set(keys[key], selectedYuGiOhFilters[key].join(","));
+      }
+    }
     if (showLaptopFilters) {
       const queryKeys: Record<keyof LaptopFilterSelection, string> = {
         models: "laptopModels", processors: "laptopProcessors", ramGb: "laptopRamGb",
@@ -785,7 +830,8 @@ export function CatalogBrowser({
       selectedShopSlugs.length > 0 ||
       selectedGenders.length > 0;
     const hasTcgFilters = showTcgFilters && (selectedTcgCharacters.length > 0
-      || selectedTcgSets.length > 0 || selectedTcgRarities.length > 0 || selectedTcgCrews.length > 0);
+      || selectedTcgSets.length > 0 || selectedTcgRarities.length > 0 || selectedTcgCrews.length > 0
+      || Object.values(selectedYuGiOhFilters).some((values) => values.length > 0));
     const hasLaptopFilters = showLaptopFilters && Object.values(selectedLaptopFilters).some((values) => values.length > 0);
     if (hasQueryFilters || hasLaptopFilters || hasTcgFilters) {
       replaceQuery((params) => {
@@ -796,6 +842,11 @@ export function CatalogBrowser({
         params.delete("tcgSets");
         params.delete("tcgRarities");
         params.delete("tcgCrews");
+        params.delete("yugiohCardTypes");
+        params.delete("yugiohCardSubtypes");
+        params.delete("yugiohAttributes");
+        params.delete("yugiohMonsterRaces");
+        params.delete("yugiohSeriesTypes");
         params.delete("laptopModels");
         params.delete("laptopProcessors");
         params.delete("laptopRamGb");
@@ -818,10 +869,13 @@ export function CatalogBrowser({
   const onePieceActiveCount = showOnePieceFilters
     ? [selectedTcgSets, selectedTcgRarities, selectedTcgCrews].filter((values) => values.length > 0).length
     : 0;
+  const yuGiOhActiveCount = showYuGiOhFilters
+    ? Object.values(selectedYuGiOhFilters).filter((values) => values.length > 0).length
+    : 0;
   const laptopActiveCount = showLaptopFilters
     ? Object.values(selectedLaptopFilters).filter((values) => values.length > 0).length
     : 0;
-  const totalActiveCount = activeCount + laptopActiveCount + onePieceActiveCount;
+  const totalActiveCount = activeCount + laptopActiveCount + onePieceActiveCount + yuGiOhActiveCount;
 
   return (
     <div>
@@ -962,17 +1016,37 @@ export function CatalogBrowser({
                   searchable
                 />
               ) : null}
-              {showOnePieceFilters && tcgSets.length > 0 ? <MultiSelectFilter
+              {(showOnePieceFilters || showYuGiOhFilters) && tcgSets.length > 0 ? <MultiSelectFilter
                 label="Набор" options={facetOptions(tcgSets)} selected={selectedTcgSets}
                 onToggle={onToggleTcgSet} searchable
               /> : null}
-              {showOnePieceFilters && tcgRarities.length > 0 ? <MultiSelectFilter
-                label="Редкость" options={onePieceRarityOptions(tcgRarities)} selected={selectedTcgRarities}
+              {(showOnePieceFilters || showYuGiOhFilters) && tcgRarities.length > 0 ? <MultiSelectFilter
+                label="Редкость" options={showOnePieceFilters ? onePieceRarityOptions(tcgRarities) : facetOptions(tcgRarities)} selected={selectedTcgRarities}
                 onToggle={onToggleTcgRarity}
               /> : null}
               {showOnePieceFilters && tcgCrews.length > 0 ? <MultiSelectFilter
                 label="Команда" options={facetOptions(tcgCrews)} selected={selectedTcgCrews}
                 onToggle={onToggleTcgCrew} searchable
+              /> : null}
+              {showYuGiOhFilters && yugiohFacets.cardTypes.length > 0 ? <MultiSelectFilter
+                label="Тип карты" options={yuGiOhFacetOptions(yugiohFacets.cardTypes, yuGiOhCardTypeName)} selected={selectedYuGiOhFilters.cardTypes}
+                onToggle={(value) => onToggleYuGiOh("cardTypes", value)}
+              /> : null}
+              {showYuGiOhFilters && yugiohFacets.cardSubtypes.length > 0 ? <MultiSelectFilter
+                label="Подтип" options={yuGiOhFacetOptions(yugiohFacets.cardSubtypes, yuGiOhCardSubtypeName)} selected={selectedYuGiOhFilters.cardSubtypes}
+                onToggle={(value) => onToggleYuGiOh("cardSubtypes", value)} searchable
+              /> : null}
+              {showYuGiOhFilters && yugiohFacets.attributes.length > 0 ? <MultiSelectFilter
+                label="Атрибут" options={yuGiOhFacetOptions(yugiohFacets.attributes, yuGiOhAttributeName)} selected={selectedYuGiOhFilters.attributes}
+                onToggle={(value) => onToggleYuGiOh("attributes", value)}
+              /> : null}
+              {showYuGiOhFilters && yugiohFacets.monsterRaces.length > 0 ? <MultiSelectFilter
+                label="Раса" options={facetOptions(yugiohFacets.monsterRaces)} selected={selectedYuGiOhFilters.monsterRaces}
+                onToggle={(value) => onToggleYuGiOh("monsterRaces", value)} searchable
+              /> : null}
+              {showYuGiOhFilters && yugiohFacets.seriesTypes.length > 0 ? <MultiSelectFilter
+                label="Тип серии" options={yuGiOhFacetOptions(yugiohFacets.seriesTypes, yuGiOhSeriesTypeName)} selected={selectedYuGiOhFilters.seriesTypes}
+                onToggle={(value) => onToggleYuGiOh("seriesTypes", value)}
               /> : null}
               {showLaptopFilters && hasLaptopFacetData ? (
                 <FilterDropdown
@@ -1175,18 +1249,28 @@ export function CatalogBrowser({
               </section>
             ) : null}
 
-            {showOnePieceFilters && tcgSets.length > 0 ? <section className="border-t pt-5">
+            {(showOnePieceFilters || showYuGiOhFilters) && tcgSets.length > 0 ? <section className="border-t pt-5">
               <h3 className="mb-2 text-sm font-semibold">Набор</h3>
               <MultiSelectOptions options={facetOptions(tcgSets)} selected={selectedTcgSets} onToggle={onToggleTcgSet} loading={false} error={false} searchable />
             </section> : null}
-            {showOnePieceFilters && tcgRarities.length > 0 ? <section className="border-t pt-5">
+            {(showOnePieceFilters || showYuGiOhFilters) && tcgRarities.length > 0 ? <section className="border-t pt-5">
               <h3 className="mb-2 text-sm font-semibold">Редкость</h3>
-              <MultiSelectOptions options={onePieceRarityOptions(tcgRarities)} selected={selectedTcgRarities} onToggle={onToggleTcgRarity} loading={false} error={false} searchable={false} />
+              <MultiSelectOptions options={showOnePieceFilters ? onePieceRarityOptions(tcgRarities) : facetOptions(tcgRarities)} selected={selectedTcgRarities} onToggle={onToggleTcgRarity} loading={false} error={false} searchable={false} />
             </section> : null}
             {showOnePieceFilters && tcgCrews.length > 0 ? <section className="border-t pt-5">
               <h3 className="mb-2 text-sm font-semibold">Команда</h3>
               <MultiSelectOptions options={facetOptions(tcgCrews)} selected={selectedTcgCrews} onToggle={onToggleTcgCrew} loading={false} error={false} searchable />
             </section> : null}
+            {showYuGiOhFilters ? ([
+              ["cardTypes", "Тип карты", yugiohFacets.cardTypes, false, yuGiOhCardTypeName],
+              ["cardSubtypes", "Подтип", yugiohFacets.cardSubtypes, true, yuGiOhCardSubtypeName],
+              ["attributes", "Атрибут", yugiohFacets.attributes, false, yuGiOhAttributeName],
+              ["monsterRaces", "Раса", yugiohFacets.monsterRaces, true, (value: string) => value],
+              ["seriesTypes", "Тип серии", yugiohFacets.seriesTypes, false, yuGiOhSeriesTypeName],
+            ] as const).map(([key, label, values, searchable, labelValue]) => values.length > 0 ? <section key={key} className="border-t pt-5">
+              <h3 className="mb-2 text-sm font-semibold">{label}</h3>
+              <MultiSelectOptions options={yuGiOhFacetOptions([...values], labelValue)} selected={selectedYuGiOhFilters[key]} onToggle={(value) => onToggleYuGiOh(key, value)} loading={false} error={false} searchable={searchable} />
+            </section> : null) : null}
 
             {showLaptopFilters && hasLaptopFacetData ? (
               <section className="border-t pt-5">

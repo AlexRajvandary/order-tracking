@@ -12,4 +12,5 @@ public sealed class TcgCardSpecification
     public string? OfficialUrl { get; set; }
     public string ShopLinksJson { get; set; } = "{}";
     public ICollection<TcgCardCharacter> Characters { get; set; } = new List<TcgCardCharacter>();
+    public YuGiOhCardSpecification? YuGiOhSpecification { get; set; }
 }

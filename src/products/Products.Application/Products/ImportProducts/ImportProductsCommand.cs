@@ -25,6 +25,7 @@ public sealed record ImportProductItem(
     string? Name,
     decimal? Price,
     string? ImageUrl,
+    string? NameRu = null,
     string? Slug = null,
     string? Description = null,
     string? Sku = null,
@@ -74,6 +75,27 @@ public sealed record ImportProductItem(
     string? DevilFruit = null,
     string? Role = null,
     string? FirstAppearance = null,
+    string? JapaneseNameReading = null,
+    string? SetNameRu = null,
+    string? CardType = null,
+    string? CardSubtype = null,
+    string? Attribute = null,
+    string? StatsRaw = null,
+    string? MonsterRaceRaw = null,
+    string? MonsterRaceRu = null,
+    string? DescriptionRu = null,
+    string? SeriesMetadataRaw = null,
+    string? SeriesAlternateName = null,
+    string? SeriesAlternateNameRu = null,
+    string? SeriesType = null,
+    string? SeriesTypeRu = null,
+    DateOnly? ReleaseDate = null,
+    int? DeclaredCardCount = null,
+    int? Level = null,
+    int? Rank = null,
+    int? LinkRating = null,
+    int? Attack = null,
+    int? Defense = null,
     IReadOnlyList<ImportTcgCharacter>? TcgCharacters = null,
     [property: JsonPropertyName("pokemon_name")] string? PokemonName = null,
     [property: JsonPropertyName("image_url")] string? NormalizedImageUrl = null,
@@ -84,7 +106,7 @@ public sealed record ImportProductItem(
     [property: JsonPropertyName("Field1")] string? OctoparseCharacterName = null,
     [property: JsonPropertyName("Text1")] string? OctoparseSetName = null,
     [property: JsonPropertyName("Text2")] string? OctoparseCardNumber = null,
-    [property: JsonPropertyName("URL")] string? YahooAuctionUrl = null,
+    [property: JsonPropertyName("URL")] string? OctoparseUrl = null,
     [property: JsonPropertyName("URL1")] string? MercariUrl = null,
     [property: JsonPropertyName("URL2")] string? MagiUrl = null,
     [property: JsonPropertyName("URL3")] string? SurugaYaUrl = null,
@@ -96,6 +118,14 @@ public sealed record ImportProductItem(
     [property: JsonPropertyName("RakutenLink")] string? OnePieceRakutenUrl = null,
     [property: JsonPropertyName("AmazonLink")] string? OnePieceAmazonUrl = null,
     [property: JsonPropertyName("_Link5")] string? OnePieceYahooShoppingUrl = null,
+    [property: JsonPropertyName("_Link")] string? YuGiOhYahooAuctionUrl = null,
+    [property: JsonPropertyName("_Link1")] string? YuGiOhMercariUrl = null,
+    [property: JsonPropertyName("_Link2")] string? YuGiOhRakumaUrl = null,
+    [property: JsonPropertyName("_Link3")] string? YuGiOhYahooFleaUrl = null,
+    [property: JsonPropertyName("_Link4")] string? YuGiOhRakutenUrl = null,
+    [property: JsonPropertyName("_Link6")] string? YuGiOhYahooShoppingUrl = null,
+    [property: JsonPropertyName("Series")] string? YuGiOhSeries = null,
+    [property: JsonPropertyName("Series2")] string? YuGiOhSeriesMetadataRaw = null,
     [property: JsonPropertyName("OffialLink")] string? MisspelledOfficialUrl = null,
     bool IsActive = true);
 
@@ -253,6 +283,36 @@ public sealed class ImportProductsCommandHandler
                 ShopLinksJson = System.Text.Json.JsonSerializer.Serialize(ResolvedShopLinks(item)),
             } : null;
 
+            if (tcgSpecification is not null && HasYuGiOhMetadata(item))
+            {
+                tcgSpecification.Franchise ??= "yu-gi-oh";
+                tcgSpecification.YuGiOhSpecification = new YuGiOhCardSpecification
+                {
+                    ProductId = productId,
+                    JapaneseNameReading = Clean(item.JapaneseNameReading),
+                    SetNameRu = Clean(item.SetNameRu),
+                    CardType = NormalizeYuGiOhCardType(item.CardType),
+                    CardSubtype = Clean(item.CardSubtype),
+                    Attribute = Clean(item.Attribute)?.ToUpperInvariant(),
+                    StatsRaw = Clean(item.StatsRaw),
+                    MonsterRaceRaw = Clean(item.MonsterRaceRaw),
+                    MonsterRaceRu = Clean(item.MonsterRaceRu),
+                    DescriptionRu = Clean(item.DescriptionRu),
+                    SeriesMetadataRaw = Clean(item.SeriesMetadataRaw) ?? Clean(item.YuGiOhSeriesMetadataRaw),
+                    SeriesAlternateName = Clean(item.SeriesAlternateName),
+                    SeriesAlternateNameRu = Clean(item.SeriesAlternateNameRu),
+                    SeriesType = Clean(item.SeriesType),
+                    SeriesTypeRu = Clean(item.SeriesTypeRu),
+                    ReleaseDate = item.ReleaseDate,
+                    DeclaredCardCount = item.DeclaredCardCount,
+                    Level = item.Level,
+                    Rank = item.Rank,
+                    LinkRating = item.LinkRating,
+                    Attack = item.Attack,
+                    Defense = item.Defense,
+                };
+            }
+
             if (tcgSpecification is not null)
             {
                 foreach (var importedCharacter in ResolvedTcgCharacters(item))
@@ -271,6 +331,7 @@ public sealed class ImportProductsCommandHandler
             {
                 Id = productId,
                 Name = name,
+                NameRu = Clean(item.NameRu),
                 Slug = slug,
                 Description = Clean(item.Description),
                 Sku = sku,
@@ -384,6 +445,24 @@ public sealed class ImportProductsCommandHandler
         if (Clean(item.DevilFruit) is { Length: > 300 }) return "DevilFruit cannot exceed 300 characters.";
         if (Clean(item.Role) is { Length: > 300 }) return "Role cannot exceed 300 characters.";
         if (Clean(item.FirstAppearance) is { Length: > 200 }) return "FirstAppearance cannot exceed 200 characters.";
+        if (Clean(item.NameRu) is { Length: > 500 }) return "NameRu cannot exceed 500 characters.";
+        if (Clean(item.JapaneseNameReading) is { Length: > 500 }) return "JapaneseNameReading cannot exceed 500 characters.";
+        if (Clean(item.SetNameRu) is { Length: > 500 }) return "SetNameRu cannot exceed 500 characters.";
+        if (Clean(item.CardType) is { Length: > 30 }) return "CardType cannot exceed 30 characters.";
+        if (Clean(item.CardSubtype) is { Length: > 50 }) return "CardSubtype cannot exceed 50 characters.";
+        if (Clean(item.Attribute) is { Length: > 20 }) return "Attribute cannot exceed 20 characters.";
+        if (Clean(item.StatsRaw) is { Length: > 100 }) return "StatsRaw cannot exceed 100 characters.";
+        if (Clean(item.MonsterRaceRaw) is { Length: > 300 }) return "MonsterRaceRaw cannot exceed 300 characters.";
+        if (Clean(item.MonsterRaceRu) is { Length: > 300 }) return "MonsterRaceRu cannot exceed 300 characters.";
+        if (Clean(item.SeriesMetadataRaw) is { Length: > 500 } || Clean(item.YuGiOhSeriesMetadataRaw) is { Length: > 500 })
+            return "SeriesMetadataRaw cannot exceed 500 characters.";
+        if (Clean(item.SeriesAlternateName) is { Length: > 500 } || Clean(item.SeriesAlternateNameRu) is { Length: > 500 })
+            return "SeriesAlternateName cannot exceed 500 characters.";
+        if (Clean(item.SeriesType) is { Length: > 100 } || Clean(item.SeriesTypeRu) is { Length: > 100 })
+            return "Series type cannot exceed 100 characters.";
+        if (item.DeclaredCardCount < 0 || item.Level < 0 || item.Rank < 0 || item.LinkRating < 0
+            || item.Attack < 0 || item.Defense < 0)
+            return "Yu-Gi-Oh numeric fields cannot be negative.";
         if (item.TcgCharacters?.Any(x => Clean(x.Name) is null
                 || Clean(x.Name)!.Length > 200
                 || Clean(x.Franchise) is { Length: > 100 }
@@ -400,7 +479,8 @@ public sealed class ImportProductsCommandHandler
 
     private static bool HasTcgSpecification(ImportProductItem item) =>
         ResolvedCharacterName(item) is not null || ResolvedSetName(item) is not null
-        || ResolvedCardNumber(item) is not null || ResolvedShopLinks(item).Count > 0;
+        || ResolvedCardNumber(item) is not null || ResolvedShopLinks(item).Count > 0
+        || HasYuGiOhMetadata(item);
 
     private static string? ResolvedCharacterName(ImportProductItem item) =>
         Clean(item.CharacterName) ?? Clean(item.PokemonName) ?? Clean(item.OnePieceCharacterName)
@@ -408,11 +488,13 @@ public sealed class ImportProductsCommandHandler
 
     private static string? ResolvedFranchise(ImportProductItem item) =>
         Clean(item.Franchise)?.ToLowerInvariant()
+        ?? (HasYuGiOhMetadata(item) ? "yu-gi-oh" : null)
         ?? (Clean(item.OnePieceCharacterName) is not null || HasOnePieceMetadata(item) ? "one-piece" : null)
         ?? (Clean(item.PokemonName) is not null ? "pokemon" : null);
 
     private static string? ResolvedSetName(ImportProductItem item) =>
         Clean(item.SetName) ?? Clean(item.NormalizedSetName) ?? Clean(item.OctoparseSetName)
+        ?? Clean(item.YuGiOhSeries)
         ?? SetFromCardNumber(ResolvedCardNumber(item));
 
     private static string? SetFromCardNumber(string? cardNumber)
@@ -426,10 +508,12 @@ public sealed class ImportProductsCommandHandler
             ?.Replace("No:", string.Empty, StringComparison.OrdinalIgnoreCase).Trim();
 
     private static string? ResolvedImageUrl(ImportProductItem item) =>
-        Clean(item.ImageUrl) ?? Clean(item.NormalizedImageUrl);
+        Clean(item.ImageUrl) ?? Clean(item.NormalizedImageUrl)
+        ?? (HasYuGiOhMetadata(item) ? Clean(item.OctoparseUrl) : null);
 
     private static Dictionary<string, string> ResolvedShopLinks(ImportProductItem item) =>
-        (item.ShopLinks ?? item.NormalizedShopLinks ?? OctoparseShopLinks(item))
+        (item.ShopLinks ?? item.NormalizedShopLinks
+            ?? (HasYuGiOhMetadata(item) ? YuGiOhShopLinks(item) : OctoparseShopLinks(item)))
             .Where(x => Clean(x.Key) is not null && Clean(x.Value) is not null)
             .GroupBy(x => Clean(x.Key)!, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(x => x.Key, x => Clean(x.Last().Value)!, StringComparer.OrdinalIgnoreCase);
@@ -437,7 +521,7 @@ public sealed class ImportProductsCommandHandler
     private static Dictionary<string, string> OctoparseShopLinks(ImportProductItem item) =>
         new Dictionary<string, string>
         {
-            ["yahoo_auction"] = item.YahooAuctionUrl ?? string.Empty,
+            ["yahoo_auction"] = item.OctoparseUrl ?? string.Empty,
             ["mercari"] = item.OnePieceMercariUrl ?? item.MercariUrl ?? string.Empty,
             ["magi"] = item.MagiUrl ?? string.Empty,
             ["suruga_ya"] = item.SurugaYaUrl ?? string.Empty,
@@ -448,6 +532,18 @@ public sealed class ImportProductsCommandHandler
             ["yahoo_shopping"] = item.OnePieceYahooShoppingUrl ?? string.Empty,
         };
 
+    private static Dictionary<string, string> YuGiOhShopLinks(ImportProductItem item) =>
+        new()
+        {
+            ["yahoo_auction"] = item.YuGiOhYahooAuctionUrl ?? string.Empty,
+            ["mercari"] = item.YuGiOhMercariUrl ?? string.Empty,
+            ["rakuma"] = item.YuGiOhRakumaUrl ?? string.Empty,
+            ["yahoo_flea_market"] = item.YuGiOhYahooFleaUrl ?? string.Empty,
+            ["rakuten"] = item.YuGiOhRakutenUrl ?? string.Empty,
+            ["amazon_japan"] = item.OnePieceYahooShoppingUrl ?? string.Empty,
+            ["yahoo_shopping"] = item.YuGiOhYahooShoppingUrl ?? string.Empty,
+        };
+
     private static string? ResolvedOfficialUrl(ImportProductItem item) =>
         Clean(item.OfficialUrl) ?? Clean(item.MisspelledOfficialUrl);
 
@@ -455,6 +551,22 @@ public sealed class ImportProductsCommandHandler
         Clean(item.Crew) is not null || Clean(item.DevilFruit) is not null
         || Clean(item.Role) is not null || Clean(item.FirstAppearance) is not null
         || Clean(item.MisspelledOfficialUrl) is not null;
+
+    private static bool HasYuGiOhMetadata(ImportProductItem item) =>
+        Clean(item.JapaneseNameReading) is not null || Clean(item.CardType) is not null
+        || Clean(item.StatsRaw) is not null || Clean(item.MonsterRaceRaw) is not null
+        || Clean(item.YuGiOhSeries) is not null || Clean(item.YuGiOhSeriesMetadataRaw) is not null
+        || Clean(item.SeriesMetadataRaw) is not null;
+
+    private static string? NormalizeYuGiOhCardType(string? raw)
+    {
+        var value = Clean(raw);
+        if (value is null) return null;
+        if (value.Contains("Monster", StringComparison.OrdinalIgnoreCase)) return "Monster";
+        if (value.Contains("Spell", StringComparison.OrdinalIgnoreCase)) return "Spell";
+        if (value.Contains("Trap", StringComparison.OrdinalIgnoreCase)) return "Trap";
+        return value;
+    }
 
     private static IReadOnlyList<ImportTcgCharacter> ResolvedTcgCharacters(ImportProductItem item)
     {

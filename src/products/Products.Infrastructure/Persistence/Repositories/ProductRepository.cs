@@ -57,6 +57,8 @@ public sealed class ProductRepository : IProductRepository
                 .ThenInclude(x => x!.Characters)
                     .ThenInclude(x => x.Character)
                         .ThenInclude(x => x.OnePieceSpecification)
+            .Include(p => p.TcgCardSpecification)!
+                .ThenInclude(x => x!.YuGiOhSpecification)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
     public Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
@@ -69,6 +71,8 @@ public sealed class ProductRepository : IProductRepository
                 .ThenInclude(x => x!.Characters)
                     .ThenInclude(x => x.Character)
                         .ThenInclude(x => x.OnePieceSpecification)
+            .Include(p => p.TcgCardSpecification)!
+                .ThenInclude(x => x!.YuGiOhSpecification)
             .FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
 
     public Task<bool> IsSlugTakenAsync(
@@ -109,6 +113,7 @@ public sealed class ProductRepository : IProductRepository
         IReadOnlyList<string>? tcgSets,
         IReadOnlyList<string>? tcgRarities,
         IReadOnlyList<string>? tcgCrews,
+        YuGiOhFilterCriteria? yuGiOhFilters,
         int page,
         int pageSize,
         bool mixCategories,
@@ -135,6 +140,7 @@ public sealed class ProductRepository : IProductRepository
 
         query = ApplyLaptopFilters(query, laptopFilters);
         query = ApplyTcgFilters(query, tcgCharacters, tcgSets, tcgRarities, tcgCrews);
+        query = ApplyYuGiOhFilters(query, yuGiOhFilters);
 
         if (mixCategories)
         {
@@ -158,7 +164,8 @@ public sealed class ProductRepository : IProductRepository
                     tcgCharacters,
                     tcgSets,
                     tcgRarities,
-                    tcgCrews),
+                    tcgCrews,
+                    yuGiOhFilters),
                 page,
                 pageSize,
                 shuffleSeed,
@@ -175,6 +182,8 @@ public sealed class ProductRepository : IProductRepository
                 .ThenInclude(x => x!.Characters)
                     .ThenInclude(x => x.Character)
                         .ThenInclude(x => x.OnePieceSpecification)
+            .Include(p => p.TcgCardSpecification)!
+                .ThenInclude(x => x!.YuGiOhSpecification)
             .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -218,6 +227,8 @@ public sealed class ProductRepository : IProductRepository
                 .ThenInclude(x => x!.Characters)
                     .ThenInclude(x => x.Character)
                         .ThenInclude(x => x.OnePieceSpecification)
+            .Include(product => product.TcgCardSpecification)!
+                .ThenInclude(x => x!.YuGiOhSpecification)
             .ToListAsync(cancellationToken);
         var productsById = products.ToDictionary(product => product.Id);
 
@@ -288,7 +299,8 @@ public sealed class ProductRepository : IProductRepository
         IReadOnlyList<string>? tcgCharacters,
         IReadOnlyList<string>? tcgSets,
         IReadOnlyList<string>? tcgRarities,
-        IReadOnlyList<string>? tcgCrews)
+        IReadOnlyList<string>? tcgCrews,
+        YuGiOhFilterCriteria? yuGiOhFilters)
     {
         var parts = new[]
         {
@@ -318,6 +330,11 @@ public sealed class ProductRepository : IProductRepository
             CachePart(JoinCacheValues(tcgSets, value => value.Trim().ToLowerInvariant())),
             CachePart(JoinCacheValues(tcgRarities, value => value.Trim().ToLowerInvariant())),
             CachePart(JoinCacheValues(tcgCrews, value => value.Trim().ToLowerInvariant())),
+            CachePart(JoinCacheValues(yuGiOhFilters?.CardTypes, value => value.Trim().ToLowerInvariant())),
+            CachePart(JoinCacheValues(yuGiOhFilters?.CardSubtypes, value => value.Trim().ToLowerInvariant())),
+            CachePart(JoinCacheValues(yuGiOhFilters?.Attributes, value => value.Trim().ToLowerInvariant())),
+            CachePart(JoinCacheValues(yuGiOhFilters?.MonsterRaces, value => value.Trim().ToLowerInvariant())),
+            CachePart(JoinCacheValues(yuGiOhFilters?.SeriesTypes, value => value.Trim().ToLowerInvariant())),
         };
 
         return string.Join('|', parts);
@@ -726,8 +743,11 @@ public sealed class ProductRepository : IProductRepository
         {
             var values = sets.Select(x => x.ToLower()).ToList();
             query = query.Where(p => p.TcgCardSpecification != null
-                && p.TcgCardSpecification.SetName != null
-                && values.Contains(p.TcgCardSpecification.SetName.ToLower()));
+                && ((p.TcgCardSpecification.SetName != null
+                        && values.Contains(p.TcgCardSpecification.SetName.ToLower()))
+                    || (p.TcgCardSpecification.YuGiOhSpecification != null
+                        && p.TcgCardSpecification.YuGiOhSpecification.SetNameRu != null
+                        && values.Contains(p.TcgCardSpecification.YuGiOhSpecification.SetNameRu.ToLower()))));
         }
         if (rarities is { Count: > 0 })
         {
@@ -744,6 +764,54 @@ public sealed class ProductRepository : IProductRepository
                     link.Character.OnePieceSpecification != null
                     && link.Character.OnePieceSpecification.Crew != null
                     && values.Contains(link.Character.OnePieceSpecification.Crew.ToLower())));
+        }
+        return query;
+    }
+
+    private static IQueryable<Product> ApplyYuGiOhFilters(
+        IQueryable<Product> query,
+        YuGiOhFilterCriteria? filters)
+    {
+        if (filters is null) return query;
+        if (filters.CardTypes is { Count: > 0 })
+        {
+            var values = filters.CardTypes.Select(x => x.ToLower()).ToList();
+            query = query.Where(p => p.TcgCardSpecification != null
+                && p.TcgCardSpecification.YuGiOhSpecification != null
+                && p.TcgCardSpecification.YuGiOhSpecification.CardType != null
+                && values.Contains(p.TcgCardSpecification.YuGiOhSpecification.CardType.ToLower()));
+        }
+        if (filters.CardSubtypes is { Count: > 0 })
+        {
+            var values = filters.CardSubtypes.Select(x => x.ToLower()).ToList();
+            query = query.Where(p => p.TcgCardSpecification != null
+                && p.TcgCardSpecification.YuGiOhSpecification != null
+                && p.TcgCardSpecification.YuGiOhSpecification.CardSubtype != null
+                && values.Contains(p.TcgCardSpecification.YuGiOhSpecification.CardSubtype.ToLower()));
+        }
+        if (filters.Attributes is { Count: > 0 })
+        {
+            var values = filters.Attributes.Select(x => x.ToLower()).ToList();
+            query = query.Where(p => p.TcgCardSpecification != null
+                && p.TcgCardSpecification.YuGiOhSpecification != null
+                && p.TcgCardSpecification.YuGiOhSpecification.Attribute != null
+                && values.Contains(p.TcgCardSpecification.YuGiOhSpecification.Attribute.ToLower()));
+        }
+        if (filters.MonsterRaces is { Count: > 0 })
+        {
+            var values = filters.MonsterRaces.Select(x => x.ToLower()).ToList();
+            query = query.Where(p => p.TcgCardSpecification != null
+                && p.TcgCardSpecification.YuGiOhSpecification != null
+                && p.TcgCardSpecification.YuGiOhSpecification.MonsterRaceRu != null
+                && values.Contains(p.TcgCardSpecification.YuGiOhSpecification.MonsterRaceRu.ToLower()));
+        }
+        if (filters.SeriesTypes is { Count: > 0 })
+        {
+            var values = filters.SeriesTypes.Select(x => x.ToLower()).ToList();
+            query = query.Where(p => p.TcgCardSpecification != null
+                && p.TcgCardSpecification.YuGiOhSpecification != null
+                && p.TcgCardSpecification.YuGiOhSpecification.SeriesType != null
+                && values.Contains(p.TcgCardSpecification.YuGiOhSpecification.SeriesType.ToLower()));
         }
         return query;
     }
@@ -795,7 +863,10 @@ public sealed class ProductRepository : IProductRepository
             .ToListAsync(cancellationToken);
         var sets = await products
             .Where(p => p.TcgCardSpecification != null && p.TcgCardSpecification.SetName != null)
-            .Select(p => p.TcgCardSpecification!.SetName!)
+            .Select(p => p.TcgCardSpecification!.YuGiOhSpecification != null
+                && p.TcgCardSpecification.YuGiOhSpecification.SetNameRu != null
+                    ? p.TcgCardSpecification.YuGiOhSpecification.SetNameRu
+                    : p.TcgCardSpecification.SetName!)
             .Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
         var rarities = await products
             .Where(p => p.TcgCardSpecification != null && p.TcgCardSpecification.Rarity != null)
@@ -808,7 +879,17 @@ public sealed class ProductRepository : IProductRepository
                 && link.Character.OnePieceSpecification.Crew != null)
             .Select(link => link.Character.OnePieceSpecification!.Crew!)
             .Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
-        return new TcgFilterFacets(characters, sets, rarities, crews);
+        var yuGiOhSpecs = products
+            .Where(p => p.TcgCardSpecification != null
+                && p.TcgCardSpecification.YuGiOhSpecification != null)
+            .Select(p => p.TcgCardSpecification!.YuGiOhSpecification!);
+        var yuGiOh = new YuGiOhFilterFacets(
+            await yuGiOhSpecs.Where(x => x.CardType != null).Select(x => x.CardType!).Distinct().OrderBy(x => x).ToListAsync(cancellationToken),
+            await yuGiOhSpecs.Where(x => x.CardSubtype != null).Select(x => x.CardSubtype!).Distinct().OrderBy(x => x).ToListAsync(cancellationToken),
+            await yuGiOhSpecs.Where(x => x.Attribute != null).Select(x => x.Attribute!).Distinct().OrderBy(x => x).ToListAsync(cancellationToken),
+            await yuGiOhSpecs.Where(x => x.MonsterRaceRu != null).Select(x => x.MonsterRaceRu!).Distinct().OrderBy(x => x).ToListAsync(cancellationToken),
+            await yuGiOhSpecs.Where(x => x.SeriesType != null).Select(x => x.SeriesType!).Distinct().OrderBy(x => x).ToListAsync(cancellationToken));
+        return new TcgFilterFacets(characters, sets, rarities, crews, yuGiOh);
     }
 
     public async Task<(IReadOnlyList<Brand> Brands, IReadOnlyList<Shop> Shops)> ListFacetsAsync(

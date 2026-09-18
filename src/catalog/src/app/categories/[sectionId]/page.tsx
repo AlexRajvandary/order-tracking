@@ -39,6 +39,11 @@ type PageProps = {
     tcgSets?: string;
     tcgRarities?: string;
     tcgCrews?: string;
+    yugiohCardTypes?: string;
+    yugiohCardSubtypes?: string;
+    yugiohAttributes?: string;
+    yugiohMonsterRaces?: string;
+    yugiohSeriesTypes?: string;
     shuffleSeed?: string;
   }>;
 };
@@ -59,6 +64,7 @@ function buildBasePath(
   tcgSets?: string[],
   tcgRarities?: string[],
   tcgCrews?: string[],
+  yugiohFilters?: Record<string, string[]>,
   shuffleSeed?: number,
 ) {
   const qs = new URLSearchParams();
@@ -73,6 +79,9 @@ function buildBasePath(
   if (tcgSets && tcgSets.length > 0) qs.set("tcgSets", tcgSets.join(","));
   if (tcgRarities && tcgRarities.length > 0) qs.set("tcgRarities", tcgRarities.join(","));
   if (tcgCrews && tcgCrews.length > 0) qs.set("tcgCrews", tcgCrews.join(","));
+  for (const [key, values] of Object.entries(yugiohFilters ?? {})) {
+    if (values.length > 0) qs.set(key, values.join(","));
+  }
   if (shuffleSeed != null) qs.set("shuffleSeed", String(shuffleSeed));
   const search = qs.toString();
   return search ? `/categories/${rootSlug}?${search}` : `/categories/${rootSlug}`;
@@ -99,6 +108,11 @@ export default async function CategorySectionPage({
     tcgSets: tcgSetsParam,
     tcgRarities: tcgRaritiesParam,
     tcgCrews: tcgCrewsParam,
+    yugiohCardTypes,
+    yugiohCardSubtypes,
+    yugiohAttributes,
+    yugiohMonsterRaces,
+    yugiohSeriesTypes,
     shuffleSeed: shuffleSeedParam,
   } = await searchParams;
   const page = parsePage(pageParam);
@@ -113,6 +127,15 @@ export default async function CategorySectionPage({
   const selectedTcgSets = decodedSectionId.toLowerCase() === "tcg" ? parseCsvParam(tcgSetsParam) : [];
   const selectedTcgRarities = decodedSectionId.toLowerCase() === "tcg" ? parseCsvParam(tcgRaritiesParam) : [];
   const selectedTcgCrews = decodedSectionId.toLowerCase() === "tcg" ? parseCsvParam(tcgCrewsParam) : [];
+  const isYuGiOhCategory = decodedSectionId.toLowerCase() === "tcg"
+    && ["yu-gi-oh", "yugioh"].includes(subSlug?.toLowerCase() ?? "");
+  const selectedYuGiOhFilters = isYuGiOhCategory ? {
+    cardTypes: parseCsvParam(yugiohCardTypes),
+    cardSubtypes: parseCsvParam(yugiohCardSubtypes),
+    attributes: parseCsvParam(yugiohAttributes),
+    monsterRaces: parseCsvParam(yugiohMonsterRaces),
+    seriesTypes: parseCsvParam(yugiohSeriesTypes),
+  } : { cardTypes: [], cardSubtypes: [], attributes: [], monsterRaces: [], seriesTypes: [] };
   const isShoesCategory = ["shoes", "obuv", "обувь"].includes(decodedSectionId.toLowerCase());
   const selectedGenders = (isShoesCategory ? parseCsvParam(gendersParam) : []).filter((value) =>
     ["unisex", "men", "women", "kids"].includes(value),
@@ -155,6 +178,7 @@ export default async function CategorySectionPage({
         tcgSets: selectedTcgSets,
         tcgRarities: selectedTcgRarities,
         tcgCrews: selectedTcgCrews,
+        yugiohFilters: selectedYuGiOhFilters,
         shuffleSeed,
       }) : null;
 
@@ -181,7 +205,10 @@ export default async function CategorySectionPage({
   ).catch(() => ({
     brands: [], shops: [],
     laptop: { models: [], processors: [], ramGb: [], storageTypes: [], storageGb: [], screenSizes: [], operatingSystems: [] },
-    tcg: { characters: [], sets: [], rarities: [], crews: [] },
+    tcg: {
+      characters: [], sets: [], rarities: [], crews: [],
+      yuGiOh: { cardTypes: [], cardSubtypes: [], attributes: [], monsterRaces: [], seriesTypes: [] },
+    },
   }));
   const effectiveShuffleSeed = isAllCategories || !child
     ? requestedShuffleSeed
@@ -203,6 +230,7 @@ export default async function CategorySectionPage({
         tcgSets: selectedTcgSets,
         tcgRarities: selectedTcgRarities,
         tcgCrews: selectedTcgCrews,
+        yugiohFilters: selectedYuGiOhFilters,
         shuffleSeed: effectiveShuffleSeed,
       })
     : child && root
@@ -220,6 +248,7 @@ export default async function CategorySectionPage({
           tcgSets: selectedTcgSets,
           tcgRarities: selectedTcgRarities,
           tcgCrews: selectedTcgCrews,
+          yugiohFilters: selectedYuGiOhFilters,
           categoryId: child.id,
           categorySlug: child.slug,
           categoryName: child.name,
@@ -275,6 +304,8 @@ export default async function CategorySectionPage({
             selectedTcgRarities={selectedTcgRarities}
             tcgCrews={facets.tcg.crews}
             selectedTcgCrews={selectedTcgCrews}
+            yugiohFacets={facets.tcg.yuGiOh}
+            selectedYuGiOhFilters={selectedYuGiOhFilters}
             pagination={{
               page: catalog.page,
               pageSize: catalog.pageSize,
@@ -297,6 +328,13 @@ export default async function CategorySectionPage({
                 selectedTcgSets,
                 selectedTcgRarities,
                 selectedTcgCrews,
+                isYuGiOhCategory ? {
+                  yugiohCardTypes: selectedYuGiOhFilters.cardTypes,
+                  yugiohCardSubtypes: selectedYuGiOhFilters.cardSubtypes,
+                  yugiohAttributes: selectedYuGiOhFilters.attributes,
+                  yugiohMonsterRaces: selectedYuGiOhFilters.monsterRaces,
+                  yugiohSeriesTypes: selectedYuGiOhFilters.seriesTypes,
+                } : undefined,
                 effectiveShuffleSeed,
               ),
               shuffleSeed: effectiveShuffleSeed,

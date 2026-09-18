@@ -54,7 +54,31 @@ public sealed record TcgCardSpecificationDto(
     string? Rarity,
     string? OfficialUrl,
     IReadOnlyList<TcgCharacterDto> Characters,
-    IReadOnlyDictionary<string, string> ShopLinks);
+    IReadOnlyDictionary<string, string> ShopLinks,
+    YuGiOhCardSpecificationDto? YuGiOhSpecification);
+
+public sealed record YuGiOhCardSpecificationDto(
+    string? JapaneseNameReading,
+    string? SetNameRu,
+    string? CardType,
+    string? CardSubtype,
+    string? Attribute,
+    string? StatsRaw,
+    string? MonsterRaceRaw,
+    string? MonsterRaceRu,
+    string? DescriptionRu,
+    string? SeriesMetadataRaw,
+    string? SeriesAlternateName,
+    string? SeriesAlternateNameRu,
+    string? SeriesType,
+    string? SeriesTypeRu,
+    DateOnly? ReleaseDate,
+    int? DeclaredCardCount,
+    int? Level,
+    int? Rank,
+    int? LinkRating,
+    int? Attack,
+    int? Defense);
 
 public sealed record TcgCharacterDto(
     Guid Id,
@@ -91,7 +115,22 @@ public sealed record TcgFilterFacets(
     IReadOnlyList<string> Characters,
     IReadOnlyList<string> Sets,
     IReadOnlyList<string> Rarities,
-    IReadOnlyList<string> Crews);
+    IReadOnlyList<string> Crews,
+    YuGiOhFilterFacets YuGiOh);
+
+public sealed record YuGiOhFilterFacets(
+    IReadOnlyList<string> CardTypes,
+    IReadOnlyList<string> CardSubtypes,
+    IReadOnlyList<string> Attributes,
+    IReadOnlyList<string> MonsterRaces,
+    IReadOnlyList<string> SeriesTypes);
+
+public sealed record YuGiOhFilterCriteria(
+    IReadOnlyList<string>? CardTypes,
+    IReadOnlyList<string>? CardSubtypes,
+    IReadOnlyList<string>? Attributes,
+    IReadOnlyList<string>? MonsterRaces,
+    IReadOnlyList<string>? SeriesTypes);
 
 public sealed record ProductTranslationPendingDto(Guid Id, string Name);
 public sealed record ProductTranslationResultDto(Guid Id, string NameRu);

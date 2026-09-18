@@ -67,7 +67,29 @@ internal static class ProductMappings
                         link.Character.OnePieceSpecification.Role,
                         link.Character.OnePieceSpecification.FirstAppearance))).ToList(),
                 System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
-                    product.TcgCardSpecification.ShopLinksJson) ?? new Dictionary<string, string>()));
+                    product.TcgCardSpecification.ShopLinksJson) ?? new Dictionary<string, string>(),
+                product.TcgCardSpecification.YuGiOhSpecification is null ? null : new YuGiOhCardSpecificationDto(
+                    product.TcgCardSpecification.YuGiOhSpecification.JapaneseNameReading,
+                    product.TcgCardSpecification.YuGiOhSpecification.SetNameRu,
+                    product.TcgCardSpecification.YuGiOhSpecification.CardType,
+                    product.TcgCardSpecification.YuGiOhSpecification.CardSubtype,
+                    product.TcgCardSpecification.YuGiOhSpecification.Attribute,
+                    product.TcgCardSpecification.YuGiOhSpecification.StatsRaw,
+                    product.TcgCardSpecification.YuGiOhSpecification.MonsterRaceRaw,
+                    product.TcgCardSpecification.YuGiOhSpecification.MonsterRaceRu,
+                    product.TcgCardSpecification.YuGiOhSpecification.DescriptionRu,
+                    product.TcgCardSpecification.YuGiOhSpecification.SeriesMetadataRaw,
+                    product.TcgCardSpecification.YuGiOhSpecification.SeriesAlternateName,
+                    product.TcgCardSpecification.YuGiOhSpecification.SeriesAlternateNameRu,
+                    product.TcgCardSpecification.YuGiOhSpecification.SeriesType,
+                    product.TcgCardSpecification.YuGiOhSpecification.SeriesTypeRu,
+                    product.TcgCardSpecification.YuGiOhSpecification.ReleaseDate,
+                    product.TcgCardSpecification.YuGiOhSpecification.DeclaredCardCount,
+                    product.TcgCardSpecification.YuGiOhSpecification.Level,
+                    product.TcgCardSpecification.YuGiOhSpecification.Rank,
+                    product.TcgCardSpecification.YuGiOhSpecification.LinkRating,
+                    product.TcgCardSpecification.YuGiOhSpecification.Attack,
+                    product.TcgCardSpecification.YuGiOhSpecification.Defense)));
 
     public static string ToConditionSlug(ProductCondition condition) =>
         condition switch

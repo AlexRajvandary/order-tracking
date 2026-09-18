@@ -49,6 +49,16 @@ export type ApiProduct = {
       } | null;
     }>;
     shopLinks: Record<string, string>;
+    yuGiOhSpecification: {
+      japaneseNameReading: string | null; setNameRu: string | null;
+      cardType: string | null; cardSubtype: string | null; attribute: string | null;
+      statsRaw: string | null; monsterRaceRaw: string | null; monsterRaceRu: string | null;
+      descriptionRu: string | null; seriesMetadataRaw: string | null;
+      seriesAlternateName: string | null; seriesAlternateNameRu: string | null;
+      seriesType: string | null; seriesTypeRu: string | null; releaseDate: string | null;
+      declaredCardCount: number | null; level: number | null; rank: number | null;
+      linkRating: number | null; attack: number | null; defense: number | null;
+    } | null;
   } | null;
 };
 
@@ -161,7 +171,8 @@ export function mapApiProductToCatalog(
     p.originalCurrencyCode ?? p.currencyCode,
   );
   const discount = discountPercent(priceRub, oldPriceRub);
-  const description = p.description?.trim() || p.name;
+  const description = p.tcgCardSpecification?.yuGiOhSpecification?.descriptionRu?.trim()
+    || p.description?.trim() || p.name;
   const shortDescription = description.split("\n")[0] ?? p.name;
 
   return {
@@ -216,6 +227,11 @@ export async function fetchProductsPage(options?: {
   tcgSets?: string[];
   tcgRarities?: string[];
   tcgCrews?: string[];
+  yugiohCardTypes?: string[];
+  yugiohCardSubtypes?: string[];
+  yugiohAttributes?: string[];
+  yugiohMonsterRaces?: string[];
+  yugiohSeriesTypes?: string[];
   categoryId?: string;
   categorySlug?: string;
   includeCategoryChildren?: boolean;
@@ -269,6 +285,11 @@ export async function fetchProductsPage(options?: {
   if (options?.tcgSets && options.tcgSets.length > 0) params.set("tcgSet", options.tcgSets.join(","));
   if (options?.tcgRarities && options.tcgRarities.length > 0) params.set("tcgRarity", options.tcgRarities.join(","));
   if (options?.tcgCrews && options.tcgCrews.length > 0) params.set("tcgCrew", options.tcgCrews.join(","));
+  if (options?.yugiohCardTypes?.length) params.set("yugiohCardType", options.yugiohCardTypes.join(","));
+  if (options?.yugiohCardSubtypes?.length) params.set("yugiohCardSubtype", options.yugiohCardSubtypes.join(","));
+  if (options?.yugiohAttributes?.length) params.set("yugiohAttribute", options.yugiohAttributes.join(","));
+  if (options?.yugiohMonsterRaces?.length) params.set("yugiohMonsterRace", options.yugiohMonsterRaces.join(","));
+  if (options?.yugiohSeriesTypes?.length) params.set("yugiohSeriesType", options.yugiohSeriesTypes.join(","));
   if (options?.categoryId) {
     params.set("categoryId", options.categoryId);
   }
@@ -342,6 +363,10 @@ export async function fetchCatalogPage(options: {
   tcgSets?: string[];
   tcgRarities?: string[];
   tcgCrews?: string[];
+  yugiohFilters?: {
+    cardTypes?: string[]; cardSubtypes?: string[]; attributes?: string[];
+    monsterRaces?: string[]; seriesTypes?: string[];
+  };
   /** Child subcategory slug, or omit for the whole root category tree. */
   categoryId?: string;
   categorySlug?: string;
@@ -377,6 +402,11 @@ export async function fetchCatalogPage(options: {
     tcgSets: options.tcgSets,
     tcgRarities: options.tcgRarities,
     tcgCrews: options.tcgCrews,
+    yugiohCardTypes: options.yugiohFilters?.cardTypes,
+    yugiohCardSubtypes: options.yugiohFilters?.cardSubtypes,
+    yugiohAttributes: options.yugiohFilters?.attributes,
+    yugiohMonsterRaces: options.yugiohFilters?.monsterRaces,
+    yugiohSeriesTypes: options.yugiohFilters?.seriesTypes,
     categoryId: options.categoryId ?? options.rootCategoryId,
     categorySlug: options.categoryId || options.rootCategoryId ? undefined : categorySlug,
     includeCategoryChildren,

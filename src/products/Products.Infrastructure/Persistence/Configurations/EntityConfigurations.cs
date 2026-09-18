@@ -395,3 +395,38 @@ public sealed class OnePieceCharacterSpecificationConfiguration : IEntityTypeCon
         builder.HasIndex(x => x.Crew);
     }
 }
+
+public sealed class YuGiOhCardSpecificationConfiguration : IEntityTypeConfiguration<YuGiOhCardSpecification>
+{
+    public void Configure(EntityTypeBuilder<YuGiOhCardSpecification> builder)
+    {
+        builder.ToTable("yugioh_card_specifications");
+        builder.HasKey(x => x.ProductId);
+        builder.Property(x => x.JapaneseNameReading).HasMaxLength(500);
+        builder.Property(x => x.SetNameRu).HasMaxLength(500);
+        builder.Property(x => x.CardType).HasMaxLength(30);
+        builder.Property(x => x.CardSubtype).HasMaxLength(50);
+        builder.Property(x => x.Attribute).HasMaxLength(20);
+        builder.Property(x => x.StatsRaw).HasMaxLength(100);
+        builder.Property(x => x.MonsterRaceRaw).HasMaxLength(300);
+        builder.Property(x => x.MonsterRaceRu).HasMaxLength(300);
+        builder.Property(x => x.DescriptionRu).HasColumnType("text");
+        builder.Property(x => x.SeriesMetadataRaw).HasMaxLength(500);
+        builder.Property(x => x.SeriesAlternateName).HasMaxLength(500);
+        builder.Property(x => x.SeriesAlternateNameRu).HasMaxLength(500);
+        builder.Property(x => x.SeriesType).HasMaxLength(100);
+        builder.Property(x => x.SeriesTypeRu).HasMaxLength(100);
+        builder.HasOne(x => x.Card)
+            .WithOne(x => x.YuGiOhSpecification)
+            .HasForeignKey<YuGiOhCardSpecification>(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(x => x.CardType);
+        builder.HasIndex(x => x.CardSubtype);
+        builder.HasIndex(x => x.Attribute);
+        builder.HasIndex(x => x.MonsterRaceRu);
+        builder.HasIndex(x => x.SeriesType);
+        builder.HasIndex(x => x.Level);
+        builder.HasIndex(x => x.Rank);
+        builder.HasIndex(x => x.LinkRating);
+    }
+}

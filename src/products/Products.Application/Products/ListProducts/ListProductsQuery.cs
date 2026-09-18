@@ -31,6 +31,11 @@ public sealed record ListProductsQuery(
     string? TcgSet = null,
     string? TcgRarity = null,
     string? TcgCrew = null,
+    string? YuGiOhCardType = null,
+    string? YuGiOhCardSubtype = null,
+    string? YuGiOhAttribute = null,
+    string? YuGiOhMonsterRace = null,
+    string? YuGiOhSeriesType = null,
     int Page = 1,
     int PageSize = 20,
     string? Sort = null,
@@ -60,6 +65,11 @@ public sealed class ListProductsQueryValidator : AbstractValidator<ListProductsQ
         RuleFor(x => x.TcgSet).MaximumLength(4000);
         RuleFor(x => x.TcgRarity).MaximumLength(4000);
         RuleFor(x => x.TcgCrew).MaximumLength(4000);
+        RuleFor(x => x.YuGiOhCardType).MaximumLength(4000);
+        RuleFor(x => x.YuGiOhCardSubtype).MaximumLength(4000);
+        RuleFor(x => x.YuGiOhAttribute).MaximumLength(4000);
+        RuleFor(x => x.YuGiOhMonsterRace).MaximumLength(4000);
+        RuleFor(x => x.YuGiOhSeriesType).MaximumLength(4000);
     }
 }
 
@@ -142,6 +152,12 @@ public sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery
             ParseStrings(request.TcgSet),
             ParseStrings(request.TcgRarity),
             ParseStrings(request.TcgCrew),
+            new YuGiOhFilterCriteria(
+                ParseStrings(request.YuGiOhCardType),
+                ParseStrings(request.YuGiOhCardSubtype),
+                ParseStrings(request.YuGiOhAttribute),
+                ParseStrings(request.YuGiOhMonsterRace),
+                ParseStrings(request.YuGiOhSeriesType)),
             request.Page,
             request.PageSize,
             request.Sort?.Equals("mixed", StringComparison.OrdinalIgnoreCase) == true,

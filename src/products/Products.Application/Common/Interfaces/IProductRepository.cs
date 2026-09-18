@@ -50,6 +50,7 @@ public interface IProductRepository
         IReadOnlyList<string>? tcgSets,
         IReadOnlyList<string>? tcgRarities,
         IReadOnlyList<string>? tcgCrews,
+        YuGiOhFilterCriteria? yuGiOhFilters,
         int page,
         int pageSize,
         bool mixCategories,
