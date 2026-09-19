@@ -4,6 +4,9 @@ www.the-get.ru {
 
 the-get.ru {
 	encode zstd gzip
+	handle /metrics {
+		respond 404
+	}
 	handle /sitemap.xml {
 		reverse_proxy products-api:8080
 	}
@@ -56,6 +59,15 @@ the-get.ru {
 
 admin.the-get.ru {
 	encode zstd gzip
+	handle /grafana {
+		redir /grafana/ permanent
+	}
+	handle /grafana/* {
+		reverse_proxy grafana:3000
+	}
+	handle /metrics {
+		respond 404
+	}
 	handle /api/internal/sitemap* {
 		reverse_proxy products-api:8080
 	}
@@ -93,6 +105,9 @@ admin.the-get.ru {
 
 api.the-get.ru {
 	encode zstd gzip
+	handle /metrics {
+		respond 404
+	}
 	handle /api/internal/sitemap* {
 		reverse_proxy products-api:8080
 	}
@@ -130,6 +145,9 @@ api.the-get.ru {
 
 tracking.the-get.ru {
 	encode zstd gzip
+	handle /metrics {
+		respond 404
+	}
 	handle /api/v1/track* {
 		reverse_proxy api:8080
 	}
@@ -163,6 +181,9 @@ tracking.the-get.ru {
 # Temporary compatibility host. Remove after the real domains are verified.
 {$LEGACY_SITE_ADDRESS} {
 	encode zstd gzip
+	handle /metrics {
+		respond 404
+	}
 	handle /sitemap.xml {
 		reverse_proxy products-api:8080
 	}

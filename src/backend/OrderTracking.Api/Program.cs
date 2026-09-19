@@ -8,6 +8,7 @@ using OrderTracking.Application;
 using OrderTracking.Application.Common.Realtime;
 using OrderTracking.Infrastructure;
 using OrderTracking.Infrastructure.Persistence;
+using Prometheus;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -79,6 +80,8 @@ try
 
     await DatabaseInitializer.InitialiseAsync(app.Services);
 
+    // Must run before exception handling so the final HTTP status code is recorded.
+    app.UseHttpMetrics();
     app.UseSerilogRequestLogging();
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseMiddleware<ExceptionHandlingMiddleware>();
@@ -104,6 +107,8 @@ try
     app.UseStaticFiles();
 
     app.MapControllers();
+    // Network exposure is controlled by Compose/Caddy; Prometheus scrapes anonymously inside the network.
+    app.MapMetrics("/metrics").AllowAnonymous();
 
     app.MapHub<AdminHub>("/hubs/admin");
     app.MapHub<TrackingHub>("/hubs/tracking");

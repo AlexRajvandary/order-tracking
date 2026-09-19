@@ -6,6 +6,7 @@ using Products.Api.Middleware;
 using Products.Application;
 using Products.Infrastructure;
 using Products.Infrastructure.Persistence;
+using Prometheus;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -63,6 +64,8 @@ try
 
     await DatabaseInitializer.InitialiseAsync(app.Services);
 
+    // Must run before exception handling so the final HTTP status code is recorded.
+    app.UseHttpMetrics();
     app.UseSerilogRequestLogging();
     app.UseMiddleware<ExceptionHandlingMiddleware>();
 
@@ -75,6 +78,8 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
+    // Network exposure is controlled by Compose/Caddy; Prometheus scrapes anonymously inside the network.
+    app.MapMetrics("/metrics").AllowAnonymous();
 
     app.MapHealthChecks("/health", new HealthCheckOptions
     {
