@@ -84,10 +84,6 @@ services:
       - /:/host:ro
     expose:
       - "8080"
-    networks:
-      default:
-        aliases:
-          - api
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null || exit 1"]
       interval: 15s
@@ -145,10 +141,6 @@ services:
       ORDER_TRACKING_API_BASE_URL: http://api:8080
     expose:
       - "3000"
-    networks:
-      default:
-        aliases:
-          - catalog
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 15s
@@ -213,10 +205,6 @@ services:
       - "8080"
     volumes:
       - products_sitemap_data:/app/data/sitemaps
-    networks:
-      default:
-        aliases:
-          - products-api
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null || exit 1"]
       interval: 15s
@@ -246,10 +234,6 @@ services:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-    networks:
-      default:
-        aliases:
-          - caddy
 
   prometheus:
     image: prom/prometheus:v3.14.0
@@ -371,10 +355,6 @@ services:
       - ./docker/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     expose:
       - "3000"
-    networks:
-      default:
-        aliases:
-          - grafana
     mem_limit: 256m
     cpus: 0.50
     healthcheck:
@@ -395,8 +375,3 @@ volumes:
   grafana_data:
   caddy_data:
   caddy_config:
-
-networks:
-  default:
-    name: order-tracking_default
-    driver: bridge
