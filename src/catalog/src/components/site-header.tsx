@@ -316,9 +316,11 @@ function PopularCategoryProducts({
               <p className="mt-1 line-clamp-2 min-h-9 text-xs leading-[18px] font-medium text-[#252A33]">
                 {product.name}
               </p>
-              <p className="mt-1.5 text-sm font-bold tracking-tight text-[#111]">
-                {formatPrice(product)}
-              </p>
+              {product.priceRub > 0 ? (
+                <p className="mt-1.5 text-sm font-bold tracking-tight text-[#111]">
+                  {formatPrice(product)}
+                </p>
+              ) : null}
             </Link>
           ))}
         </div>
