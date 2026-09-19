@@ -1,3 +1,31 @@
+(api_upstream) {
+	reverse_proxy api:8080 {
+		lb_try_duration 10s
+		lb_try_interval 500ms
+	}
+}
+
+(catalog_upstream) {
+	reverse_proxy catalog:3000 {
+		lb_try_duration 10s
+		lb_try_interval 500ms
+	}
+}
+
+(products_upstream) {
+	reverse_proxy products-api:8080 {
+		lb_try_duration 10s
+		lb_try_interval 500ms
+	}
+}
+
+(grafana_upstream) {
+	reverse_proxy grafana:3000 {
+		lb_try_duration 10s
+		lb_try_interval 500ms
+	}
+}
+
 www.the-get.ru {
 	redir https://the-get.ru{uri} permanent
 }
@@ -8,40 +36,40 @@ the-get.ru {
 		respond 404
 	}
 	handle /sitemap.xml {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /sitemaps/* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api/internal/sitemap* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api/catalog-* {
-		reverse_proxy catalog:3000
+		import catalog_upstream
 	}
 	handle /api/catalog/* {
-		reverse_proxy catalog:3000
+		import catalog_upstream
 	}
 	handle /api/individual-requests {
-		reverse_proxy catalog:3000
+		import catalog_upstream
 	}
 	handle /api/find-product-requests {
-		reverse_proxy catalog:3000
+		import catalog_upstream
 	}
 	handle /api/auction-requests {
-		reverse_proxy catalog:3000
+		import catalog_upstream
 	}
 	handle /api/ticket-requests {
-		reverse_proxy catalog:3000
+		import catalog_upstream
 	}
 	handle /api/products* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /hubs* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /health* {
 		respond 404
@@ -53,7 +81,7 @@ the-get.ru {
 		redir https://tracking.the-get.ru{uri} permanent
 	}
 	handle {
-		reverse_proxy catalog:3000
+		import catalog_upstream
 	}
 }
 
@@ -63,13 +91,13 @@ admin.the-get.ru {
 		redir /grafana/ permanent
 	}
 	handle /grafana/* {
-		reverse_proxy grafana:3000
+		import grafana_upstream
 	}
 	handle /metrics {
 		respond 404
 	}
 	handle /api/internal/sitemap* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /track* {
 		respond 404
@@ -78,28 +106,28 @@ admin.the-get.ru {
 		respond 404
 	}
 	handle /api/products* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api/admin/translation-jobs* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api/translation-jobs* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api/internal/products* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /hubs* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /health* {
 		respond 404
 	}
 	handle {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 }
 
@@ -109,7 +137,7 @@ api.the-get.ru {
 		respond 404
 	}
 	handle /api/internal/sitemap* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /track* {
 		respond 404
@@ -118,28 +146,28 @@ api.the-get.ru {
 		respond 404
 	}
 	handle /api/products* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api/admin/translation-jobs* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api/translation-jobs* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api/internal/products* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /hubs* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /health* {
 		respond 404
 	}
 	handle {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 }
 
@@ -149,29 +177,29 @@ tracking.the-get.ru {
 		respond 404
 	}
 	handle /api/v1/track* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /api/v1/attachments/* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /hubs/tracking* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /assets* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /favicon.svg {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /favicon.ico {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle / {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	@trackingCode path_regexp trackingCode ^/[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{5}/?$
 	handle @trackingCode {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle {
 		respond 404
@@ -185,66 +213,66 @@ tracking.the-get.ru {
 		respond 404
 	}
 	handle /sitemap.xml {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /sitemaps/* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api/internal/sitemap* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api/catalog-* {
-		reverse_proxy catalog:3000
+		import catalog_upstream
 	}
 	handle /api/catalog/* {
-		reverse_proxy catalog:3000
+		import catalog_upstream
 	}
 	handle /api/individual-requests {
-		reverse_proxy catalog:3000
+		import catalog_upstream
 	}
 	handle /api/auction-requests {
-		reverse_proxy catalog:3000
+		import catalog_upstream
 	}
 	handle /api/ticket-requests {
-		reverse_proxy catalog:3000
+		import catalog_upstream
 	}
 	handle /api/products* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api/admin/translation-jobs* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api/translation-jobs* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api/internal/products* {
-		reverse_proxy products-api:8080
+		import products_upstream
 	}
 	handle /api* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /hubs* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /health* {
 		respond 404
 	}
 	handle /admin* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /track* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /assets* {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /favicon.svg {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle /favicon.ico {
-		reverse_proxy api:8080
+		import api_upstream
 	}
 	handle {
-		reverse_proxy catalog:3000
+		import catalog_upstream
 	}
 }

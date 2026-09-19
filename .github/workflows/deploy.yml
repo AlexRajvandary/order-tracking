@@ -152,12 +152,18 @@ jobs:
             # the final values from .env after the optional update above.
             unset RAKUTEN_APPLICATION_ID RAKUTEN_ACCESS_KEY RAKUTEN_AFFILIATE_ID PRODUCTS_INTERNAL_API_KEY GRAFANA_ADMIN_PASSWORD
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            export COMPOSE_PARALLEL_LIMIT=2
             echo "=== Caddyfile on VPS ==="
             cat docker/caddy/Caddyfile
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml config --quiet
             docker compose -f docker-compose.prod.yml run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans api catalog products-postgres products-api crawler-worker translation-worker prometheus node-exporter cadvisor loki alloy grafana
+            # Start dependencies in readiness-gated phases. This avoids a burst of
+            # endpoint/DNS churn on the small production host without using sleeps.
+            docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 120 postgres products-postgres minio
+            docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 240 api products-api catalog
+            docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 180 prometheus node-exporter cadvisor loki alloy grafana
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans crawler-worker translation-worker
             # The Caddyfile is bind-mounted as a file. Recreate Caddy so an atomic
             # SCP replacement cannot leave the container attached to the old inode.
             docker compose -f docker-compose.prod.yml up -d --no-deps --force-recreate caddy

@@ -1,3 +1,5 @@
+name: order-tracking
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -82,6 +84,16 @@ services:
       - /:/host:ro
     expose:
       - "8080"
+    networks:
+      default:
+        aliases:
+          - api
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   crawler-worker:
     image: ghcr.io/alexrajvandary/order-tracking-crawler:latest
@@ -89,9 +101,9 @@ services:
     restart: unless-stopped
     depends_on:
       products-api:
-        condition: service_started
+        condition: service_healthy
       api:
-        condition: service_started
+        condition: service_healthy
     environment:
       PRODUCTS_API_URL: http://products-api:8080/api/products
       ORDER_TRACKING_API_URL: http://api:8080/api/v1
@@ -107,7 +119,7 @@ services:
     restart: unless-stopped
     depends_on:
       products-api:
-        condition: service_started
+        condition: service_healthy
     environment:
       TranslationJobs__ApiUrl: http://products-api:8080/api/translation-jobs
       TranslationJobs__WorkerApiKey: ${CRAWLER_API_KEY}
@@ -124,13 +136,25 @@ services:
     container_name: order-tracking-catalog
     restart: unless-stopped
     depends_on:
-      - products-api
-      - api
+      products-api:
+        condition: service_healthy
+      api:
+        condition: service_healthy
     environment:
       PRODUCTS_API_BASE_URL: http://products-api:8080
       ORDER_TRACKING_API_BASE_URL: http://api:8080
     expose:
       - "3000"
+    networks:
+      default:
+        aliases:
+          - catalog
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   products-postgres:
     image: postgres:16-alpine
@@ -189,15 +213,30 @@ services:
       - "8080"
     volumes:
       - products_sitemap_data:/app/data/sitemaps
+    networks:
+      default:
+        aliases:
+          - products-api
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   caddy:
     image: caddy:2-alpine
     container_name: order-tracking-caddy
     restart: unless-stopped
     depends_on:
-      - api
-      - catalog
-      - products-api
+      api:
+        condition: service_healthy
+      catalog:
+        condition: service_healthy
+      products-api:
+        condition: service_healthy
+      grafana:
+        condition: service_started
     environment:
       LEGACY_SITE_ADDRESS: ${LEGACY_SITE_ADDRESS:-89-127-208-99.sslip.io}
     ports:
@@ -207,6 +246,10 @@ services:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    networks:
+      default:
+        aliases:
+          - caddy
 
   prometheus:
     image: prom/prometheus:v3.14.0
@@ -328,6 +371,10 @@ services:
       - ./docker/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     expose:
       - "3000"
+    networks:
+      default:
+        aliases:
+          - grafana
     mem_limit: 256m
     cpus: 0.50
     healthcheck:
@@ -348,3 +395,8 @@ volumes:
   grafana_data:
   caddy_data:
   caddy_config:
+
+networks:
+  default:
+    name: order-tracking_default
+    driver: bridge
