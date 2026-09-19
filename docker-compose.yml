@@ -72,6 +72,12 @@ services:
       Crawler__ApiKey: ${CRAWLER_API_KEY:-dev-crawler-key-change-me}
       ProductsApi__BaseUrl: http://products-api:8080
       ProductsApi__InternalApiKey: ${PRODUCTS_INTERNAL_API_KEY:-dev-products-internal-key-change-me}
+      Sitemap__PublicBaseUrl: ${PUBLIC_BASE_URL:-http://localhost:3001}
+      Sitemap__StoragePath: /app/data/sitemaps
+      Sitemap__ProductsPerFile: ${SITEMAP_PRODUCTS_PER_FILE:-20000}
+      Sitemap__DatabaseBatchSize: ${SITEMAP_DATABASE_BATCH_SIZE:-2000}
+      Sitemap__MaxUncompressedBytes: ${SITEMAP_MAX_UNCOMPRESSED_BYTES:-41943040}
+      Sitemap__RegenerationIntervalMinutes: ${SITEMAP_REGENERATION_INTERVAL_MINUTES:-60}
       PublicCheckout__CreatedByAdminLogin: ${PUBLIC_CHECKOUT_ADMIN_LOGIN:-admin}
       Monitoring__HostDiskPath: /host
     volumes:
@@ -175,6 +181,8 @@ services:
       Cors__Origins__1: http://localhost:3001
     ports:
       - "${PRODUCTS_API_PORT:-5281}:8080"
+    volumes:
+      - products_sitemap_data:/app/data/sitemaps
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
       interval: 30s
@@ -186,3 +194,4 @@ volumes:
   postgres_data:
   minio_data:
   products_postgres_data:
+  products_sitemap_data:

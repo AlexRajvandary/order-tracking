@@ -8,6 +8,7 @@ using Products.Infrastructure.Persistence.Interceptors;
 using Products.Infrastructure.Persistence.Repositories;
 using Products.Infrastructure.Services;
 using Products.Infrastructure.Rakuten;
+using Products.Infrastructure.Services.Sitemap;
 using Minio;
 
 namespace Products.Infrastructure;
@@ -38,6 +39,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<ISitemapDataSource, SitemapDataSource>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IBrandRepository, BrandRepository>();
         services.AddScoped<IShopRepository, ShopRepository>();
@@ -67,6 +69,19 @@ public static class DependencyInjection
             client.DefaultRequestHeaders.UserAgent.ParseAdd("OrderTracking-ImageImport/1.0");
         }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
         services.AddHostedService<ProductImageImportHostedService>();
+        services.AddOptions<SitemapOptions>()
+            .Bind(configuration.GetSection(SitemapOptions.SectionName))
+            .Validate(options => Uri.TryCreate(options.PublicBaseUrl, UriKind.Absolute, out _), "Sitemap:PublicBaseUrl must be an absolute URL.")
+            .Validate(options => !string.IsNullOrWhiteSpace(options.StoragePath), "Sitemap:StoragePath is required.")
+            .Validate(options => options.ProductsPerFile is > 0 and <= 50_000, "Sitemap:ProductsPerFile must be between 1 and 50000.")
+            .Validate(options => options.DatabaseBatchSize is > 0 and <= 10_000, "Sitemap:DatabaseBatchSize must be between 1 and 10000.")
+            .Validate(options => options.MaxUrlsPerFile is > 0 and <= 50_000, "Sitemap:MaxUrlsPerFile must be between 1 and 50000.")
+            .Validate(options => options.MaxUncompressedBytes is > 1_024 and <= 50_000_000, "Sitemap:MaxUncompressedBytes must be between 1025 and 50000000.")
+            .Validate(options => options.RegenerationIntervalMinutes > 0, "Sitemap:RegenerationIntervalMinutes must be positive.")
+            .ValidateOnStart();
+        services.AddSingleton<SitemapGenerationService>();
+        services.AddSingleton<SitemapRegenerationQueue>();
+        services.AddHostedService<SitemapGenerationHostedService>();
         services.Configure<RakutenSettings>(configuration.GetSection(RakutenSettings.SectionName));
         services.AddHttpClient<IRakutenCatalogClient, RakutenCatalogClient>((sp, client) =>
         {

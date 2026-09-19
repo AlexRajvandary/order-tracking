@@ -4,6 +4,15 @@ www.the-get.ru {
 
 the-get.ru {
 	encode zstd gzip
+	handle /sitemap.xml {
+		reverse_proxy products-api:8080
+	}
+	handle /sitemaps/* {
+		reverse_proxy products-api:8080
+	}
+	handle /api/internal/sitemap* {
+		reverse_proxy products-api:8080
+	}
 	handle /api/catalog-* {
 		reverse_proxy catalog:3000
 	}
@@ -47,6 +56,9 @@ the-get.ru {
 
 admin.the-get.ru {
 	encode zstd gzip
+	handle /api/internal/sitemap* {
+		reverse_proxy products-api:8080
+	}
 	handle /track* {
 		respond 404
 	}
@@ -81,6 +93,9 @@ admin.the-get.ru {
 
 api.the-get.ru {
 	encode zstd gzip
+	handle /api/internal/sitemap* {
+		reverse_proxy products-api:8080
+	}
 	handle /track* {
 		respond 404
 	}
@@ -148,6 +163,15 @@ tracking.the-get.ru {
 # Temporary compatibility host. Remove after the real domains are verified.
 {$LEGACY_SITE_ADDRESS} {
 	encode zstd gzip
+	handle /sitemap.xml {
+		reverse_proxy products-api:8080
+	}
+	handle /sitemaps/* {
+		reverse_proxy products-api:8080
+	}
+	handle /api/internal/sitemap* {
+		reverse_proxy products-api:8080
+	}
 	handle /api/catalog-* {
 		reverse_proxy catalog:3000
 	}

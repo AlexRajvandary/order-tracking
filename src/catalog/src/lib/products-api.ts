@@ -69,12 +69,6 @@ export type ApiProductListResult = {
   pageSize: number;
 };
 
-export type ApiProductSitemapItem = {
-  slug: string;
-  lastModified: string;
-  imageUrl: string | null;
-};
-
 export type ApiExternalProduct = {
   id: string; source: "Rakuten"; externalId: string; name: string;
   description: string | null; price: number; currencyCode: string;
@@ -434,16 +428,6 @@ export async function fetchCatalogPage(options: {
     page: result.page,
     pageSize: result.pageSize,
   };
-}
-
-export async function fetchProductSitemapItems(): Promise<ApiProductSitemapItem[]> {
-  const response = await fetch(`${productsApiBaseUrl()}/api/products/sitemap`, {
-    next: { revalidate: 3600 },
-  });
-  if (!response.ok) {
-    throw new Error(`Products sitemap API ${response.status}`);
-  }
-  return (await response.json()) as ApiProductSitemapItem[];
 }
 
 export function mapRakutenProductToCatalog(product: ApiExternalProduct): CatalogProduct {

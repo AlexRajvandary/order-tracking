@@ -9,7 +9,6 @@ using Products.Application.Products.GetProductAudit;
 using Products.Application.Products.GetProductImageSizes;
 using Products.Application.Products.ImportProducts;
 using Products.Application.Products.ListProducts;
-using Products.Application.Products.ListProductSitemap;
 using Products.Application.Products.ListProductFacets;
 using Products.Application.Products.PatchProduct;
 using Products.Application.Products.SetProductsVisibility;
@@ -117,13 +116,6 @@ public sealed class ProductsController : ControllerBase
         _mediator.Send(
             new ListProductFacetsQuery(categoryId, category, includeCategoryChildren, activeOnly),
             cancellationToken);
-
-    [HttpGet("sitemap")]
-    [AllowAnonymous]
-    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Any)]
-    public Task<IReadOnlyList<Products.Application.Products.Models.ProductSitemapItemDto>> Sitemap(
-        CancellationToken cancellationToken = default) =>
-        _mediator.Send(new ListProductSitemapQuery(), cancellationToken);
 
     [HttpGet("{id:guid}")]
     [AllowAnonymous]

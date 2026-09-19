@@ -77,18 +77,6 @@ public sealed class ProductRepository : IProductRepository
                     .ThenInclude(x => x!.Set)
             .FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
 
-    public async Task<IReadOnlyList<ProductSitemapItemDto>> ListSitemapItemsAsync(
-        CancellationToken cancellationToken = default) =>
-        await _db.Products
-            .AsNoTracking()
-            .Where(product => product.IsActive && product.Slug != string.Empty)
-            .OrderBy(product => product.Id)
-            .Select(product => new ProductSitemapItemDto(
-                product.Slug,
-                product.UpdatedAt ?? product.CreatedAt,
-                product.LocalImageUrl ?? product.ImageUrl))
-            .ToListAsync(cancellationToken);
-
     public Task<bool> IsSlugTakenAsync(
         string slug,
         Guid? excludeId = null,

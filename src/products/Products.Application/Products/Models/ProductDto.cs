@@ -144,11 +144,6 @@ public sealed record ProductListResult(
     int Page,
     int PageSize);
 
-public sealed record ProductSitemapItemDto(
-    string Slug,
-    DateTimeOffset LastModified,
-    string? ImageUrl);
-
 public sealed record ProductAuditDto(
     Guid Id,
     Guid ProductId,
