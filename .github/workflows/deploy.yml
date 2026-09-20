@@ -108,7 +108,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          source: "docker-compose.prod.yml,docker/caddy/Caddyfile,docker/monitoring"
+          source: "docker-compose.prod.yml,docker/caddy/Caddyfile"
           target: "~/order-tracking"
           strip_components: 0
 
@@ -119,13 +119,12 @@ jobs:
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
           PRODUCTS_INTERNAL_API_KEY: ${{ secrets.PRODUCTS_INTERNAL_API_KEY }}
-          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          envs: RAKUTEN_APPLICATION_ID,RAKUTEN_ACCESS_KEY,RAKUTEN_AFFILIATE_ID,PRODUCTS_INTERNAL_API_KEY,GRAFANA_ADMIN_PASSWORD
+          envs: RAKUTEN_APPLICATION_ID,RAKUTEN_ACCESS_KEY,RAKUTEN_AFFILIATE_ID,PRODUCTS_INTERNAL_API_KEY
           script: |
             set -e
             cd ~/order-tracking
@@ -142,15 +141,10 @@ jobs:
             set_secret RAKUTEN_ACCESS_KEY "$RAKUTEN_ACCESS_KEY"
             set_secret RAKUTEN_AFFILIATE_ID "$RAKUTEN_AFFILIATE_ID"
             set_secret PRODUCTS_INTERNAL_API_KEY "$PRODUCTS_INTERNAL_API_KEY"
-            set_secret GRAFANA_ADMIN_PASSWORD "$GRAFANA_ADMIN_PASSWORD"
-            if ! grep -Eq '^GRAFANA_ADMIN_PASSWORD=.+$' .env; then
-              echo "GRAFANA_ADMIN_PASSWORD is missing. Add it as a GitHub Actions secret or to ~/order-tracking/.env on the VPS." >&2
-              exit 1
-            fi
             # Empty GitHub secrets arrive as exported empty variables and would override
             # non-empty values already stored in the VPS .env file. Compose must read
             # the final values from .env after the optional update above.
-            unset RAKUTEN_APPLICATION_ID RAKUTEN_ACCESS_KEY RAKUTEN_AFFILIATE_ID PRODUCTS_INTERNAL_API_KEY GRAFANA_ADMIN_PASSWORD
+            unset RAKUTEN_APPLICATION_ID RAKUTEN_ACCESS_KEY RAKUTEN_AFFILIATE_ID PRODUCTS_INTERNAL_API_KEY
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             export COMPOSE_PARALLEL_LIMIT=2
             echo "=== Caddyfile on VPS ==="
@@ -162,7 +156,6 @@ jobs:
             # endpoint/DNS churn on the small production host without using sleeps.
             docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 120 postgres products-postgres minio
             docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 240 api products-api catalog
-            docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 180 prometheus node-exporter cadvisor loki alloy grafana
             docker compose -f docker-compose.prod.yml up -d --remove-orphans crawler-worker translation-worker
             # The Caddyfile is bind-mounted as a file. Recreate Caddy so an atomic
             # SCP replacement cannot leave the container attached to the old inode.

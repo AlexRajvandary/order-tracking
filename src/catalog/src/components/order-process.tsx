@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   BadgeCheck,
@@ -22,7 +23,15 @@ const STEPS = [
   { number: "07", title: "Доставка", text: "Отправка производится через страны транзита, на наш склад далее, отправка напрямую к вам.", icon: Plane },
 ];
 
+const SERVICE_REQUEST_PATHS = new Set([
+  "/individual-request",
+  "/auction-request",
+  "/ticket-request",
+  "/find-product",
+]);
+
 export function OrderProcess() {
+  const pathname = usePathname();
   const sectionRef = useRef<HTMLElement>(null);
   const hasAnimated = useRef(false);
   const [activeStep, setActiveStep] = useState<number | null>(null);
@@ -56,6 +65,8 @@ export function OrderProcess() {
     observer.observe(section);
     return () => observer.disconnect();
   }, []);
+
+  if (SERVICE_REQUEST_PATHS.has(pathname)) return null;
 
   return (
     <section ref={sectionRef} className="mx-auto w-full max-w-[1280px] bg-background px-4 py-12 sm:px-8 sm:py-16 lg:px-10">

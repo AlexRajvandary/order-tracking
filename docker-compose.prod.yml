@@ -223,8 +223,6 @@ services:
         condition: service_healthy
       products-api:
         condition: service_healthy
-      grafana:
-        condition: service_started
     environment:
       LEGACY_SITE_ADDRESS: ${LEGACY_SITE_ADDRESS:-89-127-208-99.sslip.io}
     ports:
@@ -235,143 +233,10 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
-  prometheus:
-    image: prom/prometheus:v3.14.0
-    container_name: order-tracking-prometheus
-    restart: unless-stopped
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.path=/prometheus
-      - --storage.tsdb.retention.time=7d
-      - --storage.tsdb.retention.size=512MB
-      - --web.enable-lifecycle
-    volumes:
-      - ./docker/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    expose:
-      - "9090"
-    mem_limit: 256m
-    cpus: 0.50
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/ready || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
-  node-exporter:
-    image: prom/node-exporter:v1.12.1
-    container_name: order-tracking-node-exporter
-    restart: unless-stopped
-    command:
-      - --path.rootfs=/host
-      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/containers/storage/.+)($$|/)
-    pid: host
-    volumes:
-      - /:/host:ro,rslave
-    expose:
-      - "9100"
-    mem_limit: 64m
-    cpus: 0.15
-    security_opt:
-      - no-new-privileges:true
-
-  cadvisor:
-    image: ghcr.io/google/cadvisor:v0.60.5
-    container_name: order-tracking-cadvisor
-    restart: unless-stopped
-    privileged: true
-    command:
-      - --docker_only=true
-      - --housekeeping_interval=30s
-      - --store_container_labels=false
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker:/var/lib/docker:ro
-      - /dev/disk:/dev/disk:ro
-    expose:
-      - "8080"
-    mem_limit: 128m
-    cpus: 0.25
-
-  loki:
-    image: grafana/loki:3.7.0
-    container_name: order-tracking-loki
-    restart: unless-stopped
-    command: -config.file=/etc/loki/loki.yml
-    volumes:
-      - ./docker/monitoring/loki/loki.yml:/etc/loki/loki.yml:ro
-      - loki_data:/loki
-    expose:
-      - "3100"
-    mem_limit: 256m
-    cpus: 0.50
-
-  alloy:
-    image: grafana/alloy:v1.19.2
-    container_name: order-tracking-alloy
-    restart: unless-stopped
-    depends_on:
-      - loki
-    environment:
-      DEPLOY_ENVIRONMENT: Production
-    command:
-      - run
-      - --server.http.listen-addr=0.0.0.0:12345
-      - --storage.path=/var/lib/alloy/data
-      - /etc/alloy/config.alloy
-    volumes:
-      - ./docker/monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - alloy_data:/var/lib/alloy/data
-    expose:
-      - "12345"
-    mem_limit: 128m
-    cpus: 0.25
-    security_opt:
-      - no-new-privileges:true
-
-  grafana:
-    image: grafana/grafana:13.2.2
-    container_name: order-tracking-grafana
-    restart: unless-stopped
-    depends_on:
-      prometheus:
-        condition: service_healthy
-      loki:
-        condition: service_started
-    environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}
-      GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_AUTH_ANONYMOUS_ENABLED: "false"
-      GF_SERVER_ROOT_URL: ${ADMIN_BASE_URL:-https://admin.the-get.ru}/grafana/
-      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
-      GF_ANALYTICS_REPORTING_ENABLED: "false"
-      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./docker/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-    expose:
-      - "3000"
-    mem_limit: 256m
-    cpus: 0.50
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/grafana/api/health || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
 volumes:
   postgres_data:
   minio_data:
   products_postgres_data:
   products_sitemap_data:
-  prometheus_data:
-  loki_data:
-  alloy_data:
-  grafana_data:
   caddy_data:
   caddy_config:

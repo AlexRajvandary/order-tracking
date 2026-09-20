@@ -19,13 +19,6 @@
 	}
 }
 
-(grafana_upstream) {
-	reverse_proxy grafana:3000 {
-		lb_try_duration 10s
-		lb_try_interval 500ms
-	}
-}
-
 www.the-get.ru {
 	redir https://the-get.ru{uri} permanent
 }
@@ -87,12 +80,6 @@ the-get.ru {
 
 admin.the-get.ru {
 	encode zstd gzip
-	handle /grafana {
-		redir /grafana/ permanent
-	}
-	handle /grafana/* {
-		import grafana_upstream
-	}
 	handle /metrics {
 		respond 404
 	}

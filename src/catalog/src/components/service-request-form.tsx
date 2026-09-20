@@ -93,6 +93,12 @@ export function ServiceRequestForm({ type }: { type: ServiceRequestType }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (result) {
+      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    }
+  }, [result]);
+
   const activeContact =
     contactOptions.find((option) => option.value === contactType) ??
     contactOptions[0];
