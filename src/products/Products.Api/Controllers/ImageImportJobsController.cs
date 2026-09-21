@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Products.Domain.Entities;
 using Products.Domain.Enums;
 using Products.Infrastructure.Persistence;
+using Products.Infrastructure.Services;
 
 namespace Products.Api.Controllers;
 
@@ -15,14 +16,21 @@ public sealed class ImageImportJobsController : ControllerBase
 {
     private const int MaxItems = 100_000;
     private readonly ProductsDbContext _db;
+    private readonly WebpConversionService _webpConversion;
 
-    public ImageImportJobsController(ProductsDbContext db) => _db = db;
+    public ImageImportJobsController(ProductsDbContext db, WebpConversionService webpConversion)
+    {
+        _db = db;
+        _webpConversion = webpConversion;
+    }
 
     [HttpPost]
     public async Task<ActionResult<ImageImportJobDto>> Create(
         [FromBody] CreateImageImportJobRequest request,
         CancellationToken cancellationToken)
     {
+        if (_webpConversion.Current?.Status is "Pending" or "Scanning" or "Running")
+            return Conflict(new ProblemDetails { Detail = "Сначала дождитесь окончания конвертации изображений." });
         if (!Enum.IsDefined(request.Scope)) return BadRequest(new ProblemDetails { Detail = "Неизвестная область импорта." });
         var parallelism = request.Parallelism ?? 5;
         if (parallelism is < 1 or > 10) return BadRequest(new ProblemDetails { Detail = "Параллелизм должен быть от 1 до 10." });

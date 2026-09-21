@@ -145,7 +145,7 @@ public sealed class ProductImageStorage
 
     private static readonly HashSet<string> AllowedFileNames = new(StringComparer.OrdinalIgnoreCase)
     {
-        "main.jpg", "main.png", "main.webp", "main.gif", "main.avif",
+        "main.jpg", "main.jpeg", "main.png", "main.webp", "main.gif", "main.avif",
     };
 
     private static string ObjectKey(Guid productId, string fileName) =>

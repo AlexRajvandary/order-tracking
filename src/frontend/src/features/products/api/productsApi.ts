@@ -282,6 +282,35 @@ export function cancelTranslationJob(id: string) {
 
 const IMAGE_IMPORT_JOBS_API_BASE = '/api/products/image-import-jobs'
 
+export type WebpConversionStatus = {
+  id: string
+  status: 'Pending' | 'Scanning' | 'Running' | 'Completed' | 'CompletedWithErrors' | 'Cancelled' | 'Failed'
+  processed: number
+  total: number
+  converted: number
+  skipped: number
+  failed: number
+  originalBytes: number
+  webpBytes: number
+  lastError: string | null
+  startedAt: string
+  completedAt: string | null
+}
+
+const WEBP_CONVERSION_API_BASE = '/api/products/image-webp-conversion'
+
+export function getWebpConversionStatus(signal?: AbortSignal) {
+  return authorizedJsonFromUrl<WebpConversionStatus | null>(WEBP_CONVERSION_API_BASE, { signal })
+}
+
+export function startWebpConversion() {
+  return authorizedJsonFromUrl<WebpConversionStatus>(WEBP_CONVERSION_API_BASE, { method: 'POST' })
+}
+
+export function cancelWebpConversion() {
+  return authorizedJsonFromUrl<WebpConversionStatus | null>(`${WEBP_CONVERSION_API_BASE}/cancel`, { method: 'POST' })
+}
+
 export function listImageImportJobs(signal?: AbortSignal) {
   return authorizedJsonFromUrl<ImageImportJob[]>(IMAGE_IMPORT_JOBS_API_BASE, { signal })
 }

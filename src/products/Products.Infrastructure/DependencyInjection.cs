@@ -69,6 +69,9 @@ public static class DependencyInjection
             client.DefaultRequestHeaders.UserAgent.ParseAdd("OrderTracking-ImageImport/1.0");
         }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
         services.AddHostedService<ProductImageImportHostedService>();
+        services.Configure<WebpConversionOptions>(configuration.GetSection("WebpConversion"));
+        services.AddSingleton<WebpConversionService>();
+        services.AddHostedService(sp => sp.GetRequiredService<WebpConversionService>());
         services.AddOptions<SitemapOptions>()
             .Bind(configuration.GetSection(SitemapOptions.SectionName))
             .Validate(options => Uri.TryCreate(options.PublicBaseUrl, UriKind.Absolute, out _), "Sitemap:PublicBaseUrl must be an absolute URL.")

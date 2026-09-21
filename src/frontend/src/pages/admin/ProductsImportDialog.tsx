@@ -1,4 +1,4 @@
-import { ExternalLink, FileCode2, FileJson, ImageDown, ImageOff, Languages, ListTodo, Upload } from 'lucide-react'
+import { ExternalLink, FileCode2, FileJson, ImageDown, ImageOff, Images, Languages, ListTodo, Upload } from 'lucide-react'
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as productsApi from '@/features/products/api/productsApi'
@@ -46,6 +46,7 @@ import { Textarea } from '@/shared/ui/textarea'
 import { CrawlerJobsPanel } from './CrawlerJobsPanel'
 import { TranslationJobsPanel } from './TranslationJobsPanel'
 import { ImageImportJobsPanel } from './ImageImportJobsPanel'
+import { WebpConversionPanel } from './WebpConversionPanel'
 
 const IMPORT_BATCH_SIZE = 100
 const CATEGORY_FROM_SOURCE = '__category_from_source__'
@@ -150,7 +151,7 @@ type ImportSummary = Omit<ImportProductsResult, 'total' | 'issues'> & {
   issues: ImportProductIssue[]
 }
 
-type ImportSource = 'json' | 'html' | 'crawler' | 'translation' | 'images'
+type ImportSource = 'json' | 'html' | 'crawler' | 'translation' | 'images' | 'webp'
 
 type CategoryOption = {
   id: string
@@ -462,7 +463,7 @@ export function ProductsImportDialog({
               resetResult()
             }}
           >
-            <TabsList>
+            <TabsList className="h-auto flex-wrap">
               <TabsTrigger value="json" disabled={isImporting}>
                 <FileJson />{t('import.sources.json')}
               </TabsTrigger>
@@ -478,6 +479,9 @@ export function ProductsImportDialog({
               <TabsTrigger value="images" disabled={isImporting}>
                 <ImageDown />Изображения
               </TabsTrigger>
+              <TabsTrigger value="webp" disabled={isImporting}>
+                <Images />WebP
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -487,6 +491,8 @@ export function ProductsImportDialog({
             <TranslationJobsPanel />
           ) : source === 'images' ? (
             <ImageImportJobsPanel />
+          ) : source === 'webp' ? (
+            <WebpConversionPanel />
           ) : <>
           <p className="text-sm text-muted-foreground">
             {t(source === 'json' ? 'import.description' : 'import.htmlDescription')}
