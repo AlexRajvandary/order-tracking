@@ -253,6 +253,7 @@ public sealed class WebpConversionService : BackgroundService
                         data.Write(buffer, 0, read);
                     }
                 }), ct);
+            data.Position = 0;
             return data;
         }
         catch { data.Dispose(); throw; }
@@ -271,6 +272,7 @@ internal static class WebpImageCodec
 {
     public static async Task<MemoryStream> ConvertAsync(Stream source, int quality, long maxPixels, CancellationToken ct)
     {
+        source.Position = 0;
         var info = await Image.IdentifyAsync(source, ct) ?? throw new InvalidDataException("Неизвестный формат изображения.");
         if ((long)info.Width * info.Height > maxPixels)
             throw new InvalidDataException("Изображение превышает ограничение по пикселям.");
