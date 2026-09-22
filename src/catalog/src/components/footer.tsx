@@ -58,11 +58,7 @@ const FOOTER_COLUMNS: FooterColumn[] = [
   {
     title: "Блог",
     links: [
-      { href: "/blog", label: "Последние статьи" },
-      { href: "/blog/novinki", label: "Новинки" },
-      { href: "/blog/reviews", label: "Обзоры" },
-      { href: "/blog/guides", label: "Гайды" },
-      { href: "/blog/news", label: "Новости индустрии" },
+      { href: "https://theget.ru/media", label: "Последние статьи" },
     ],
   },
   {
@@ -161,7 +157,7 @@ export function Footer() {
               className="flex flex-wrap items-center justify-center gap-4 sm:gap-5"
             >
               <Link
-                href="https://t.me/theget"
+                href="https://t.me/thegetru"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-white/80 transition-colors duration-200 hover:text-white"
@@ -170,7 +166,7 @@ export function Footer() {
                 Telegram
               </Link>
               <Link
-                href="https://vk.com/theget"
+                href="https://vk.ru/thegetru?from=groups"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-white/80 transition-colors duration-200 hover:text-white"
@@ -178,12 +174,14 @@ export function Footer() {
                 <VkIcon className="size-4" />
                 VK
               </Link>
-              <Link
-                href="mailto:hello@theget.ru"
+             <Link
+                href="https://t.me/getmvp"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-white/80 transition-colors duration-200 hover:text-white"
               >
-                <Mail className="size-4" aria-hidden />
-                Email
+                <Send className="size-4" aria-hidden />
+                Написать нам в Telegram
               </Link>
             </nav>
           </div>
