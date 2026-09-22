@@ -217,9 +217,8 @@ export default async function CategorySectionPage({
     ? requestedShuffleSeed
     : undefined;
 
-  // Catalog pages must always receive a fresh tree with current counts for every
-  // root category and subcategory. Client-side navigation keeps the previous
-  // snapshot visible while this uncached request is in flight.
+  // The tree includes an aggregate product-count query. It is cached for a
+  // short TTL in categories-api, avoiding that GROUP BY on every navigation.
   const categoryTreePromise = fetchFreshCategoryTree().catch(() => []);
 
   // Product requests do not depend on category metadata. Start them immediately

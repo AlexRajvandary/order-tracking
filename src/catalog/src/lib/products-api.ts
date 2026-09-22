@@ -1,4 +1,5 @@
 import type { CatalogProduct } from "@/lib/catalog-products";
+import { unstable_cache } from "next/cache";
 
 export type ApiProduct = {
   id: string;
@@ -206,7 +207,7 @@ export function mapApiProductToCatalog(
   };
 }
 
-export async function fetchProductsPage(options?: {
+type ProductsPageOptions = {
   page?: number;
   pageSize?: number;
   search?: string;
@@ -237,7 +238,9 @@ export async function fetchProductsPage(options?: {
   includeCategoryChildren?: boolean;
   sort?: "mixed";
   shuffleSeed?: number;
-}): Promise<ApiProductListResult> {
+};
+
+async function requestProductsPage(options?: ProductsPageOptions): Promise<ApiProductListResult> {
   const page = options?.page && options.page > 0 ? options.page : 1;
   const pageSize =
     options?.pageSize && options.pageSize > 0
@@ -311,6 +314,49 @@ export async function fetchProductsPage(options?: {
   }
 
   return (await res.json()) as ApiProductListResult;
+}
+
+const fetchCachedProductsPage = unstable_cache(
+  async (serializedOptions: string): Promise<ApiProductListResult> =>
+    requestProductsPage(JSON.parse(serializedOptions) as ProductsPageOptions),
+  ["catalog-products-page"],
+  { revalidate: 3600 },
+);
+
+function canCacheProductsPage(options?: ProductsPageOptions): boolean {
+  const page = options?.page ?? 1;
+  if (page < 1 || page > 3) return false;
+
+  // Search and user-selected filters are intentionally left uncached. The
+  // anonymous landing/category datasets are stable and include their seed in
+  // the serialized cache key below.
+  return !options?.search
+    && !options?.brandSlugs?.length
+    && !options?.shopSlugs?.length
+    && !options?.conditions?.length
+    && !options?.genders?.length
+    && !options?.laptopModels?.length
+    && !options?.laptopProcessors?.length
+    && !options?.laptopRamGb?.length
+    && !options?.laptopStorageTypes?.length
+    && !options?.laptopStorageGb?.length
+    && !options?.laptopScreenSizes?.length
+    && !options?.laptopOperatingSystems?.length
+    && !options?.tcgCharacters?.length
+    && !options?.tcgSets?.length
+    && !options?.tcgRarities?.length
+    && !options?.tcgCrews?.length
+    && !options?.yugiohCardTypes?.length
+    && !options?.yugiohCardSubtypes?.length
+    && !options?.yugiohAttributes?.length
+    && !options?.yugiohMonsterRaces?.length
+    && !options?.yugiohSeriesTypes?.length;
+}
+
+export async function fetchProductsPage(options?: ProductsPageOptions): Promise<ApiProductListResult> {
+  if (!canCacheProductsPage(options)) return requestProductsPage(options);
+
+  return fetchCachedProductsPage(JSON.stringify(options ?? {}));
 }
 
 export async function fetchProductById(

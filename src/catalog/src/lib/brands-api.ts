@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 export type ApiBrand = {
   id: string;
   name: string;
@@ -60,6 +62,19 @@ export async function fetchCatalogFacets(
   categorySlug?: string,
   includeCategoryChildren = true,
 ): Promise<ApiCatalogFacets> {
+  return fetchCachedCatalogFacets(
+    categoryId ?? null,
+    categorySlug ?? null,
+    includeCategoryChildren,
+  );
+}
+
+const fetchCachedCatalogFacets = unstable_cache(
+  async (
+    categoryId: string | null,
+    categorySlug: string | null,
+    includeCategoryChildren: boolean,
+  ): Promise<ApiCatalogFacets> => {
   const params = new URLSearchParams({
     activeOnly: "true",
     includeCategoryChildren: String(includeCategoryChildren),
@@ -84,8 +99,10 @@ export async function fetchCatalogFacets(
       yuGiOh: { cardTypes: [], cardSubtypes: [], attributes: [], monsterRaces: [], seriesTypes: [] },
     },
   };
-}
-
+  },
+  ["catalog-facets"],
+  { revalidate: 3600 },
+);
 export function parseBrandSlugs(raw: string | string[] | undefined): string[] {
   if (!raw) return [];
   const values = Array.isArray(raw) ? raw : raw.split(",");

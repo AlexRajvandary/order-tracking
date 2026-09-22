@@ -67,6 +67,8 @@ const fetchCachedCategoryTree = unstable_cache(
     });
   },
   ["catalog-category-tree"],
+  // The catalog changes infrequently, so avoid repeating the GROUP BY on every
+  // navigation while still making imports visible without a manual purge.
   { revalidate: 3600 },
 );
 
@@ -85,10 +87,10 @@ export async function fetchCategoryTree(
 }
 
 export function fetchFreshCategoryTree(): Promise<ApiCategory[]> {
-  return requestCategoryTree(
-    { includeProductCounts: true, productsActiveOnly: true },
-    { cache: "no-store" },
-  );
+  return fetchCategoryTree({
+    includeProductCounts: true,
+    productsActiveOnly: true,
+  });
 }
 
 function normalizeCategoryTitle(category: ApiCategory): ApiCategory {
