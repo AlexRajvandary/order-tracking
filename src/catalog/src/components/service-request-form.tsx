@@ -250,6 +250,67 @@ export function ServiceRequestForm({ type }: { type: ServiceRequestType }) {
         Нажимая на кнопку, вы даёте согласие на обработку предоставленных данных
         в соответствии с политикой конфиденциальности.
       </p>
+
+      <div className="border-t border-border pt-6">
+        <div className="text-center">
+          <p className="text-base font-semibold text-foreground sm:text-lg">
+            Уже знаете, что хотите заказать, или хотите уточнить все детали?
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Напишите нам в чат или просто позвоните
+          </p>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <Button variant="outline" className="h-11" asChild>
+            <a
+              href="https://t.me/getmvp"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Telegram
+            </a>
+          </Button>
+
+          <Button variant="outline" className="h-11" asChild>
+            <a
+              href="https://wa.me/qr/4SS5MZ7AYCI4O1"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              WhatsApp
+            </a>
+          </Button>
+
+          <Button variant="outline" className="h-11" asChild>
+            <a
+              href="https://vk.ru/thegetru"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              VK
+            </a>
+          </Button>
+
+          <Button variant="outline" className="h-11" asChild>
+            <a
+              href="https://www.instagram.com/theget.ru"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Instagram
+            </a>
+          </Button>
+
+          <Button
+            variant="outline"
+            className="col-span-2 h-11 sm:col-span-1"
+            asChild
+          >
+            <a href="tel:+79677132093">+7 967 713-20-93</a>
+          </Button>
+        </div>
+      </div>
     </form>
   );
 }
