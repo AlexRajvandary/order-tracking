@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ImagePlus, Loader2, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -262,53 +262,51 @@ export function ServiceRequestForm({ type }: { type: ServiceRequestType }) {
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
-          <Button variant="outline" className="h-11" asChild>
-            <a
-              href="https://t.me/getmvp"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Telegram
-            </a>
-          </Button>
-
-          <Button variant="outline" className="h-11" asChild>
-            <a
-              href="https://wa.me/qr/4SS5MZ7AYCI4O1"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              WhatsApp
-            </a>
-          </Button>
-
-          <Button variant="outline" className="h-11" asChild>
-            <a
-              href="https://vk.ru/thegetru"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              VK
-            </a>
-          </Button>
-
-          <Button variant="outline" className="h-11" asChild>
-            <a
-              href="https://www.instagram.com/theget.ru"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Instagram
-            </a>
-          </Button>
-
-          <Button
-            variant="outline"
-            className="col-span-2 h-11 sm:col-span-1"
-            asChild
+          <a
+            href="https://t.me/getmvp"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ variant: "outline" }), "h-11")}
           >
-            <a href="tel:+79677132093">+7 967 713-20-93</a>
-          </Button>
+            Telegram
+          </a>
+
+          <a
+            href="https://wa.me/qr/4SS5MZ7AYCI4O1"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ variant: "outline" }), "h-11")}
+          >
+            WhatsApp
+          </a>
+
+          <a
+            href="https://vk.ru/thegetru"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ variant: "outline" }), "h-11")}
+          >
+            VK
+          </a>
+
+          <a
+            href="https://www.instagram.com/theget.ru"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ variant: "outline" }), "h-11")}
+          >
+            Instagram
+          </a>
+
+          <a
+            href="tel:+79677132093"
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "col-span-2 h-11 sm:col-span-1",
+            )}
+          >
+            +7 967 713-20-93
+          </a>
         </div>
       </div>
     </form>
