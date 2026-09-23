@@ -305,7 +305,7 @@ export function ServiceRequestForm({ type }: { type: ServiceRequestType }) {
               "col-span-2 h-11 sm:col-span-1",
             )}
           >
-            +7 967 713-20-93
+            Позвонить
           </a>
         </div>
       </div>
