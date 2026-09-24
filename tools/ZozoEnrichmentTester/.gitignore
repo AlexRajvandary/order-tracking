@@ -1,0 +1,9 @@
+bin/
+obj/
+output*.csv
+exports/
+data/
+errors/
+inputs/generated/
+# Legacy profile created by the previous launch-based implementation; CDP mode does not use it.
+zozo-browser-profile/
