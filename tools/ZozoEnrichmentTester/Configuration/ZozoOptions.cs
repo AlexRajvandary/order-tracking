@@ -20,7 +20,8 @@ public sealed record CliOptions(
     bool Resume,
     bool SaveFailedHtml,
     string? CdpEndpoint,
-    int? DelayMs)
+    int? DelayMs,
+    string? GeneratePostgresSqlPath)
 {
     public static CliOptions Parse(string[] args)
     {
@@ -30,6 +31,7 @@ public sealed record CliOptions(
         int? limit = null;
         int? delay = null;
         string? cdpEndpoint = null;
+        string? generatePostgresSql = null;
         var retryErrors = false;
         var force = false;
         var resume = false;
@@ -42,6 +44,7 @@ public sealed record CliOptions(
                 case "--input": input = NextValue(args, ref i, "--input"); break;
                 case "--export": export = NextValue(args, ref i, "--export"); break;
                 case "--export-all": exportAll = NextValue(args, ref i, "--export-all"); break;
+                case "--generate-postgres-sql": generatePostgresSql = NextValue(args, ref i, "--generate-postgres-sql"); break;
                 case "--limit": limit = ParsePositiveInt(NextValue(args, ref i, "--limit"), "--limit"); break;
                 case "--delay-ms": delay = ParseNonNegativeInt(NextValue(args, ref i, "--delay-ms"), "--delay-ms"); break;
                 case "--cdp-endpoint": cdpEndpoint = NextValue(args, ref i, "--cdp-endpoint"); break;
@@ -55,12 +58,15 @@ public sealed record CliOptions(
             }
         }
 
-        if (string.IsNullOrWhiteSpace(input) && !resume && string.IsNullOrWhiteSpace(exportAll))
-            throw new ArgumentException("Use --input, --resume, or --export-all.");
+        if (string.IsNullOrWhiteSpace(input) && !resume && string.IsNullOrWhiteSpace(exportAll) && string.IsNullOrWhiteSpace(generatePostgresSql))
+            throw new ArgumentException("Use --input, --resume, --export-all, or --generate-postgres-sql.");
         if (!string.IsNullOrWhiteSpace(input) && resume)
             throw new ArgumentException("--input and --resume are separate modes.");
         if (!string.IsNullOrWhiteSpace(export) && string.IsNullOrWhiteSpace(input))
             throw new ArgumentException("--export requires --input so it can export the current import.");
+        if (!string.IsNullOrWhiteSpace(generatePostgresSql)
+            && (!string.IsNullOrWhiteSpace(input) || resume || !string.IsNullOrWhiteSpace(export) || !string.IsNullOrWhiteSpace(exportAll)))
+            throw new ArgumentException("--generate-postgres-sql is a separate mode.");
 
         return new CliOptions(
             input is null ? null : Path.GetFullPath(input),
@@ -72,7 +78,8 @@ public sealed record CliOptions(
             resume,
             saveFailedHtml,
             cdpEndpoint,
-            delay);
+            delay,
+            generatePostgresSql is null ? null : Path.GetFullPath(generatePostgresSql));
     }
 
     private static string NextValue(string[] args, ref int index, string option) =>
@@ -84,7 +91,7 @@ public sealed record CliOptions(
     private static int ParseNonNegativeInt(string value, string option) =>
         int.TryParse(value, out var parsed) && parsed >= 0 ? parsed : throw new ArgumentException($"{option} must be zero or greater.");
 
-    public static string Usage => "dotnet run -- --input input.csv [--limit 1] [--retry-errors] [--force] [--export output.csv] | --resume | --export-all all.csv";
+    public static string Usage => "dotnet run -- --input input.csv [--limit 1] [--retry-errors] [--force] [--export output.csv] | --resume | --export-all all.csv | --generate-postgres-sql zozo-import.sql";
 }
 
 public sealed class CliHelpException : Exception;

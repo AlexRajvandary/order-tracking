@@ -16,7 +16,7 @@ try
     var options = new ZozoOptions
     {
         CdpEndpoint = cli.CdpEndpoint ?? section["CdpEndpoint"] ?? "http://127.0.0.1:9222",
-        DatabasePath = section["DatabasePath"] ?? "data/zozo-enrichment.db",
+        DatabasePath = ResolveDatabasePath(section["DatabasePath"] ?? "data/zozo-enrichment.db"),
         ApiKey = section["ApiKey"] ?? throw new InvalidOperationException("Zozo:ApiKey is missing."),
         DelayBetweenProductsMs = cli.DelayMs ?? int.Parse(section["DelayBetweenProductsMs"] ?? "2500"),
         RequestTimeoutMs = int.Parse(section["RequestTimeoutMs"] ?? "60000"),
@@ -40,6 +40,17 @@ try
     var database = new ZozoDatabase(options.DatabasePath);
     await database.InitializeAsync(cancellation.Token);
     Console.WriteLine($"Database: {database.DatabasePath}");
+
+    if (cli.GeneratePostgresSqlPath is not null)
+    {
+        var completed = await database.GetCompletedProductsAsync(cancellation.Token);
+        var result = await PostgresImportSqlGenerator.GenerateAsync(completed, cli.GeneratePostgresSqlPath, cancellation.Token);
+        Console.WriteLine($"PostgreSQL import script: {result.Path}");
+        Console.WriteLine($"Completed rows read: {result.CompletedRows}");
+        Console.WriteLine($"UUID products written: {result.WrittenRows}");
+        Console.WriteLine($"Non-UUID rows skipped: {result.SkippedRows}");
+        return;
+    }
 
     if (cli.InputPath is null && !cli.Resume)
     {
@@ -219,4 +230,14 @@ static int JsonCount(string json)
 {
     try { using var document = JsonDocument.Parse(json); return document.RootElement.GetArrayLength(); }
     catch { return 0; }
+}
+
+static string ResolveDatabasePath(string configuredPath)
+{
+    if (Path.IsPathRooted(configuredPath)) return configuredPath;
+    var fromCurrentDirectory = Path.GetFullPath(configuredPath);
+    if (File.Exists(fromCurrentDirectory)) return fromCurrentDirectory;
+
+    var fromProjectDirectory = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", configuredPath));
+    return File.Exists(fromProjectDirectory) ? fromProjectDirectory : fromCurrentDirectory;
 }

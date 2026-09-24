@@ -264,6 +264,24 @@ public sealed class ZozoDatabase
         return result;
     }
 
+    public async Task<List<OutputProduct>> GetCompletedProductsAsync(CancellationToken cancellationToken)
+    {
+        var rows = new List<OutputProduct>();
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT p.product_id,p.source_url,p.name,p.brand,p.description,p.material,p.price,p.original_price,
+                p.currency,p.photos_json,p.colors_json,p.sizes_json,p.size_specs_json,p.variants_json,
+                p.availability,p.movies_json,p.goods_id,p.goods_detail_id,p.goods_type_id,p.shop_id,p.parse_status,p.error
+            FROM products p
+            WHERE p.parse_status='Completed'
+            ORDER BY p.first_seen_at,p.product_id;
+            """;
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken)) rows.Add(ReadOutput(reader));
+        return rows;
+    }
+
     private async Task ExportAsync(string suffix, string path, Action<SqliteCommand> configure, CancellationToken cancellationToken)
     {
         var rows = new List<OutputProduct>();

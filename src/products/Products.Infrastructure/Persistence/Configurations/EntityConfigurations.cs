@@ -265,6 +265,7 @@ public sealed class ProductVariantConfiguration : IEntityTypeConfiguration<Produ
         builder.ToTable("product_variants");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Size).HasMaxLength(100);
+        builder.Property(x => x.Color).HasMaxLength(200);
         builder.Property(x => x.Price).HasPrecision(18, 2);
         builder.Property(x => x.CurrencyCode).HasMaxLength(3).IsFixedLength();
         builder.Property(x => x.CreatedAt).IsRequired();
@@ -272,7 +273,11 @@ public sealed class ProductVariantConfiguration : IEntityTypeConfiguration<Produ
             .WithMany(x => x.ProductVariants)
             .HasForeignKey(x => x.ProductId)
             .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.ProductColor).WithMany(x => x.Variants).HasForeignKey(x => x.ProductColorId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(x => x.ProductSize).WithMany(x => x.Variants).HasForeignKey(x => x.ProductSizeId).OnDelete(DeleteBehavior.SetNull);
         builder.HasIndex(x => x.ProductId);
+        builder.HasIndex(x => x.ProductColorId);
+        builder.HasIndex(x => x.ProductSizeId);
     }
 }
 

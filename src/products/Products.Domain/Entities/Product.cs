@@ -20,6 +20,10 @@ public class Product : AuditableEntity
     public Category? Category { get; set; }
     public ICollection<ProductVariant> ProductVariants { get; set; } = new List<ProductVariant>();
     public ICollection<ProductImage> ProductImages { get; set; } = new List<ProductImage>();
+    public ICollection<ProductColor> ProductColors { get; set; } = new List<ProductColor>();
+    public ICollection<ProductSize> ProductSizes { get; set; } = new List<ProductSize>();
+    public ICollection<ProductMedia> ProductMedia { get; set; } = new List<ProductMedia>();
+    public ProductSourceDetail? SourceDetail { get; set; }
     public LaptopSpecification? LaptopSpecification { get; set; }
     public TcgCardSpecification? TcgCardSpecification { get; set; }
     /// <summary>New or used (Б/У).</summary>

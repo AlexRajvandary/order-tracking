@@ -74,6 +74,17 @@ dotnet run --no-build -- --input .\input.csv --export .\exports\input-result.csv
 dotnet run --no-build -- --export-all .\exports\all-products.csv
 ```
 
+Генерация одного транзакционного PostgreSQL-скрипта для всех успешно разобранных товаров с UUID:
+
+```powershell
+dotnet run --no-build -- --generate-postgres-sql .\exports\zozo-import.sql
+```
+
+Строки с тестовыми идентификаторами вроде `test-1` автоматически пропускаются. Скрипт обновляет только уже
+существующие товары, заменяет их галереи, цвета, размеры, варианты и видео и выводит число найденных и
+отсутствующих в PostgreSQL товаров. Перед его выполнением должна быть применена миграция
+`AddZozoProductDetails`. Файл можно выполнить целиком как через `psql`, так и через Query Tool в pgAdmin.
+
 `--limit N` ограничивает фактически выбранные к парсингу товары, а не строки CSV. `--save-failed-html` сохраняет HTML только ошибок в `errors/html/{productId}.html`. `--cdp-endpoint` и `--delay-ms` переопределяют config. Первый Ctrl+C даёт текущему товару завершиться и сохраниться; второй отменяет операцию немедленно. Приложение не закрывает Edge.
 
 Вход принимает заголовки `id,url` либо эквивалентные `product_id,source_url`:

@@ -35,6 +35,14 @@ public sealed class ProductsDbContext : DbContext
 
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
 
+    public DbSet<ProductColor> ProductColors => Set<ProductColor>();
+
+    public DbSet<ProductSize> ProductSizes => Set<ProductSize>();
+
+    public DbSet<ProductMedia> ProductMedia => Set<ProductMedia>();
+
+    public DbSet<ProductSourceDetail> ProductSourceDetails => Set<ProductSourceDetail>();
+
     public DbSet<LaptopSpecification> LaptopSpecifications => Set<LaptopSpecification>();
 
     public DbSet<TcgCardSpecification> TcgCardSpecifications => Set<TcgCardSpecification>();

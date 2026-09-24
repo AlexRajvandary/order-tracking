@@ -39,6 +39,7 @@ public sealed class ProductRelationsController : ControllerBase
         var entity = new ProductVariant
         {
             Id = Guid.NewGuid(), ProductId = productId, Size = request.Size,
+            Color = request.Color, ExternalColorId = request.ExternalColorId, ExternalSizeId = request.ExternalSizeId,
             Price = request.Price, CurrencyCode = request.CurrencyCode?.Trim().ToUpperInvariant(),
             IsAvailable = request.IsAvailable, CreatedAt = now,
         };
@@ -66,6 +67,9 @@ public sealed class ProductRelationsController : ControllerBase
             .FirstOrDefaultAsync(x => x.ProductId == productId && x.Id == id, cancellationToken);
         if (entity is null) return NotFound();
         entity.Size = request.Size;
+        entity.Color = request.Color;
+        entity.ExternalColorId = request.ExternalColorId;
+        entity.ExternalSizeId = request.ExternalSizeId;
         entity.Price = request.Price;
         entity.CurrencyCode = request.CurrencyCode?.Trim().ToUpperInvariant();
         entity.IsAvailable = request.IsAvailable;
@@ -159,7 +163,8 @@ public sealed class ProductRelationsController : ControllerBase
         _db.Products.AnyAsync(x => x.Id == id, cancellationToken);
 
     private static ProductVariantDto ToDto(ProductVariant x) =>
-        new(x.Id, x.ProductId, x.Size, x.Price, x.CurrencyCode, x.IsAvailable, x.CreatedAt, x.UpdatedAt);
+        new(x.Id, x.ProductId, x.Color, x.Size, x.ExternalColorId, x.ExternalSizeId,
+            x.Price, x.CurrencyCode, x.IsAvailable, x.CreatedAt, x.UpdatedAt);
 
     private static ProductImageDto ToDto(ProductImage x) =>
         new(x.Id, x.ProductId, x.ImageUrl, x.SortOrder, x.IsPrimary, x.CreatedAt);
@@ -169,16 +174,23 @@ public sealed record CreateProductVariantRequest(
     [property: StringLength(100)] string? Size,
     decimal? Price,
     [property: StringLength(3, MinimumLength = 3)] string? CurrencyCode,
-    bool? IsAvailable);
+    bool? IsAvailable,
+    [property: StringLength(200)] string? Color = null,
+    long? ExternalColorId = null,
+    long? ExternalSizeId = null);
 
 public sealed record UpdateProductVariantRequest(
     [property: StringLength(100)] string? Size,
     decimal? Price,
     [property: StringLength(3, MinimumLength = 3)] string? CurrencyCode,
-    bool? IsAvailable);
+    bool? IsAvailable,
+    [property: StringLength(200)] string? Color = null,
+    long? ExternalColorId = null,
+    long? ExternalSizeId = null);
 
 public sealed record ProductVariantDto(
-    Guid Id, Guid ProductId, string? Size, decimal? Price, string? CurrencyCode,
+    Guid Id, Guid ProductId, string? Color, string? Size, long? ExternalColorId, long? ExternalSizeId,
+    decimal? Price, string? CurrencyCode,
     bool? IsAvailable, DateTimeOffset CreatedAt, DateTimeOffset? UpdatedAt);
 
 public sealed record CreateProductImageRequest(
