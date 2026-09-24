@@ -143,7 +143,7 @@ function CartIconButton() {
       trigger={
         <button
           type="button"
-          className="group relative inline-flex flex-col items-center gap-0.5 text-[#555] transition-transform duration-200 hover:-translate-y-px sm:gap-1"
+          className="group relative inline-flex size-11 flex-col items-center justify-center gap-0.5 text-[#555] transition-transform duration-200 hover:-translate-y-px focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-auto sm:w-auto sm:gap-1"
           aria-label="Корзина"
         >
           <span className="relative inline-flex size-5 items-center justify-center sm:size-6">
@@ -171,7 +171,7 @@ function FavoriteIconButton() {
       trigger={
         <button
           type="button"
-          className="group relative inline-flex flex-col items-center gap-0.5 text-[#555] transition-transform duration-200 hover:-translate-y-px sm:gap-1"
+          className="group relative inline-flex size-11 flex-col items-center justify-center gap-0.5 text-[#555] transition-transform duration-200 hover:-translate-y-px focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-auto sm:w-auto sm:gap-1"
           aria-label="Избранное"
         >
           <span className="relative inline-flex size-5 items-center justify-center sm:size-6">

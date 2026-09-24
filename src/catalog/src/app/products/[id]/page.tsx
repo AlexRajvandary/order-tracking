@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Scale } from "lucide-react";
+import { Scale, Truck } from "lucide-react";
 import { NavigationBackButton } from "@/components/navigation-back-button";
 import { ProductDetailActions } from "@/components/product-detail-actions";
 import { ProductGallery } from "@/components/product-gallery";
@@ -192,21 +192,21 @@ export default async function ProductPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd) }}
       />
-      <SiteHeader /><main className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
+      <SiteHeader /><main className="mx-auto w-full max-w-6xl px-4 pt-0 pb-28 sm:py-8 lg:pb-8">
       <NavigationBackButton
         label="Назад к каталогу"
         fallbackHref={backHref}
-        className="mb-5 -ml-2"
+        className="mb-5 -ml-2 hidden lg:inline-flex"
       />
-      <nav className="mb-6 text-xs text-muted-foreground">Главная <span className="mx-2">/</span> {product.category} <span className="mx-2">/</span> {product.name}</nav>
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)] lg:gap-14">
-        <ProductGallery product={catalog} images={relations.images} />
-        <div className="flex flex-col">
+      <nav className="mb-6 hidden text-xs text-muted-foreground lg:block">Главная <span className="mx-2">/</span> {product.category} <span className="mx-2">/</span> {product.name}</nav>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)] lg:gap-14">
+        <div className="-mx-4 lg:mx-0"><ProductGallery product={catalog} images={relations.images} backHref={backHref} /></div>
+        <div className="flex min-w-0 flex-col">
           {summary ? <p className="text-sm text-muted-foreground">{summary}</p> : null}
-          <h1 className={summary ? "mt-3 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl" : "text-3xl font-semibold leading-tight tracking-tight sm:text-4xl"}>{product.name}</h1>
-          {product.priceRub > 0 ? <div className="mt-5 flex flex-wrap items-baseline gap-3"><p className="text-2xl font-semibold">{formatPrice(product)}</p>{product.oldPriceRub ? <p className="text-lg text-muted-foreground line-through">{new Intl.NumberFormat("ru-RU", { style: "currency", currency: product.currency, maximumFractionDigits: 0 }).format(product.oldPriceRub)}</p> : null}{product.discountPercent ? <Badge variant="destructive">{product.discountPercent}</Badge> : null}</div> : null}
+          <h1 className={summary ? "mt-2 break-words text-[28px] font-semibold leading-[1.15] tracking-tight sm:text-4xl" : "break-words text-[28px] font-semibold leading-[1.15] tracking-tight sm:text-4xl"}>{product.name}</h1>
+          {product.priceRub > 0 ? <div className="mt-4 flex flex-wrap items-center gap-3"><p className="text-2xl font-bold tracking-tight">{formatPrice(product)}</p>{product.oldPriceRub && product.oldPriceRub > product.priceRub ? <p className="text-base text-muted-foreground line-through">{new Intl.NumberFormat("ru-RU", { style: "currency", currency: product.currency, maximumFractionDigits: 0 }).format(product.oldPriceRub)}</p> : null}{product.oldPriceRub && product.oldPriceRub > product.priceRub && product.discountPercent ? <Badge variant="destructive" className="rounded-full px-2 py-1">{product.discountPercent}</Badge> : null}</div> : null}
           <div className="mt-6"><ProductDetailActions product={catalog} variants={relations.variants} showSizes={showSizes} /></div>
-          <div className="mt-6 space-y-3 bg-muted/40 p-5 text-sm"><p className="font-medium">Заказ из Японии</p><p className="text-muted-foreground">Товар будет выкуплен у японского магазина после оформления заказа.</p>{condition ? <div className="flex justify-between border-t border-border pt-3"><span>Состояние</span><span>{condition}</span></div> : null}<Button render={<Link href="/item-weight" />} variant="outline" className="mt-2 w-full bg-background"><Scale data-icon="inline-start" />Примерный вес товара</Button></div>
+          <div className="mt-6 space-y-3 text-sm"><p className="flex items-center gap-2 text-muted-foreground"><Truck className="size-5 shrink-0" aria-hidden /><span>Доставка из Японии · 14–21 день</span></p><p className="text-muted-foreground">Товар будет выкуплен у японского магазина после оформления заказа.</p>{condition ? <div className="flex justify-between pt-1"><span>Состояние</span><span>{condition}</span></div> : null}<Button render={<Link href="/item-weight" />} variant="outline" className="mt-2 w-full bg-background"><Scale data-icon="inline-start" />Примерный вес товара</Button></div>
         </div>
       </div>
       <section className="mt-16 grid gap-8 border-t border-border pt-8 md:grid-cols-[1fr_1.4fr]"><div><h2 className="text-xl font-semibold">О товаре</h2>{product.description ? <p className="mt-4 max-w-md whitespace-pre-line text-sm leading-6 text-muted-foreground">{product.description}</p> : null}{product.tcgCard?.officialUrl ? <div className="mt-6"><Button render={<a href={product.tcgCard.officialUrl} target="_blank" rel="noreferrer" />} variant="outline" size="sm">Официальная страница карты</Button></div> : null}{tcgShopLinks.length > 0 ? <div className="mt-6"><p className="text-sm font-medium">Найти в магазинах</p><div className="mt-2 flex flex-wrap gap-2">{tcgShopLinks.map(([shop, url]) => <Button key={shop} render={<a href={url} target="_blank" rel="noreferrer" />} variant="outline" size="sm">{TCG_SHOP_NAMES[shop.toLowerCase()] ?? shop.replaceAll("_", " ")}</Button>)}</div></div> : null}</div>{productDetails.length > 0 ? <dl className="divide-y divide-border text-sm">{productDetails.map(([label, value]) => <div key={label} className="flex justify-between gap-6 py-3"><dt className="text-muted-foreground">{label}</dt><dd className="text-right">{value}</dd></div>)}</dl> : null}</section>

@@ -8,10 +8,12 @@ export function NavigationBackButton({
   label,
   fallbackHref,
   className,
+  iconOnly = false,
 }: {
   label: string;
   fallbackHref: string;
   className?: string;
+  iconOnly?: boolean;
 }) {
   const router = useRouter();
 
@@ -31,9 +33,10 @@ export function NavigationBackButton({
       size="sm"
       className={className}
       onClick={goBack}
+      aria-label={iconOnly ? label : undefined}
     >
       <ArrowLeft aria-hidden />
-      {label}
+      {iconOnly ? <span className="sr-only">{label}</span> : label}
     </Button>
   );
 }
