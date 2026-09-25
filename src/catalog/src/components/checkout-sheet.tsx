@@ -16,6 +16,7 @@ import { formatCartMoney } from "@/components/cart-provider";
 import { cn } from "@/lib/utils";
 
 export type CheckoutItem = {
+  lineId?: string;
   source?: "Internal" | "Rakuten";
   productId: string;
   externalId?: string;
@@ -26,6 +27,8 @@ export type CheckoutItem = {
   priceRub: number;
   imageUrl?: string;
   tint?: string;
+  selectedColor?: string;
+  selectedSize?: string;
 };
 
 type CheckoutSheetProps = {
@@ -115,9 +118,10 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
           whatsApp: null,
           vk: contacts.vk || null,
           address: form.get("address") || null,
-          items: items.map(({ source, productId, externalId, quantity, priceRub, expectedUnitPrice, expectedCurrencyCode }) => ({
+          items: items.map(({ source, productId, externalId, quantity, priceRub, expectedUnitPrice, expectedCurrencyCode, selectedColor, selectedSize }) => ({
             source: source ?? "Internal", productId: (source ?? "Internal") === "Internal" ? productId : null, externalId, quantity,
             expectedUnitPrice: expectedUnitPrice ?? priceRub, expectedCurrencyCode: expectedCurrencyCode ?? "RUB",
+            selectedColor, selectedSize,
           })),
         }),
       });
@@ -174,14 +178,21 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
               <ul className="space-y-2">
                 {items.map((item) => (
                   <li
-                    key={item.productId}
+                    key={item.lineId ?? JSON.stringify([item.productId, item.selectedColor, item.selectedSize])}
                     className="flex min-h-20 items-center gap-3 rounded-xl border border-border/80 bg-white p-3"
                   >
                     <CheckoutProductImage item={item} />
-                    <p className="line-clamp-2 min-w-0 flex-1 text-sm font-medium leading-snug">
-                      {item.name}
-                      {item.quantity > 1 ? ` × ${item.quantity}` : ""}
-                    </p>
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-sm font-medium leading-snug">
+                        {item.name}
+                        {item.quantity > 1 ? ` × ${item.quantity}` : ""}
+                      </p>
+                      {item.selectedColor || item.selectedSize ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {[item.selectedColor ? `Цвет: ${item.selectedColor}` : null, item.selectedSize ? `Размер: ${item.selectedSize}` : null].filter(Boolean).join(" · ")}
+                        </p>
+                      ) : null}
+                    </div>
                     <span className="shrink-0 whitespace-nowrap text-sm font-semibold tabular-nums">
                       {formatCartMoney(item.priceRub * item.quantity)}
                     </span>

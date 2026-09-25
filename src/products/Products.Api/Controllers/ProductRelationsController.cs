@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +28,34 @@ public sealed class ProductRelationsController : ControllerBase
             .Select(x => ToDto(x))
             .ToListAsync(cancellationToken);
         return items;
+    }
+
+    [HttpGet("options")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ProductOptionsDto>> ListOptions(
+        Guid productId, CancellationToken cancellationToken)
+    {
+        if (!await ProductExists(productId, cancellationToken)) return NotFound();
+
+        var colors = await _db.ProductColors.AsNoTracking()
+            .Where(x => x.ProductId == productId)
+            .OrderBy(x => x.SortOrder).ThenBy(x => x.CreatedAt)
+            .Select(x => new ProductColorDto(x.Id, x.ProductId, x.ExternalId, x.Name, x.SortOrder))
+            .ToListAsync(cancellationToken);
+        var sizeRows = await _db.ProductSizes.AsNoTracking()
+            .Where(x => x.ProductId == productId)
+            .OrderBy(x => x.SortOrder).ThenBy(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+        var sizes = sizeRows.Select(x => new ProductSizeDto(
+            x.Id,
+            x.ProductId,
+            x.ExternalId,
+            x.Name,
+            x.ShortName,
+            ParseSpecifications(x.SpecificationsJson),
+            x.SortOrder)).ToList();
+
+        return new ProductOptionsDto(colors, sizes);
     }
 
     [HttpPost("variants")]
@@ -162,6 +191,13 @@ public sealed class ProductRelationsController : ControllerBase
     private Task<bool> ProductExists(Guid id, CancellationToken cancellationToken) =>
         _db.Products.AnyAsync(x => x.Id == id, cancellationToken);
 
+    private static IReadOnlyDictionary<string, string>? ParseSpecifications(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return JsonSerializer.Deserialize<Dictionary<string, string>>(json); }
+        catch (JsonException) { return null; }
+    }
+
     private static ProductVariantDto ToDto(ProductVariant x) =>
         new(x.Id, x.ProductId, x.Color, x.Size, x.ExternalColorId, x.ExternalSizeId,
             x.Price, x.CurrencyCode, x.IsAvailable, x.CreatedAt, x.UpdatedAt);
@@ -192,6 +228,17 @@ public sealed record ProductVariantDto(
     Guid Id, Guid ProductId, string? Color, string? Size, long? ExternalColorId, long? ExternalSizeId,
     decimal? Price, string? CurrencyCode,
     bool? IsAvailable, DateTimeOffset CreatedAt, DateTimeOffset? UpdatedAt);
+
+public sealed record ProductOptionsDto(
+    IReadOnlyList<ProductColorDto> Colors,
+    IReadOnlyList<ProductSizeDto> Sizes);
+
+public sealed record ProductColorDto(
+    Guid Id, Guid ProductId, long? ExternalId, string Name, int SortOrder);
+
+public sealed record ProductSizeDto(
+    Guid Id, Guid ProductId, long? ExternalId, string Name, string? ShortName,
+    IReadOnlyDictionary<string, string>? Specifications, int SortOrder);
 
 public sealed record CreateProductImageRequest(
     [property: Required, StringLength(2000)] string ImageUrl,

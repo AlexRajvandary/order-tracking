@@ -49,7 +49,7 @@ export default function CartPage() {
             <Card className="gap-0 py-0">
               <ul className="divide-y divide-border">
                 {items.map((item) => (
-                  <li key={item.productId} className="flex gap-4 p-4 sm:p-5">
+                  <li key={item.lineId} className="flex gap-4 p-4 sm:p-5">
                     <div
                       className="size-20 shrink-0 overflow-hidden rounded-lg sm:size-24"
                       style={{
@@ -80,12 +80,17 @@ export default function CartPage() {
                           <p className="mt-1 text-sm text-muted-foreground">
                             {formatCartMoney(item.priceRub)} / шт.
                           </p>
+                          {item.selectedColor || item.selectedSize ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {[item.selectedColor ? `Цвет: ${item.selectedColor}` : null, item.selectedSize ? `Размер: ${item.selectedSize}` : null].filter(Boolean).join(" · ")}
+                            </p>
+                          ) : null}
                         </div>
                         <Button
                           variant="ghost"
                           size="icon-sm"
                           aria-label="Удалить"
-                          onClick={() => removeItem(item.productId)}
+                          onClick={() => removeItem(item.lineId)}
                         >
                           <Trash2Icon />
                         </Button>
@@ -96,7 +101,7 @@ export default function CartPage() {
                             variant="outline"
                             size="icon-sm"
                             aria-label="Меньше"
-                            onClick={() => setQuantity(item.productId, item.quantity - 1)}
+                            onClick={() => setQuantity(item.lineId, item.quantity - 1)}
                           >
                             <MinusIcon />
                           </Button>
@@ -107,7 +112,7 @@ export default function CartPage() {
                             variant="outline"
                             size="icon-sm"
                             aria-label="Больше"
-                            onClick={() => setQuantity(item.productId, item.quantity + 1)}
+                            onClick={() => setQuantity(item.lineId, item.quantity + 1)}
                           >
                             <PlusIcon />
                           </Button>

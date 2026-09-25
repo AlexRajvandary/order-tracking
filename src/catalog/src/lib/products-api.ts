@@ -116,6 +116,29 @@ export type ApiProductImage = {
   createdAt: string;
 };
 
+export type ApiProductColor = {
+  id: string;
+  productId: string;
+  externalId: number | null;
+  name: string;
+  sortOrder: number;
+};
+
+export type ApiProductSize = {
+  id: string;
+  productId: string;
+  externalId: number | null;
+  name: string;
+  shortName: string | null;
+  specifications: Record<string, string> | null;
+  sortOrder: number;
+};
+
+export type ApiProductOptions = {
+  colors: ApiProductColor[];
+  sizes: ApiProductSize[];
+};
+
 const DEFAULT_PAGE_SIZE = 10;
 export const PRODUCTS_PAGE_SIZE = 50;
 const JPY_PER_RUB = 1.6;
@@ -517,16 +540,19 @@ export async function fetchRakutenItem(itemCode: string): Promise<ApiExternalPro
 export async function fetchProductRelations(productId: string): Promise<{
   variants: ApiProductVariant[];
   images: ApiProductImage[];
+  options: ApiProductOptions;
 }> {
   const base = `${productsApiBaseUrl()}/api/products/${encodeURIComponent(productId)}`;
-  const [variantsResponse, imagesResponse] = await Promise.all([
+  const [variantsResponse, imagesResponse, optionsResponse] = await Promise.all([
     fetch(`${base}/variants`, { cache: "no-store" }),
     fetch(`${base}/images`, { cache: "no-store" }),
+    fetch(`${base}/options`, { cache: "no-store" }),
   ]);
 
   return {
     variants: variantsResponse.ok ? await variantsResponse.json() : [],
     images: imagesResponse.ok ? await imagesResponse.json() : [],
+    options: optionsResponse.ok ? await optionsResponse.json() : { colors: [], sizes: [] },
   };
 }
 

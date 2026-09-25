@@ -6,22 +6,28 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/components/cart-provider";
 import { CheckoutSheet } from "@/components/checkout-sheet";
 import type { CatalogProduct } from "@/lib/catalog-products";
-import type { ApiProductVariant } from "@/lib/products-api";
+import type { ApiProductColor, ApiProductSize } from "@/lib/products-api";
 
 export function ProductDetailActions({
   product,
-  variants,
-  showSizes = false,
+  colors,
+  sizes,
 }: {
   product: CatalogProduct;
-  variants: ApiProductVariant[];
-  showSizes?: boolean;
+  colors: ApiProductColor[];
+  sizes: ApiProductSize[];
 }) {
   const { addItem } = useCart();
-  const sizedVariants = variants.filter((variant): variant is ApiProductVariant & { size: string } => Boolean(variant.size));
-  const [selectedSize, setSelectedSize] = useState(sizedVariants.find((variant) => variant.isAvailable !== false)?.size ?? "");
+  const selectableSizes = sizes;
+  const [selectedColorId, setSelectedColorId] = useState(colors[0]?.id ?? "");
+  const [selectedSizeId, setSelectedSizeId] = useState(selectableSizes[0]?.id ?? "");
+  const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [quantity, setQuantity] = useState(1);
-  const canPurchase = product.inStock && (!showSizes || sizedVariants.length === 0 || Boolean(selectedSize));
+  const selectedColor = colors.find((color) => color.id === selectedColorId);
+  const selectedSize = selectableSizes.find((size) => size.id === selectedSizeId);
+  const canPurchase = product.inStock
+    && (colors.length === 0 || Boolean(selectedColor))
+    && (selectableSizes.length === 0 || Boolean(selectedSize));
 
   const checkoutItems = [{
     source: product.source,
@@ -34,32 +40,75 @@ export function ProductDetailActions({
     priceRub: product.priceRub,
     imageUrl: product.imageUrl,
     tint: product.tint,
+    selectedColor: selectedColor?.name,
+    selectedSize: selectedSize?.name,
   }];
 
   return (
     <div className="space-y-5">
-      {showSizes ? (
+      {colors.length > 0 ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium">Цвет</span>
+            {selectedColor ? <span className="text-muted-foreground">{selectedColor.name}</span> : null}
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {colors.map((color) => (
+              <button
+                key={color.id}
+                type="button"
+                onClick={() => setSelectedColorId(color.id)}
+                aria-pressed={selectedColorId === color.id}
+                className={`h-11 shrink-0 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${selectedColorId === color.id ? "bg-foreground text-background" : "bg-muted text-foreground hover:bg-muted/70"}`}
+              >
+                {color.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {selectableSizes.length > 0 ? (
         <>
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">Размер</span>
-            <button type="button" className="text-muted-foreground underline underline-offset-4">Таблица размеров →</button>
+            {selectableSizes.some((size) => size.specifications && Object.keys(size.specifications).length > 0) ? (
+              <button type="button" className="text-muted-foreground underline underline-offset-4" onClick={() => setShowSizeGuide((value) => !value)}>
+                {showSizeGuide ? "Скрыть таблицу" : "Таблица размеров →"}
+              </button>
+            ) : null}
           </div>
-          {sizedVariants.length > 0 ? (
-            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {sizedVariants.map((variant) => (
-                <button
-                  key={variant.id}
-                  type="button"
-                  onClick={() => setSelectedSize(variant.size)}
-                  disabled={variant.isAvailable === false}
-                  aria-pressed={selectedSize === variant.size}
-                  className={`h-11 min-w-12 shrink-0 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35 ${selectedSize === variant.size ? "bg-foreground text-background" : "bg-muted text-foreground hover:bg-muted/70"}`}
-                >
-                  {variant.size}
-                </button>
-              ))}
+          <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {selectableSizes.map((size) => (
+              <button
+                key={size.id}
+                type="button"
+                onClick={() => setSelectedSizeId(size.id)}
+                aria-pressed={selectedSizeId === size.id}
+                className={`h-11 min-w-12 shrink-0 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${selectedSizeId === size.id ? "bg-foreground text-background" : "bg-muted text-foreground hover:bg-muted/70"}`}
+              >
+                {size.shortName || size.name}
+              </button>
+            ))}
+          </div>
+          {showSizeGuide ? (
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full min-w-max text-left text-xs">
+                <thead className="bg-muted/60"><tr><th className="px-3 py-2 font-medium">Размер</th><th className="px-3 py-2 font-medium">Параметры</th></tr></thead>
+                <tbody className="divide-y divide-border">
+                  {selectableSizes.map((size) => (
+                    <tr key={size.id}>
+                      <td className="px-3 py-2 font-medium">{size.name}</td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {size.specifications && Object.keys(size.specifications).length > 0
+                          ? Object.entries(size.specifications).map(([name, value]) => `${name}: ${value}`).join(" · ")
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ) : <div className="h-10" />}
+          ) : null}
         </>
       ) : null}
       <div className="flex items-center justify-between text-sm">
@@ -75,7 +124,7 @@ export function ProductDetailActions({
         </div>
       </div>
       <div className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-[1fr_1.15fr] gap-2 border-t border-border bg-background/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur-md lg:static lg:grid-cols-2 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none">
-        <Button type="button" size="lg" variant="outline" className="h-12 min-w-0 rounded-lg px-2" disabled={!canPurchase} onClick={() => addItem(product, quantity)}>
+        <Button type="button" size="lg" variant="outline" className="h-12 min-w-0 rounded-lg px-2" disabled={!canPurchase} onClick={() => addItem(product, quantity, { selectedColor: selectedColor?.name, selectedSize: selectedSize?.name })}>
           <ShoppingBag className="hidden min-[360px]:block" data-icon="inline-start" />
           В корзину
         </Button>
@@ -95,9 +144,9 @@ export function ProductDetailActions({
           Смотреть на Rakuten
         </Button>
       ) : null}
-      {showSizes ? (
+      {selectedColor || selectedSize ? (
         <p className="text-center text-xs text-muted-foreground">
-          {selectedSize ? `Выбран размер: ${selectedSize}` : "Размер можно выбрать позже"}
+          {[selectedColor ? `Цвет: ${selectedColor.name}` : null, selectedSize ? `размер: ${selectedSize.name}` : null].filter(Boolean).join(" · ")}
         </p>
       ) : null}
     </div>

@@ -215,10 +215,12 @@ public sealed class CatalogCartItemConfiguration : IEntityTypeConfiguration<Cata
         builder.ToTable("catalog_cart_items");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.VisitorKey).HasMaxLength(64);
+        builder.Property(x => x.SelectedColor).HasMaxLength(200).HasDefaultValue("").IsRequired();
+        builder.Property(x => x.SelectedSize).HasMaxLength(100).HasDefaultValue("").IsRequired();
         builder.Property(x => x.Quantity).IsRequired();
         builder.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasIndex(x => new { x.UserId, x.ProductId }).IsUnique().HasFilter("\"UserId\" IS NOT NULL");
-        builder.HasIndex(x => new { x.VisitorKey, x.ProductId }).IsUnique().HasFilter("\"VisitorKey\" IS NOT NULL");
+        builder.HasIndex(x => new { x.UserId, x.ProductId, x.SelectedColor, x.SelectedSize }).IsUnique().HasFilter("\"UserId\" IS NOT NULL");
+        builder.HasIndex(x => new { x.VisitorKey, x.ProductId, x.SelectedColor, x.SelectedSize }).IsUnique().HasFilter("\"VisitorKey\" IS NOT NULL");
     }
 }
 

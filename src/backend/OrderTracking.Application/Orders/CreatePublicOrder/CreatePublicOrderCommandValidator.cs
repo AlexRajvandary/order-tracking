@@ -16,7 +16,7 @@ public sealed class CreatePublicOrderCommandValidator : AbstractValidator<Create
             .NotEmpty()
             .Must(items => items.Count <= 100)
             .WithMessage("An order cannot contain more than 100 items")
-            .Must(items => items.Select(x => $"{x.Source}:{x.ProductId}:{x.ExternalId}").Distinct().Count() == items.Count)
+            .Must(items => items.Select(x => $"{x.Source}:{x.ProductId}:{x.ExternalId}:{x.SelectedColor}:{x.SelectedSize}").Distinct().Count() == items.Count)
             .WithMessage("Duplicate products are not allowed");
 
         RuleForEach(x => x.Items).ChildRules(item =>
@@ -26,6 +26,8 @@ public sealed class CreatePublicOrderCommandValidator : AbstractValidator<Create
                 || (x.Source.Equals("Rakuten", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(x.ExternalId)))
                 .WithMessage("A valid internal or Rakuten product reference is required");
             item.RuleFor(x => x.Quantity).InclusiveBetween(1, 100);
+            item.RuleFor(x => x.SelectedColor).MaximumLength(200);
+            item.RuleFor(x => x.SelectedSize).MaximumLength(100);
         });
     }
 }

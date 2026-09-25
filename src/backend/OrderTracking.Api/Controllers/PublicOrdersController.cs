@@ -35,7 +35,7 @@ public sealed class PublicOrdersController : ControllerBase
                 request.Address,
                 (request.Items ?? []).Select(item => new PublicOrderItemDto(
                     item.Source ?? "Internal", item.ProductId, item.ExternalId, item.Quantity,
-                    item.ExpectedUnitPrice, item.ExpectedCurrencyCode)).ToList()),
+                    item.ExpectedUnitPrice, item.ExpectedCurrencyCode, item.SelectedColor, item.SelectedSize)).ToList()),
             cancellationToken); }
         catch (OrderTracking.Application.Common.Interfaces.CatalogCheckoutException ex)
         {
@@ -62,6 +62,6 @@ public sealed record CreatePublicOrderRequest(
     IReadOnlyList<CreatePublicOrderItemRequest>? Items);
 
 public sealed record CreatePublicOrderItemRequest(string? Source, Guid? ProductId, string? ExternalId, int Quantity,
-    decimal? ExpectedUnitPrice, string? ExpectedCurrencyCode);
+    decimal? ExpectedUnitPrice, string? ExpectedCurrencyCode, string? SelectedColor = null, string? SelectedSize = null);
 
 public sealed record CreatePublicOrderResponse(Guid OrderId, string TrackingCode);

@@ -44,7 +44,16 @@ public sealed class CatalogStateController : ControllerBase
         if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
         var product = await _db.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Id == productId && x.IsActive, cancellationToken);
         if (product is null) return NotFound();
-        var row = await OwnedBy(_db.CatalogCartItems.Where(x => x.ProductId == productId), owner.Value)
+        var selectedColor = NormalizeOption(request.SelectedColor, 200);
+        var selectedSize = NormalizeOption(request.SelectedSize, 100);
+        if (selectedColor.Length > 0 && !await _db.ProductColors.AnyAsync(
+                x => x.ProductId == productId && x.Name == selectedColor, cancellationToken))
+            return BadRequest(new ProblemDetails { Detail = "Выбранный цвет недоступен для товара." });
+        if (selectedSize.Length > 0 && !await _db.ProductSizes.AnyAsync(
+                x => x.ProductId == productId && x.Name == selectedSize, cancellationToken))
+            return BadRequest(new ProblemDetails { Detail = "Выбранный размер недоступен для товара." });
+        var row = await OwnedBy(_db.CatalogCartItems.Where(x => x.ProductId == productId
+                && x.SelectedColor == selectedColor && x.SelectedSize == selectedSize), owner.Value)
             .SingleOrDefaultAsync(cancellationToken);
         if (request.Quantity <= 0)
         {
@@ -53,7 +62,11 @@ public sealed class CatalogStateController : ControllerBase
         }
         if (row is null)
         {
-            row = new CatalogCartItem { Id = Guid.NewGuid(), ProductId = productId, UserId = owner.Value.UserId, VisitorKey = owner.Value.VisitorKey };
+            row = new CatalogCartItem
+            {
+                Id = Guid.NewGuid(), ProductId = productId, UserId = owner.Value.UserId,
+                VisitorKey = owner.Value.VisitorKey, SelectedColor = selectedColor, SelectedSize = selectedSize,
+            };
             _db.CatalogCartItems.Add(row);
         }
         row.Quantity = Math.Min(request.Quantity, 999);
@@ -61,7 +74,7 @@ public sealed class CatalogStateController : ControllerBase
         await _db.SaveChangesAsync(cancellationToken);
         return Ok(new CartItemDto("Internal", product.Id.ToString(), product.Id, null, product.Slug, product.Name,
             product.Price, product.CurrencyCode, product.LocalImageUrl ?? product.ImageUrl, product.SourceUrl, null,
-            product.Shop?.Name, true, row.Quantity, row.UpdatedAt));
+            product.Shop?.Name, true, row.Quantity, row.UpdatedAt, EmptyToNull(row.SelectedColor), EmptyToNull(row.SelectedSize)));
     }
 
     [HttpPut("cart/external/rakuten")]
@@ -165,11 +178,13 @@ public sealed class CatalogStateController : ControllerBase
             return BadRequest(new ProblemDetails { Detail = "An authenticated account and visitor key are required." });
 
         var guestCart = await _db.CatalogCartItems.Where(x => x.VisitorKey == visitor).ToListAsync(cancellationToken);
-        var accountCart = await _db.CatalogCartItems.Where(x => x.UserId == accountId).ToDictionaryAsync(x => x.ProductId, cancellationToken);
+        var accountCart = await _db.CatalogCartItems.Where(x => x.UserId == accountId)
+            .ToDictionaryAsync(x => CartKey(x.ProductId, x.SelectedColor, x.SelectedSize), cancellationToken);
         foreach (var item in guestCart)
         {
-            if (accountCart.TryGetValue(item.ProductId, out var existing)) existing.Quantity = Math.Min(999, existing.Quantity + item.Quantity);
-            else { item.UserId = accountId; item.VisitorKey = null; accountCart[item.ProductId] = item; }
+            var key = CartKey(item.ProductId, item.SelectedColor, item.SelectedSize);
+            if (accountCart.TryGetValue(key, out var existing)) existing.Quantity = Math.Min(999, existing.Quantity + item.Quantity);
+            else { item.UserId = accountId; item.VisitorKey = null; accountCart[key] = item; }
         }
         var guestExternal = await _db.ExternalProductCartItems.Where(x => x.VisitorKey == visitor).ToListAsync(cancellationToken);
         var accountExternal = await _db.ExternalProductCartItems.Where(x => x.UserId == accountId)
@@ -214,6 +229,16 @@ public sealed class CatalogStateController : ControllerBase
             ? query.Where(x => x.UserId == userId)
             : query.Where(x => x.VisitorKey == owner.VisitorKey);
 
+    private static string NormalizeOption(string? value, int maxLength)
+    {
+        var normalized = value?.Trim() ?? string.Empty;
+        return normalized.Length <= maxLength ? normalized : normalized[..maxLength];
+    }
+
+    private static string? EmptyToNull(string value) => value.Length == 0 ? null : value;
+
+    private static string CartKey(Guid productId, string color, string size) => $"{productId:N}\u001f{color}\u001f{size}";
+
     private static IQueryable<CatalogFavorite> OwnedBy(IQueryable<CatalogFavorite> query, Owner owner) =>
         owner.UserId is Guid userId
             ? query.Where(x => x.UserId == userId)
@@ -221,17 +246,17 @@ public sealed class CatalogStateController : ControllerBase
     private static CartItemDto MapCart(CatalogCartItem item) => new("Internal", item.ProductId.ToString(), item.ProductId, null,
         item.Product.Slug, item.Product.NameRu ?? item.Product.Name, item.Product.Price, item.Product.CurrencyCode,
         item.Product.LocalImageUrl ?? item.Product.ImageUrl, item.Product.SourceUrl, null, item.Product.Shop?.Name,
-        item.Product.IsActive, item.Quantity, item.UpdatedAt);
+        item.Product.IsActive, item.Quantity, item.UpdatedAt, EmptyToNull(item.SelectedColor), EmptyToNull(item.SelectedSize));
     private static CartItemDto MapExternalCart(ExternalProductCartItem item) => new(item.Source,
         "rakuten:" + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(item.ExternalId)).TrimEnd('=').Replace('+', '-').Replace('/', '_'),
         null, item.ExternalId, item.ExternalId, item.Name, item.UnitPrice, item.CurrencyCode, item.ImageUrl,
-        item.SourceUrl, item.AffiliateUrl, item.ShopName, item.Available, item.Quantity, item.UpdatedAt);
+        item.SourceUrl, item.AffiliateUrl, item.ShopName, item.Available, item.Quantity, item.UpdatedAt, null, null);
     private readonly record struct Owner(Guid? UserId, string? VisitorKey);
 }
 
-public sealed record SetCartItemRequest(int Quantity);
+public sealed record SetCartItemRequest(int Quantity, string? SelectedColor = null, string? SelectedSize = null);
 public sealed record SetExternalCartItemRequest(string ExternalId, int Quantity);
 public sealed record SetFavoriteRequest(bool Favorite);
 public sealed record CartItemDto(string Source, string Id, Guid? ProductId, string? ExternalId, string Slug, string Name,
     decimal Price, string CurrencyCode, string? ImageUrl, string? SourceUrl, string? AffiliateUrl, string? ShopName,
-    bool Available, int Quantity, DateTimeOffset UpdatedAt);
+    bool Available, int Quantity, DateTimeOffset UpdatedAt, string? SelectedColor, string? SelectedSize);

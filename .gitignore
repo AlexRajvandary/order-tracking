@@ -49,3 +49,5 @@ vps-backup*/
 *.dump
 *.sql.bak
 scripts/data/
+/zozo-import-new-links.txt
+/zozo-import-new.sql

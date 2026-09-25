@@ -71,7 +71,7 @@ export function CartSheet({ trigger }: CartSheetProps) {
             <ScrollArea className="min-h-0 flex-1 overscroll-contain px-4">
               <ul className="space-y-4 pb-4">
                 {items.map((item) => (
-                  <li key={item.productId} className="flex gap-3">
+                  <li key={item.lineId} className="flex gap-3">
                     <div
                       className="size-16 shrink-0 overflow-hidden bg-muted"
                       style={{
@@ -102,7 +102,7 @@ export function CartSheet({ trigger }: CartSheetProps) {
                           variant="ghost"
                           size="icon-xs"
                           aria-label="Удалить"
-                          onClick={() => removeItem(item.productId)}
+                          onClick={() => removeItem(item.lineId)}
                         >
                           <Trash2Icon />
                         </Button>
@@ -110,13 +110,18 @@ export function CartSheet({ trigger }: CartSheetProps) {
                       <p className="text-sm text-muted-foreground">
                         {formatCartMoney(item.priceRub)}
                       </p>
+                      {item.selectedColor || item.selectedSize ? (
+                        <p className="text-xs text-muted-foreground">
+                          {[item.selectedColor ? `Цвет: ${item.selectedColor}` : null, item.selectedSize ? `Размер: ${item.selectedSize}` : null].filter(Boolean).join(" · ")}
+                        </p>
+                      ) : null}
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="icon-xs"
                           aria-label="Меньше"
                           onClick={() =>
-                            setQuantity(item.productId, item.quantity - 1)
+                            setQuantity(item.lineId, item.quantity - 1)
                           }
                         >
                           <MinusIcon />
@@ -129,7 +134,7 @@ export function CartSheet({ trigger }: CartSheetProps) {
                           size="icon-xs"
                           aria-label="Больше"
                           onClick={() =>
-                            setQuantity(item.productId, item.quantity + 1)
+                            setQuantity(item.lineId, item.quantity + 1)
                           }
                         >
                           <PlusIcon />

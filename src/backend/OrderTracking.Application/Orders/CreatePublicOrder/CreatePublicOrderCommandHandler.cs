@@ -46,7 +46,8 @@ public sealed class CreatePublicOrderCommandHandler
         {
             var requestItem = pair.First;
             var product = pair.Second;
-            return new CreateOrderItemDto(OrderItemType.Product, product.Name, product.Description,
+            return new CreateOrderItemDto(OrderItemType.Product, product.Name, WithSelectedOptions(
+                    product.Description, requestItem.SelectedColor, requestItem.SelectedSize),
                 requestItem.Quantity, product.Price, product.CurrencyCode, product.SourceUrl,
                 product.Source, product.ProductId, product.ExternalId, product.ImageUrl,
                 product.AffiliateUrl, product.ShopCode, product.ShopName);
@@ -99,5 +100,17 @@ public sealed class CreatePublicOrderCommandHandler
     private static string? Normalize(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static string? WithSelectedOptions(string? description, string? selectedColor, string? selectedSize)
+    {
+        var details = new[]
+        {
+            string.IsNullOrWhiteSpace(selectedColor) ? null : $"Цвет: {selectedColor.Trim()}",
+            string.IsNullOrWhiteSpace(selectedSize) ? null : $"Размер: {selectedSize.Trim()}",
+        }.Where(x => x is not null).ToList();
+        if (details.Count == 0) return description;
+        if (!string.IsNullOrWhiteSpace(description)) details.Add($"{Environment.NewLine}{description.Trim()}");
+        return string.Join(Environment.NewLine, details);
     }
 }

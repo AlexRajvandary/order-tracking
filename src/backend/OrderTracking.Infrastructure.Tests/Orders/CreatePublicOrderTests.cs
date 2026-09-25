@@ -34,6 +34,22 @@ public sealed class CreatePublicOrderTests
     }
 
     [Fact]
+    public void Validator_AllowsSameProductWithDifferentSelections()
+    {
+        var productId = Guid.NewGuid();
+        var command = new CreatePublicOrderCommand(
+            null, null, null, null, null, null,
+            [
+                new("Internal", productId, null, 1, null, null, "ブラック", "M"),
+                new("Internal", productId, null, 1, null, null, "ホワイト", "M"),
+            ]);
+
+        var result = new CreatePublicOrderCommandValidator().Validate(command);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
     public async Task Handler_UsesTrustedRussianNamePriceAndSourceUrlFromProductApi()
     {
         var productId = Guid.NewGuid();
@@ -78,7 +94,7 @@ public sealed class CreatePublicOrderTests
                 null,
                 null,
                 null,
-                [new PublicOrderItemDto(productId, 2)]),
+                [new PublicOrderItemDto("Internal", productId, null, 2, null, null, "ブラック", "M")]),
             CancellationToken.None);
 
         Assert.NotNull(forwarded);
@@ -86,6 +102,7 @@ public sealed class CreatePublicOrderTests
         Assert.Equal("Русское название", item.Name);
         Assert.Equal(1500m, item.UnitPrice);
         Assert.Equal("https://shop.example/product/1", item.SourceUrl);
+        Assert.Equal("Цвет: ブラック\nРазмер: M\n\nОписание", item.Description?.Replace("\r\n", "\n"));
         Assert.Equal(adminId, forwarded.CreatedByAdminId);
         Assert.Equal("@buyer", forwarded.NewCustomer?.Telegram);
     }

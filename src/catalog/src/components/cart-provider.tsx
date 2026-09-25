@@ -13,6 +13,7 @@ import type { Product } from "@/lib/products";
 import { convertPriceToRub } from "@/lib/products-api";
 
 export type CartItem = {
+  lineId: string;
   source: "Internal" | "Rakuten";
   productId: string;
   externalId?: string;
@@ -23,22 +24,33 @@ export type CartItem = {
   priceRub: number;
   imageUrl?: string;
   tint: string;
+  selectedColor?: string;
+  selectedSize?: string;
   quantity: number;
+};
+
+export type CartSelection = {
+  selectedColor?: string;
+  selectedSize?: string;
 };
 
 type CartContextValue = {
   items: CartItem[];
   itemCount: number;
   totalRub: number;
-  addItem: (product: Product, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  setQuantity: (productId: string, quantity: number) => void;
+  addItem: (product: Product, quantity?: number, selection?: CartSelection) => void;
+  removeItem: (lineId: string) => void;
+  setQuantity: (lineId: string, quantity: number) => void;
   clear: () => void;
 };
 
 const STORAGE_KEY = "the-get-catalog-cart";
 
 const CartContext = createContext<CartContextValue | null>(null);
+
+function cartLineId(source: string, productId: string, selectedColor?: string, selectedSize?: string) {
+  return JSON.stringify([source, productId, selectedColor ?? "", selectedSize ?? ""]);
+}
 
 function loadCart(): CartItem[] {
   if (typeof window === "undefined") {
@@ -50,7 +62,16 @@ function loadCart(): CartItem[] {
       return [];
     }
     const parsed = JSON.parse(raw) as CartItem[];
-    return Array.isArray(parsed) ? parsed.map(i => ({ ...i, source: i.source ?? "Internal", expectedUnitPrice: i.expectedUnitPrice ?? i.priceRub, expectedCurrencyCode: i.expectedCurrencyCode ?? "RUB" })) : [];
+    return Array.isArray(parsed) ? parsed.map(i => {
+      const source = i.source ?? "Internal";
+      return {
+        ...i,
+        source,
+        lineId: cartLineId(source, i.productId, i.selectedColor, i.selectedSize),
+        expectedUnitPrice: i.expectedUnitPrice ?? i.priceRub,
+        expectedCurrencyCode: i.expectedCurrencyCode ?? "RUB",
+      };
+    }) : [];
   } catch {
     return [];
   }
@@ -67,17 +88,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch("/api/catalog/cart", { cache: "no-store" });
         const rawServerItems = response.ok ? ((await response.json()) as Array<Record<string, unknown>>) : [];
-        const serverItems = rawServerItems.map((value) => ({
-          source: (value.source as "Internal" | "Rakuten") ?? "Internal",
-          productId: String(value.productId ?? value.id), externalId: value.externalId ? String(value.externalId) : undefined,
-          slug: String(value.slug ?? value.id), name: String(value.name ?? ""),
-          priceRub: convertPriceToRub(
-            Number(value.price),
-            String(value.currencyCode ?? "RUB"),
-          ) ?? 0,
-          expectedUnitPrice: Number(value.price), expectedCurrencyCode: String(value.currencyCode ?? "RUB"),
-          imageUrl: value.imageUrl ? String(value.imageUrl) : undefined, tint: "#0f3d4c", quantity: Number(value.quantity),
-        }));
+        const serverItems = rawServerItems.map((value) => {
+          const source = (value.source as "Internal" | "Rakuten") ?? "Internal";
+          const productId = String(value.productId ?? value.id);
+          const selectedColor = value.selectedColor ? String(value.selectedColor) : undefined;
+          const selectedSize = value.selectedSize ? String(value.selectedSize) : undefined;
+          return {
+            source,
+            lineId: cartLineId(source, productId, selectedColor, selectedSize),
+            productId,
+            externalId: value.externalId ? String(value.externalId) : undefined,
+            slug: String(value.slug ?? value.id),
+            name: String(value.name ?? ""),
+            priceRub: convertPriceToRub(
+              Number(value.price),
+              String(value.currencyCode ?? "RUB"),
+            ) ?? 0,
+            expectedUnitPrice: Number(value.price),
+            expectedCurrencyCode: String(value.currencyCode ?? "RUB"),
+            imageUrl: value.imageUrl ? String(value.imageUrl) : undefined,
+            tint: "#0f3d4c",
+            selectedColor,
+            selectedSize,
+            quantity: Number(value.quantity),
+          };
+        });
         if (!cancelled) setItems(serverItems.length > 0 ? serverItems : localItems);
       } catch {
         if (!cancelled) setItems(localItems);
@@ -102,20 +137,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
           fetch("/api/catalog/cart", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ source: item.source, productId: item.productId, externalId: item.externalId, quantity: item.quantity }),
+            body: JSON.stringify({ source: item.source, productId: item.productId, externalId: item.externalId, quantity: item.quantity, selectedColor: item.selectedColor, selectedSize: item.selectedSize }),
           }).catch(() => undefined),
         ),
       );
     })();
   }, [items, ready]);
 
-  const addItem = useCallback((product: Product, quantity = 1) => {
+  const addItem = useCallback((product: Product, quantity = 1, selection: CartSelection = {}) => {
     setItems((prev) => {
       const source = product.source ?? "Internal";
-      const existing = prev.find((i) => i.productId === product.id && i.source === source);
+      const selectedColor = selection.selectedColor?.trim() || undefined;
+      const selectedSize = selection.selectedSize?.trim() || undefined;
+      const lineId = cartLineId(source, product.id, selectedColor, selectedSize);
+      const existing = prev.find((i) => i.lineId === lineId);
       if (existing) {
         return prev.map((i) =>
-          i.productId === product.id && i.source === source
+          i.lineId === lineId
             ? { ...i, quantity: i.quantity + quantity }
             : i,
         );
@@ -124,6 +162,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         ...prev,
         {
           source,
+          lineId,
           productId: product.id,
           externalId: product.externalId,
           expectedUnitPrice: product.originalUnitPrice ?? product.priceRub,
@@ -133,23 +172,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
           priceRub: product.priceRub,
           imageUrl: product.imageUrl,
           tint: product.tint,
+          selectedColor,
+          selectedSize,
           quantity,
         },
       ];
     });
   }, []);
 
-  const removeItem = useCallback((productId: string) => {
-    setItems((prev) => prev.filter((i) => i.productId !== productId));
+  const removeItem = useCallback((lineId: string) => {
+    setItems((prev) => prev.filter((i) => i.lineId !== lineId));
   }, []);
 
-  const setQuantity = useCallback((productId: string, quantity: number) => {
+  const setQuantity = useCallback((lineId: string, quantity: number) => {
     setItems((prev) => {
       if (quantity <= 0) {
-        return prev.filter((i) => i.productId !== productId);
+        return prev.filter((i) => i.lineId !== lineId);
       }
       return prev.map((i) =>
-        i.productId === productId ? { ...i, quantity } : i,
+        i.lineId === lineId ? { ...i, quantity } : i,
       );
     });
   }, []);
