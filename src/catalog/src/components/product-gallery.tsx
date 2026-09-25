@@ -61,9 +61,9 @@ export function ProductGallery({
         ) : null}
       </div>
       {gallery.length > 1 ? (
-        <div className="grid w-full min-w-0 max-w-full grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="grid w-full min-w-0 max-w-full grid-cols-10 gap-1">
           {gallery.map((image) => (
-            <button key={image.id} type="button" aria-label="Показать изображение товара" aria-current={selected === image.imageUrl} className={cn("aspect-[4/5] min-w-0 overflow-hidden rounded-md border-2 border-transparent bg-[#f1f4f7] transition-opacity hover:opacity-90", selected === image.imageUrl && "border-foreground")} onClick={() => setSelected(image.imageUrl)}>
+            <button key={image.id} type="button" aria-label="Показать изображение товара" aria-current={selected === image.imageUrl} className={cn("aspect-square min-w-0 overflow-hidden rounded-sm border-2 border-transparent bg-[#f1f4f7] transition-opacity hover:opacity-90", selected === image.imageUrl && "border-foreground")} onClick={() => setSelected(image.imageUrl)}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={image.imageUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
             </button>
