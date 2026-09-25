@@ -46,6 +46,7 @@ try
         var completed = await database.GetCompletedProductsAsync(cancellation.Token);
         var result = await PostgresImportSqlGenerator.GenerateAsync(completed, cli.GeneratePostgresSqlPath, cancellation.Token);
         Console.WriteLine($"PostgreSQL import script: {result.Path}");
+        Console.WriteLine($"Product links: {result.LinksPath}");
         Console.WriteLine($"Completed rows read: {result.CompletedRows}");
         Console.WriteLine($"UUID products written: {result.WrittenRows}");
         Console.WriteLine($"Non-UUID rows skipped: {result.SkippedRows}");

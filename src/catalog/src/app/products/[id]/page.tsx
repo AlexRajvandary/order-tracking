@@ -200,7 +200,7 @@ export default async function ProductPage({ params }: PageProps) {
       />
       <nav className="mb-6 hidden text-xs text-muted-foreground lg:block">Главная <span className="mx-2">/</span> {product.category} <span className="mx-2">/</span> {product.name}</nav>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)] lg:gap-14">
-        <div className="-mx-4 lg:mx-0"><ProductGallery product={catalog} images={relations.images} backHref={backHref} /></div>
+        <div className="-mx-4 min-w-0 lg:mx-0"><ProductGallery product={catalog} images={relations.images} backHref={backHref} /></div>
         <div className="flex min-w-0 flex-col">
           {summary ? <p className="text-sm text-muted-foreground">{summary}</p> : null}
           <h1 className={summary ? "mt-2 break-words text-[28px] font-semibold leading-[1.15] tracking-tight sm:text-4xl" : "break-words text-[28px] font-semibold leading-[1.15] tracking-tight sm:text-4xl"}>{product.name}</h1>

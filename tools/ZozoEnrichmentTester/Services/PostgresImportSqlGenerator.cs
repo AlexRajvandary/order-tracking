@@ -5,7 +5,12 @@ using ZozoEnrichmentTester.Models;
 
 namespace ZozoEnrichmentTester.Services;
 
-public sealed record PostgresImportGenerationResult(string Path, int CompletedRows, int WrittenRows, int SkippedRows);
+public sealed record PostgresImportGenerationResult(
+    string Path,
+    string LinksPath,
+    int CompletedRows,
+    int WrittenRows,
+    int SkippedRows);
 
 public static class PostgresImportSqlGenerator
 {
@@ -27,7 +32,17 @@ public static class PostgresImportSqlGenerator
         }
 
         await writer.WriteLineAsync(SqlBody);
-        return new(Path.GetFullPath(path), products.Count, valid.Count, products.Count - valid.Count);
+
+        var linksPath = Path.Combine(
+            Path.GetDirectoryName(path) ?? ".",
+            $"{Path.GetFileNameWithoutExtension(path)}-links.txt");
+        await File.WriteAllLinesAsync(
+            linksPath,
+            valid.Select(x => $"https://the-get.ru/products/{x.Id}"),
+            new UTF8Encoding(false),
+            cancellationToken);
+
+        return new(Path.GetFullPath(path), Path.GetFullPath(linksPath), products.Count, valid.Count, products.Count - valid.Count);
     }
 
     private static JsonObject BuildPayload(OutputProduct row) => new()
