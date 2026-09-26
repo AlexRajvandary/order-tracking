@@ -33,7 +33,7 @@ public sealed class CatalogAnalyticsController : ControllerBase
                 product.ProductColors.Any(),
                 product.ProductSizes.Any(),
                 product.ProductSizes.Any(size =>
-                    size.SpecificationsJson != null && size.SpecificationsJson != ""),
+                    size.SpecificationsJson != null),
                 product.LocalImageUrl != null && product.LocalImageUrl != "",
                 product.SourceDetail != null &&
                     product.SourceDetail.Material != null && product.SourceDetail.Material != "",
