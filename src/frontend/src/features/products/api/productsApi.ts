@@ -4,6 +4,7 @@ import type {
   BulkUpdateProductsRequest,
   BulkUpdateProductsResult,
   Category,
+  CatalogAnalytics,
   CategoryListResult,
   ClearCrawlerLogsResult,
   CrawlerJob,
@@ -110,6 +111,10 @@ export function listProducts(params?: ListProductsParams, signal?: AbortSignal) 
 
 export function getProduct(id: string, signal?: AbortSignal) {
   return authorizedJsonFromUrl<Product>(`${PRODUCTS_API_BASE}/${id}`, { signal })
+}
+
+export function getCatalogAnalytics(signal?: AbortSignal) {
+  return authorizedJsonFromUrl<CatalogAnalytics>(`${PRODUCTS_API_BASE}/analytics`, { signal })
 }
 
 export function getProductImageSizes(ids: string[], signal?: AbortSignal) {

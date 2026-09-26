@@ -1,0 +1,86 @@
+{
+  "title": "Аналитика каталога",
+  "description": "Полнота карточек, распределение по категориям и точки, требующие внимания.",
+  "updated": "Обновлено {{date}}",
+  "refresh": "Обновить",
+  "summary": {
+    "total": "Всего товаров",
+    "active": "Опубликовано",
+    "fullyEnriched": "Полностью заполнено",
+    "uncategorized": "Без категории"
+  },
+  "completeness": {
+    "title": "Полнота карточек",
+    "description": "Доля товаров, в которых заполнен каждый тип данных.",
+    "detailedDescription": "Подробное описание",
+    "detailedDescriptionHint": "Не короче {{count}} символов",
+    "additionalImages": "Дополнительные фото",
+    "additionalImagesHint": "Две фотографии или больше",
+    "colors": "Цвета",
+    "colorsHint": "Есть хотя бы один цвет",
+    "sizes": "Размеры",
+    "sizesHint": "Есть хотя бы один размер",
+    "sizeSpecifications": "Характеристики размеров",
+    "sizeSpecificationsHint": "Есть таблица измерений",
+    "localImage": "Локальные изображения",
+    "localImageHint": "Главное фото сохранено локально",
+    "material": "Материал",
+    "materialHint": "Заполнен состав или материал"
+  },
+  "charts": {
+    "categories": "Товары по категориям",
+    "categoriesDescription": "Крупнейшие категории по количеству товаров.",
+    "recent": "Новые товары за 30 дней",
+    "recentDescription": "Количество добавленных карточек по дням.",
+    "availability": "Статус наличия",
+    "availabilityDescription": "Статус, полученный от источника.",
+    "imageDepth": "Глубина фотогалереи",
+    "imageDepthDescription": "Сколько фотографий хранится у товара."
+  },
+  "availability": {
+    "inStock": "В наличии",
+    "outOfStock": "Нет в наличии",
+    "preOrder": "Предзаказ",
+    "other": "Другой статус",
+    "unknown": "Неизвестно"
+  },
+  "imageDepth": {
+    "none": "Нет фото",
+    "one": "1 фото",
+    "twoToFive": "2–5 фото",
+    "sixPlus": "6+ фото"
+  },
+  "attention": {
+    "title": "Требует внимания",
+    "description": "Пробелы, которые сильнее всего влияют на качество карточек.",
+    "notFullyEnriched": "Неполные карточки",
+    "missingDescription": "Без подробного описания",
+    "missingImages": "Без дополнительных фото",
+    "missingCategory": "Без категории",
+    "missingOptions": "Без цвета или размера",
+    "missingSpecs": "Без характеристик размеров",
+    "missingLocalImage": "Без локального изображения"
+  },
+  "categories": {
+    "title": "Качество по категориям",
+    "description": "Сравнение наполненности помогает понять, какую категорию дорабатывать первой.",
+    "category": "Категория",
+    "products": "Товары",
+    "active": "Активные",
+    "descriptionColumn": "Описание",
+    "photos": "Фото",
+    "colors": "Цвета",
+    "sizes": "Размеры",
+    "complete": "Полностью",
+    "uncategorized": "Без категории"
+  },
+  "leaders": {
+    "title": "Структура каталога",
+    "brands": "Крупнейшие бренды",
+    "shops": "Основные магазины",
+    "empty": "Нет данных"
+  },
+  "productsCount": "{{count}} товаров",
+  "ofTotal": "{{count}} из {{total}}",
+  "noData": "Для аналитики пока нет данных"
+}

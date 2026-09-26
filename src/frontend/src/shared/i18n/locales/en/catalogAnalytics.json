@@ -1,0 +1,86 @@
+{
+  "title": "Catalog analytics",
+  "description": "Product completeness, category distribution, and areas that need attention.",
+  "updated": "Updated {{date}}",
+  "refresh": "Refresh",
+  "summary": {
+    "total": "Total products",
+    "active": "Published",
+    "fullyEnriched": "Fully complete",
+    "uncategorized": "Uncategorized"
+  },
+  "completeness": {
+    "title": "Product completeness",
+    "description": "Share of products containing each type of data.",
+    "detailedDescription": "Detailed description",
+    "detailedDescriptionHint": "At least {{count}} characters",
+    "additionalImages": "Additional photos",
+    "additionalImagesHint": "Two or more photos",
+    "colors": "Colors",
+    "colorsHint": "At least one color",
+    "sizes": "Sizes",
+    "sizesHint": "At least one size",
+    "sizeSpecifications": "Size specifications",
+    "sizeSpecificationsHint": "Measurement table is present",
+    "localImage": "Local images",
+    "localImageHint": "Primary image is stored locally",
+    "material": "Material",
+    "materialHint": "Material or composition is present"
+  },
+  "charts": {
+    "categories": "Products by category",
+    "categoriesDescription": "Largest categories by product count.",
+    "recent": "New products over 30 days",
+    "recentDescription": "Number of product cards added each day.",
+    "availability": "Availability",
+    "availabilityDescription": "Status reported by the source.",
+    "imageDepth": "Gallery depth",
+    "imageDepthDescription": "Number of stored photos per product."
+  },
+  "availability": {
+    "inStock": "In stock",
+    "outOfStock": "Out of stock",
+    "preOrder": "Pre-order",
+    "other": "Other",
+    "unknown": "Unknown"
+  },
+  "imageDepth": {
+    "none": "No photos",
+    "one": "1 photo",
+    "twoToFive": "2–5 photos",
+    "sixPlus": "6+ photos"
+  },
+  "attention": {
+    "title": "Needs attention",
+    "description": "Gaps with the greatest impact on product quality.",
+    "notFullyEnriched": "Incomplete products",
+    "missingDescription": "Missing detailed description",
+    "missingImages": "Missing additional photos",
+    "missingCategory": "Uncategorized",
+    "missingOptions": "Missing color or size",
+    "missingSpecs": "Missing size specifications",
+    "missingLocalImage": "Missing local image"
+  },
+  "categories": {
+    "title": "Quality by category",
+    "description": "Completeness comparison highlights which category should be improved first.",
+    "category": "Category",
+    "products": "Products",
+    "active": "Active",
+    "descriptionColumn": "Description",
+    "photos": "Photos",
+    "colors": "Colors",
+    "sizes": "Sizes",
+    "complete": "Complete",
+    "uncategorized": "Uncategorized"
+  },
+  "leaders": {
+    "title": "Catalog structure",
+    "brands": "Largest brands",
+    "shops": "Main shops",
+    "empty": "No data"
+  },
+  "productsCount": "{{count}} products",
+  "ofTotal": "{{count}} of {{total}}",
+  "noData": "There is no catalog data yet"
+}

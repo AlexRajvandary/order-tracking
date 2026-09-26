@@ -34,6 +34,68 @@ export type ProductListResult = {
   pageSize: number
 }
 
+export type CatalogAnalytics = {
+  generatedAt: string
+  summary: {
+    total: number
+    active: number
+    inactive: number
+    categorized: number
+    uncategorized: number
+    fullyEnriched: number
+  }
+  completeness: {
+    detailedDescriptionMinLength: number
+    detailedDescription: number
+    additionalImages: number
+    colors: number
+    sizes: number
+    sizeSpecifications: number
+    localImage: number
+    material: number
+  }
+  attention: {
+    missingDetailedDescription: number
+    missingAdditionalImages: number
+    missingColors: number
+    missingSizes: number
+    missingOptions: number
+    missingSizeSpecifications: number
+    missingLocalImage: number
+    missingMaterial: number
+    notFullyEnriched: number
+  }
+  categories: CategoryAnalytics[]
+  availability: AnalyticsBreakdown[]
+  imageDepth: AnalyticsBreakdown[]
+  topBrands: AnalyticsBreakdown[]
+  topShops: AnalyticsBreakdown[]
+  recentAdditions: DailyProductCount[]
+}
+
+export type CategoryAnalytics = {
+  categoryId: string | null
+  name: string | null
+  isUncategorized: boolean
+  productCount: number
+  activeCount: number
+  detailedDescriptionCount: number
+  additionalImagesCount: number
+  colorsCount: number
+  sizesCount: number
+  fullyEnrichedCount: number
+}
+
+export type AnalyticsBreakdown = {
+  key: string
+  count: number
+}
+
+export type DailyProductCount = {
+  date: string
+  count: number
+}
+
 export type Category = {
   id: string
   parentId: string | null
