@@ -1,9 +1,9 @@
 {
-  "title": "Отслеживание заказа",
+  "title": "Отслеживание заявки",
   "placeholder": "Введите код отслеживания (например, AB4K9)",
   "search": "Найти",
-  "orderNumber": "Номер заказа",
-  "createdAt": "Заказ создан",
+  "orderNumber": "Номер заявки",
+  "createdAt": "Заявка создана",
   "expectedDeliveryAt": "Ожидаемое время",
   "notSpecified": "Не задано",
   "orderStatus": {
@@ -21,8 +21,8 @@
   "location": "Место",
   "country": "Страна",
   "openPhoto": "Открыть фото",
-  "noItems": "В заказе пока нет позиций",
-  "notFound": "Заказ не найден",
+  "noItems": "В заявке пока нет позиций",
+  "notFound": "Заявка не найдена",
   "invalidCode": "Код должен состоять из 5 символов",
   "quantity": "Кол-во"
 }

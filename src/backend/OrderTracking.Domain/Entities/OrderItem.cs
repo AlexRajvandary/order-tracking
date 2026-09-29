@@ -29,5 +29,6 @@ public class OrderItem : AuditableEntity
 
     public Order Order { get; set; } = null!;
     public StatusDefinition? CurrentStatus { get; set; }
+    public OrderItemProcurement? Procurement { get; set; }
     public ICollection<OrderItemStatusHistory> StatusHistory { get; set; } = [];
 }

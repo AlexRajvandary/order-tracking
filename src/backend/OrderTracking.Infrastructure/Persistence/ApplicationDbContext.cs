@@ -17,6 +17,7 @@ public class ApplicationDbContext : DbContext, IUnitOfWork
     public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<OrderItemProcurement> OrderItemProcurements => Set<OrderItemProcurement>();
     public DbSet<StatusDefinition> StatusDefinitions => Set<StatusDefinition>();
     public DbSet<OrderItemStatusHistory> OrderItemStatusHistories => Set<OrderItemStatusHistory>();
     public DbSet<OrderItemStatusAttachment> OrderItemStatusAttachments => Set<OrderItemStatusAttachment>();

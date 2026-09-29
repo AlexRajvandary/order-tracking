@@ -20,7 +20,7 @@ internal sealed class TelegramOrderKeyboardBuilder
     {
         return new InlineKeyboardMarkup(
             InlineKeyboardButton.WithCallbackData(
-                "Открыть заказ",
+                "Открыть заявку",
                 TelegramBotCallback.OrderNotificationOpen(orderId)));
     }
 
@@ -53,7 +53,7 @@ internal sealed class TelegramOrderKeyboardBuilder
         }
         else
         {
-            secondRow.Add(InlineKeyboardButton.WithUrl("Открыть заказ", GetAdminUrl(order.Id)));
+            secondRow.Add(InlineKeyboardButton.WithUrl("Открыть заявку", GetAdminUrl(order.Id)));
         }
 
         rows.Add(secondRow.ToArray());
@@ -71,7 +71,7 @@ internal sealed class TelegramOrderKeyboardBuilder
         }
         else
         {
-            rows.Add([InlineKeyboardButton.WithCallbackData("← К заказам", TelegramBotCallback.OrdersPagePrefix + Math.Max(1, listPage))]);
+            rows.Add([InlineKeyboardButton.WithCallbackData("← К заявкам", TelegramBotCallback.OrdersPagePrefix + Math.Max(1, listPage))]);
         }
 
         return new InlineKeyboardMarkup(rows);
@@ -133,10 +133,10 @@ internal sealed class TelegramOrderKeyboardBuilder
 
         return status switch
         {
-            OrderStatus.InProgress => "Обновить заказ",
-            OrderStatus.Completed => "Открыть завершённый заказ",
-            OrderStatus.Cancelled => "Открыть отменённый заказ",
-            _ => "Открыть заказ",
+            OrderStatus.InProgress => "Обновить заявку",
+            OrderStatus.Completed => "Открыть завершённую заявку",
+            OrderStatus.Cancelled => "Открыть отменённую заявку",
+            _ => "Открыть заявку",
         };
     }
 

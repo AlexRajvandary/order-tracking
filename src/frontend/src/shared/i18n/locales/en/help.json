@@ -9,17 +9,17 @@
     },
     "Admin": {
       "name": "Admin",
-      "description": "Manages orders and creates moderators. Cannot change roles or manage other admins."
+      "description": "Manages requests and creates moderators. Cannot change roles or manage other admins."
     },
     "Moderator": {
       "name": "Moderator",
-      "description": "Works with orders, customers and statuses. The Administrators section is not available."
+      "description": "Works with requests, customers and statuses. The Administrators section is not available."
     }
   },
   "matrixTitle": "Permission matrix",
   "capabilityColumn": "Capability",
   "capabilities": {
-    "manageOrders": "Manage orders",
+    "manageOrders": "Manage requests",
     "manageCustomers": "Manage customers",
     "manageStatuses": "Manage statuses",
     "viewAudit": "View audit log",

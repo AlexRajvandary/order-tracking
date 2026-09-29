@@ -71,8 +71,8 @@ internal sealed class TelegramBotOrdersScreen
             $"{(page - 1) * TelegramBotKeyboards.PageSize + idx + 1}. <code>{TelegramBotText.Escape(o.TrackingCode)}</code> — {TelegramBotText.Escape(o.CustomerName)}");
 
         var text =
-            $"📦 Заказы (стр. {page}/{totalPages}, всего {total})\n\n" +
-            (items.Count == 0 ? "Заказов пока нет." : string.Join('\n', lines));
+            $"📦 Заявки (стр. {page}/{totalPages}, всего {total})\n\n" +
+            (items.Count == 0 ? "Заявок пока нет." : string.Join('\n', lines));
 
         await _ui.RenderAsync(chatId, messageId, text, new InlineKeyboardMarkup(buttons), cancellationToken);
     }
@@ -128,7 +128,7 @@ internal sealed class TelegramBotOrdersScreen
             await RenderNotificationMessageAsync(
                 chatId,
                 messageId,
-                "Заказ не найден",
+                "Заявка не найдена",
                 new InlineKeyboardMarkup(
                     InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)),
                 hasAttachedPhoto,
@@ -229,7 +229,7 @@ internal sealed class TelegramBotOrdersScreen
             await _ui.RenderAsync(
                 chatId,
                 messageId,
-                "Заказ не найден",
+                "Заявка не найдена",
                 new InlineKeyboardMarkup(
                     InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)),
                 cancellationToken);
@@ -373,7 +373,7 @@ internal sealed class TelegramBotOrdersScreen
             await _ui.RenderAsync(
                 chatId,
                 messageId,
-                "Заказ не найден",
+                "Заявка не найдена",
                 new InlineKeyboardMarkup(
                     InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)),
                 cancellationToken);

@@ -6,6 +6,7 @@ import {
   Copy,
   Download,
   ImagePlus,
+  PackageCheck,
   Pencil,
   Plus,
   RefreshCw,
@@ -17,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import * as ordersApi from '@/features/orders/api/ordersApi'
 import * as customersApi from '@/features/customers/api/customersApi'
 import * as statusesApi from '@/features/statuses/api/statusesApi'
+import * as procurementsApi from '@/features/procurements/api/procurementsApi'
 import type {
   CurrencyCode,
   OrderItem,
@@ -756,6 +758,7 @@ export function OrderDetailsPage() {
   const navigate = useNavigate()
   const { t, i18n } = useTranslation('orders')
   const { t: ts } = useTranslation('statuses')
+  const { t: tp } = useTranslation('procurements')
   const queryClient = useQueryClient()
   const [copied, setCopied] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
@@ -769,6 +772,7 @@ export function OrderDetailsPage() {
   const [customerError, setCustomerError] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [conversionError, setConversionError] = useState<string | null>(null)
 
   const invalidateOrder = () => {
     void queryClient.invalidateQueries({ queryKey: ['order', id] })
@@ -867,6 +871,18 @@ export function OrderDetailsPage() {
     },
     onError: (err: unknown) => {
       setDeleteError(err instanceof ApiError ? err.message : t('deleteError'))
+    },
+  })
+
+  const convertMutation = useMutation({
+    mutationFn: () => procurementsApi.convertRequest(id),
+    onSuccess: () => {
+      setConversionError(null)
+      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
+      navigate('/admin/procurements')
+    },
+    onError: (err: unknown) => {
+      setConversionError(err instanceof ApiError ? err.message : tp('convertError'))
     },
   })
 
@@ -975,19 +991,38 @@ export function OrderDetailsPage() {
               </button>
             </h1>
           </div>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => {
-              setDeleteError(null)
-              setDeleteOpen(true)
-            }}
-          >
-            <Trash2 />
-            {t('delete')}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              disabled={convertMutation.isPending}
+              onClick={() => {
+                setConversionError(null)
+                convertMutation.mutate()
+              }}
+            >
+              <PackageCheck />
+              {convertMutation.isPending ? tp('converting') : tp('convert')}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                setDeleteError(null)
+                setDeleteOpen(true)
+              }}
+            >
+              <Trash2 />
+              {t('delete')}
+            </Button>
+          </div>
         </div>
       </div>
+
+      {conversionError ? (
+        <Alert variant="destructive">
+          <AlertDescription>{conversionError}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <Card>
         <CardContent className="flex flex-col gap-8 min-[600px]:flex-row min-[600px]:items-stretch min-[600px]:justify-between min-[600px]:gap-8 lg:gap-16">

@@ -1,14 +1,14 @@
 {
   "title": "Dashboard",
-  "subtitle": "Orders and activity overview",
+  "subtitle": "Requests and activity overview",
   "metrics": {
-    "orders": "Orders",
+    "orders": "Requests",
     "customers": "Customers",
     "admins": "Admins",
     "storage": "Storage",
     "changes": "Changes",
     "disk": "Disk",
-    "database": "Orders DB",
+    "database": "Requests DB",
     "databaseProducts": "Products DB",
     "files": "files",
     "storageUnavailable": "Unavailable",
@@ -16,7 +16,7 @@
     "updatedWeek": "Updated in 7 days",
     "statusWeek": "Status changes in 7 days"
   },
-  "recentOrders": "Recent orders",
+  "recentOrders": "Recent requests",
   "monitoring": {
     "title": "VPS monitoring",
     "description": "Server load and resource usage",
@@ -42,11 +42,11 @@
     }
   },
   "statusFilter": {
-    "label": "Order statuses",
+    "label": "Request statuses",
     "all": "All statuses",
     "selected_one": "{{count}} selected",
     "selected_other": "{{count}} selected",
-    "empty": "No orders with the selected statuses"
+    "empty": "No requests with the selected statuses"
   },
   "recentStatuses": "Recent status updates",
   "recentAudit": "Audit",
@@ -57,14 +57,14 @@
     "admin": "Admin",
     "created": "When"
   },
-  "emptyOrders": "No orders yet",
+  "emptyOrders": "No requests yet",
   "emptyStatuses": "No status changes yet",
   "emptyAudit": "No audit entries yet",
   "noCustomer": "No customer",
   "noComment": "No comment",
   "restore": "Restore",
-  "restoreSuccess": "Order restored",
-  "restoreError": "Could not restore order",
+  "restoreSuccess": "Request restored",
+  "restoreError": "Could not restore request",
   "changes": "Changes",
   "changeEmpty": "empty",
   "changeFrom": "from",
@@ -72,23 +72,23 @@
   "audit": {
     "title": "Audit",
     "actions": {
-      "AddOrderItem": "Add order item",
+      "AddOrderItem": "Add request item",
       "ChangePassword": "Change password",
       "CreateCustomer": "Create customer",
-      "CreateOrder": "Create order",
+      "CreateOrder": "Create request",
       "DeactivateStatusDefinition": "Deactivate status",
-      "DeleteOrder": "Delete order",
-      "DeleteOrderItem": "Delete order item",
+      "DeleteOrder": "Delete request",
+      "DeleteOrderItem": "Delete request item",
       "DeleteStatusHistoryPhoto": "Delete status history photo",
-      "RestoreOrder": "Restore order",
+      "RestoreOrder": "Restore request",
       "UpdateCustomer": "Update customer",
-      "UpdateOrder": "Update order",
-      "UpdateOrderItem": "Update order item",
+      "UpdateOrder": "Update request",
+      "UpdateOrderItem": "Update request item",
       "UpdateOrderItemStatus": "Update item status",
-      "UpdateOrderStatus": "Update order status"
+      "UpdateOrderStatus": "Update request status"
     },
     "entities": {
-      "Order": "Order",
+      "Order": "Request",
       "Customer": "Customer",
       "StatusDefinition": "Status",
       "AdminUser": "Administrator",
@@ -96,10 +96,10 @@
     },
     "fields": {
       "id": "ID",
-      "trackingCode": "Order number",
+      "trackingCode": "Request number",
       "customerId": "Customer",
       "adminNotes": "Administrator notes",
-      "status": "Order status",
+      "status": "Request status",
       "expectedDeliveryAt": "Expected date",
       "deliveryAddressId": "Delivery address",
       "deliveryAddress": "Delivery address",
@@ -110,9 +110,9 @@
       "deliveryPostalCode": "Postal code",
       "deliveryNote": "Delivery note",
       "isDeleted": "Deleted",
-      "orderId": "Order",
-      "itemId": "Order item",
-      "items": "Order items",
+      "orderId": "Request",
+      "itemId": "Request item",
+      "items": "Request items",
       "name": "Name",
       "itemType": "Item type",
       "description": "Description",
@@ -162,6 +162,6 @@
     "oldValues": "OldValues",
     "newValues": "NewValues",
     "empty": "empty",
-    "openOrder": "Open order"
+    "openOrder": "Open request"
   }
 }

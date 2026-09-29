@@ -33,7 +33,7 @@ internal sealed class TelegramOrdersCsvService
         await _runtime.Client.SendDocument(
             telegramId,
             InputFile.FromStream(stream, fileName),
-            caption: $"Ежедневный отчёт по заказам ({DateTime.UtcNow:yyyy-MM-dd} UTC)",
+            caption: $"Ежедневный отчёт по заявкам ({DateTime.UtcNow:yyyy-MM-dd} UTC)",
             cancellationToken: cancellationToken);
     }
 

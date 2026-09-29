@@ -3,7 +3,7 @@
   "subtitle": "Manage your customer database",
   "add": "Add customer",
   "edit": "Edit",
-  "orders": "Orders",
+  "orders": "Requests",
   "searchPlaceholder": "Search by name, phone or telegram...",
   "search": "Search",
   "clearSearch": "Clear",
@@ -14,7 +14,7 @@
     "telegram": "Telegram",
     "phone": "Phone",
     "email": "Email",
-    "orders": "Orders",
+    "orders": "Requests",
     "presence": "Presence",
     "created": "Created",
     "actions": "Actions"
@@ -37,8 +37,8 @@
     "notes": "Notes",
     "validation": "All fields are optional"
   },
-  "ordersTitle": "Customer orders",
-  "ordersEmpty": "This customer has no orders yet",
+  "ordersTitle": "Customer requests",
+  "ordersEmpty": "This customer has no requests yet",
   "orderTrackingCode": "Code",
   "orderCreated": "Created",
   "orderUpdated": "Updated",

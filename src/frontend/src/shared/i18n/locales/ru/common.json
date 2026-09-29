@@ -1,5 +1,5 @@
 {
-  "appName": "Order Tracking",
+  "appName": "Request Tracking",
   "loading": "Загрузка...",
   "error": "Произошла ошибка",
   "retry": "Повторить",
@@ -9,7 +9,8 @@
   "language": "Язык",
   "nav": {
     "dashboard": "Панель",
-    "orders": "Заказы",
+    "orders": "Заявки",
+    "procurements": "Выкуп и отправка",
     "customers": "Клиенты",
     "products": "Товары",
     "catalogAnalytics": "Аналитика",
@@ -63,7 +64,7 @@
     "daysAgo_many": "{{count}} дней назад",
     "now": "Сейчас",
     "calendarToday": "Сегодня",
-    "calendarOrderCreated": "Создан заказ",
+    "calendarOrderCreated": "Создана заявка",
     "totalRows": "Всего: {{count}}",
     "rowsPerPage": "На странице",
     "prevPage": "Предыдущая страница",

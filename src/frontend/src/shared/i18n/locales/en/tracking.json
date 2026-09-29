@@ -1,9 +1,9 @@
 {
-  "title": "Order tracking",
+  "title": "Request tracking",
   "placeholder": "Enter tracking code (e.g. AB4K9)",
   "search": "Search",
-  "orderNumber": "Order number",
-  "createdAt": "Order created",
+  "orderNumber": "Request number",
+  "createdAt": "Request created",
   "expectedDeliveryAt": "Expected time",
   "notSpecified": "Not specified",
   "orderStatus": {
@@ -21,8 +21,8 @@
   "location": "Location",
   "country": "Country",
   "openPhoto": "Open photo",
-  "noItems": "This order has no items yet",
-  "notFound": "Order not found",
+  "noItems": "This request has no items yet",
+  "notFound": "Request not found",
   "invalidCode": "Code must be 5 characters",
   "quantity": "Qty"
 }

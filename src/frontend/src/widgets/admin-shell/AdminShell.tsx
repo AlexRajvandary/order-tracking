@@ -55,6 +55,7 @@ const navItems: Array<{
 }> = [
   { to: '/admin', labelKey: 'nav.dashboard', end: true },
   { to: '/admin/orders', labelKey: 'nav.orders' },
+  { to: '/admin/procurements', labelKey: 'nav.procurements' },
   { to: '/admin/customers', labelKey: 'nav.customers' },
   { to: '/admin/products', labelKey: 'nav.products' },
   { to: '/admin/catalog-analytics', labelKey: 'nav.catalogAnalytics' },

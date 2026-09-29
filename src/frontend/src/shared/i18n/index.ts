@@ -24,6 +24,8 @@ import ruChanges from './locales/ru/changes.json'
 import enChanges from './locales/en/changes.json'
 import ruCatalogAnalytics from './locales/ru/catalogAnalytics.json'
 import enCatalogAnalytics from './locales/en/catalogAnalytics.json'
+import ruProcurements from './locales/ru/procurements.json'
+import enProcurements from './locales/en/procurements.json'
 
 function detectSystemLocale(): 'ru' | 'en' {
   const candidates = [...(navigator.languages ?? []), navigator.language]
@@ -54,6 +56,7 @@ void i18n.use(initReactI18next).init({
       products: ruProducts,
       changes: ruChanges,
       catalogAnalytics: ruCatalogAnalytics,
+      procurements: ruProcurements,
     },
     en: {
       common: enCommon,
@@ -68,6 +71,7 @@ void i18n.use(initReactI18next).init({
       products: enProducts,
       changes: enChanges,
       catalogAnalytics: enCatalogAnalytics,
+      procurements: enProcurements,
     },
   },
   lng: defaultLocale,

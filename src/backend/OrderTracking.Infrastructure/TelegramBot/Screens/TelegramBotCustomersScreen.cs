@@ -93,7 +93,7 @@ internal sealed class TelegramBotCustomersScreen
             $"Telegram: {TelegramBotText.Escape(c.Telegram)}\n" +
             $"WhatsApp: {TelegramBotText.Escape(c.WhatsApp)}\n" +
             $"VK: {TelegramBotText.Escape(c.Vk)}\n" +
-            $"Заказов: {c.OrdersCount}\n" +
+            $"Заявок: {c.OrdersCount}\n" +
             $"Создан: {c.CreatedAt:yyyy-MM-dd HH:mm} UTC";
 
         var keyboard = new InlineKeyboardMarkup(

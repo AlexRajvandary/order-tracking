@@ -256,6 +256,33 @@ public class StatusDefinitionConfiguration : IEntityTypeConfiguration<StatusDefi
     }
 }
 
+public class OrderItemProcurementConfiguration : IEntityTypeConfiguration<OrderItemProcurement>
+{
+    public void Configure(EntityTypeBuilder<OrderItemProcurement> builder)
+    {
+        builder.ToTable("order_item_procurements");
+
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.PurchaseUrl).HasMaxLength(2048);
+        builder.Property(e => e.ArrivalUrl).HasMaxLength(2048);
+        builder.Property(e => e.ShipmentUrl).HasMaxLength(2048);
+        builder.Property(e => e.PurchaseStatus).HasConversion<string>().HasMaxLength(30);
+        builder.Property(e => e.ArrivalStatus).HasConversion<string>().HasMaxLength(30);
+        builder.Property(e => e.ShipmentStatus).HasConversion<string>().HasMaxLength(30);
+
+        builder.HasIndex(e => e.OrderItemId)
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false");
+
+        builder.HasOne(e => e.OrderItem)
+            .WithOne(i => i.Procurement)
+            .HasForeignKey<OrderItemProcurement>(e => e.OrderItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasQueryFilter(e => !e.IsDeleted);
+    }
+}
+
 public class OrderItemStatusHistoryConfiguration : IEntityTypeConfiguration<OrderItemStatusHistory>
 {
     public void Configure(EntityTypeBuilder<OrderItemStatusHistory> builder)

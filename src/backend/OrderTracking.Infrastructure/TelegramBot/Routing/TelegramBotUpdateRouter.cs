@@ -177,7 +177,7 @@ internal sealed class TelegramBotUpdateRouter
                     await _ui.RenderAsync(
                         chatId.Value,
                         messageId,
-                        "Некорректный заказ",
+                        "Некорректная заявка",
                         TelegramBotKeyboards.MainMenu(admin),
                         cancellationToken);
                     return;
@@ -201,7 +201,7 @@ internal sealed class TelegramBotUpdateRouter
                     await _ui.RenderAsync(
                         chatId.Value,
                         messageId,
-                        "Некорректный заказ",
+                        "Некорректная заявка",
                         TelegramBotKeyboards.MainMenu(admin),
                         cancellationToken);
                     return;
@@ -294,7 +294,7 @@ internal sealed class TelegramBotUpdateRouter
                     await _ui.RenderAsync(
                         chatId.Value,
                         navigationMessageId,
-                        "Некорректный заказ",
+                        "Некорректная заявка",
                         new InlineKeyboardMarkup(
                             InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)),
                         cancellationToken);

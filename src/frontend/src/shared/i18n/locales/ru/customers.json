@@ -3,7 +3,7 @@
   "subtitle": "Управление базой клиентов",
   "add": "Добавить клиента",
   "edit": "Редактировать",
-  "orders": "Заказы",
+  "orders": "Заявки",
   "searchPlaceholder": "Поиск по имени, телефону или Telegram...",
   "search": "Найти",
   "clearSearch": "Сбросить",
@@ -14,13 +14,13 @@
     "telegram": "Telegram",
     "phone": "Телефон",
     "email": "Email",
-    "orders": "Заказов",
+    "orders": "Заявок",
     "presence": "Присутствие",
     "created": "Создан",
     "actions": "Действия"
   },
   "presence": {
-    "online": "На странице заказа",
+    "online": "На странице заявки",
     "offline": "Не в сети"
   },
   "form": {
@@ -37,8 +37,8 @@
     "notes": "Заметки",
     "validation": "Все поля необязательны"
   },
-  "ordersTitle": "Заказы клиента",
-  "ordersEmpty": "У клиента пока нет заказов",
+  "ordersTitle": "Заявки клиента",
+  "ordersEmpty": "У клиента пока нет заявок",
   "orderTrackingCode": "Код",
   "orderCreated": "Создан",
   "orderUpdated": "Обновлён",

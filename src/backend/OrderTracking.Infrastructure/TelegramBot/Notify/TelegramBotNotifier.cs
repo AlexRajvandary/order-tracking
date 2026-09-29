@@ -149,7 +149,7 @@ internal sealed class TelegramBotNotifier
         {
             var sb = new StringBuilder();
             sb.AppendLine("📣 <b>Статус опубликован</b>");
-            sb.AppendLine($"Заказ: <code>{TelegramBotText.Escape(item.TrackingCode)}</code>");
+            sb.AppendLine($"Заявка: <code>{TelegramBotText.Escape(item.TrackingCode)}</code>");
             if (!string.IsNullOrWhiteSpace(item.OrderItemName))
             {
                 sb.AppendLine($"Позиция: {TelegramBotText.Escape(item.OrderItemName)}");
@@ -163,7 +163,7 @@ internal sealed class TelegramBotNotifier
 
             var keyboard = new InlineKeyboardMarkup(
                 InlineKeyboardButton.WithCallbackData(
-                    "Открыть заказ",
+                    "Открыть заявку",
                     TelegramBotCallback.OrderOpen(item.OrderId)));
 
             var delivered = 0;

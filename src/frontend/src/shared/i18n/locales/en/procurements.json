@@ -1,0 +1,39 @@
+{
+  "title": "Purchasing and shipping",
+  "subtitle": "Auxiliary table for formed orders",
+  "empty": "No formed orders yet",
+  "request": "Request",
+  "item": "Product",
+  "source": "Source link",
+  "purchase": "Purchase",
+  "arrival": "Arrival",
+  "shipment": "Shipment",
+  "linkPlaceholder": "Paste a link",
+  "openLink": "Open link",
+  "actions": "Actions",
+  "save": "Save",
+  "saved": "Saved",
+  "delete": "Delete row",
+  "deleteConfirm": "Delete this row from the auxiliary table? The request item will remain unchanged.",
+  "updateError": "Could not save the row",
+  "deleteError": "Could not delete the row",
+  "convert": "Convert to order",
+  "converting": "Forming order…",
+  "convertSuccess": "Order formed",
+  "convertError": "Could not form the order",
+  "statuses": {
+    "purchase": {
+      "Pending": "Pending",
+      "Purchased": "Purchased",
+      "Error": "Error"
+    },
+    "arrival": {
+      "Pending": "Pending",
+      "Received": "Received"
+    },
+    "shipment": {
+      "AwaitingShipment": "Awaiting shipment",
+      "Shipped": "Shipped"
+    }
+  }
+}

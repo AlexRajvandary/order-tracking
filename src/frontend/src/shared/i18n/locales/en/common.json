@@ -1,5 +1,5 @@
 {
-  "appName": "Order Tracking",
+  "appName": "Request Tracking",
   "loading": "Loading...",
   "error": "An error occurred",
   "retry": "Retry",
@@ -9,7 +9,8 @@
   "language": "Language",
   "nav": {
     "dashboard": "Dashboard",
-    "orders": "Orders",
+    "orders": "Requests",
+    "procurements": "Purchasing & shipping",
     "customers": "Customers",
     "products": "Products",
     "catalogAnalytics": "Analytics",
@@ -61,7 +62,7 @@
     "daysAgo_other": "{{count}} days ago",
     "now": "Now",
     "calendarToday": "Today",
-    "calendarOrderCreated": "Order created",
+    "calendarOrderCreated": "Request created",
     "totalRows": "Total: {{count}}",
     "rowsPerPage": "Rows per page",
     "prevPage": "Previous page",

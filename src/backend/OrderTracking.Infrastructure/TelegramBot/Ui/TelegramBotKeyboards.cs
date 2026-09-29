@@ -23,7 +23,7 @@ internal static class TelegramBotKeyboards
     {
         var rows = new List<InlineKeyboardButton[]>
         {
-            new[] { InlineKeyboardButton.WithCallbackData("📦 Заказы", TelegramBotCallback.OrdersPagePrefix + "1") },
+            new[] { InlineKeyboardButton.WithCallbackData("📦 Заявки", TelegramBotCallback.OrdersPagePrefix + "1") },
             new[] { InlineKeyboardButton.WithCallbackData("👤 Клиенты", TelegramBotCallback.CustomersPagePrefix + "1") },
         };
 

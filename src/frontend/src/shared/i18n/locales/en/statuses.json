@@ -1,6 +1,6 @@
 {
   "title": "Statuses",
-  "subtitle": "Predefined statuses for order items",
+  "subtitle": "Predefined statuses for request items",
   "add": "Add status",
   "edit": "Edit",
   "deactivate": "Deactivate",
@@ -30,7 +30,7 @@
     "color": "Color",
     "defaultCountry": "Default country",
     "defaultLocation": "Default full address",
-    "publishAfterDays": "Publish N days after order creation",
+    "publishAfterDays": "Publish N days after request creation",
     "isActive": "Active",
     "isFinal": "Final status",
     "anyType": "For all"

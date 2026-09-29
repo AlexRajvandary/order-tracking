@@ -1,14 +1,14 @@
 {
   "title": "Панель",
-  "subtitle": "Сводка по заказам и активности",
+  "subtitle": "Сводка по заявкам и активности",
   "metrics": {
-    "orders": "Заказов",
+    "orders": "Заявок",
     "customers": "Клиентов",
     "admins": "Админов",
     "storage": "Хранилище",
     "changes": "Изменений",
     "disk": "Диск",
-    "database": "БД заказов",
+    "database": "БД заявок",
     "databaseProducts": "БД товаров",
     "files": "файлов",
     "storageUnavailable": "Нет данных",
@@ -16,7 +16,7 @@
     "updatedWeek": "Обновлено за 7 дней",
     "statusWeek": "Смен статуса за 7 дней"
   },
-  "recentOrders": "Последние заказы",
+  "recentOrders": "Последние заявки",
   "monitoring": {
     "title": "Мониторинг VPS",
     "description": "Нагрузка и использование ресурсов сервера",
@@ -42,13 +42,13 @@
     }
   },
   "statusFilter": {
-    "label": "Статусы заказов",
+    "label": "Статусы заявок",
     "all": "Все статусы",
     "selected_one": "Выбран {{count}}",
     "selected_few": "Выбрано {{count}}",
     "selected_many": "Выбрано {{count}}",
     "selected_other": "Выбрано {{count}}",
-    "empty": "Нет заказов с выбранными статусами"
+    "empty": "Нет заявок с выбранными статусами"
   },
   "recentStatuses": "Последние статусы",
   "recentAudit": "Аудит",
@@ -59,14 +59,14 @@
     "admin": "Админ",
     "created": "Когда"
   },
-  "emptyOrders": "Заказов пока нет",
+  "emptyOrders": "Заявок пока нет",
   "emptyStatuses": "Изменений статуса пока нет",
   "emptyAudit": "Записей аудита пока нет",
   "noCustomer": "Без клиента",
   "noComment": "Без комментария",
   "restore": "Вернуть",
-  "restoreSuccess": "Заказ восстановлен",
-  "restoreError": "Не удалось восстановить заказ",
+  "restoreSuccess": "Заявка восстановлена",
+  "restoreError": "Не удалось восстановить заявку",
   "changes": "Изменения",
   "changeEmpty": "нет",
   "changeFrom": "было",
@@ -74,23 +74,23 @@
   "audit": {
     "title": "Аудит",
     "actions": {
-      "AddOrderItem": "Добавление позиции заказа",
+      "AddOrderItem": "Добавление позиции заявки",
       "ChangePassword": "Изменение пароля",
       "CreateCustomer": "Создание клиента",
-      "CreateOrder": "Создание заказа",
+      "CreateOrder": "Создание заявки",
       "DeactivateStatusDefinition": "Отключение статуса",
-      "DeleteOrder": "Удаление заказа",
-      "DeleteOrderItem": "Удаление позиции заказа",
+      "DeleteOrder": "Удаление заявки",
+      "DeleteOrderItem": "Удаление позиции заявки",
       "DeleteStatusHistoryPhoto": "Удаление фото из истории статуса",
-      "RestoreOrder": "Восстановление заказа",
+      "RestoreOrder": "Восстановление заявки",
       "UpdateCustomer": "Изменение клиента",
-      "UpdateOrder": "Изменение заказа",
-      "UpdateOrderItem": "Изменение позиции заказа",
+      "UpdateOrder": "Изменение заявки",
+      "UpdateOrderItem": "Изменение позиции заявки",
       "UpdateOrderItemStatus": "Изменение статуса позиции",
-      "UpdateOrderStatus": "Изменение статуса заказа"
+      "UpdateOrderStatus": "Изменение статуса заявки"
     },
     "entities": {
-      "Order": "Заказ",
+      "Order": "Заявка",
       "Customer": "Клиент",
       "StatusDefinition": "Статус",
       "AdminUser": "Администратор",
@@ -98,10 +98,10 @@
     },
     "fields": {
       "id": "ID",
-      "trackingCode": "Номер заказа",
+      "trackingCode": "Номер заявки",
       "customerId": "Клиент",
       "adminNotes": "Заметки администратора",
-      "status": "Статус заказа",
+      "status": "Статус заявки",
       "expectedDeliveryAt": "Ожидаемая дата",
       "deliveryAddressId": "Адрес доставки",
       "deliveryAddress": "Адрес доставки",
@@ -112,9 +112,9 @@
       "deliveryPostalCode": "Почтовый индекс",
       "deliveryNote": "Комментарий к доставке",
       "isDeleted": "Удалено",
-      "orderId": "Заказ",
-      "itemId": "Позиция заказа",
-      "items": "Позиции заказа",
+      "orderId": "Заявка",
+      "itemId": "Позиция заявки",
+      "items": "Позиции заявки",
       "name": "Название",
       "itemType": "Тип позиции",
       "description": "Описание",
@@ -164,6 +164,6 @@
     "oldValues": "OldValues",
     "newValues": "NewValues",
     "empty": "пусто",
-    "openOrder": "Открыть заказ"
+    "openOrder": "Открыть заявку"
   }
 }
