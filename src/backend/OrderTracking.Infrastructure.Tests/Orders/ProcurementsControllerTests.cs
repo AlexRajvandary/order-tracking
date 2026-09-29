@@ -75,6 +75,7 @@ public sealed class ProcurementsControllerTests
                 " https://shop.example/order/42 ",
                 PurchaseStatus.Purchased,
                 125.50m,
+                "USD",
                 " SELLER-42 ",
                 " LOCAL-TRACK ",
                 ArrivalStatus.Received,
@@ -85,6 +86,7 @@ public sealed class ProcurementsControllerTests
                 "Air",
                 1.250m,
                 32.75m,
+                "EUR",
                 shippedAt),
             CancellationToken.None);
 
@@ -94,6 +96,7 @@ public sealed class ProcurementsControllerTests
 
         Assert.Equal("https://shop.example/order/42", saved.PurchaseUrl);
         Assert.Equal(125.50m, saved.PurchasePrice);
+        Assert.Equal("USD", saved.PurchaseCurrencyCode);
         Assert.Equal("SELLER-42", saved.SellerOrderNumber);
         Assert.Equal("LOCAL-TRACK", saved.WarehouseTrackingNumber);
         Assert.Equal(receivedAt, saved.WarehouseReceivedAt);
@@ -102,6 +105,7 @@ public sealed class ProcurementsControllerTests
         Assert.Equal("Air", saved.ShippingMethod);
         Assert.Equal(1.250m, saved.ShippingWeight);
         Assert.Equal(32.75m, saved.ShippingCost);
+        Assert.Equal("EUR", saved.ShippingCurrencyCode);
         Assert.Equal(shippedAt, saved.ShippedAt);
         Assert.Empty(dto.Attachments);
     }

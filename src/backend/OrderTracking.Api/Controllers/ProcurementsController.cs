@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OrderTracking.Application.Common.Interfaces;
+using OrderTracking.Domain.Common;
 using OrderTracking.Domain.Entities;
 using OrderTracking.Domain.Enums;
 using OrderTracking.Infrastructure.Persistence;
@@ -94,6 +95,7 @@ public sealed class ProcurementsController(
         row.PurchaseUrl = Normalize(request.PurchaseUrl);
         row.PurchaseStatus = request.PurchaseStatus;
         row.PurchasePrice = request.PurchasePrice;
+        row.PurchaseCurrencyCode = NormalizeCurrency(request.PurchaseCurrencyCode);
         row.SellerOrderNumber = Normalize(request.SellerOrderNumber);
         row.WarehouseTrackingNumber = Normalize(request.WarehouseTrackingNumber);
         row.ArrivalStatus = request.ArrivalStatus;
@@ -104,6 +106,7 @@ public sealed class ProcurementsController(
         row.ShippingMethod = Normalize(request.ShippingMethod);
         row.ShippingWeight = request.ShippingWeight;
         row.ShippingCost = request.ShippingCost;
+        row.ShippingCurrencyCode = NormalizeCurrency(request.ShippingCurrencyCode);
         row.ShippedAt = request.ShippedAt;
 
         await db.SaveChangesAsync(cancellationToken);
@@ -166,6 +169,7 @@ public sealed class ProcurementsController(
             value.PurchaseUrl,
             value.PurchaseStatus,
             value.PurchasePrice,
+            value.PurchaseCurrencyCode,
             value.SellerOrderNumber,
             value.WarehouseTrackingNumber,
             value.ArrivalStatus,
@@ -176,6 +180,7 @@ public sealed class ProcurementsController(
             value.ShippingMethod,
             value.ShippingWeight,
             value.ShippingCost,
+            value.ShippingCurrencyCode,
             value.ShippedAt,
             value.Attachments
                 .OrderBy(attachment => attachment.CreatedAt)
@@ -192,6 +197,14 @@ public sealed class ProcurementsController(
 
     private static string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string NormalizeCurrency(string? value)
+    {
+        var normalized = CurrencyCodes.Normalize(value);
+        return normalized is CurrencyCodes.Jpy or CurrencyCodes.Rub or CurrencyCodes.Usd or CurrencyCodes.Eur
+            ? normalized
+            : CurrencyCodes.Jpy;
+    }
 }
 
 public sealed record ProcurementRowDto(
@@ -204,6 +217,7 @@ public sealed record ProcurementRowDto(
     string? PurchaseUrl,
     PurchaseStatus PurchaseStatus,
     decimal? PurchasePrice,
+    string PurchaseCurrencyCode,
     string? SellerOrderNumber,
     string? WarehouseTrackingNumber,
     ArrivalStatus ArrivalStatus,
@@ -214,6 +228,7 @@ public sealed record ProcurementRowDto(
     string? ShippingMethod,
     decimal? ShippingWeight,
     decimal? ShippingCost,
+    string ShippingCurrencyCode,
     DateOnly? ShippedAt,
     IReadOnlyList<ProcurementAttachmentDto> Attachments,
     DateTimeOffset CreatedAt,
@@ -223,6 +238,7 @@ public sealed record UpdateProcurementRequest(
     string? PurchaseUrl,
     PurchaseStatus PurchaseStatus,
     decimal? PurchasePrice,
+    string? PurchaseCurrencyCode,
     string? SellerOrderNumber,
     string? WarehouseTrackingNumber,
     ArrivalStatus ArrivalStatus,
@@ -233,6 +249,7 @@ public sealed record UpdateProcurementRequest(
     string? ShippingMethod,
     decimal? ShippingWeight,
     decimal? ShippingCost,
+    string? ShippingCurrencyCode,
     DateOnly? ShippedAt);
 
 public sealed record ProcurementAttachmentDto(

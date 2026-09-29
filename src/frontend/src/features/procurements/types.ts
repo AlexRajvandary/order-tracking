@@ -3,6 +3,7 @@ export type ArrivalStatus = 'Pending' | 'InTransit' | 'Received'
 export type ShipmentStatus = 'AwaitingShipment' | 'Shipped' | 'Delivered'
 export type WarehouseCondition = 'Ok' | 'Good' | 'Damaged' | 'WrongItem' | 'Incomplete'
 export type ProcurementAttachmentKind = 'Receipt' | 'WarehousePhoto'
+export type ProcurementCurrencyCode = 'JPY' | 'RUB' | 'USD' | 'EUR'
 
 export type ProcurementAttachment = {
   id: string
@@ -23,6 +24,7 @@ export type ProcurementRow = {
   purchaseUrl: string | null
   purchaseStatus: PurchaseStatus
   purchasePrice: number | null
+  purchaseCurrencyCode: ProcurementCurrencyCode
   sellerOrderNumber: string | null
   warehouseTrackingNumber: string | null
   arrivalStatus: ArrivalStatus
@@ -33,6 +35,7 @@ export type ProcurementRow = {
   shippingMethod: string | null
   shippingWeight: number | null
   shippingCost: number | null
+  shippingCurrencyCode: ProcurementCurrencyCode
   shippedAt: string | null
   attachments: ProcurementAttachment[]
   createdAt: string
@@ -44,6 +47,7 @@ export type UpdateProcurementRequest = Pick<
   | 'purchaseUrl'
   | 'purchaseStatus'
   | 'purchasePrice'
+  | 'purchaseCurrencyCode'
   | 'sellerOrderNumber'
   | 'warehouseTrackingNumber'
   | 'arrivalStatus'
@@ -54,5 +58,6 @@ export type UpdateProcurementRequest = Pick<
   | 'shippingMethod'
   | 'shippingWeight'
   | 'shippingCost'
+  | 'shippingCurrencyCode'
   | 'shippedAt'
 >

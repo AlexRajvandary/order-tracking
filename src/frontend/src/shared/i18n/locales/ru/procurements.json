@@ -34,12 +34,12 @@
   "convertSuccess": "Заказ сформирован",
   "convertError": "Не удалось сформировать заказ",
   "fields": {
-    "purchaseUrl": "Ссылка на заказ / товар",
+    "purchaseUrl": "Ссылка на выкуп",
     "purchaseStatus": "Статус выкупа",
     "purchasePrice": "Фактическая цена",
     "sellerOrderNumber": "Номер заказа продавца",
     "receipt": "Чек",
-    "warehouseTrackingNumber": "Локальный трек-номер",
+    "warehouseTrackingNumber": "Трек-номер",
     "arrivalStatus": "Статус поступления",
     "warehouseReceivedAt": "Дата поступления",
     "warehousePhotos": "Фото товара",
@@ -77,7 +77,7 @@
     "deleteDescription": "Запись будет удалена из таблицы выкупа и отправки. Это действие нельзя отменить.",
     "continueEditing": "Продолжить редактирование",
     "unsavedTitle": "Есть несохраненные изменения",
-    "unsavedDescription": "Сохранить изменения перед выходом?",
+    "unsavedDescription": "Дождитесь автосохранения или выйдите без сохранения.",
     "exitWithoutSaving": "Выйти без сохранения",
     "filters": {
       "all": "Все",

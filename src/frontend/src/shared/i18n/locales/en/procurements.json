@@ -34,12 +34,12 @@
   "convertSuccess": "Order formed",
   "convertError": "Could not form the order",
   "fields": {
-    "purchaseUrl": "Order / product link",
+    "purchaseUrl": "Purchase link",
     "purchaseStatus": "Purchase status",
     "purchasePrice": "Actual purchase price",
     "sellerOrderNumber": "Seller order number",
     "receipt": "Receipt",
-    "warehouseTrackingNumber": "Local tracking number",
+    "warehouseTrackingNumber": "Tracking number",
     "arrivalStatus": "Arrival status",
     "warehouseReceivedAt": "Arrival date",
     "warehousePhotos": "Product photos",
@@ -77,7 +77,7 @@
     "deleteDescription": "The row will be removed from purchasing and shipping. This action cannot be undone.",
     "continueEditing": "Continue editing",
     "unsavedTitle": "You have unsaved changes",
-    "unsavedDescription": "Save changes before leaving?",
+    "unsavedDescription": "Wait for autosave or leave without saving.",
     "exitWithoutSaving": "Leave without saving",
     "filters": {
       "all": "All",

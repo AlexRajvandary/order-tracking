@@ -19,12 +19,10 @@ import {
   ImagePlus,
   Package,
   Plane,
-  Save,
   Search,
   Send,
   ShoppingBasket,
   SlidersHorizontal,
-  Trash2,
   X,
 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -33,11 +31,11 @@ import * as procurementsApi from '@/features/procurements/api/procurementsApi'
 import type {
   ArrivalStatus,
   ProcurementAttachment,
+  ProcurementCurrencyCode,
   ProcurementRow,
   PurchaseStatus,
   ShipmentStatus,
   UpdateProcurementRequest,
-  WarehouseCondition,
 } from '@/features/procurements/types'
 import { ApiError } from '@/shared/api/client'
 import { authorizedRequest } from '@/shared/api/authorizedClient'
@@ -76,7 +74,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shar
 const purchaseStatuses: PurchaseStatus[] = ['Pending', 'Purchased', 'Error']
 const arrivalStatuses: ArrivalStatus[] = ['Pending', 'InTransit', 'Received']
 const shipmentStatuses: ShipmentStatus[] = ['AwaitingShipment', 'Shipped', 'Delivered']
-const warehouseConditions: WarehouseCondition[] = ['Ok', 'Damaged', 'WrongItem', 'Incomplete']
+const currencies: ProcurementCurrencyCode[] = ['JPY', 'RUB', 'USD', 'EUR']
+const currencySymbols: Record<ProcurementCurrencyCode, string> = { JPY: '¥', RUB: '₽', USD: '$', EUR: '€' }
 const mobileFilters: MobileFilter[] = ['all', 'awaitingPurchase', 'purchased', 'warehouseTransit', 'warehouse', 'awaitingShipment', 'shipped']
 const autoSaveDelayMs = 650
 
@@ -100,6 +99,7 @@ function createForm(row: ProcurementRow): UpdateProcurementRequest {
     purchaseUrl: row.purchaseUrl,
     purchaseStatus: row.purchaseStatus,
     purchasePrice: row.purchasePrice ?? null,
+    purchaseCurrencyCode: row.purchaseCurrencyCode ?? 'JPY',
     sellerOrderNumber: row.sellerOrderNumber ?? null,
     warehouseTrackingNumber: row.warehouseTrackingNumber ?? null,
     arrivalStatus: row.arrivalStatus,
@@ -110,6 +110,7 @@ function createForm(row: ProcurementRow): UpdateProcurementRequest {
     shippingMethod: row.shippingMethod ?? null,
     shippingWeight: row.shippingWeight ?? null,
     shippingCost: row.shippingCost ?? null,
+    shippingCurrencyCode: row.shippingCurrencyCode ?? 'JPY',
     shippedAt: row.shippedAt ?? null,
   }
 }
@@ -258,6 +259,28 @@ function SuffixInput({ suffix, mobile, ...props }: React.ComponentProps<typeof I
   )
 }
 
+function MoneyInput({ id, value, currency, mobile, onValueChange, onCurrencyChange }: {
+  id: string
+  value: number | null
+  currency: ProcurementCurrencyCode
+  mobile: boolean
+  onValueChange: (value: number | null) => void
+  onCurrencyChange: (value: ProcurementCurrencyCode) => void
+}) {
+  const height = mobile ? 'h-11 text-base' : 'h-9'
+  return (
+    <div className="flex min-w-0">
+      <Input id={id} className={`${height} min-w-0 rounded-r-none`} inputMode="decimal" value={value ?? ''} onChange={(event) => onValueChange(numberOrNull(event.target.value))} />
+      <Select value={currency} onValueChange={(value) => onCurrencyChange(value as ProcurementCurrencyCode)}>
+        <SelectTrigger aria-label="Валюта" className={`${height} w-[92px] shrink-0 rounded-l-none border-l-0 px-2`}><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {currencies.map((code) => <SelectItem key={code} value={code}>{currencySymbols[code]} {code}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
 function FileUploadButton({
   accept,
   multiple,
@@ -396,12 +419,9 @@ function PurchaseFields({ row, form, updateForm, mobile, uploading, deletingAtta
           <StatusSelect id={`${prefix}-status`} mobile={mobile} value={form.purchaseStatus} values={purchaseStatuses} group="purchase" onChange={(purchaseStatus) => updateForm((value) => ({ ...value, purchaseStatus: purchaseStatus as PurchaseStatus }))} />
         </FormField>
         <FormField label={t('fields.purchasePrice')} controlId={`${prefix}-price`}>
-          <Input id={`${prefix}-price`} className={inputClass} inputMode="decimal" value={form.purchasePrice ?? ''} onChange={(event) => updateForm((value) => ({ ...value, purchasePrice: numberOrNull(event.target.value) }))} />
+          <MoneyInput id={`${prefix}-price`} mobile={mobile} value={form.purchasePrice} currency={form.purchaseCurrencyCode} onValueChange={(purchasePrice) => updateForm((value) => ({ ...value, purchasePrice }))} onCurrencyChange={(purchaseCurrencyCode) => updateForm((value) => ({ ...value, purchaseCurrencyCode }))} />
         </FormField>
       </div>
-      <FormField label={t('fields.sellerOrderNumber')} controlId={`${prefix}-seller`} className={mobile ? '' : 'xl:col-span-2'}>
-        <Input id={`${prefix}-seller`} className={inputClass} value={form.sellerOrderNumber ?? ''} onChange={(event) => updateForm((value) => ({ ...value, sellerOrderNumber: emptyToNull(event.target.value) }))} />
-      </FormField>
       <div className={mobile ? 'space-y-2' : 'xl:col-span-2'}>
         <Label className="text-sm text-muted-foreground">{t('fields.receipt')}</Label>
         {receipt && mobile ? (
@@ -444,7 +464,6 @@ function WarehouseFields({ row, form, updateForm, mobile, uploading, deletingAtt
   const { t } = useTranslation('procurements')
   const prefix = useId()
   const photos = (row.attachments ?? []).filter((value) => value.kind === 'WarehousePhoto')
-  const legacyCondition = form.warehouseCondition && !warehouseConditions.includes(form.warehouseCondition) ? form.warehouseCondition : null
 
   return (
     <div className="space-y-4">
@@ -476,16 +495,6 @@ function WarehouseFields({ row, form, updateForm, mobile, uploading, deletingAtt
           </div>
         )}
       </div>
-      <FormField label={t('fields.warehouseCondition')} controlId={`${prefix}-condition`}>
-        <Select value={form.warehouseCondition ?? 'Unspecified'} onValueChange={(warehouseCondition) => updateForm((value) => ({ ...value, warehouseCondition: warehouseCondition === 'Unspecified' ? null : warehouseCondition as WarehouseCondition }))}>
-          <SelectTrigger id={`${prefix}-condition`} className={mobile ? 'h-11 w-full text-base' : 'h-9 w-full'}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Unspecified">{t('conditions.Unspecified')}</SelectItem>
-            {warehouseConditions.map((condition) => <SelectItem key={condition} value={condition}>{t(`conditions.${condition}`)}</SelectItem>)}
-            {legacyCondition ? <SelectItem value={legacyCondition}>{t(`conditions.${legacyCondition}`)}</SelectItem> : null}
-          </SelectContent>
-        </Select>
-      </FormField>
     </div>
   )
 }
@@ -513,7 +522,7 @@ function ShippingFields({ form, updateForm, mobile }: FieldsProps) {
           <SuffixInput id={`${prefix}-weight`} mobile={mobile} suffix="кг" inputMode="decimal" value={form.shippingWeight ?? ''} onChange={(event) => updateForm((value) => ({ ...value, shippingWeight: numberOrNull(event.target.value) }))} />
         </FormField>
         <FormField label={t('fields.shippingCost')} controlId={`${prefix}-cost`}>
-          <Input id={`${prefix}-cost`} className={inputClass} inputMode="decimal" value={form.shippingCost ?? ''} onChange={(event) => updateForm((value) => ({ ...value, shippingCost: numberOrNull(event.target.value) }))} />
+          <MoneyInput id={`${prefix}-cost`} mobile={mobile} value={form.shippingCost} currency={form.shippingCurrencyCode} onValueChange={(shippingCost) => updateForm((value) => ({ ...value, shippingCost }))} onCurrencyChange={(shippingCurrencyCode) => updateForm((value) => ({ ...value, shippingCurrencyCode }))} />
         </FormField>
       </div>
       <FormField label={t('fields.shippedAt')} controlId={`${prefix}-date`} className={mobile ? '' : 'max-w-[calc(50%-0.375rem)]'}>
@@ -540,11 +549,9 @@ function SaveStateText({ state, dirty }: { state: SaveState; dirty: boolean }) {
 
 type EditorProps = {
   row: ProcurementRow
-  deleting: boolean
   uploading: boolean
   deletingAttachmentId?: string
   onSave: (id: string, request: UpdateProcurementRequest) => Promise<ProcurementRow>
-  onDelete: (id: string) => Promise<void>
   onReceiptUpload: (id: string, file: File) => Promise<void>
   onPhotosUpload: (id: string, files: File[]) => Promise<void>
   onDeleteAttachment: (id: string, attachmentId: string) => Promise<void>
@@ -553,7 +560,7 @@ type EditorProps = {
 function DesktopProcurementEditor(props: EditorProps) {
   const { t } = useTranslation('procurements')
   const state = useProcurementForm(props.row, props.onSave)
-  const busy = state.saving || props.deleting || props.uploading
+  const busy = state.saving || props.uploading
   const fieldProps: FieldsProps = { ...props, form: state.form, updateForm: state.updateForm, mobile: false }
 
   return (
@@ -568,7 +575,7 @@ function DesktopProcurementEditor(props: EditorProps) {
         <section className="border-l p-3"><h2 className="mb-3 text-sm font-semibold">{t('shipment')}</h2><ShippingFields {...fieldProps} /></section>
         <section className="border-l p-3">
           <h2 className="mb-3 text-sm font-semibold">{t('actions')}</h2>
-          <TooltipProvider><div className="flex items-center gap-1.5"><ActionButton label={t('save')} variant="outline" disabled={busy || !state.dirty} onClick={() => void state.persist()}><Save /></ActionButton><ActionButton label={t('cancel')} variant="ghost" disabled={busy || !state.dirty} onClick={state.reset}><X /></ActionButton><ActionButton label={t('delete')} variant="destructive" disabled={busy} onClick={() => { if (window.confirm(t('deleteConfirm'))) void props.onDelete(props.row.id) }}><Trash2 /></ActionButton></div></TooltipProvider>
+          <TooltipProvider><div className="flex items-center gap-1.5"><ActionButton label={t('cancel')} variant="ghost" disabled={busy || !state.dirty} onClick={state.reset}><X /></ActionButton></div></TooltipProvider>
           <p className="mt-2 text-xs" aria-live="polite"><SaveStateText state={state.saveState} dirty={state.dirty} /></p>
         </section>
       </div>
@@ -643,7 +650,7 @@ function MobileOrdersList({
   const counts = useMemo(() => Object.fromEntries(mobileFilters.map((key) => [key, rows.filter((row) => matchesFilter(row, key)).length])) as Record<MobileFilter, number>, [rows])
   const visibleRows = useMemo(() => rows
     .filter((row) => matchesFilter(row, filter))
-    .filter((row) => !deferredSearch || [row.trackingCode, row.itemName, row.sellerOrderNumber, row.warehouseTrackingNumber, row.shippingTrackingNumber].some((value) => value?.toLocaleLowerCase().includes(deferredSearch)))
+    .filter((row) => !deferredSearch || [row.trackingCode, row.itemName, row.warehouseTrackingNumber, row.shippingTrackingNumber].some((value) => value?.toLocaleLowerCase().includes(deferredSearch)))
     .sort((left, right) => (sort === 'newest' ? -1 : 1) * (new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())), [deferredSearch, filter, rows, sort])
 
   return (
@@ -662,7 +669,7 @@ function MobileOrdersList({
       {visibleRows.length ? (
         <div className="space-y-2">
           {visibleRows.map((row) => {
-            const meta = [row.purchasePrice == null ? null : row.purchasePrice.toLocaleString('ru-RU'), row.sellerOrderNumber, row.warehouseTrackingNumber ? `${t('mobile.track')}: ${row.warehouseTrackingNumber}` : null].filter(Boolean).slice(0, 2).join(' · ')
+            const meta = [formatMoney(row.purchasePrice, row.purchaseCurrencyCode), row.warehouseTrackingNumber ? `${t('mobile.track')}: ${row.warehouseTrackingNumber}` : null].filter(Boolean).join(' · ')
             return <button key={row.id} type="button" className="flex min-h-24 w-full items-center gap-3 rounded-xl border bg-background p-3 text-left transition-colors active:bg-muted/70" onClick={() => onOpen(row)}><ProductPlaceholder /><div className="min-w-0 flex-1"><p className="font-mono text-sm font-semibold">{row.trackingCode}</p><p className="mt-1 truncate text-sm">{row.itemName || t('item')}</p><p className="mt-1 truncate text-xs text-muted-foreground">{meta || t('mobile.noDetails')}</p></div><div className="flex shrink-0 items-center gap-1"><OrderStatusBadge row={row} /><ChevronRight className="size-4 text-muted-foreground" /></div></button>
           })}
         </div>
@@ -687,20 +694,18 @@ function MobileOrderDetails(props: EditorProps & { onBack: () => void }) {
   const state = useProcurementForm(props.row, props.onSave)
   const [accordion, setAccordion] = useState(() => props.row.purchaseStatus !== 'Purchased' ? 'purchase' : props.row.arrivalStatus !== 'Received' ? 'warehouse' : props.row.shipmentStatus === 'AwaitingShipment' ? 'shipping' : '')
   const [exitDialog, setExitDialog] = useState(false)
-  const [deleteDialog, setDeleteDialog] = useState(false)
   const fieldProps: FieldsProps = { ...props, form: state.form, updateForm: state.updateForm, mobile: true }
-  const busy = state.saving || props.deleting || props.uploading
   const date = new Intl.DateTimeFormat(i18n.language === 'ru' ? 'ru-RU' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(props.row.createdAt))
   const receipt = (props.row.attachments ?? []).find((value) => value.kind === 'Receipt')
   const back = () => state.dirty ? setExitDialog(true) : props.onBack()
   const copyApplication = async () => navigator.clipboard.writeText(props.row.trackingCode)
 
-  const purchaseSummary = summary([state.form.purchasePrice?.toLocaleString('ru-RU'), state.form.sellerOrderNumber, receipt ? t('fields.receipt') : null], t('mobile.purchaseEmpty'))
+  const purchaseSummary = summary([formatMoney(state.form.purchasePrice, state.form.purchaseCurrencyCode), receipt ? t('fields.receipt') : null], t('mobile.purchaseEmpty'))
   const warehouseSummary = summary([state.form.warehouseTrackingNumber ? `${t('mobile.track')}: ${state.form.warehouseTrackingNumber}` : null, formatDate(state.form.warehouseReceivedAt)], t('mobile.warehouseEmpty'))
-  const shippingSummary = summary([state.form.shippingTrackingNumber, state.form.shippingMethod, state.form.shippingWeight == null ? null : `${state.form.shippingWeight} кг`, state.form.shippingCost?.toLocaleString('ru-RU')], t('mobile.shippingEmpty'))
+  const shippingSummary = summary([state.form.shippingTrackingNumber, state.form.shippingMethod, state.form.shippingWeight == null ? null : `${state.form.shippingWeight} кг`, formatMoney(state.form.shippingCost, state.form.shippingCurrencyCode)], t('mobile.shippingEmpty'))
 
   return (
-    <div className="min-w-0 pb-24">
+    <div className="min-w-0 pb-4">
       <Button type="button" variant="ghost" className="mb-3 min-h-11 -ml-2 px-2" onClick={back}><ArrowLeft /> {t('mobile.allOrders')}</Button>
       <div className="mb-3 flex min-h-[104px] gap-3 rounded-xl border bg-background p-3">
         <ProductPlaceholder large />
@@ -712,14 +717,9 @@ function MobileOrderDetails(props: EditorProps & { onBack: () => void }) {
         <AccordionItem value="warehouse"><AccordionTrigger><AccordionHeading icon={<Package className="size-4" />} title={t('arrival')} badge={<Badge variant="outline">{t(`statuses.arrival.${state.form.arrivalStatus}`)}</Badge>} summary={warehouseSummary} /></AccordionTrigger><AccordionContent><WarehouseFields {...fieldProps} /></AccordionContent></AccordionItem>
         <AccordionItem value="shipping"><AccordionTrigger><AccordionHeading icon={state.form.shipmentStatus === 'Shipped' || state.form.shipmentStatus === 'Delivered' ? <Plane className="size-4" /> : <Send className="size-4" />} title={t('shipment')} badge={<Badge variant="outline">{t(`statuses.shipment.${state.form.shipmentStatus}`)}</Badge>} summary={shippingSummary} /></AccordionTrigger><AccordionContent><ShippingFields {...fieldProps} /></AccordionContent></AccordionItem>
       </Accordion>
+      <p className="mt-3 text-center text-xs" aria-live="polite"><SaveStateText state={state.saveState} dirty={state.dirty} /></p>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur">
-        <div className="mb-2 text-center text-xs" aria-live="polite"><SaveStateText state={state.saveState} dirty={state.dirty} /></div>
-        <div className="flex gap-3"><Button type="button" variant="destructive" className="h-11" disabled={busy} onClick={() => setDeleteDialog(true)}><Trash2 />{t('delete')}</Button><Button type="button" className="h-11 flex-1" disabled={busy || !state.dirty} onClick={() => void state.persist()}><Save />{t('save')}</Button></div>
-      </div>
-
-      <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{t('mobile.deleteTitle')}</AlertDialogTitle><AlertDialogDescription>{t('mobile.deleteDescription')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>{t('mobile.continueEditing')}</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => void props.onDelete(props.row.id).then(props.onBack)}>{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-      <AlertDialog open={exitDialog} onOpenChange={setExitDialog}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{t('mobile.unsavedTitle')}</AlertDialogTitle><AlertDialogDescription>{t('mobile.unsavedDescription')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="sm:flex-col"><AlertDialogCancel>{t('mobile.continueEditing')}</AlertDialogCancel><Button variant="ghost" onClick={() => { state.reset(); setExitDialog(false); props.onBack() }}>{t('mobile.exitWithoutSaving')}</Button><AlertDialogAction onClick={() => void state.persist().then((saved) => { if (saved) props.onBack() })}>{t('save')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <AlertDialog open={exitDialog} onOpenChange={setExitDialog}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{t('mobile.unsavedTitle')}</AlertDialogTitle><AlertDialogDescription>{t('mobile.unsavedDescription')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>{t('mobile.continueEditing')}</AlertDialogCancel><AlertDialogAction onClick={() => { state.reset(); setExitDialog(false); props.onBack() }}>{t('mobile.exitWithoutSaving')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </div>
   )
 }
@@ -728,6 +728,12 @@ function formatDate(value: string | null) {
   if (!value) return null
   const [year, month, day] = value.split('-')
   return year && month && day ? `${day}.${month}.${year}` : value
+}
+
+function formatMoney(value: number | null, currency: ProcurementCurrencyCode | null | undefined) {
+  if (value == null) return null
+  const code = currency ?? 'JPY'
+  return `${value.toLocaleString('ru-RU')} ${currencySymbols[code]}`
 }
 
 function formatFileSize(bytes: number) {
@@ -765,7 +771,6 @@ export function ProcurementsPage() {
     }
   }, [t, updateRows])
 
-  const deleteMutation = useMutation({ mutationFn: procurementsApi.deleteProcurement, onSuccess: (_, id) => { setError(null); updateRows((rows) => rows.filter((row) => row.id !== id)) }, onError: (value: unknown) => setError(value instanceof ApiError ? value.message : t('deleteError')) })
   const receiptMutation = useMutation({ mutationFn: ({ id, file }: { id: string; file: File }) => procurementsApi.uploadReceipt(id, file), onSuccess: (receipt, { id }) => { setError(null); updateRows((rows) => rows.map((row) => row.id === id ? { ...row, attachments: [...(row.attachments ?? []).filter((value) => value.kind !== 'Receipt'), receipt] } : row)) }, onError: (value: unknown) => setError(value instanceof ApiError ? value.message : t('uploadError')) })
   const photosMutation = useMutation({ mutationFn: ({ id, files }: { id: string; files: File[] }) => procurementsApi.uploadWarehousePhotos(id, files), onSuccess: (photos, { id }) => { setError(null); updateRows((rows) => rows.map((row) => row.id === id ? { ...row, attachments: [...(row.attachments ?? []), ...photos] } : row)) }, onError: (value: unknown) => setError(value instanceof ApiError ? value.message : t('uploadError')) })
   const attachmentMutation = useMutation({ mutationFn: ({ id, attachmentId }: { id: string; attachmentId: string }) => procurementsApi.deleteAttachment(id, attachmentId), onSuccess: (_, { id, attachmentId }) => { setError(null); updateRows((rows) => rows.map((row) => row.id === id ? { ...row, attachments: (row.attachments ?? []).filter((value) => value.id !== attachmentId) } : row)) }, onError: (value: unknown) => setError(value instanceof ApiError ? value.message : t('uploadError')) })
@@ -776,11 +781,9 @@ export function ProcurementsPage() {
   const openOrder = (row: ProcurementRow) => { scrollPositionRef.current = window.scrollY; const next = new URLSearchParams(searchParams); next.set('order', row.id); setSearchParams(next) }
   const closeOrder = () => { const next = new URLSearchParams(searchParams); next.delete('order'); setSearchParams(next); window.requestAnimationFrame(() => window.scrollTo({ top: scrollPositionRef.current })) }
   const sharedMutations = (row: ProcurementRow): Omit<EditorProps, 'row'> => ({
-    deleting: deleteMutation.isPending && deleteMutation.variables === row.id,
     uploading: (receiptMutation.isPending && receiptMutation.variables?.id === row.id) || (photosMutation.isPending && photosMutation.variables?.id === row.id),
     deletingAttachmentId: attachmentMutation.isPending && attachmentMutation.variables?.id === row.id ? attachmentMutation.variables.attachmentId : undefined,
     onSave: saveProcurement,
-    onDelete: (id) => deleteMutation.mutateAsync(id).then(() => undefined),
     onReceiptUpload: (id, file) => receiptMutation.mutateAsync({ id, file }).then(() => undefined),
     onPhotosUpload: (id, files) => photosMutation.mutateAsync({ id, files }).then(() => undefined),
     onDeleteAttachment: (id, attachmentId) => attachmentMutation.mutateAsync({ id, attachmentId }).then(() => undefined),

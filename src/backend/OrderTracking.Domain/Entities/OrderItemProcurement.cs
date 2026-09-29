@@ -9,6 +9,7 @@ public sealed class OrderItemProcurement : AuditableEntity
     public string? PurchaseUrl { get; set; }
     public PurchaseStatus PurchaseStatus { get; set; } = PurchaseStatus.Pending;
     public decimal? PurchasePrice { get; set; }
+    public string PurchaseCurrencyCode { get; set; } = CurrencyCodes.Jpy;
     public string? SellerOrderNumber { get; set; }
     public string? WarehouseTrackingNumber { get; set; }
     public ArrivalStatus ArrivalStatus { get; set; } = ArrivalStatus.Pending;
@@ -19,6 +20,7 @@ public sealed class OrderItemProcurement : AuditableEntity
     public string? ShippingMethod { get; set; }
     public decimal? ShippingWeight { get; set; }
     public decimal? ShippingCost { get; set; }
+    public string ShippingCurrencyCode { get; set; } = CurrencyCodes.Jpy;
     public DateOnly? ShippedAt { get; set; }
 
     public OrderItem OrderItem { get; set; } = null!;

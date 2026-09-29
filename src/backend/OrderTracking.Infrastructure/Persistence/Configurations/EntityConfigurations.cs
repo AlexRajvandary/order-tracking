@@ -265,12 +265,14 @@ public class OrderItemProcurementConfiguration : IEntityTypeConfiguration<OrderI
         builder.HasKey(e => e.Id);
         builder.Property(e => e.PurchaseUrl).HasMaxLength(2048);
         builder.Property(e => e.PurchasePrice).HasPrecision(18, 2);
+        builder.Property(e => e.PurchaseCurrencyCode).HasMaxLength(3).IsFixedLength().HasDefaultValue(CurrencyCodes.Jpy);
         builder.Property(e => e.SellerOrderNumber).HasMaxLength(200);
         builder.Property(e => e.WarehouseTrackingNumber).HasMaxLength(2048);
         builder.Property(e => e.ShippingTrackingNumber).HasMaxLength(2048);
         builder.Property(e => e.ShippingMethod).HasMaxLength(100);
         builder.Property(e => e.ShippingWeight).HasPrecision(12, 3);
         builder.Property(e => e.ShippingCost).HasPrecision(18, 2);
+        builder.Property(e => e.ShippingCurrencyCode).HasMaxLength(3).IsFixedLength().HasDefaultValue(CurrencyCodes.Jpy);
         builder.Property(e => e.PurchaseStatus).HasConversion<string>().HasMaxLength(30);
         builder.Property(e => e.ArrivalStatus).HasConversion<string>().HasMaxLength(30);
         builder.Property(e => e.ShipmentStatus).HasConversion<string>().HasMaxLength(30);
