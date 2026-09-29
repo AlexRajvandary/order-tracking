@@ -18,7 +18,9 @@
   "saving": "Сохранение…",
   "autosaveError": "Не удалось сохранить изменения",
   "autosaveHint": "Изменения сохраняются автоматически",
+  "unsaved": "Есть изменения",
   "addReceipt": "+ Чек",
+  "replaceReceipt": "Заменить чек",
   "addPhotos": "+ Фото",
   "photoCount": "{{count}} фото",
   "uploading": "Загрузка…",
@@ -56,6 +58,43 @@
     "Damaged": "Есть повреждения",
     "WrongItem": "Не тот товар",
     "Incomplete": "Некомплект"
+  },
+  "mobile": {
+    "searchPlaceholder": "Поиск по заявке, товару, треку...",
+    "sort": "Сортировка",
+    "newest": "Новые сначала",
+    "oldest": "Старые сначала",
+    "track": "Трек",
+    "noDetails": "Данные не заполнены",
+    "emptyTitle": "Заказы не найдены",
+    "emptyDescription": "Попробуйте изменить поиск или фильтр",
+    "loadError": "Не удалось загрузить заказы",
+    "allOrders": "Все заказы",
+    "purchaseEmpty": "Данные не заполнены",
+    "warehouseEmpty": "Ожидает обработки",
+    "shippingEmpty": "Не начато",
+    "deleteTitle": "Удалить заказ?",
+    "deleteDescription": "Запись будет удалена из таблицы выкупа и отправки. Это действие нельзя отменить.",
+    "continueEditing": "Продолжить редактирование",
+    "unsavedTitle": "Есть несохраненные изменения",
+    "unsavedDescription": "Сохранить изменения перед выходом?",
+    "exitWithoutSaving": "Выйти без сохранения",
+    "filters": {
+      "all": "Все",
+      "awaitingPurchase": "Ожидают выкупа",
+      "purchased": "Выкуплены",
+      "warehouseTransit": "В пути на склад",
+      "warehouse": "На складе",
+      "awaitingShipment": "Ожидают отправки",
+      "shipped": "Отправлены"
+    },
+    "status": {
+      "awaiting": "Ожидание",
+      "purchased": "Выкуплен",
+      "warehouse": "На складе",
+      "shipped": "Отправлен",
+      "error": "Ошибка"
+    }
   },
   "statuses": {
     "purchase": {

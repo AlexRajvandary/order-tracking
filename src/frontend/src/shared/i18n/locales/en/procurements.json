@@ -18,7 +18,9 @@
   "saving": "Saving…",
   "autosaveError": "Could not save changes",
   "autosaveHint": "Changes are saved automatically",
+  "unsaved": "Unsaved changes",
   "addReceipt": "+ Receipt",
+  "replaceReceipt": "Replace receipt",
   "addPhotos": "+ Photos",
   "photoCount": "{{count}} photos",
   "uploading": "Uploading…",
@@ -56,6 +58,43 @@
     "Damaged": "Has damage",
     "WrongItem": "Wrong item",
     "Incomplete": "Incomplete"
+  },
+  "mobile": {
+    "searchPlaceholder": "Search request, product, tracking...",
+    "sort": "Sort",
+    "newest": "Newest first",
+    "oldest": "Oldest first",
+    "track": "Tracking",
+    "noDetails": "No details yet",
+    "emptyTitle": "No orders found",
+    "emptyDescription": "Try changing the search or filter",
+    "loadError": "Could not load orders",
+    "allOrders": "All orders",
+    "purchaseEmpty": "No data yet",
+    "warehouseEmpty": "Awaiting processing",
+    "shippingEmpty": "Not started",
+    "deleteTitle": "Delete order?",
+    "deleteDescription": "The row will be removed from purchasing and shipping. This action cannot be undone.",
+    "continueEditing": "Continue editing",
+    "unsavedTitle": "You have unsaved changes",
+    "unsavedDescription": "Save changes before leaving?",
+    "exitWithoutSaving": "Leave without saving",
+    "filters": {
+      "all": "All",
+      "awaitingPurchase": "Awaiting purchase",
+      "purchased": "Purchased",
+      "warehouseTransit": "To warehouse",
+      "warehouse": "At warehouse",
+      "awaitingShipment": "Awaiting shipment",
+      "shipped": "Shipped"
+    },
+    "status": {
+      "awaiting": "Waiting",
+      "purchased": "Purchased",
+      "warehouse": "At warehouse",
+      "shipped": "Shipped",
+      "error": "Error"
+    }
   },
   "statuses": {
     "purchase": {
