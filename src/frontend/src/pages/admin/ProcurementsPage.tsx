@@ -69,7 +69,6 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
 import { Skeleton } from '@/shared/ui/skeleton'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/ui/tooltip'
 
 const purchaseStatuses: PurchaseStatus[] = ['Pending', 'Purchased', 'Error']
 const arrivalStatuses: ArrivalStatus[] = ['Pending', 'InTransit', 'Received']
@@ -187,6 +186,12 @@ function useProcurementForm(
     }
   }, [form, persist])
 
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    const snapshot = formRef.current
+    if (!formsEqual(snapshot, savedRef.current)) void onSave(row.id, snapshot)
+  }, [onSave, row.id])
+
   const reset = useCallback(() => {
     sequenceRef.current += 1
     if (timerRef.current) clearTimeout(timerRef.current)
@@ -269,11 +274,12 @@ function MoneyInput({ id, value, currency, mobile, onValueChange, onCurrencyChan
   onCurrencyChange: (value: ProcurementCurrencyCode) => void
 }) {
   const height = mobile ? 'h-11 text-base' : 'h-9'
+  const selectHeight = mobile ? 'data-[size=default]:h-11' : 'data-[size=default]:h-9'
   return (
     <div className="flex min-w-0">
       <Input id={id} className={`${height} min-w-0 rounded-r-none bg-white`} inputMode="decimal" value={value ?? ''} onChange={(event) => onValueChange(numberOrNull(event.target.value))} />
       <Select value={currency} onValueChange={(value) => onCurrencyChange(value as ProcurementCurrencyCode)}>
-        <SelectTrigger aria-label="Валюта" className={`${height} w-[92px] shrink-0 rounded-l-none border-l-0 px-2`}><SelectValue /></SelectTrigger>
+        <SelectTrigger aria-label="Валюта" className={`${selectHeight} w-[92px] shrink-0 rounded-l-none border-l-0 bg-white px-2`}><SelectValue /></SelectTrigger>
         <SelectContent>
           {currencies.map((code) => <SelectItem key={code} value={code}>{currencySymbols[code]} {code}</SelectItem>)}
         </SelectContent>
@@ -545,15 +551,6 @@ function ShippingFields({ form, updateForm, mobile }: FieldsProps) {
   )
 }
 
-function ActionButton({ label, children, ...props }: React.ComponentProps<typeof Button> & { label: string; children: ReactNode }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild><Button size="icon-sm" aria-label={label} {...props}>{children}</Button></TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  )
-}
-
 function SaveStateText({ state, dirty }: { state: SaveState; dirty: boolean }) {
   const { t } = useTranslation('procurements')
   const key = state === 'saving' ? 'saving' : state === 'error' ? 'autosaveError' : dirty ? 'unsaved' : 'saved'
@@ -571,13 +568,11 @@ type EditorProps = {
 }
 
 function DesktopProcurementEditor(props: EditorProps) {
-  const { t } = useTranslation('procurements')
   const state = useProcurementForm(props.row, props.onSave)
-  const busy = state.saving || props.uploading
   const fieldProps: FieldsProps = { ...props, form: state.form, updateForm: state.updateForm, mobile: false }
 
   return (
-    <article className="grid w-full max-w-full grid-cols-[minmax(0,7fr)_minmax(0,12fr)_minmax(0,24fr)_minmax(0,25fr)_minmax(0,24fr)_minmax(0,8fr)] border-t first:border-t-0">
+    <article className="grid w-full max-w-full grid-cols-[minmax(0,8fr)_minmax(0,13fr)_minmax(0,26fr)_minmax(0,27fr)_minmax(0,26fr)] border-t bg-white first:border-t-0">
       <div className="min-w-0 p-2.5 2xl:p-3">
         <Link to={`/admin/orders/${props.row.orderId}`} className="break-all font-mono text-sm font-semibold text-primary hover:underline">{props.row.trackingCode}</Link>
       </div>
@@ -586,13 +581,9 @@ function DesktopProcurementEditor(props: EditorProps) {
         <p className="line-clamp-2 text-xs font-medium 2xl:text-sm">{props.row.itemName}</p>
         {props.row.productUrl ? <a href={props.row.productUrl} target="_blank" rel="noreferrer" className="mt-1 flex max-w-full min-w-0 items-center gap-1 text-xs text-primary hover:underline"><span className="truncate">{props.row.productUrl}</span><ExternalLink className="size-3 shrink-0" /></a> : null}
       </div>
-      <section className="min-w-0 border-l bg-blue-50/35 p-2.5 2xl:p-3"><PurchaseFields {...fieldProps} /></section>
-      <section className="min-w-0 border-l bg-amber-50/25 p-2.5 2xl:p-3"><WarehouseFields {...fieldProps} /></section>
-      <section className="min-w-0 border-l bg-violet-50/30 p-2.5 2xl:p-3"><ShippingFields {...fieldProps} /></section>
-      <section className="min-w-0 border-l p-2.5 2xl:p-3">
-        <TooltipProvider><div className="flex flex-wrap items-center gap-1"><ActionButton label={t('cancel')} variant="ghost" disabled={busy || !state.dirty} onClick={state.reset}><X /></ActionButton></div></TooltipProvider>
-        <p className="mt-2 break-words text-[10px] 2xl:text-xs" aria-live="polite"><SaveStateText state={state.saveState} dirty={state.dirty} /></p>
-      </section>
+      <section className="min-w-0 border-l bg-white p-2.5 2xl:p-3"><PurchaseFields {...fieldProps} /></section>
+      <section className="min-w-0 border-l bg-white p-2.5 2xl:p-3"><WarehouseFields {...fieldProps} /></section>
+      <section className="min-w-0 border-l bg-white p-2.5 2xl:p-3"><ShippingFields {...fieldProps} /></section>
     </article>
   )
 }
@@ -690,6 +681,65 @@ function MobileOrdersList({
       ) : (
         <div className="flex flex-col items-center rounded-xl border bg-background px-4 py-10 text-center"><Search className="mb-3 size-8 text-muted-foreground" /><p className="font-medium">{t('mobile.emptyTitle')}</p><p className="mt-1 text-sm text-muted-foreground">{t('mobile.emptyDescription')}</p></div>
       )}
+    </div>
+  )
+}
+
+function DesktopOrdersList({
+  rows,
+  search,
+  filter,
+  sort,
+  onSearch,
+  onFilter,
+  onSort,
+  onOpen,
+}: {
+  rows: ProcurementRow[]
+  search: string
+  filter: MobileFilter
+  sort: SortOrder
+  onSearch: (value: string) => void
+  onFilter: (value: MobileFilter) => void
+  onSort: (value: SortOrder) => void
+  onOpen: (row: ProcurementRow) => void
+}) {
+  const { t } = useTranslation('procurements')
+  const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase())
+  const counts = useMemo(() => Object.fromEntries(mobileFilters.map((key) => [key, rows.filter((row) => matchesFilter(row, key)).length])) as Record<MobileFilter, number>, [rows])
+  const visibleRows = useMemo(() => rows
+    .filter((row) => matchesFilter(row, filter))
+    .filter((row) => !deferredSearch || [row.trackingCode, row.itemName, row.warehouseTrackingNumber, row.shippingTrackingNumber].some((value) => value?.toLocaleLowerCase().includes(deferredSearch)))
+    .sort((left, right) => (sort === 'newest' ? -1 : 1) * (new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())), [deferredSearch, filter, rows, sort])
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 max-w-md flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input className="h-9 bg-white pl-9" value={search} placeholder={t('mobile.searchPlaceholder')} onChange={(event) => onSearch(event.target.value)} /></div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild><Button type="button" variant="outline" size="icon-sm" className="size-9" aria-label={t('mobile.sort')}><SlidersHorizontal /></Button></DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48"><DropdownMenuItem onSelect={() => onSort('newest')}>{sort === 'newest' ? <Check /> : null}{t('mobile.newest')}</DropdownMenuItem><DropdownMenuItem onSelect={() => onSort('oldest')}>{sort === 'oldest' ? <Check /> : null}{t('mobile.oldest')}</DropdownMenuItem></DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {mobileFilters.map((key) => <Button key={key} type="button" size="sm" variant={filter === key ? 'default' : 'outline'} className="h-8" onClick={() => onFilter(key)}>{t(`mobile.filters.${key}`)} <Badge variant={filter === key ? 'secondary' : 'outline'} className="ml-1 h-5 px-1.5">{counts[key]}</Badge></Button>)}
+      </div>
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="grid h-10 grid-cols-[90px_minmax(0,1fr)_140px_140px_160px_32px] items-center border-b px-3 text-xs font-semibold text-muted-foreground">
+          <span>{t('request')}</span><span>{t('item')}</span><span>{t('purchase')}</span><span>{t('arrival')}</span><span>{t('shipment')}</span><span />
+        </div>
+        {visibleRows.map((row) => (
+          <button key={row.id} type="button" className="grid min-h-16 w-full grid-cols-[90px_minmax(0,1fr)_140px_140px_160px_32px] items-center border-t px-3 text-left first:border-t-0 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset" onClick={() => onOpen(row)}>
+            <span className="font-mono text-sm font-semibold text-primary">{row.trackingCode}</span>
+            <span className="flex min-w-0 items-center gap-3 pr-3">{row.productImageUrl ? <img src={row.productImageUrl} alt="" className="size-10 shrink-0 rounded-md bg-muted object-cover" /> : <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted"><Package className="size-4 text-muted-foreground" /></span>}<span className="truncate text-sm font-medium">{row.itemName}</span></span>
+            <Badge variant="outline" className="w-fit max-w-[130px] truncate">{t(`statuses.purchase.${row.purchaseStatus}`)}</Badge>
+            <Badge variant="outline" className="w-fit max-w-[130px] truncate">{t(`statuses.arrival.${row.arrivalStatus}`)}</Badge>
+            <Badge variant="outline" className="w-fit max-w-[150px] truncate">{t(`statuses.shipment.${row.shipmentStatus}`)}</Badge>
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </button>
+        ))}
+        {!visibleRows.length ? <div className="px-4 py-10 text-center text-sm text-muted-foreground">{t('mobile.emptyTitle')}</div> : null}
+      </div>
     </div>
   )
 }
@@ -814,26 +864,26 @@ export function ProcurementsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">{t('title')}</h1>
+      {selectedRow ? <Button type="button" variant="ghost" className="-mb-2 -ml-2" onClick={closeOrder}><ArrowLeft /> {t('mobile.allOrders')}</Button> : null}
+      <h1 className="text-2xl font-bold">{selectedRow ? `${t('title')} · ${selectedRow.trackingCode}` : t('title')}</h1>
       {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
-      <Card className="w-full max-w-full gap-0 overflow-hidden rounded-xl border border-gray-200 bg-white py-0 shadow-none ring-0">
-        <CardHeader className="sr-only"><CardTitle>{t('title')}</CardTitle></CardHeader>
-        <CardContent className="p-0">
-          {query.isLoading ? <p className="p-3 text-sm text-muted-foreground">{t('loading', { ns: 'common' })}</p> : query.isError ? <div className="space-y-3 p-3"><Alert variant="destructive"><AlertDescription>{t('error', { ns: 'common' })}</AlertDescription></Alert><Button variant="outline" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : rows.length ? (
+      {query.isLoading ? <Card className="p-4"><Skeleton className="h-72 w-full" /></Card> : query.isError ? <div className="space-y-3 rounded-xl border p-4"><Alert variant="destructive"><AlertDescription>{t('error', { ns: 'common' })}</AlertDescription></Alert><Button variant="outline" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : selectedRow ? (
+        <Card className="w-full max-w-full gap-0 overflow-hidden rounded-xl border border-gray-200 bg-white py-0 shadow-none ring-0">
+          <CardHeader className="sr-only"><CardTitle>{t('title')}</CardTitle></CardHeader>
+          <CardContent className="p-0">
             <div className="w-full max-w-full overflow-hidden">
-              <div className="grid h-11 w-full max-w-full grid-cols-[minmax(0,7fr)_minmax(0,12fr)_minmax(0,24fr)_minmax(0,25fr)_minmax(0,24fr)_minmax(0,8fr)] border-b text-xs font-semibold 2xl:text-sm">
+              <div className="grid h-11 w-full max-w-full grid-cols-[minmax(0,8fr)_minmax(0,13fr)_minmax(0,26fr)_minmax(0,27fr)_minmax(0,26fr)] border-b bg-white text-xs font-semibold 2xl:text-sm">
                 <div className="flex min-w-0 items-center px-2.5 2xl:px-3">{t('request')}</div>
                 <div className="flex min-w-0 items-center border-l px-2.5 2xl:px-3">{t('item')}</div>
-                <div className="flex min-w-0 items-center border-l bg-blue-50/35 px-2.5 2xl:px-3">{t('purchase')}</div>
-                <div className="flex min-w-0 items-center border-l bg-amber-50/25 px-2.5 2xl:px-3">{t('arrival')}</div>
-                <div className="flex min-w-0 items-center border-l bg-violet-50/30 px-2.5 2xl:px-3">{t('shipment')}</div>
-                <div className="flex min-w-0 items-center border-l px-2 2xl:px-3">{t('actions')}</div>
+                <div className="flex min-w-0 items-center border-l px-2.5 2xl:px-3">{t('purchase')}</div>
+                <div className="flex min-w-0 items-center border-l px-2.5 2xl:px-3">{t('arrival')}</div>
+                <div className="flex min-w-0 items-center border-l px-2.5 2xl:px-3">{t('shipment')}</div>
               </div>
-              {rows.map((row) => <DesktopProcurementEditor key={row.id} row={row} {...sharedMutations(row)} />)}
+              <DesktopProcurementEditor key={selectedRow.id} row={selectedRow} {...sharedMutations(selectedRow)} />
             </div>
-          ) : <p className="p-3 text-sm text-muted-foreground">{t('empty')}</p>}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : rows.length ? <DesktopOrdersList rows={rows} search={search} filter={filter} sort={sort} onSearch={setSearch} onFilter={setFilter} onSort={setSort} onOpen={openOrder} /> : <p className="rounded-xl border p-4 text-sm text-muted-foreground">{t('empty')}</p>}
     </div>
   )
 }
