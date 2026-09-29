@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Check, Info, Minus, ShieldCheck, UserCog, UserRound } from 'lucide-react'
+import { Check, Info, Minus, PackageSearch, ShieldCheck, UserCog, UserRound } from 'lucide-react'
 import { Badge } from '@/shared/ui/badge'
 import {
   Card,
@@ -18,17 +18,19 @@ import {
 } from '@/shared/ui/table'
 import { cn } from '@/shared/lib/utils'
 
-type RoleKey = 'Moderator' | 'Admin' | 'SuperAdmin'
+type RoleKey = 'Buyer' | 'Moderator' | 'Admin' | 'SuperAdmin'
 
-const roleOrder: RoleKey[] = ['Moderator', 'Admin', 'SuperAdmin']
+const roleOrder: RoleKey[] = ['Buyer', 'Moderator', 'Admin', 'SuperAdmin']
 
 const roleIcons: Record<RoleKey, React.ReactNode> = {
+  Buyer: <PackageSearch />,
   Moderator: <UserRound />,
   Admin: <UserCog />,
   SuperAdmin: <ShieldCheck />,
 }
 
 const roleBadgeStyles: Record<RoleKey, string> = {
+  Buyer: 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300',
   Moderator: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
   Admin: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
   SuperAdmin: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
@@ -38,17 +40,18 @@ const capabilities: Array<{
   key: string
   values: Record<RoleKey, boolean>
 }> = [
-  { key: 'manageOrders', values: { Moderator: true, Admin: true, SuperAdmin: true } },
-  { key: 'manageCustomers', values: { Moderator: true, Admin: true, SuperAdmin: true } },
-  { key: 'manageStatuses', values: { Moderator: true, Admin: true, SuperAdmin: true } },
-  { key: 'viewAudit', values: { Moderator: true, Admin: true, SuperAdmin: true } },
-  { key: 'accessAdmins', values: { Moderator: false, Admin: true, SuperAdmin: true } },
-  { key: 'createModerator', values: { Moderator: false, Admin: true, SuperAdmin: true } },
-  { key: 'createAdmin', values: { Moderator: false, Admin: false, SuperAdmin: true } },
-  { key: 'manageModerators', values: { Moderator: false, Admin: true, SuperAdmin: true } },
-  { key: 'manageAllAdmins', values: { Moderator: false, Admin: false, SuperAdmin: true } },
-  { key: 'changeRoles', values: { Moderator: false, Admin: false, SuperAdmin: true } },
-  { key: 'changeOwnPassword', values: { Moderator: true, Admin: true, SuperAdmin: true } },
+  { key: 'manageProcurements', values: { Buyer: true, Moderator: true, Admin: true, SuperAdmin: true } },
+  { key: 'manageOrders', values: { Buyer: false, Moderator: true, Admin: true, SuperAdmin: true } },
+  { key: 'manageCustomers', values: { Buyer: false, Moderator: true, Admin: true, SuperAdmin: true } },
+  { key: 'manageStatuses', values: { Buyer: false, Moderator: true, Admin: true, SuperAdmin: true } },
+  { key: 'viewAudit', values: { Buyer: false, Moderator: true, Admin: true, SuperAdmin: true } },
+  { key: 'accessAdmins', values: { Buyer: false, Moderator: false, Admin: true, SuperAdmin: true } },
+  { key: 'createModerator', values: { Buyer: false, Moderator: false, Admin: true, SuperAdmin: true } },
+  { key: 'createAdmin', values: { Buyer: false, Moderator: false, Admin: false, SuperAdmin: true } },
+  { key: 'manageModerators', values: { Buyer: false, Moderator: false, Admin: true, SuperAdmin: true } },
+  { key: 'manageAllAdmins', values: { Buyer: false, Moderator: false, Admin: false, SuperAdmin: true } },
+  { key: 'changeRoles', values: { Buyer: false, Moderator: false, Admin: false, SuperAdmin: true } },
+  { key: 'changeOwnPassword', values: { Buyer: true, Moderator: true, Admin: true, SuperAdmin: true } },
 ]
 
 function PermissionCell({ allowed, yesLabel, noLabel }: { allowed: boolean; yesLabel: string; noLabel: string }) {
@@ -80,7 +83,7 @@ export function HelpPage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{t('rolesTitle')}</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {roleOrder.map((role) => (
             <Card key={role}>
               <CardHeader>
@@ -164,7 +167,7 @@ export function HelpPage() {
         <h2 className="text-lg font-semibold">{t('notesTitle')}</h2>
         <Card>
           <CardContent className="space-y-2.5 text-sm">
-            {(['ownRole', 'adminModerators', 'moderator'] as const).map((note) => (
+            {(['ownRole', 'adminModerators', 'moderator', 'buyer'] as const).map((note) => (
               <p key={note} className="flex items-start gap-2">
                 <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <span>{t(`notes.${note}`)}</span>

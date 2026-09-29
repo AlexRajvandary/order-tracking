@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   ChevronDown,
@@ -46,20 +46,24 @@ import {
   SheetTitle,
 } from '@/shared/ui/sheet'
 import { cn } from '@/shared/lib/utils'
+import type { AdminRole } from '@/features/admins/types'
+
+const operationalRoles: AdminRole[] = ['Moderator', 'Admin', 'SuperAdmin']
+const allRoles: AdminRole[] = ['Buyer', ...operationalRoles]
 
 const navItems: Array<{
   to: string
   labelKey: string
   end?: boolean
-  roles?: Array<'Moderator' | 'Admin' | 'SuperAdmin'>
+  roles?: AdminRole[]
 }> = [
-  { to: '/admin', labelKey: 'nav.dashboard', end: true },
-  { to: '/admin/orders', labelKey: 'nav.orders' },
-  { to: '/admin/procurements', labelKey: 'nav.procurements' },
-  { to: '/admin/customers', labelKey: 'nav.customers' },
-  { to: '/admin/products', labelKey: 'nav.products' },
-  { to: '/admin/catalog-analytics', labelKey: 'nav.catalogAnalytics' },
-  { to: '/admin/storefront-announcement', labelKey: 'nav.storefrontAnnouncement' },
+  { to: '/admin', labelKey: 'nav.dashboard', end: true, roles: operationalRoles },
+  { to: '/admin/orders', labelKey: 'nav.orders', roles: operationalRoles },
+  { to: '/admin/procurements', labelKey: 'nav.procurements', roles: allRoles },
+  { to: '/admin/customers', labelKey: 'nav.customers', roles: operationalRoles },
+  { to: '/admin/products', labelKey: 'nav.products', roles: operationalRoles },
+  { to: '/admin/catalog-analytics', labelKey: 'nav.catalogAnalytics', roles: operationalRoles },
+  { to: '/admin/storefront-announcement', labelKey: 'nav.storefrontAnnouncement', roles: operationalRoles },
   { to: '/admin/admins', labelKey: 'nav.admins', roles: ['Admin', 'SuperAdmin'] },
 ]
 
@@ -79,7 +83,7 @@ function NavLinks({
   return (
     <nav className={className}>
       {navItems
-        .filter((item) => !item.roles || (userRole != null && item.roles.includes(userRole as 'Moderator' | 'Admin' | 'SuperAdmin')))
+        .filter((item) => !item.roles || (userRole != null && item.roles.includes(userRole as AdminRole)))
         .map((item) => (
         <NavLink
           key={item.to}
@@ -106,6 +110,7 @@ function NavLinks({
 export function AdminShell() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
@@ -115,6 +120,12 @@ export function AdminShell() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordChanged, setPasswordChanged] = useState(false)
   const currentLanguage = i18n.language?.startsWith('en') ? 'en' : 'ru'
+
+  useEffect(() => {
+    if (user?.role === 'Buyer' && location.pathname !== '/admin/procurements') {
+      navigate('/admin/procurements', { replace: true })
+    }
+  }, [location.pathname, navigate, user?.role])
 
   const changePasswordMutation = useMutation({
     mutationFn: authApi.changePassword,
@@ -197,19 +208,23 @@ export function AdminShell() {
                 <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/admin/statuses')}>
-                <ListChecks />
-                {t('nav.statuses')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/admin/audit')}>
-                <ClipboardList />
-                {t('nav.audit')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/admin/help')}>
-                <CircleHelp />
-                {t('nav.help')}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              {user?.role !== 'Buyer' ? (
+                <>
+                  <DropdownMenuItem onClick={() => navigate('/admin/statuses')}>
+                    <ListChecks />
+                    {t('nav.statuses')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/admin/audit')}>
+                    <ClipboardList />
+                    {t('nav.audit')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/admin/help')}>
+                    <CircleHelp />
+                    {t('nav.help')}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
               <DropdownMenuItem
                 onClick={() => {
                   setPasswordError(null)

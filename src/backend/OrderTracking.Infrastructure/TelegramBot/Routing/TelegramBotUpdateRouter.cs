@@ -168,6 +168,23 @@ internal sealed class TelegramBotUpdateRouter
                 return;
             }
 
+            if (admin.Role == AdminRole.Buyer
+                && data is not TelegramBotCallback.Main
+                && data is not TelegramBotCallback.AdminLink)
+            {
+                _logger.LogWarning(
+                    "Forbidden Telegram callback {Action} for Buyer user {UserId}",
+                    data,
+                    callback.From.Id);
+                await _ui.RenderAsync(
+                    chatId.Value,
+                    messageId,
+                    "Роль «Байер» имеет доступ только к разделу «Выкуп и отправка».",
+                    TelegramBotKeyboards.MainMenu(admin),
+                    cancellationToken);
+                return;
+            }
+
             if (data.StartsWith(TelegramBotCallback.OrderNotificationOpenPrefix, StringComparison.Ordinal))
             {
                 var payload = data[TelegramBotCallback.OrderNotificationOpenPrefix.Length..];

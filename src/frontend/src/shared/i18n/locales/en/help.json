@@ -3,6 +3,10 @@
   "subtitle": "User roles and access permission matrix",
   "rolesTitle": "Roles",
   "roles": {
+    "Buyer": {
+      "name": "Buyer",
+      "description": "Works only with the purchasing, arrival and shipping table."
+    },
     "SuperAdmin": {
       "name": "Super Admin",
       "description": "Full access. Manages all users, assigns roles and configures the system."
@@ -19,6 +23,7 @@
   "matrixTitle": "Permission matrix",
   "capabilityColumn": "Capability",
   "capabilities": {
+    "manageProcurements": "Purchasing and shipping",
     "manageOrders": "Manage requests",
     "manageCustomers": "Manage customers",
     "manageStatuses": "Manage statuses",
@@ -40,6 +45,7 @@
   "notes": {
     "ownRole": "A super admin cannot change their own role.",
     "adminModerators": "An admin manages moderators only and cannot change roles.",
-    "moderator": "A moderator has no access to admin management."
+    "moderator": "A moderator has no access to admin management.",
+    "buyer": "A buyer can access only Purchasing & shipping and their own account settings."
   }
 }

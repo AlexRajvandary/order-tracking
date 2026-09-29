@@ -19,6 +19,7 @@
     "offline": "Offline"
   },
   "roles": {
+    "Buyer": "Buyer",
     "Moderator": "Moderator",
     "Admin": "Admin",
     "SuperAdmin": "Super admin"

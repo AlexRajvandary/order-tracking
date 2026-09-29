@@ -89,7 +89,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("heartbeat")]
-    [Authorize]
+    [Authorize(Roles = "Buyer,Moderator,Admin,SuperAdmin")]
     public async Task<IActionResult> Heartbeat(CancellationToken cancellationToken)
     {
         await _mediator.Send(new HeartbeatCommand(), cancellationToken);
@@ -127,7 +127,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpGet("me")]
-    [Authorize]
+    [Authorize(Roles = "Buyer,Moderator,Admin,SuperAdmin")]
     public async Task<ActionResult<CurrentUserDto>> Me(CancellationToken cancellationToken)
     {
         var user = await _mediator.Send(new GetCurrentUserQuery(), cancellationToken);
@@ -135,7 +135,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPut("me/settings")]
-    [Authorize]
+    [Authorize(Roles = "Buyer,Moderator,Admin,SuperAdmin")]
     public async Task<IActionResult> UpdateSettings(
         [FromBody] JsonElement settings,
         CancellationToken cancellationToken)
@@ -145,7 +145,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPut("change-password")]
-    [Authorize]
+    [Authorize(Roles = "Buyer,Moderator,Admin,SuperAdmin")]
     public async Task<IActionResult> ChangePassword(
         [FromBody] ChangePasswordRequest request,
         CancellationToken cancellationToken)

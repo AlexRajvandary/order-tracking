@@ -1,4 +1,4 @@
-export type AdminRole = 'Moderator' | 'Admin' | 'SuperAdmin'
+export type AdminRole = 'Buyer' | 'Moderator' | 'Admin' | 'SuperAdmin'
 
 export type AdminUser = {
   id: string
@@ -43,5 +43,5 @@ export type TelegramConfig = {
 }
 
 export function isAdminRole(value: string | null | undefined): value is AdminRole {
-  return value === 'Moderator' || value === 'Admin' || value === 'SuperAdmin'
+  return value === 'Buyer' || value === 'Moderator' || value === 'Admin' || value === 'SuperAdmin'
 }

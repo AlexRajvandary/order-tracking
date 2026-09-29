@@ -19,6 +19,7 @@
     "offline": "Оффлайн"
   },
   "roles": {
+    "Buyer": "Байер",
     "Moderator": "Модератор",
     "Admin": "Админ",
     "SuperAdmin": "Супер-админ"

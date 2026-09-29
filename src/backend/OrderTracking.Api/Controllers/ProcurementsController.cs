@@ -9,7 +9,7 @@ namespace OrderTracking.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/procurements")]
-[Authorize]
+[Authorize(Roles = "Buyer,Moderator,Admin,SuperAdmin")]
 public sealed class ProcurementsController(ApplicationDbContext db) : ControllerBase
 {
     [HttpGet]
@@ -25,6 +25,7 @@ public sealed class ProcurementsController(ApplicationDbContext db) : Controller
     }
 
     [HttpPost("orders/{orderId:guid}/convert")]
+    [Authorize(Roles = "Moderator,Admin,SuperAdmin")]
     public async Task<ActionResult<IReadOnlyList<ProcurementRowDto>>> ConvertOrder(
         Guid orderId,
         CancellationToken cancellationToken)

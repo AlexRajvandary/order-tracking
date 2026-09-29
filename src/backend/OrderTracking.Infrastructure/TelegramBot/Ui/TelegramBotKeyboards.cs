@@ -21,6 +21,14 @@ internal static class TelegramBotKeyboards
 
     public static InlineKeyboardMarkup MainMenu(TelegramBotAdminContext admin)
     {
+        if (admin.Role == Domain.Enums.AdminRole.Buyer)
+        {
+            return new InlineKeyboardMarkup(
+                InlineKeyboardButton.WithCallbackData(
+                    "🔗 Открыть «Выкуп и отправка»",
+                    TelegramBotCallback.AdminLink));
+        }
+
         var rows = new List<InlineKeyboardButton[]>
         {
             new[] { InlineKeyboardButton.WithCallbackData("📦 Заявки", TelegramBotCallback.OrdersPagePrefix + "1") },

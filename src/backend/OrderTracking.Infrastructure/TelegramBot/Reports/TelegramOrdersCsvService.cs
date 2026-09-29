@@ -49,6 +49,11 @@ internal sealed class TelegramOrdersCsvService
         var result = new List<(Guid, long, string)>();
         foreach (var admin in admins)
         {
+            if (admin.Role == Domain.Enums.AdminRole.Buyer)
+            {
+                continue;
+            }
+
             var settings = TelegramBotUserSettings.FromJson(admin.SettingsJson);
             if (!settings.DailyOrdersCsvEnabled)
             {

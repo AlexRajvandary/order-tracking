@@ -15,7 +15,7 @@ export function AdminRealtime() {
   const queryClient = useQueryClient()
 
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated || user?.role === 'Buyer') return
 
     const connection = new HubConnectionBuilder()
       .withUrl('/hubs/admin', {
@@ -55,7 +55,7 @@ export function AdminRealtime() {
         void connection.stop()
       }
     }
-  }, [isAuthenticated, user?.id, queryClient])
+  }, [isAuthenticated, user?.id, user?.role, queryClient])
 
   return null
 }

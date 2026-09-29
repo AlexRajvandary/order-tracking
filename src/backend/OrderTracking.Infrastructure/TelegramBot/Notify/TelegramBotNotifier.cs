@@ -383,6 +383,7 @@ internal sealed class TelegramBotNotifier
             .ListActiveWithTelegramAsync(cancellationToken);
 
         return admins
+            .Where(a => a.Role != AdminRole.Buyer)
             .Select(a => a.TelegramId!.Value)
             .Distinct()
             .ToList();

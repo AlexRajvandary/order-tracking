@@ -25,6 +25,7 @@ internal static class TelegramBotText
         Domain.Enums.AdminRole.SuperAdmin => "SuperAdmin",
         Domain.Enums.AdminRole.Admin => "Admin",
         Domain.Enums.AdminRole.Moderator => "Moderator",
+        Domain.Enums.AdminRole.Buyer => "Байер",
         _ => role.ToString(),
     };
 

@@ -20,7 +20,8 @@ public static class AdminPermissionGuard
             return;
         }
 
-        if (actorRole == AdminRole.Admin && targetRole == AdminRole.Moderator)
+        if (actorRole == AdminRole.Admin
+            && targetRole is AdminRole.Moderator or AdminRole.Buyer)
         {
             return;
         }
@@ -35,7 +36,8 @@ public static class AdminPermissionGuard
             return;
         }
 
-        if (actorRole == AdminRole.Admin && target.Role == AdminRole.Moderator)
+        if (actorRole == AdminRole.Admin
+            && target.Role is AdminRole.Moderator or AdminRole.Buyer)
         {
             return;
         }

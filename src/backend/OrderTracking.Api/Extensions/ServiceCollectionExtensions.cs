@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using OrderTracking.Api.Services;
 using OrderTracking.Application.Common.Interfaces;
@@ -65,7 +66,13 @@ public static class ServiceCollectionExtensions
                 };
             });
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.DefaultPolicy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .RequireRole("Moderator", "Admin", "SuperAdmin")
+                .Build();
+        });
 
         services.AddRateLimiter(options =>
         {

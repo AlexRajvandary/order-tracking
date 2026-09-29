@@ -39,7 +39,7 @@ import {
 import { DataTable } from '@/shared/ui/data-table'
 import { cn } from '@/shared/lib/utils'
 
-const ALL_ROLES: AdminRole[] = ['Moderator', 'Admin', 'SuperAdmin']
+const ALL_ROLES: AdminRole[] = ['Buyer', 'Moderator', 'Admin', 'SuperAdmin']
 
 function formatDate(value: string) {
   const d = new Date(value)
@@ -59,13 +59,13 @@ function canManageAdmins(role: string | null | undefined) {
 
 function canManageTarget(actorRole: string | null | undefined, target: AdminUser) {
   if (actorRole === 'SuperAdmin') return true
-  if (actorRole === 'Admin' && target.role === 'Moderator') return true
+  if (actorRole === 'Admin' && (target.role === 'Moderator' || target.role === 'Buyer')) return true
   return false
 }
 
 function creatableRoles(actorRole: string | null | undefined): AdminRole[] {
   if (actorRole === 'SuperAdmin') return ALL_ROLES
-  if (actorRole === 'Admin') return ['Moderator']
+  if (actorRole === 'Admin') return ['Buyer', 'Moderator']
   return []
 }
 
