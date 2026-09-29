@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, Save, Trash2 } from 'lucide-react'
+import { ExternalLink, Pencil, Save, Trash2, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import * as procurementsApi from '@/features/procurements/api/procurementsApi'
@@ -25,6 +25,7 @@ const shipmentStatuses: ShipmentStatus[] = ['AwaitingShipment', 'Shipped']
 
 function LinkAndStatus({
   url,
+  editing,
   onUrlChange,
   status,
   statuses,
@@ -32,6 +33,7 @@ function LinkAndStatus({
   onStatusChange,
 }: {
   url: string
+  editing: boolean
   onUrlChange: (value: string) => void
   status: string
   statuses: string[]
@@ -40,6 +42,29 @@ function LinkAndStatus({
 }) {
   const { t } = useTranslation('procurements')
   const href = /^https?:\/\//i.test(url.trim()) ? url.trim() : null
+
+  if (!editing) {
+    return (
+      <div className="min-w-56 space-y-2">
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-start gap-1.5 break-all text-sm text-primary hover:underline"
+          >
+            <span>{url}</span>
+            <ExternalLink className="mt-0.5 size-3.5 shrink-0" />
+          </a>
+        ) : (
+          <p className="break-all text-sm">{url || '—'}</p>
+        )}
+        <p className="text-sm text-muted-foreground">
+          {t(`statuses.${statusGroup}.${status}`)}
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-w-56 space-y-2">
@@ -84,10 +109,11 @@ function EditableRow({
   row: ProcurementRow
   saving: boolean
   deleting: boolean
-  onSave: (id: string, request: UpdateProcurementRequest) => void
+  onSave: (id: string, request: UpdateProcurementRequest) => Promise<void>
   onDelete: (id: string) => void
 }) {
   const { t } = useTranslation('procurements')
+  const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<UpdateProcurementRequest>({
     purchaseUrl: row.purchaseUrl,
     purchaseStatus: row.purchaseStatus,
@@ -107,6 +133,27 @@ function EditableRow({
       shipmentStatus: row.shipmentStatus,
     })
   }, [row])
+
+  const cancelEditing = () => {
+    setForm({
+      purchaseUrl: row.purchaseUrl,
+      purchaseStatus: row.purchaseStatus,
+      arrivalUrl: row.arrivalUrl,
+      arrivalStatus: row.arrivalStatus,
+      shipmentUrl: row.shipmentUrl,
+      shipmentStatus: row.shipmentStatus,
+    })
+    setEditing(false)
+  }
+
+  const save = async () => {
+    try {
+      await onSave(row.id, form)
+      setEditing(false)
+    } catch {
+      // The mutation displays the API error above the table and keeps the row editable.
+    }
+  }
 
   return (
     <TableRow>
@@ -134,6 +181,7 @@ function EditableRow({
       <TableCell className="align-top">
         <LinkAndStatus
           url={form.purchaseUrl ?? ''}
+          editing={editing}
           onUrlChange={(purchaseUrl) => setForm((value) => ({ ...value, purchaseUrl }))}
           status={form.purchaseStatus}
           statuses={purchaseStatuses}
@@ -146,6 +194,7 @@ function EditableRow({
       <TableCell className="align-top">
         <LinkAndStatus
           url={form.arrivalUrl ?? ''}
+          editing={editing}
           onUrlChange={(arrivalUrl) => setForm((value) => ({ ...value, arrivalUrl }))}
           status={form.arrivalStatus}
           statuses={arrivalStatuses}
@@ -158,6 +207,7 @@ function EditableRow({
       <TableCell className="align-top">
         <LinkAndStatus
           url={form.shipmentUrl ?? ''}
+          editing={editing}
           onUrlChange={(shipmentUrl) => setForm((value) => ({ ...value, shipmentUrl }))}
           status={form.shipmentStatus}
           statuses={shipmentStatuses}
@@ -169,30 +219,59 @@ function EditableRow({
       </TableCell>
       <TableCell className="align-top">
         <div className="flex gap-1">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
-            disabled={saving || deleting}
-            title={t('save')}
-            aria-label={t('save')}
-            onClick={() => onSave(row.id, form)}
-          >
-            <Save />
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            size="icon-sm"
-            disabled={saving || deleting}
-            title={t('delete')}
-            aria-label={t('delete')}
-            onClick={() => {
-              if (window.confirm(t('deleteConfirm'))) onDelete(row.id)
-            }}
-          >
-            <Trash2 />
-          </Button>
+          {editing ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                disabled={saving || deleting}
+                title={t('save')}
+                aria-label={t('save')}
+                onClick={() => void save()}
+              >
+                <Save />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                disabled={saving || deleting}
+                title={t('cancel')}
+                aria-label={t('cancel')}
+                onClick={cancelEditing}
+              >
+                <X />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                disabled={deleting}
+                title={t('edit')}
+                aria-label={t('edit')}
+                onClick={() => setEditing(true)}
+              >
+                <Pencil />
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon-sm"
+                disabled={deleting}
+                title={t('delete')}
+                aria-label={t('delete')}
+                onClick={() => {
+                  if (window.confirm(t('deleteConfirm'))) onDelete(row.id)
+                }}
+              >
+                <Trash2 />
+              </Button>
+            </>
+          )}
         </div>
       </TableCell>
     </TableRow>
@@ -238,7 +317,6 @@ export function ProcurementsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">{t('title')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t('subtitle')}</p>
       </div>
 
       {error ? (
@@ -282,7 +360,9 @@ export function ProcurementsPage() {
                     row={row}
                     saving={updateMutation.isPending && updateMutation.variables?.id === row.id}
                     deleting={deleteMutation.isPending && deleteMutation.variables === row.id}
-                    onSave={(id, request) => updateMutation.mutate({ id, request })}
+                    onSave={(id, request) =>
+                      updateMutation.mutateAsync({ id, request }).then(() => undefined)
+                    }
                     onDelete={(id) => deleteMutation.mutate(id)}
                   />
                 ))}

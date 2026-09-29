@@ -11,6 +11,8 @@
   "linkPlaceholder": "Paste a link",
   "openLink": "Open link",
   "actions": "Actions",
+  "edit": "Edit row",
+  "cancel": "Cancel changes",
   "save": "Save",
   "saved": "Saved",
   "delete": "Delete row",
