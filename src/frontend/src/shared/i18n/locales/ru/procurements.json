@@ -15,6 +15,9 @@
   "cancel": "Отменить изменения",
   "save": "Сохранить",
   "saved": "Сохранено",
+  "saving": "Сохранение…",
+  "autosaveError": "Не удалось сохранить изменения",
+  "autosaveHint": "Изменения сохраняются автоматически",
   "addReceipt": "+ Чек",
   "addPhotos": "+ Фото",
   "photoCount": "{{count}} фото",
@@ -48,8 +51,9 @@
   },
   "conditions": {
     "Unspecified": "Не указано",
-    "Ok": "OK",
-    "Damaged": "Поврежден",
+    "Ok": "Отличное",
+    "Good": "Хорошее",
+    "Damaged": "Есть повреждения",
     "WrongItem": "Не тот товар",
     "Incomplete": "Некомплект"
   },
@@ -61,11 +65,13 @@
     },
     "arrival": {
       "Pending": "Ожидание",
+      "InTransit": "В пути",
       "Received": "Поступило"
     },
     "shipment": {
       "AwaitingShipment": "Ожидание отправки",
-      "Shipped": "Отправлено"
+      "Shipped": "Отправлено",
+      "Delivered": "Доставлено"
     }
   }
 }

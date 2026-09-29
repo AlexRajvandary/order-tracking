@@ -11,12 +11,14 @@ public enum ArrivalStatus
 {
     Pending = 0,
     Received = 1,
+    InTransit = 2,
 }
 
 public enum ShipmentStatus
 {
     AwaitingShipment = 0,
     Shipped = 1,
+    Delivered = 2,
 }
 
 public enum WarehouseCondition
@@ -25,6 +27,7 @@ public enum WarehouseCondition
     Damaged = 1,
     WrongItem = 2,
     Incomplete = 3,
+    Good = 4,
 }
 
 public enum ProcurementAttachmentKind

@@ -15,6 +15,9 @@
   "cancel": "Cancel changes",
   "save": "Save",
   "saved": "Saved",
+  "saving": "Saving…",
+  "autosaveError": "Could not save changes",
+  "autosaveHint": "Changes are saved automatically",
   "addReceipt": "+ Receipt",
   "addPhotos": "+ Photos",
   "photoCount": "{{count}} photos",
@@ -48,8 +51,9 @@
   },
   "conditions": {
     "Unspecified": "Not specified",
-    "Ok": "OK",
-    "Damaged": "Damaged",
+    "Ok": "Excellent",
+    "Good": "Good",
+    "Damaged": "Has damage",
     "WrongItem": "Wrong item",
     "Incomplete": "Incomplete"
   },
@@ -61,11 +65,13 @@
     },
     "arrival": {
       "Pending": "Pending",
+      "InTransit": "In transit",
       "Received": "Received"
     },
     "shipment": {
       "AwaitingShipment": "Awaiting shipment",
-      "Shipped": "Shipped"
+      "Shipped": "Shipped",
+      "Delivered": "Delivered"
     }
   }
 }

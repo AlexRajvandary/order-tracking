@@ -1,7 +1,7 @@
 export type PurchaseStatus = 'Pending' | 'Purchased' | 'Error'
-export type ArrivalStatus = 'Pending' | 'Received'
-export type ShipmentStatus = 'AwaitingShipment' | 'Shipped'
-export type WarehouseCondition = 'Ok' | 'Damaged' | 'WrongItem' | 'Incomplete'
+export type ArrivalStatus = 'Pending' | 'InTransit' | 'Received'
+export type ShipmentStatus = 'AwaitingShipment' | 'Shipped' | 'Delivered'
+export type WarehouseCondition = 'Ok' | 'Good' | 'Damaged' | 'WrongItem' | 'Incomplete'
 export type ProcurementAttachmentKind = 'Receipt' | 'WarehousePhoto'
 
 export type ProcurementAttachment = {
