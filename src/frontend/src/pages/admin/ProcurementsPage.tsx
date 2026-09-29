@@ -37,8 +37,8 @@ function numberOrNull(value: string) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-function displayNumber(value: number | null) {
-  return value === null ? '—' : value.toLocaleString()
+function displayNumber(value: number | null | undefined) {
+  return value == null ? '—' : value.toLocaleString()
 }
 
 function FieldLabel({ children }: { children: ReactNode }) {
@@ -135,18 +135,18 @@ function createForm(row: ProcurementRow): UpdateProcurementRequest {
   return {
     purchaseUrl: row.purchaseUrl,
     purchaseStatus: row.purchaseStatus,
-    purchasePrice: row.purchasePrice,
-    sellerOrderNumber: row.sellerOrderNumber,
-    warehouseTrackingNumber: row.warehouseTrackingNumber,
+    purchasePrice: row.purchasePrice ?? null,
+    sellerOrderNumber: row.sellerOrderNumber ?? null,
+    warehouseTrackingNumber: row.warehouseTrackingNumber ?? null,
     arrivalStatus: row.arrivalStatus,
-    warehouseReceivedAt: row.warehouseReceivedAt,
-    warehouseCondition: row.warehouseCondition,
-    shippingTrackingNumber: row.shippingTrackingNumber,
+    warehouseReceivedAt: row.warehouseReceivedAt ?? null,
+    warehouseCondition: row.warehouseCondition ?? null,
+    shippingTrackingNumber: row.shippingTrackingNumber ?? null,
     shipmentStatus: row.shipmentStatus,
-    shippingMethod: row.shippingMethod,
-    shippingWeight: row.shippingWeight,
-    shippingCost: row.shippingCost,
-    shippedAt: row.shippedAt,
+    shippingMethod: row.shippingMethod ?? null,
+    shippingWeight: row.shippingWeight ?? null,
+    shippingCost: row.shippingCost ?? null,
+    shippedAt: row.shippedAt ?? null,
   }
 }
 
@@ -172,26 +172,27 @@ function EditableRow({
   const { t } = useTranslation('procurements')
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<UpdateProcurementRequest>(() => createForm(row))
-  const receipt = row.attachments.find((value) => value.kind === 'Receipt')
-  const warehousePhotos = row.attachments.filter((value) => value.kind === 'WarehousePhoto')
+  const attachments = row.attachments ?? []
+  const receipt = attachments.find((value) => value.kind === 'Receipt')
+  const warehousePhotos = attachments.filter((value) => value.kind === 'WarehousePhoto')
 
   useEffect(
     () =>
       setForm({
         purchaseUrl: row.purchaseUrl,
         purchaseStatus: row.purchaseStatus,
-        purchasePrice: row.purchasePrice,
-        sellerOrderNumber: row.sellerOrderNumber,
-        warehouseTrackingNumber: row.warehouseTrackingNumber,
+        purchasePrice: row.purchasePrice ?? null,
+        sellerOrderNumber: row.sellerOrderNumber ?? null,
+        warehouseTrackingNumber: row.warehouseTrackingNumber ?? null,
         arrivalStatus: row.arrivalStatus,
-        warehouseReceivedAt: row.warehouseReceivedAt,
-        warehouseCondition: row.warehouseCondition,
-        shippingTrackingNumber: row.shippingTrackingNumber,
+        warehouseReceivedAt: row.warehouseReceivedAt ?? null,
+        warehouseCondition: row.warehouseCondition ?? null,
+        shippingTrackingNumber: row.shippingTrackingNumber ?? null,
         shipmentStatus: row.shipmentStatus,
-        shippingMethod: row.shippingMethod,
-        shippingWeight: row.shippingWeight,
-        shippingCost: row.shippingCost,
-        shippedAt: row.shippedAt,
+        shippingMethod: row.shippingMethod ?? null,
+        shippingWeight: row.shippingWeight ?? null,
+        shippingCost: row.shippingCost ?? null,
+        shippedAt: row.shippedAt ?? null,
       }),
     [
       row.purchaseUrl,
@@ -609,7 +610,7 @@ export function ProcurementsPage() {
             ? {
                 ...row,
                 attachments: [
-                  ...row.attachments.filter((value) => value.kind !== 'Receipt'),
+                  ...(row.attachments ?? []).filter((value) => value.kind !== 'Receipt'),
                   receipt,
                 ],
               }
@@ -628,7 +629,7 @@ export function ProcurementsPage() {
       setError(null)
       updateRows((rows) =>
         rows.map((row) =>
-          row.id === id ? { ...row, attachments: [...row.attachments, ...photos] } : row,
+          row.id === id ? { ...row, attachments: [...(row.attachments ?? []), ...photos] } : row,
         ),
       )
     },
