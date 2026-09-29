@@ -16,8 +16,9 @@ public sealed class ProcurementsController(ApplicationDbContext db) : Controller
     public async Task<ActionResult<IReadOnlyList<ProcurementRowDto>>> GetAll(
         CancellationToken cancellationToken)
     {
-        var rows = await ProjectRows(db.OrderItemProcurements.AsNoTracking())
-            .OrderByDescending(row => row.CreatedAt)
+        var rows = await ProjectRows(db.OrderItemProcurements
+                .AsNoTracking()
+                .OrderByDescending(row => row.CreatedAt))
             .ToListAsync(cancellationToken);
 
         return Ok(rows);
@@ -61,9 +62,10 @@ public sealed class ProcurementsController(ApplicationDbContext db) : Controller
         order.Status = OrderStatus.InProgress;
         await db.SaveChangesAsync(cancellationToken);
 
-        var rows = await ProjectRows(db.OrderItemProcurements.AsNoTracking())
-            .Where(row => row.OrderId == orderId)
-            .OrderBy(row => row.ItemName)
+        var rows = await ProjectRows(db.OrderItemProcurements
+                .AsNoTracking()
+                .Where(row => row.OrderItem.OrderId == orderId)
+                .OrderBy(row => row.OrderItem.Name))
             .ToListAsync(cancellationToken);
 
         return Ok(rows);
@@ -92,8 +94,10 @@ public sealed class ProcurementsController(ApplicationDbContext db) : Controller
 
         await db.SaveChangesAsync(cancellationToken);
 
-        var result = await ProjectRows(db.OrderItemProcurements.AsNoTracking())
-            .FirstAsync(value => value.Id == id, cancellationToken);
+        var result = await ProjectRows(db.OrderItemProcurements
+                .AsNoTracking()
+                .Where(value => value.Id == id))
+            .FirstAsync(cancellationToken);
 
         return Ok(result);
     }
