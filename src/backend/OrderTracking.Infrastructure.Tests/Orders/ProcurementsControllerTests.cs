@@ -52,6 +52,60 @@ public sealed class ProcurementsControllerTests
         Assert.Equal(1, await db.Orders.CountAsync());
     }
 
+    [Fact]
+    public async Task Update_persists_extended_procurement_fields()
+    {
+        await using var db = CreateDbContext();
+        var order = CreateOrder(1);
+        var row = new OrderItemProcurement
+        {
+            Id = Guid.NewGuid(),
+            OrderItemId = order.Items.Single().Id,
+        };
+        db.Orders.Add(order);
+        db.OrderItemProcurements.Add(row);
+        await db.SaveChangesAsync();
+        var controller = new ProcurementsController(db);
+        var receivedAt = new DateOnly(2026, 9, 28);
+        var shippedAt = new DateOnly(2026, 9, 29);
+
+        var result = await controller.Update(
+            row.Id,
+            new UpdateProcurementRequest(
+                " https://shop.example/order/42 ",
+                PurchaseStatus.Purchased,
+                125.50m,
+                " SELLER-42 ",
+                " LOCAL-TRACK ",
+                ArrivalStatus.Received,
+                receivedAt,
+                WarehouseCondition.Ok,
+                " INTERNATIONAL-TRACK ",
+                ShipmentStatus.Shipped,
+                "Air",
+                1.250m,
+                32.75m,
+                shippedAt),
+            CancellationToken.None);
+
+        var dto = Assert.IsType<ProcurementRowDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        db.ChangeTracker.Clear();
+        var saved = await db.OrderItemProcurements.SingleAsync(value => value.Id == row.Id);
+
+        Assert.Equal("https://shop.example/order/42", saved.PurchaseUrl);
+        Assert.Equal(125.50m, saved.PurchasePrice);
+        Assert.Equal("SELLER-42", saved.SellerOrderNumber);
+        Assert.Equal("LOCAL-TRACK", saved.WarehouseTrackingNumber);
+        Assert.Equal(receivedAt, saved.WarehouseReceivedAt);
+        Assert.Equal(WarehouseCondition.Ok, saved.WarehouseCondition);
+        Assert.Equal("INTERNATIONAL-TRACK", saved.ShippingTrackingNumber);
+        Assert.Equal("Air", saved.ShippingMethod);
+        Assert.Equal(1.250m, saved.ShippingWeight);
+        Assert.Equal(32.75m, saved.ShippingCost);
+        Assert.Equal(shippedAt, saved.ShippedAt);
+        Assert.Empty(dto.Attachments);
+    }
+
     private static Order CreateOrder(int itemCount)
     {
         var order = new Order

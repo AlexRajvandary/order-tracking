@@ -264,11 +264,17 @@ public class OrderItemProcurementConfiguration : IEntityTypeConfiguration<OrderI
 
         builder.HasKey(e => e.Id);
         builder.Property(e => e.PurchaseUrl).HasMaxLength(2048);
-        builder.Property(e => e.ArrivalUrl).HasMaxLength(2048);
-        builder.Property(e => e.ShipmentUrl).HasMaxLength(2048);
+        builder.Property(e => e.PurchasePrice).HasPrecision(18, 2);
+        builder.Property(e => e.SellerOrderNumber).HasMaxLength(200);
+        builder.Property(e => e.WarehouseTrackingNumber).HasMaxLength(2048);
+        builder.Property(e => e.ShippingTrackingNumber).HasMaxLength(2048);
+        builder.Property(e => e.ShippingMethod).HasMaxLength(100);
+        builder.Property(e => e.ShippingWeight).HasPrecision(12, 3);
+        builder.Property(e => e.ShippingCost).HasPrecision(18, 2);
         builder.Property(e => e.PurchaseStatus).HasConversion<string>().HasMaxLength(30);
         builder.Property(e => e.ArrivalStatus).HasConversion<string>().HasMaxLength(30);
         builder.Property(e => e.ShipmentStatus).HasConversion<string>().HasMaxLength(30);
+        builder.Property(e => e.WarehouseCondition).HasConversion<string>().HasMaxLength(30);
 
         builder.HasIndex(e => e.OrderItemId)
             .IsUnique()
@@ -280,6 +286,27 @@ public class OrderItemProcurementConfiguration : IEntityTypeConfiguration<OrderI
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasQueryFilter(e => !e.IsDeleted);
+    }
+}
+
+public class OrderItemProcurementAttachmentConfiguration : IEntityTypeConfiguration<OrderItemProcurementAttachment>
+{
+    public void Configure(EntityTypeBuilder<OrderItemProcurementAttachment> builder)
+    {
+        builder.ToTable("order_item_procurement_attachments");
+
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Kind).HasConversion<string>().HasMaxLength(30);
+        builder.Property(e => e.ObjectKey).HasMaxLength(1024).IsRequired();
+        builder.Property(e => e.ContentType).HasMaxLength(200).IsRequired();
+        builder.Property(e => e.OriginalFileName).HasMaxLength(500);
+
+        builder.HasIndex(e => new { e.ProcurementId, e.Kind });
+
+        builder.HasOne(e => e.Procurement)
+            .WithMany(e => e.Attachments)
+            .HasForeignKey(e => e.ProcurementId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 

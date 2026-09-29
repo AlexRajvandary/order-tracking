@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Domain.Entities;
 using OrderTracking.Domain.Enums;
 using OrderTracking.Infrastructure.Persistence;
@@ -10,7 +11,10 @@ namespace OrderTracking.Api.Controllers;
 [ApiController]
 [Route("api/v1/procurements")]
 [Authorize(Roles = "Buyer,Moderator,Admin,SuperAdmin")]
-public sealed class ProcurementsController(ApplicationDbContext db) : ControllerBase
+public sealed class ProcurementsController(
+    ApplicationDbContext db,
+    IObjectStorage? objectStorage = null,
+    ILogger<ProcurementsController>? logger = null) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<ProcurementRowDto>>> GetAll(
@@ -79,6 +83,7 @@ public sealed class ProcurementsController(ApplicationDbContext db) : Controller
         CancellationToken cancellationToken)
     {
         var row = await db.OrderItemProcurements
+            .Include(value => value.Attachments)
             .FirstOrDefaultAsync(value => value.Id == id, cancellationToken);
 
         if (row is null)
@@ -88,10 +93,18 @@ public sealed class ProcurementsController(ApplicationDbContext db) : Controller
 
         row.PurchaseUrl = Normalize(request.PurchaseUrl);
         row.PurchaseStatus = request.PurchaseStatus;
-        row.ArrivalUrl = Normalize(request.ArrivalUrl);
+        row.PurchasePrice = request.PurchasePrice;
+        row.SellerOrderNumber = Normalize(request.SellerOrderNumber);
+        row.WarehouseTrackingNumber = Normalize(request.WarehouseTrackingNumber);
         row.ArrivalStatus = request.ArrivalStatus;
-        row.ShipmentUrl = Normalize(request.ShipmentUrl);
+        row.WarehouseReceivedAt = request.WarehouseReceivedAt;
+        row.WarehouseCondition = request.WarehouseCondition;
+        row.ShippingTrackingNumber = Normalize(request.ShippingTrackingNumber);
         row.ShipmentStatus = request.ShipmentStatus;
+        row.ShippingMethod = Normalize(request.ShippingMethod);
+        row.ShippingWeight = request.ShippingWeight;
+        row.ShippingCost = request.ShippingCost;
+        row.ShippedAt = request.ShippedAt;
 
         await db.SaveChangesAsync(cancellationToken);
 
@@ -107,6 +120,7 @@ public sealed class ProcurementsController(ApplicationDbContext db) : Controller
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var row = await db.OrderItemProcurements
+            .Include(value => value.Attachments)
             .FirstOrDefaultAsync(value => value.Id == id, cancellationToken);
 
         if (row is null)
@@ -114,8 +128,29 @@ public sealed class ProcurementsController(ApplicationDbContext db) : Controller
             return NotFound();
         }
 
+        var objectKeys = row.Attachments.Select(value => value.ObjectKey).ToList();
+        db.OrderItemProcurementAttachments.RemoveRange(row.Attachments);
         db.OrderItemProcurements.Remove(row);
         await db.SaveChangesAsync(cancellationToken);
+
+        if (objectStorage is not null)
+        {
+            foreach (var objectKey in objectKeys)
+            {
+                try
+                {
+                    await objectStorage.DeleteAsync(objectKey, cancellationToken);
+                }
+                catch (Exception exception)
+                {
+                    logger?.LogWarning(
+                        exception,
+                        "Could not delete procurement attachment {ObjectKey}",
+                        objectKey);
+                }
+            }
+        }
+
         return NoContent();
     }
 
@@ -130,10 +165,28 @@ public sealed class ProcurementsController(ApplicationDbContext db) : Controller
             value.OrderItem.SourceUrl,
             value.PurchaseUrl,
             value.PurchaseStatus,
-            value.ArrivalUrl,
+            value.PurchasePrice,
+            value.SellerOrderNumber,
+            value.WarehouseTrackingNumber,
             value.ArrivalStatus,
-            value.ShipmentUrl,
+            value.WarehouseReceivedAt,
+            value.WarehouseCondition,
+            value.ShippingTrackingNumber,
             value.ShipmentStatus,
+            value.ShippingMethod,
+            value.ShippingWeight,
+            value.ShippingCost,
+            value.ShippedAt,
+            value.Attachments
+                .OrderBy(attachment => attachment.CreatedAt)
+                .Select(attachment => new ProcurementAttachmentDto(
+                    attachment.Id,
+                    attachment.Kind,
+                    attachment.OriginalFileName,
+                    attachment.ContentType,
+                    attachment.SizeBytes,
+                    $"/api/v1/procurements/attachments/{attachment.Id}"))
+                .ToList(),
             value.CreatedAt,
             value.UpdatedAt ?? value.CreatedAt));
 
@@ -150,17 +203,42 @@ public sealed record ProcurementRowDto(
     string? ProductUrl,
     string? PurchaseUrl,
     PurchaseStatus PurchaseStatus,
-    string? ArrivalUrl,
+    decimal? PurchasePrice,
+    string? SellerOrderNumber,
+    string? WarehouseTrackingNumber,
     ArrivalStatus ArrivalStatus,
-    string? ShipmentUrl,
+    DateOnly? WarehouseReceivedAt,
+    WarehouseCondition? WarehouseCondition,
+    string? ShippingTrackingNumber,
     ShipmentStatus ShipmentStatus,
+    string? ShippingMethod,
+    decimal? ShippingWeight,
+    decimal? ShippingCost,
+    DateOnly? ShippedAt,
+    IReadOnlyList<ProcurementAttachmentDto> Attachments,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 
 public sealed record UpdateProcurementRequest(
     string? PurchaseUrl,
     PurchaseStatus PurchaseStatus,
-    string? ArrivalUrl,
+    decimal? PurchasePrice,
+    string? SellerOrderNumber,
+    string? WarehouseTrackingNumber,
     ArrivalStatus ArrivalStatus,
-    string? ShipmentUrl,
-    ShipmentStatus ShipmentStatus);
+    DateOnly? WarehouseReceivedAt,
+    WarehouseCondition? WarehouseCondition,
+    string? ShippingTrackingNumber,
+    ShipmentStatus ShipmentStatus,
+    string? ShippingMethod,
+    decimal? ShippingWeight,
+    decimal? ShippingCost,
+    DateOnly? ShippedAt);
+
+public sealed record ProcurementAttachmentDto(
+    Guid Id,
+    ProcurementAttachmentKind Kind,
+    string? FileName,
+    string ContentType,
+    long SizeBytes,
+    string Url);

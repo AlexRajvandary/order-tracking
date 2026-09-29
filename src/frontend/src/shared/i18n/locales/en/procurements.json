@@ -15,6 +15,11 @@
   "cancel": "Cancel changes",
   "save": "Save",
   "saved": "Saved",
+  "addReceipt": "+ Receipt",
+  "addPhotos": "+ Photos",
+  "photoCount": "{{count}} photos",
+  "uploading": "Uploading…",
+  "uploadError": "Could not upload the file",
   "delete": "Delete row",
   "deleteConfirm": "Delete this row from the auxiliary table? The request item will remain unchanged.",
   "updateError": "Could not save the row",
@@ -23,6 +28,31 @@
   "converting": "Forming order…",
   "convertSuccess": "Order formed",
   "convertError": "Could not form the order",
+  "fields": {
+    "purchaseUrl": "Order / product link",
+    "purchaseStatus": "Purchase status",
+    "purchasePrice": "Actual purchase price",
+    "sellerOrderNumber": "Seller order number",
+    "receipt": "Receipt",
+    "warehouseTrackingNumber": "Local tracking number",
+    "arrivalStatus": "Arrival status",
+    "warehouseReceivedAt": "Arrival date",
+    "warehousePhotos": "Product photos",
+    "warehouseCondition": "Product condition",
+    "shippingTrackingNumber": "International tracking number",
+    "shipmentStatus": "Shipment status",
+    "shippingMethod": "Shipping method",
+    "shippingWeight": "Weight",
+    "shippingCost": "Shipping cost",
+    "shippedAt": "Shipment date"
+  },
+  "conditions": {
+    "Unspecified": "Not specified",
+    "Ok": "OK",
+    "Damaged": "Damaged",
+    "WrongItem": "Wrong item",
+    "Incomplete": "Incomplete"
+  },
   "statuses": {
     "purchase": {
       "Pending": "Pending",

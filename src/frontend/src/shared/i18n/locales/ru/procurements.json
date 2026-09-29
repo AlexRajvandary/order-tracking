@@ -15,6 +15,11 @@
   "cancel": "Отменить изменения",
   "save": "Сохранить",
   "saved": "Сохранено",
+  "addReceipt": "+ Чек",
+  "addPhotos": "+ Фото",
+  "photoCount": "{{count}} фото",
+  "uploading": "Загрузка…",
+  "uploadError": "Не удалось загрузить файл",
   "delete": "Удалить строку",
   "deleteConfirm": "Удалить эту строку из вспомогательной таблицы? Позиция заявки останется без изменений.",
   "updateError": "Не удалось сохранить строку",
@@ -23,6 +28,31 @@
   "converting": "Формируем заказ…",
   "convertSuccess": "Заказ сформирован",
   "convertError": "Не удалось сформировать заказ",
+  "fields": {
+    "purchaseUrl": "Ссылка на заказ / товар",
+    "purchaseStatus": "Статус выкупа",
+    "purchasePrice": "Фактическая цена",
+    "sellerOrderNumber": "Номер заказа продавца",
+    "receipt": "Чек",
+    "warehouseTrackingNumber": "Локальный трек-номер",
+    "arrivalStatus": "Статус поступления",
+    "warehouseReceivedAt": "Дата поступления",
+    "warehousePhotos": "Фото товара",
+    "warehouseCondition": "Состояние товара",
+    "shippingTrackingNumber": "Международный трек-номер",
+    "shipmentStatus": "Статус отправки",
+    "shippingMethod": "Способ доставки",
+    "shippingWeight": "Вес",
+    "shippingCost": "Стоимость доставки",
+    "shippedAt": "Дата отправки"
+  },
+  "conditions": {
+    "Unspecified": "Не указано",
+    "Ok": "OK",
+    "Damaged": "Поврежден",
+    "WrongItem": "Не тот товар",
+    "Incomplete": "Некомплект"
+  },
   "statuses": {
     "purchase": {
       "Pending": "Ожидание",
