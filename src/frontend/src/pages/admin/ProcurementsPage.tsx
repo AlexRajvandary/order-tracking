@@ -236,9 +236,10 @@ function StatusSelect({
   onChange: (value: string) => void
 }) {
   const { t } = useTranslation('procurements')
+  const completed = value === 'Purchased' || value === 'Received' || value === 'Shipped' || value === 'Delivered'
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger id={id} className={mobile ? 'h-11 w-full text-base' : 'h-9 w-full'}>
+      <SelectTrigger id={id} className={`${mobile ? 'h-11 text-base' : 'h-9 text-sm'} w-full min-w-0 ${completed ? 'bg-emerald-50' : 'bg-white'}`}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -253,7 +254,7 @@ function StatusSelect({
 function SuffixInput({ suffix, mobile, ...props }: React.ComponentProps<typeof Input> & { suffix: string; mobile: boolean }) {
   return (
     <div className="relative">
-      <Input {...props} className={`${mobile ? 'h-11 text-base' : 'h-9'} pr-12 ${props.className ?? ''}`} />
+      <Input {...props} className={`${mobile ? 'h-11 text-base' : 'h-9'} bg-white pr-12 ${props.className ?? ''}`} />
       <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">{suffix}</span>
     </div>
   )
@@ -270,7 +271,7 @@ function MoneyInput({ id, value, currency, mobile, onValueChange, onCurrencyChan
   const height = mobile ? 'h-11 text-base' : 'h-9'
   return (
     <div className="flex min-w-0">
-      <Input id={id} className={`${height} min-w-0 rounded-r-none`} inputMode="decimal" value={value ?? ''} onChange={(event) => onValueChange(numberOrNull(event.target.value))} />
+      <Input id={id} className={`${height} min-w-0 rounded-r-none bg-white`} inputMode="decimal" value={value ?? ''} onChange={(event) => onValueChange(numberOrNull(event.target.value))} />
       <Select value={currency} onValueChange={(value) => onCurrencyChange(value as ProcurementCurrencyCode)}>
         <SelectTrigger aria-label="Валюта" className={`${height} w-[92px] shrink-0 rounded-l-none border-l-0 px-2`}><SelectValue /></SelectTrigger>
         <SelectContent>
@@ -352,13 +353,13 @@ function AttachmentThumbnail({
   onDelete,
 }: {
   attachment: ProcurementAttachment
-  size?: 'small' | 'mobile'
+  size?: 'small' | 'photo' | 'desktop' | 'mobile'
   deleting?: boolean
   onDelete?: () => void
 }) {
   const src = useAttachmentUrl(attachment)
   const image = attachment.contentType.startsWith('image/')
-  const dimensions = size === 'mobile' ? 'size-16' : 'size-9'
+  const dimensions = size === 'mobile' ? 'size-16' : size === 'desktop' ? 'size-14 2xl:size-16' : size === 'photo' ? 'size-11 xl:size-12 2xl:size-14' : 'size-9'
 
   return (
     <div className="relative shrink-0">
@@ -404,17 +405,17 @@ function PurchaseFields({ row, form, updateForm, mobile, uploading, deletingAtta
   const { t } = useTranslation('procurements')
   const prefix = useId()
   const receipt = (row.attachments ?? []).find((value) => value.kind === 'Receipt')
-  const inputClass = mobile ? 'h-11 text-base' : 'h-9'
+  const inputClass = mobile ? 'h-11 bg-white text-base' : 'h-9 bg-white text-sm'
 
   return (
-    <div className={mobile ? 'space-y-4' : 'grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-4'}>
-      <FormField label={t('fields.purchaseUrl')} controlId={`${prefix}-url`} className={mobile ? '' : 'xl:col-span-2'}>
+    <div className={mobile ? 'space-y-4' : 'space-y-2.5'}>
+      <FormField label={t('fields.purchaseUrl')} controlId={`${prefix}-url`}>
         <div className="relative">
           <Input id={`${prefix}-url`} className={`${inputClass} pr-11`} type="url" value={form.purchaseUrl ?? ''} onChange={(event) => updateForm((value) => ({ ...value, purchaseUrl: emptyToNull(event.target.value) }))} />
           {form.purchaseUrl ? <a href={form.purchaseUrl} target="_blank" rel="noreferrer" aria-label="Открыть ссылку" className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground"><ExternalLink className="size-4" /></a> : null}
         </div>
       </FormField>
-      <div className={mobile ? 'grid grid-cols-2 gap-3 max-[379px]:grid-cols-1' : 'contents'}>
+      <div className={mobile ? 'grid grid-cols-2 gap-3 max-[379px]:grid-cols-1' : 'space-y-2.5'}>
         <FormField label={t('fields.purchaseStatus')} controlId={`${prefix}-status`}>
           <StatusSelect id={`${prefix}-status`} mobile={mobile} value={form.purchaseStatus} values={purchaseStatuses} group="purchase" onChange={(purchaseStatus) => updateForm((value) => ({ ...value, purchaseStatus: purchaseStatus as PurchaseStatus }))} />
         </FormField>
@@ -422,7 +423,7 @@ function PurchaseFields({ row, form, updateForm, mobile, uploading, deletingAtta
           <MoneyInput id={`${prefix}-price`} mobile={mobile} value={form.purchasePrice} currency={form.purchaseCurrencyCode} onValueChange={(purchasePrice) => updateForm((value) => ({ ...value, purchasePrice }))} onCurrencyChange={(purchaseCurrencyCode) => updateForm((value) => ({ ...value, purchaseCurrencyCode }))} />
         </FormField>
       </div>
-      <div className={mobile ? 'space-y-2' : 'xl:col-span-2'}>
+      <div className="min-w-0 space-y-2">
         <Label className="text-sm text-muted-foreground">{t('fields.receipt')}</Label>
         {receipt && mobile ? (
           <div className="flex items-center gap-3 rounded-lg border p-2">
@@ -433,7 +434,14 @@ function PurchaseFields({ row, form, updateForm, mobile, uploading, deletingAtta
             </div>
           </div>
         ) : null}
-        <FileUploadButton accept="image/*,application/pdf" disabled={uploading} mobile={mobile} label={uploading ? t('uploading') : receipt ? t('replaceReceipt') : t('addReceipt')} onFiles={([file]) => void onReceiptUpload(row.id, file).catch(() => undefined)} />
+        {mobile ? (
+          <FileUploadButton accept="image/*,application/pdf" disabled={uploading} mobile label={uploading ? t('uploading') : receipt ? t('replaceReceipt') : t('addReceipt')} onFiles={([file]) => void onReceiptUpload(row.id, file).catch(() => undefined)} />
+        ) : (
+          <div className="flex min-w-0 items-center gap-2">
+            {receipt ? <AttachmentThumbnail attachment={receipt} size="desktop" deleting={deletingAttachmentId === receipt.id} onDelete={() => void onDeleteAttachment(row.id, receipt.id)} /> : null}
+            <FileUploadButton accept="image/*,application/pdf" disabled={uploading} mobile={false} label={uploading ? t('uploading') : receipt ? t('replaceReceipt') : t('addReceipt')} onFiles={([file]) => void onReceiptUpload(row.id, file).catch(() => undefined)} />
+          </div>
+        )}
       </div>
     </div>
   )
@@ -450,7 +458,7 @@ function CopyInput({ id, value, mobile, onChange }: { id: string; value: string;
 
   return (
     <div className="relative">
-      <Input id={id} className={`${mobile ? 'h-11 text-base' : 'h-9'} pr-11`} value={value} onChange={(event) => onChange(event.target.value)} />
+      <Input id={id} className={`${mobile ? 'h-11 text-base' : 'h-9 text-sm'} bg-white pr-11`} value={value} onChange={(event) => onChange(event.target.value)} />
       {value ? (
         <Button type="button" variant="ghost" size="icon-sm" className={`${mobile ? 'size-11' : 'size-9'} absolute right-0 top-0`} aria-label="Скопировать трек-номер" onClick={() => void copy()}>
           {copied ? <Check /> : <Copy />}
@@ -466,16 +474,16 @@ function WarehouseFields({ row, form, updateForm, mobile, uploading, deletingAtt
   const photos = (row.attachments ?? []).filter((value) => value.kind === 'WarehousePhoto')
 
   return (
-    <div className="space-y-4">
+    <div className={mobile ? 'space-y-4' : 'space-y-2.5'}>
       <FormField label={t('fields.warehouseTrackingNumber')} controlId={`${prefix}-tracking`}>
         <CopyInput id={`${prefix}-tracking`} mobile={mobile} value={form.warehouseTrackingNumber ?? ''} onChange={(warehouseTrackingNumber) => updateForm((value) => ({ ...value, warehouseTrackingNumber: emptyToNull(warehouseTrackingNumber) }))} />
       </FormField>
-      <div className="grid grid-cols-2 gap-3 max-[379px]:grid-cols-1">
+      <div className={mobile ? 'grid grid-cols-2 gap-3 max-[379px]:grid-cols-1' : 'space-y-2.5'}>
         <FormField label={t('fields.arrivalStatus')} controlId={`${prefix}-status`}>
           <StatusSelect id={`${prefix}-status`} mobile={mobile} value={form.arrivalStatus} values={arrivalStatuses} group="arrival" onChange={(arrivalStatus) => updateForm((value) => ({ ...value, arrivalStatus: arrivalStatus as ArrivalStatus }))} />
         </FormField>
         <FormField label={t('fields.warehouseReceivedAt')} controlId={`${prefix}-date`}>
-          <Input id={`${prefix}-date`} className={mobile ? 'h-11 text-base' : 'h-9'} type="date" value={form.warehouseReceivedAt ?? ''} onChange={(event) => updateForm((value) => ({ ...value, warehouseReceivedAt: emptyToNull(event.target.value) }))} />
+          <Input id={`${prefix}-date`} className={mobile ? 'h-11 bg-white text-base' : 'h-9 bg-white text-sm'} type="date" value={form.warehouseReceivedAt ?? ''} onChange={(event) => updateForm((value) => ({ ...value, warehouseReceivedAt: emptyToNull(event.target.value) }))} />
         </FormField>
       </div>
       <div className="space-y-2">
@@ -489,9 +497,14 @@ function WarehouseFields({ row, form, updateForm, mobile, uploading, deletingAtt
             </label>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            <FileUploadButton accept="image/*" multiple disabled={uploading} mobile={false} label={uploading ? t('uploading') : t('addPhotos')} onFiles={(files) => void onPhotosUpload(row.id, files).catch(() => undefined)} />
-            {photos.map((photo) => <AttachmentThumbnail key={photo.id} attachment={photo} />)}
+          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+            {photos.slice(0, 3).map((photo) => <AttachmentThumbnail key={photo.id} attachment={photo} size="photo" deleting={deletingAttachmentId === photo.id} onDelete={() => void onDeleteAttachment(row.id, photo.id)} />)}
+            {photos.length > 3 ? <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border bg-muted text-xs font-medium xl:size-12 2xl:size-14">+{photos.length - 3}</div> : null}
+            <label className="flex size-11 shrink-0 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed bg-white text-center text-[9px] leading-tight text-muted-foreground hover:bg-muted/50 xl:size-12 2xl:size-14">
+              <ImagePlus className="mb-1 size-4" />
+              <span>{uploading ? t('uploading') : t('addPhotos')}</span>
+              <input type="file" className="sr-only" accept="image/*" multiple disabled={uploading} onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ''; if (files.length) void onPhotosUpload(row.id, files).catch(() => undefined) }} />
+            </label>
           </div>
         )}
       </div>
@@ -502,10 +515,10 @@ function WarehouseFields({ row, form, updateForm, mobile, uploading, deletingAtt
 function ShippingFields({ form, updateForm, mobile }: FieldsProps) {
   const { t } = useTranslation('procurements')
   const prefix = useId()
-  const inputClass = mobile ? 'h-11 text-base' : 'h-9'
+  const inputClass = mobile ? 'h-11 bg-white text-base' : 'h-9 bg-white text-sm'
 
   return (
-    <div className="space-y-4">
+    <div className={mobile ? 'space-y-4' : 'space-y-2.5'}>
       <FormField label={t('fields.shippingTrackingNumber')} controlId={`${prefix}-tracking`}>
         <CopyInput id={`${prefix}-tracking`} mobile={mobile} value={form.shippingTrackingNumber ?? ''} onChange={(shippingTrackingNumber) => updateForm((value) => ({ ...value, shippingTrackingNumber: emptyToNull(shippingTrackingNumber) }))} />
       </FormField>
@@ -564,21 +577,22 @@ function DesktopProcurementEditor(props: EditorProps) {
   const fieldProps: FieldsProps = { ...props, form: state.form, updateForm: state.updateForm, mobile: false }
 
   return (
-    <article className="overflow-hidden rounded-xl border bg-background">
-      <div className="grid min-w-[1100px] grid-cols-[120px_180px_minmax(0,1fr)]">
-        <div className="p-3"><div className="mb-1 text-xs font-medium text-muted-foreground">{t('request')}</div><Link to={`/admin/orders/${props.row.orderId}`} className="font-mono text-sm font-semibold text-primary hover:underline">{props.row.trackingCode}</Link></div>
-        <div className="min-w-0 border-l p-3"><div className="mb-1 text-xs font-medium text-muted-foreground">{t('item')}</div><p className="break-words text-sm font-medium">{props.row.itemName}</p>{props.row.productUrl ? <a href={props.row.productUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">{t('source')} <ExternalLink className="size-3" /></a> : null}</div>
-        <section className="border-l p-3"><h2 className="mb-3 text-sm font-semibold">{t('purchase')}</h2><PurchaseFields {...fieldProps} /></section>
+    <article className="grid w-full max-w-full grid-cols-[minmax(0,7fr)_minmax(0,12fr)_minmax(0,24fr)_minmax(0,25fr)_minmax(0,24fr)_minmax(0,8fr)] border-t first:border-t-0">
+      <div className="min-w-0 p-2.5 2xl:p-3">
+        <Link to={`/admin/orders/${props.row.orderId}`} className="break-all font-mono text-sm font-semibold text-primary hover:underline">{props.row.trackingCode}</Link>
       </div>
-      <div className="grid min-w-[1100px] grid-cols-[35fr_45fr_20fr] border-t">
-        <section className="p-3"><h2 className="mb-3 text-sm font-semibold">{t('arrival')}</h2><WarehouseFields {...fieldProps} /></section>
-        <section className="border-l p-3"><h2 className="mb-3 text-sm font-semibold">{t('shipment')}</h2><ShippingFields {...fieldProps} /></section>
-        <section className="border-l p-3">
-          <h2 className="mb-3 text-sm font-semibold">{t('actions')}</h2>
-          <TooltipProvider><div className="flex items-center gap-1.5"><ActionButton label={t('cancel')} variant="ghost" disabled={busy || !state.dirty} onClick={state.reset}><X /></ActionButton></div></TooltipProvider>
-          <p className="mt-2 text-xs" aria-live="polite"><SaveStateText state={state.saveState} dirty={state.dirty} /></p>
-        </section>
+      <div className="min-w-0 border-l p-2.5 2xl:p-3">
+        {props.row.productImageUrl ? <img src={props.row.productImageUrl} alt="" className="mb-2 aspect-square w-full max-w-[76px] rounded-lg bg-muted object-cover 2xl:max-w-[90px]" /> : <div className="mb-2 flex aspect-square w-full max-w-[76px] items-center justify-center rounded-lg bg-muted 2xl:max-w-[90px]"><Package className="size-6 text-muted-foreground" /></div>}
+        <p className="line-clamp-2 text-xs font-medium 2xl:text-sm">{props.row.itemName}</p>
+        {props.row.productUrl ? <a href={props.row.productUrl} target="_blank" rel="noreferrer" className="mt-1 flex max-w-full min-w-0 items-center gap-1 text-xs text-primary hover:underline"><span className="truncate">{props.row.productUrl}</span><ExternalLink className="size-3 shrink-0" /></a> : null}
       </div>
+      <section className="min-w-0 border-l bg-blue-50/35 p-2.5 2xl:p-3"><PurchaseFields {...fieldProps} /></section>
+      <section className="min-w-0 border-l bg-amber-50/25 p-2.5 2xl:p-3"><WarehouseFields {...fieldProps} /></section>
+      <section className="min-w-0 border-l bg-violet-50/30 p-2.5 2xl:p-3"><ShippingFields {...fieldProps} /></section>
+      <section className="min-w-0 border-l p-2.5 2xl:p-3">
+        <TooltipProvider><div className="flex flex-wrap items-center gap-1"><ActionButton label={t('cancel')} variant="ghost" disabled={busy || !state.dirty} onClick={state.reset}><X /></ActionButton></div></TooltipProvider>
+        <p className="mt-2 break-words text-[10px] 2xl:text-xs" aria-live="polite"><SaveStateText state={state.saveState} dirty={state.dirty} /></p>
+      </section>
     </article>
   )
 }
@@ -745,7 +759,7 @@ function formatFileSize(bytes: number) {
 export function ProcurementsPage() {
   const { t } = useTranslation('procurements')
   const queryClient = useQueryClient()
-  const isMobile = useMediaQuery('(max-width: 767px)')
+  const isMobile = useMediaQuery('(max-width: 1023px)')
   const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<MobileFilter>('all')
@@ -802,7 +816,24 @@ export function ProcurementsPage() {
     <div className="space-y-5">
       <h1 className="text-2xl font-bold">{t('title')}</h1>
       {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
-      <Card className="overflow-hidden border-border shadow-none"><CardHeader className="sr-only"><CardTitle>{t('title')}</CardTitle></CardHeader><CardContent className="bg-muted/20 p-3">{query.isLoading ? <p className="p-3 text-sm text-muted-foreground">{t('loading', { ns: 'common' })}</p> : query.isError ? <div className="space-y-3 p-3"><Alert variant="destructive"><AlertDescription>{t('error', { ns: 'common' })}</AlertDescription></Alert><Button variant="outline" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : rows.length ? <div className="space-y-3 overflow-x-auto">{rows.map((row) => <DesktopProcurementEditor key={row.id} row={row} {...sharedMutations(row)} />)}</div> : <p className="p-3 text-sm text-muted-foreground">{t('empty')}</p>}</CardContent></Card>
+      <Card className="w-full max-w-full gap-0 overflow-hidden rounded-xl border border-gray-200 bg-white py-0 shadow-none ring-0">
+        <CardHeader className="sr-only"><CardTitle>{t('title')}</CardTitle></CardHeader>
+        <CardContent className="p-0">
+          {query.isLoading ? <p className="p-3 text-sm text-muted-foreground">{t('loading', { ns: 'common' })}</p> : query.isError ? <div className="space-y-3 p-3"><Alert variant="destructive"><AlertDescription>{t('error', { ns: 'common' })}</AlertDescription></Alert><Button variant="outline" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : rows.length ? (
+            <div className="w-full max-w-full overflow-hidden">
+              <div className="grid h-11 w-full max-w-full grid-cols-[minmax(0,7fr)_minmax(0,12fr)_minmax(0,24fr)_minmax(0,25fr)_minmax(0,24fr)_minmax(0,8fr)] border-b text-xs font-semibold 2xl:text-sm">
+                <div className="flex min-w-0 items-center px-2.5 2xl:px-3">{t('request')}</div>
+                <div className="flex min-w-0 items-center border-l px-2.5 2xl:px-3">{t('item')}</div>
+                <div className="flex min-w-0 items-center border-l bg-blue-50/35 px-2.5 2xl:px-3">{t('purchase')}</div>
+                <div className="flex min-w-0 items-center border-l bg-amber-50/25 px-2.5 2xl:px-3">{t('arrival')}</div>
+                <div className="flex min-w-0 items-center border-l bg-violet-50/30 px-2.5 2xl:px-3">{t('shipment')}</div>
+                <div className="flex min-w-0 items-center border-l px-2 2xl:px-3">{t('actions')}</div>
+              </div>
+              {rows.map((row) => <DesktopProcurementEditor key={row.id} row={row} {...sharedMutations(row)} />)}
+            </div>
+          ) : <p className="p-3 text-sm text-muted-foreground">{t('empty')}</p>}
+        </CardContent>
+      </Card>
     </div>
   )
 }

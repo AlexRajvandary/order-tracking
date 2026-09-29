@@ -21,6 +21,7 @@ export type ProcurementRow = {
   orderItemId: string
   itemName: string
   productUrl: string | null
+  productImageUrl: string | null
   purchaseUrl: string | null
   purchaseStatus: PurchaseStatus
   purchasePrice: number | null
