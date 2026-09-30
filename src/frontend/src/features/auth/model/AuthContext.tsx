@@ -23,7 +23,12 @@ import {
 } from '@/features/auth/lib/userSettingsStorage'
 import type { CurrentUser, UserSettings } from '@/features/auth/types'
 import { registerAuthHolder } from '@/shared/api/authorizedClient'
-import { getTelegramInitData, initializeTelegramMiniApp } from '@/shared/lib/telegram-mini-app'
+import {
+  getTelegramInitData,
+  initializeTelegramMiniApp,
+  isTelegramMiniApp,
+  waitForTelegramInitData,
+} from '@/shared/lib/telegram-mini-app'
 
 type AuthState = {
   user: CurrentUser | null
@@ -112,14 +117,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false
 
     async function restoreSession() {
-      const initData = getTelegramInitData()
+      const telegramMiniApp = isTelegramMiniApp()
       try {
+        const initData = telegramMiniApp
+          ? await waitForTelegramInitData()
+          : getTelegramInitData()
+        if (cancelled) return
+
         if (initData) {
           // Telegram identity takes precedence over any refresh cookie shared by the WebView.
           const tokens = await loginWithTelegramMiniApp(initData)
           if (cancelled) return
           setAccessToken(tokens.accessToken)
           applyUser(tokens.user)
+        } else if (telegramMiniApp) {
+          throw new Error('Telegram did not provide Mini App initData')
         } else {
           const tokens = await authApi.refreshSession()
           if (cancelled) return

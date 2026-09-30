@@ -51,8 +51,31 @@ export function getTelegramInitData(): string {
   return query.get('tgWebAppData') || fragment.get('tgWebAppData') || ''
 }
 
+function hasTelegramLaunchParameters(): boolean {
+  const query = new URLSearchParams(window.location.search)
+  const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  return ['tgWebAppData', 'tgWebAppPlatform', 'tgWebAppVersion'].some(
+    (key) => query.has(key) || fragment.has(key),
+  )
+}
+
 export function isTelegramMiniApp(): boolean {
-  return Boolean(getTelegramWebApp() || getTelegramInitData())
+  const platform = getTelegramWebApp()?.platform
+  return Boolean(
+    getTelegramInitData()
+    || hasTelegramLaunchParameters()
+    || (platform && platform !== 'unknown'),
+  )
+}
+
+export async function waitForTelegramInitData(timeoutMs = 1500): Promise<string> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const initData = getTelegramInitData()
+    if (initData) return initData
+    await new Promise((resolve) => window.setTimeout(resolve, 100))
+  }
+  return getTelegramInitData()
 }
 
 function writeInsets(webApp: TelegramWebApp) {
@@ -119,6 +142,7 @@ export function initializeTelegramMiniApp() {
   requestFullscreen()
   // Some clients only allow fullscreen after a user gesture.
   document.addEventListener('pointerdown', retryFullscreenOnInteraction, { once: true })
+  document.addEventListener('touchstart', retryFullscreenOnInteraction, { once: true, passive: true })
   updateThemeAndInsets()
 
   return () => {
@@ -129,6 +153,7 @@ export function initializeTelegramMiniApp() {
     webApp.offEvent('fullscreenChanged', updateInsets)
     webApp.offEvent('fullscreenFailed', updateInsets)
     document.removeEventListener('pointerdown', retryFullscreenOnInteraction)
+    document.removeEventListener('touchstart', retryFullscreenOnInteraction)
     document.removeEventListener('gesturestart', preventGestureZoom)
     document.removeEventListener('touchmove', preventPinchZoom)
     root.classList.remove('telegram-mini-app')
