@@ -17,6 +17,8 @@ export type TelegramWebApp = {
   }
   ready: () => void
   expand: () => void
+  disableVerticalSwipes?: () => void
+  enableVerticalSwipes?: () => void
   requestFullscreen?: () => void
   isFullscreen?: boolean
   isVersionAtLeast?: (version: string) => boolean
@@ -173,6 +175,7 @@ export function initializeTelegramMiniApp() {
   webApp.onEvent('fullscreenChanged', onFullscreenChanged)
   webApp.onEvent('fullscreenFailed', onFullscreenFailed)
   webApp.ready()
+  webApp.disableVerticalSwipes?.()
   requestFullscreen()
   if (!webApp.isFullscreen) document.body.append(fullscreenButton)
   // Some clients only allow fullscreen after a user gesture.
@@ -181,6 +184,7 @@ export function initializeTelegramMiniApp() {
   updateThemeAndInsets()
 
   return () => {
+    webApp.enableVerticalSwipes?.()
     webApp.offEvent('themeChanged', updateThemeAndInsets)
     webApp.offEvent('safeAreaChanged', updateInsets)
     webApp.offEvent('contentSafeAreaChanged', updateInsets)

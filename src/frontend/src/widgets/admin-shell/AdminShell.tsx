@@ -294,7 +294,13 @@ export function AdminShell() {
       </header>
 
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-        <SheetContent side="left" className="w-[280px] sm:max-w-[280px]">
+        <SheetContent
+          side="left"
+          className={cn(
+            'w-[280px] sm:max-w-[280px]',
+            miniApp && 'telegram-mini-app-navigation-panel',
+          )}
+        >
           <SheetHeader>
             <SheetTitle>{t('nav.menu')}</SheetTitle>
           </SheetHeader>

@@ -147,8 +147,8 @@ html.telegram-mini-app body {
   touch-action: pan-x pan-y;
 }
 
-html.telegram-mini-app .telegram-mini-app-header-inner {
-  padding-top: max(
+html.telegram-mini-app {
+  --tg-navigation-top-offset: max(
     3.5rem,
     calc(env(safe-area-inset-top) + 1.5rem),
     calc(var(--tg-safe-top, 0px) + 1.5rem),
@@ -156,9 +156,13 @@ html.telegram-mini-app .telegram-mini-app-header-inner {
   );
 }
 
+html.telegram-mini-app .telegram-mini-app-header-inner {
+  padding-top: var(--tg-navigation-top-offset);
+}
+
 @media (max-width: 767px) {
-  html.telegram-mini-app .telegram-mini-app-header-inner {
-    padding-top: max(
+  html.telegram-mini-app {
+    --tg-navigation-top-offset: max(
       5.5rem,
       calc(env(safe-area-inset-top) + 3rem),
       calc(var(--tg-safe-top, 0px) + 3rem),
@@ -197,4 +201,16 @@ html.telegram-mini-app [data-slot='dialog-content'] {
 html.telegram-mini-app [data-slot='sheet-content'] {
   padding-top: max(1rem, var(--tg-safe-top, 0px), var(--tg-content-safe-top, 0px));
   padding-bottom: max(1rem, var(--tg-safe-bottom, 0px), var(--tg-content-safe-bottom, 0px));
+}
+
+html.telegram-mini-app .telegram-mini-app-navigation-panel {
+  padding-top: var(--tg-navigation-top-offset);
+}
+
+html.telegram-mini-app .telegram-mini-app-navigation-panel > [data-slot='sheet-header'] {
+  padding-top: 0;
+}
+
+html.telegram-mini-app .telegram-mini-app-navigation-panel > [data-slot='sheet-close'] {
+  top: var(--tg-navigation-top-offset);
 }
