@@ -22,6 +22,12 @@ export type ProcurementRow = {
   itemName: string
   productUrl: string | null
   productImageUrl: string | null
+  itemDescription: string | null
+  shopName: string | null
+  productSource: string
+  unitPrice: number | null
+  itemCurrencyCode: string | null
+  sortOrder: number
   purchaseUrl: string | null
   purchaseStatus: PurchaseStatus
   purchasePrice: number | null

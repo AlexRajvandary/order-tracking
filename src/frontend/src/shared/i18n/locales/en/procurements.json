@@ -98,9 +98,9 @@
   },
   "statuses": {
     "purchase": {
-      "Pending": "Pending",
+      "Pending": "Awaiting purchase",
       "Purchased": "Purchased",
-      "Error": "Error"
+      "Error": "Cancelled"
     },
     "arrival": {
       "Pending": "Pending",
@@ -112,5 +112,37 @@
       "Shipped": "Shipped",
       "Delivered": "Delivered"
     }
+  },
+  "board": {
+    "stages": {
+      "purchase": "Purchase",
+      "moscow": "Ship to Moscow",
+      "client": "Ship to customer",
+      "completed": "Completed"
+    },
+    "mobileStages": {
+      "purchase": "Purchase",
+      "moscow": "To Moscow",
+      "client": "Customer",
+      "completed": "Completed"
+    },
+    "position": "Item {{current}} of {{total}}",
+    "orderNumber": "Order #{{code}}",
+    "itemCount_one": "{{count}} item",
+    "itemCount_other": "{{count}} items",
+    "moreItems": "+ {{count}} items",
+    "total": "Total",
+    "readyForMoscow": "Purchased",
+    "readyForClient": "Ready to ship",
+    "delivered": "Delivered",
+    "ungrouped": "No shipment group",
+    "orderCount_one": "{{count}} order",
+    "orderCount_other": "{{count}} orders",
+    "noItems": "No items",
+    "noOrders": "No orders",
+    "back": "Back to board",
+    "itemCard": "Item details",
+    "orderCard": "Order details",
+    "notFound": "Record not found"
   }
 }

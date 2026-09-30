@@ -1,8 +1,5 @@
 import {
-  useCallback,
-  useDeferredValue,
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
@@ -12,20 +9,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   Check,
-  ChevronRight,
   Copy,
   ExternalLink,
   FileText,
   ImagePlus,
   Package,
-  Plane,
   Search,
-  Send,
-  ShoppingBasket,
-  SlidersHorizontal,
+  Truck,
   X,
 } from 'lucide-react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import * as procurementsApi from '@/features/procurements/api/procurementsApi'
 import type {
@@ -39,59 +32,26 @@ import type {
 } from '@/features/procurements/types'
 import { ApiError } from '@/shared/api/client'
 import { authorizedRequest } from '@/shared/api/authorizedClient'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/shared/ui/accordion'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/shared/ui/alert-dialog'
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
 import { Skeleton } from '@/shared/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 
 const purchaseStatuses: PurchaseStatus[] = ['Pending', 'Purchased', 'Error']
 const arrivalStatuses: ArrivalStatus[] = ['Pending', 'InTransit', 'Received']
 const shipmentStatuses: ShipmentStatus[] = ['AwaitingShipment', 'Shipped', 'Delivered']
 const currencies: ProcurementCurrencyCode[] = ['JPY', 'RUB', 'USD', 'EUR']
 const currencySymbols: Record<ProcurementCurrencyCode, string> = { JPY: '¥', RUB: '₽', USD: '$', EUR: '€' }
-const mobileFilters: MobileFilter[] = ['all', 'awaitingPurchase', 'purchased', 'warehouseTransit', 'warehouse', 'awaitingShipment', 'shipped']
+const stages = ['purchase', 'moscow', 'client', 'completed'] as const
 const autoSaveDelayMs = 650
 
+type BoardStage = typeof stages[number]
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
-type MobileFilter = 'all' | 'awaitingPurchase' | 'purchased' | 'warehouseTransit' | 'warehouse' | 'awaitingShipment' | 'shipped'
-type SortOrder = 'newest' | 'oldest'
-type UpdateForm = (updater: (value: UpdateProcurementRequest) => UpdateProcurementRequest) => void
-
-function emptyToNull(value: string) {
-  return value === '' ? null : value
-}
-
-function numberOrNull(value: string) {
-  if (value === '') return null
-  const parsed = Number(value.replace(',', '.'))
-  return Number.isFinite(parsed) ? parsed : null
-}
+type OrderGroup = { orderId: string; trackingCode: string; rows: ProcurementRow[]; stage: BoardStage }
 
 function createForm(row: ProcurementRow): UpdateProcurementRequest {
   return {
@@ -114,776 +74,346 @@ function createForm(row: ProcurementRow): UpdateProcurementRequest {
   }
 }
 
-function formsEqual(left: UpdateProcurementRequest, right: UpdateProcurementRequest) {
-  return JSON.stringify(left) === JSON.stringify(right)
+function deriveStage(rows: ProcurementRow[]): BoardStage {
+  if (!rows.every((row) => row.purchaseStatus === 'Purchased')) return 'purchase'
+  if (!rows.every((row) => row.arrivalStatus === 'Received')) return 'moscow'
+  if (!rows.every((row) => row.shipmentStatus === 'Delivered')) return 'client'
+  return 'completed'
 }
 
-function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches)
-
-  useEffect(() => {
-    const media = window.matchMedia(query)
-    const update = () => setMatches(media.matches)
-    update()
-    media.addEventListener('change', update)
-    return () => media.removeEventListener('change', update)
-  }, [query])
-
-  return matches
+function groupOrders(rows: ProcurementRow[]) {
+  const grouped = new Map<string, ProcurementRow[]>()
+  rows.forEach((row) => grouped.set(row.orderId, [...(grouped.get(row.orderId) ?? []), row]))
+  return Array.from(grouped, ([orderId, orderRows]) => {
+    const sortedRows = orderRows.toSorted((left, right) => left.sortOrder - right.sortOrder || left.itemName.localeCompare(right.itemName))
+    return { orderId, trackingCode: sortedRows[0]?.trackingCode ?? '', rows: sortedRows, stage: deriveStage(sortedRows) } satisfies OrderGroup
+  })
 }
 
-function useProcurementForm(
-  row: ProcurementRow,
-  onSave: (id: string, request: UpdateProcurementRequest) => Promise<ProcurementRow>,
-) {
-  const initialForm = createForm(row)
-  const [form, setForm] = useState(initialForm)
-  const [saveState, setSaveState] = useState<SaveState>('idle')
-  const formRef = useRef(form)
-  const savedRef = useRef(initialForm)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const sequenceRef = useRef(0)
-
-  const updateForm: UpdateForm = (updater) => {
-    sequenceRef.current += 1
-    setSaveState('idle')
-    setForm((current) => {
-      const next = updater(current)
-      formRef.current = next
-      return next
-    })
-  }
-
-  const persist = useCallback(async (snapshot = formRef.current) => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (formsEqual(snapshot, savedRef.current)) return true
-
-    const sequence = ++sequenceRef.current
-    setSaveState('saving')
-    try {
-      const updated = await onSave(row.id, snapshot)
-      if (sequence !== sequenceRef.current) return true
-
-      const saved = createForm(updated)
-      savedRef.current = saved
-      if (formsEqual(formRef.current, snapshot)) {
-        formRef.current = saved
-        setForm(saved)
-      }
-      setSaveState('saved')
-      return true
-    } catch {
-      if (sequence === sequenceRef.current) setSaveState('error')
-      return false
-    }
-  }, [onSave, row.id])
-
-  useEffect(() => {
-    if (formsEqual(form, savedRef.current)) return
-    timerRef.current = setTimeout(() => void persist(form), autoSaveDelayMs)
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
-  }, [form, persist])
-
-  useEffect(() => () => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    const snapshot = formRef.current
-    if (!formsEqual(snapshot, savedRef.current)) void onSave(row.id, snapshot)
-  }, [onSave, row.id])
-
-  const reset = useCallback(() => {
-    sequenceRef.current += 1
-    if (timerRef.current) clearTimeout(timerRef.current)
-    formRef.current = savedRef.current
-    setForm(savedRef.current)
-    setSaveState('idle')
-  }, [])
-
-  return {
-    form,
-    updateForm,
-    persist,
-    reset,
-    dirty: !formsEqual(form, savedRef.current),
-    saving: saveState === 'saving',
-    saveState,
-  }
+function matchesSearch(group: OrderGroup, search: string) {
+  if (!search) return true
+  return group.trackingCode.toLocaleLowerCase().includes(search) || group.rows.some((row) => [
+    row.itemName,
+    row.itemDescription,
+    row.shopName,
+    row.productSource,
+    row.sellerOrderNumber,
+    row.warehouseTrackingNumber,
+    row.shippingTrackingNumber,
+  ].some((value) => value?.toLocaleLowerCase().includes(search)))
 }
 
-function FormField({ label, controlId, children, className = '' }: {
-  label: string
-  controlId: string
-  children: ReactNode
-  className?: string
-}) {
-  return (
-    <div className={`min-w-0 space-y-1.5 ${className}`}>
-      <Label htmlFor={controlId} className="text-sm text-muted-foreground">{label}</Label>
-      {children}
-    </div>
-  )
+function badgeClasses(orderId: string) {
+  const palette = [
+    'border-blue-200 bg-blue-50 text-blue-700',
+    'border-orange-200 bg-orange-50 text-orange-700',
+    'border-emerald-200 bg-emerald-50 text-emerald-700',
+    'border-violet-200 bg-violet-50 text-violet-700',
+    'border-pink-200 bg-pink-50 text-pink-700',
+    'border-cyan-200 bg-cyan-50 text-cyan-700',
+    'border-amber-200 bg-amber-50 text-amber-700',
+  ]
+  let hash = 0
+  for (const character of orderId) hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0
+  return palette[Math.abs(hash) % palette.length]
 }
 
-function StatusSelect({
-  id,
-  value,
-  values,
-  group,
-  mobile,
-  onChange,
-}: {
-  id: string
-  value: string
-  values: string[]
-  group: 'purchase' | 'arrival' | 'shipment'
-  mobile: boolean
-  onChange: (value: string) => void
-}) {
-  const { t } = useTranslation('procurements')
-  const completed = value === 'Purchased' || value === 'Received' || value === 'Shipped' || value === 'Delivered'
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger id={id} className={`${mobile ? 'h-11 text-base' : 'h-9 text-sm'} w-full min-w-0 ${completed ? 'bg-emerald-50' : 'bg-white'}`}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {values.map((status) => (
-          <SelectItem key={status} value={status}>{t(`statuses.${group}.${status}`)}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
+function OrderBadge({ group }: { group: Pick<OrderGroup, 'orderId' | 'trackingCode'> }) {
+  return <Badge variant="outline" className={badgeClasses(group.orderId)}>{group.trackingCode}</Badge>
 }
 
-function SuffixInput({ suffix, mobile, ...props }: React.ComponentProps<typeof Input> & { suffix: string; mobile: boolean }) {
-  return (
-    <div className="relative">
-      <Input {...props} className={`${mobile ? 'h-11 text-base' : 'h-9'} bg-white pr-12 ${props.className ?? ''}`} />
-      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">{suffix}</span>
-    </div>
-  )
-}
-
-function MoneyInput({ id, value, currency, mobile, onValueChange, onCurrencyChange }: {
-  id: string
-  value: number | null
-  currency: ProcurementCurrencyCode
-  mobile: boolean
-  onValueChange: (value: number | null) => void
-  onCurrencyChange: (value: ProcurementCurrencyCode) => void
-}) {
-  const height = mobile ? 'h-11 text-base' : 'h-9'
-  const selectHeight = mobile ? 'data-[size=default]:h-11' : 'data-[size=default]:h-9'
-  return (
-    <div className="flex min-w-0">
-      <Input id={id} className={`${height} min-w-0 rounded-r-none bg-white`} inputMode="decimal" value={value ?? ''} onChange={(event) => onValueChange(numberOrNull(event.target.value))} />
-      <Select value={currency} onValueChange={(value) => onCurrencyChange(value as ProcurementCurrencyCode)}>
-        <SelectTrigger aria-label="Валюта" className={`${selectHeight} w-[92px] shrink-0 rounded-l-none border-l-0 bg-white px-2`}><SelectValue /></SelectTrigger>
-        <SelectContent>
-          {currencies.map((code) => <SelectItem key={code} value={code}>{currencySymbols[code]} {code}</SelectItem>)}
-        </SelectContent>
-      </Select>
-    </div>
-  )
-}
-
-function FileUploadButton({
-  accept,
-  multiple,
-  disabled,
-  label,
-  mobile,
-  onFiles,
-}: {
-  accept?: string
-  multiple?: boolean
-  disabled: boolean
-  label: string
-  mobile: boolean
-  onFiles: (files: File[]) => void
-}) {
-  return (
-    <Button asChild variant="outline" size="sm" className={`${mobile ? 'h-11' : 'h-9'} cursor-pointer font-normal`} aria-disabled={disabled}>
-      <label>
-        <ImagePlus />
-        <span className="max-w-44 truncate">{label}</span>
-        <input
-          type="file"
-          className="sr-only"
-          accept={accept}
-          multiple={multiple}
-          disabled={disabled}
-          onChange={(event) => {
-            const files = Array.from(event.target.files ?? [])
-            event.target.value = ''
-            if (files.length) onFiles(files)
-          }}
-        />
-      </label>
-    </Button>
-  )
-}
-
-function useAttachmentUrl(attachment: ProcurementAttachment) {
-  const [src, setSrc] = useState<string | null>(null)
-
-  useEffect(() => {
-    let objectUrl: string | null = null
-    let cancelled = false
-    void authorizedRequest(attachment.url)
-      .then((response) => {
-        if (!response.ok) throw new Error('Could not load attachment')
-        return response.blob()
-      })
-      .then((blob) => {
-        if (cancelled) return
-        objectUrl = URL.createObjectURL(blob)
-        setSrc(objectUrl)
-      })
-      .catch(() => undefined)
-
-    return () => {
-      cancelled = true
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
-  }, [attachment.id, attachment.url])
-
-  return src
-}
-
-function AttachmentThumbnail({
-  attachment,
-  size = 'small',
-  deleting,
-  onDelete,
-}: {
-  attachment: ProcurementAttachment
-  size?: 'small' | 'photo' | 'desktop' | 'mobile'
-  deleting?: boolean
-  onDelete?: () => void
-}) {
-  const src = useAttachmentUrl(attachment)
-  const image = attachment.contentType.startsWith('image/')
-  const dimensions = size === 'mobile' ? 'size-16' : size === 'desktop' ? 'size-14 2xl:size-16' : size === 'photo' ? 'size-11 xl:size-12 2xl:size-14' : 'size-9'
-
-  return (
-    <div className="relative shrink-0">
-      {src && image ? (
-        <a href={src} target="_blank" rel="noreferrer">
-          <img src={src} alt={attachment.fileName ?? ''} className={`${dimensions} rounded-md border object-cover`} />
-        </a>
-      ) : (
-        <div className={`${dimensions} flex items-center justify-center rounded-md border bg-muted`}>
-          {src ? <FileText className="size-5 text-muted-foreground" /> : <Skeleton className="size-full" />}
-        </div>
-      )}
-      {onDelete ? (
-        <Button
-          type="button"
-          size="icon-xs"
-          variant="destructive"
-          className="absolute -right-2 -top-2 size-7 rounded-full"
-          disabled={deleting}
-          aria-label="Удалить фотографию"
-          onClick={onDelete}
-        >
-          <X />
-        </Button>
-      ) : null}
-    </div>
-  )
-}
-
-type FieldsProps = {
-  row: ProcurementRow
-  form: UpdateProcurementRequest
-  updateForm: UpdateForm
-  mobile: boolean
-  uploading: boolean
-  deletingAttachmentId?: string
-  onReceiptUpload: (id: string, file: File) => Promise<void>
-  onPhotosUpload: (id: string, files: File[]) => Promise<void>
-  onDeleteAttachment: (id: string, attachmentId: string) => Promise<void>
-}
-
-function PurchaseFields({ row, form, updateForm, mobile, uploading, deletingAttachmentId, onReceiptUpload, onDeleteAttachment }: FieldsProps) {
-  const { t } = useTranslation('procurements')
-  const prefix = useId()
-  const receipt = (row.attachments ?? []).find((value) => value.kind === 'Receipt')
-  const inputClass = mobile ? 'h-11 bg-white text-base' : 'h-9 bg-white text-sm'
-
-  return (
-    <div className={mobile ? 'space-y-4' : 'space-y-2.5'}>
-      <FormField label={t('fields.purchaseUrl')} controlId={`${prefix}-url`}>
-        <div className="relative">
-          <Input id={`${prefix}-url`} className={`${inputClass} pr-11`} type="url" value={form.purchaseUrl ?? ''} onChange={(event) => updateForm((value) => ({ ...value, purchaseUrl: emptyToNull(event.target.value) }))} />
-          {form.purchaseUrl ? <a href={form.purchaseUrl} target="_blank" rel="noreferrer" aria-label="Открыть ссылку" className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground"><ExternalLink className="size-4" /></a> : null}
-        </div>
-      </FormField>
-      <div className={mobile ? 'grid grid-cols-2 gap-3 max-[379px]:grid-cols-1' : 'space-y-2.5'}>
-        <FormField label={t('fields.purchaseStatus')} controlId={`${prefix}-status`}>
-          <StatusSelect id={`${prefix}-status`} mobile={mobile} value={form.purchaseStatus} values={purchaseStatuses} group="purchase" onChange={(purchaseStatus) => updateForm((value) => ({ ...value, purchaseStatus: purchaseStatus as PurchaseStatus }))} />
-        </FormField>
-        <FormField label={t('fields.purchasePrice')} controlId={`${prefix}-price`}>
-          <MoneyInput id={`${prefix}-price`} mobile={mobile} value={form.purchasePrice} currency={form.purchaseCurrencyCode} onValueChange={(purchasePrice) => updateForm((value) => ({ ...value, purchasePrice }))} onCurrencyChange={(purchaseCurrencyCode) => updateForm((value) => ({ ...value, purchaseCurrencyCode }))} />
-        </FormField>
-      </div>
-      <div className="min-w-0 space-y-2">
-        <Label className="text-sm text-muted-foreground">{t('fields.receipt')}</Label>
-        {receipt && mobile ? (
-          <div className="flex items-center gap-3 rounded-lg border p-2">
-            <AttachmentThumbnail attachment={receipt} size="mobile" deleting={deletingAttachmentId === receipt.id} onDelete={() => void onDeleteAttachment(row.id, receipt.id)} />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{receipt.fileName ?? t('fields.receipt')}</p>
-              <p className="text-xs text-muted-foreground">{formatFileSize(receipt.sizeBytes)}</p>
-            </div>
-          </div>
-        ) : null}
-        {mobile ? (
-          <FileUploadButton accept="image/*,application/pdf" disabled={uploading} mobile label={uploading ? t('uploading') : receipt ? t('replaceReceipt') : t('addReceipt')} onFiles={([file]) => void onReceiptUpload(row.id, file).catch(() => undefined)} />
-        ) : (
-          <div className="flex min-w-0 items-center gap-2">
-            {receipt ? <AttachmentThumbnail attachment={receipt} size="desktop" deleting={deletingAttachmentId === receipt.id} onDelete={() => void onDeleteAttachment(row.id, receipt.id)} /> : null}
-            <FileUploadButton accept="image/*,application/pdf" disabled={uploading} mobile={false} label={uploading ? t('uploading') : receipt ? t('replaceReceipt') : t('addReceipt')} onFiles={([file]) => void onReceiptUpload(row.id, file).catch(() => undefined)} />
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function CopyInput({ id, value, mobile, onChange }: { id: string; value: string; mobile: boolean; onChange: (value: string) => void }) {
-  const [copied, setCopied] = useState(false)
-  const copy = async () => {
-    if (!value) return
-    await navigator.clipboard.writeText(value)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1200)
-  }
-
-  return (
-    <div className="relative">
-      <Input id={id} className={`${mobile ? 'h-11 text-base' : 'h-9 text-sm'} bg-white pr-11`} value={value} onChange={(event) => onChange(event.target.value)} />
-      {value ? (
-        <Button type="button" variant="ghost" size="icon-sm" className={`${mobile ? 'size-11' : 'size-9'} absolute right-0 top-0`} aria-label="Скопировать трек-номер" onClick={() => void copy()}>
-          {copied ? <Check /> : <Copy />}
-        </Button>
-      ) : null}
-    </div>
-  )
-}
-
-function WarehouseFields({ row, form, updateForm, mobile, uploading, deletingAttachmentId, onPhotosUpload, onDeleteAttachment }: FieldsProps) {
-  const { t } = useTranslation('procurements')
-  const prefix = useId()
-  const photos = (row.attachments ?? []).filter((value) => value.kind === 'WarehousePhoto')
-
-  return (
-    <div className={mobile ? 'space-y-4' : 'space-y-2.5'}>
-      <FormField label={t('fields.warehouseTrackingNumber')} controlId={`${prefix}-tracking`}>
-        <CopyInput id={`${prefix}-tracking`} mobile={mobile} value={form.warehouseTrackingNumber ?? ''} onChange={(warehouseTrackingNumber) => updateForm((value) => ({ ...value, warehouseTrackingNumber: emptyToNull(warehouseTrackingNumber) }))} />
-      </FormField>
-      <div className={mobile ? 'grid grid-cols-2 gap-3 max-[379px]:grid-cols-1' : 'space-y-2.5'}>
-        <FormField label={t('fields.arrivalStatus')} controlId={`${prefix}-status`}>
-          <StatusSelect id={`${prefix}-status`} mobile={mobile} value={form.arrivalStatus} values={arrivalStatuses} group="arrival" onChange={(arrivalStatus) => updateForm((value) => ({ ...value, arrivalStatus: arrivalStatus as ArrivalStatus }))} />
-        </FormField>
-        <FormField label={t('fields.warehouseReceivedAt')} controlId={`${prefix}-date`}>
-          <Input id={`${prefix}-date`} className={mobile ? 'h-11 bg-white text-base' : 'h-9 bg-white text-sm'} type="date" value={form.warehouseReceivedAt ?? ''} onChange={(event) => updateForm((value) => ({ ...value, warehouseReceivedAt: emptyToNull(event.target.value) }))} />
-        </FormField>
-      </div>
-      <div className="space-y-2">
-        <Label className="text-sm text-muted-foreground">{t('fields.warehousePhotos')}</Label>
-        {mobile ? (
-          <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {photos.map((photo) => <AttachmentThumbnail key={photo.id} attachment={photo} size="mobile" deleting={deletingAttachmentId === photo.id} onDelete={() => void onDeleteAttachment(row.id, photo.id)} />)}
-            <label className="flex size-16 shrink-0 cursor-pointer items-center justify-center rounded-md border border-dashed text-muted-foreground active:bg-muted" aria-label="Добавить фото">
-              <ImagePlus className="size-5" />
-              <input type="file" className="sr-only" accept="image/*" multiple disabled={uploading} onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ''; if (files.length) void onPhotosUpload(row.id, files).catch(() => undefined) }} />
-            </label>
-          </div>
-        ) : (
-          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-            {photos.slice(0, 3).map((photo) => <AttachmentThumbnail key={photo.id} attachment={photo} size="photo" deleting={deletingAttachmentId === photo.id} onDelete={() => void onDeleteAttachment(row.id, photo.id)} />)}
-            {photos.length > 3 ? <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border bg-muted text-xs font-medium xl:size-12 2xl:size-14">+{photos.length - 3}</div> : null}
-            <label className="flex size-11 shrink-0 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed bg-white text-center text-[9px] leading-tight text-muted-foreground hover:bg-muted/50 xl:size-12 2xl:size-14">
-              <ImagePlus className="mb-1 size-4" />
-              <span>{uploading ? t('uploading') : t('addPhotos')}</span>
-              <input type="file" className="sr-only" accept="image/*" multiple disabled={uploading} onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ''; if (files.length) void onPhotosUpload(row.id, files).catch(() => undefined) }} />
-            </label>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function ShippingFields({ form, updateForm, mobile }: FieldsProps) {
-  const { t } = useTranslation('procurements')
-  const prefix = useId()
-  const inputClass = mobile ? 'h-11 bg-white text-base' : 'h-9 bg-white text-sm'
-
-  return (
-    <div className={mobile ? 'space-y-4' : 'space-y-2.5'}>
-      <FormField label={t('fields.shippingTrackingNumber')} controlId={`${prefix}-tracking`}>
-        <CopyInput id={`${prefix}-tracking`} mobile={mobile} value={form.shippingTrackingNumber ?? ''} onChange={(shippingTrackingNumber) => updateForm((value) => ({ ...value, shippingTrackingNumber: emptyToNull(shippingTrackingNumber) }))} />
-      </FormField>
-      <div className="grid grid-cols-2 gap-3 max-[379px]:grid-cols-1">
-        <FormField label={t('fields.shipmentStatus')} controlId={`${prefix}-status`}>
-          <StatusSelect id={`${prefix}-status`} mobile={mobile} value={form.shipmentStatus} values={shipmentStatuses} group="shipment" onChange={(shipmentStatus) => updateForm((value) => ({ ...value, shipmentStatus: shipmentStatus as ShipmentStatus }))} />
-        </FormField>
-        <FormField label={t('fields.shippingMethod')} controlId={`${prefix}-method`}>
-          <Input id={`${prefix}-method`} className={inputClass} value={form.shippingMethod ?? ''} onChange={(event) => updateForm((value) => ({ ...value, shippingMethod: emptyToNull(event.target.value) }))} />
-        </FormField>
-      </div>
-      <div className="grid grid-cols-2 gap-3 max-[379px]:grid-cols-1">
-        <FormField label={t('fields.shippingWeight')} controlId={`${prefix}-weight`}>
-          <SuffixInput id={`${prefix}-weight`} mobile={mobile} suffix="кг" inputMode="decimal" value={form.shippingWeight ?? ''} onChange={(event) => updateForm((value) => ({ ...value, shippingWeight: numberOrNull(event.target.value) }))} />
-        </FormField>
-        <FormField label={t('fields.shippingCost')} controlId={`${prefix}-cost`}>
-          <MoneyInput id={`${prefix}-cost`} mobile={mobile} value={form.shippingCost} currency={form.shippingCurrencyCode} onValueChange={(shippingCost) => updateForm((value) => ({ ...value, shippingCost }))} onCurrencyChange={(shippingCurrencyCode) => updateForm((value) => ({ ...value, shippingCurrencyCode }))} />
-        </FormField>
-      </div>
-      <FormField label={t('fields.shippedAt')} controlId={`${prefix}-date`} className={mobile ? '' : 'max-w-[calc(50%-0.375rem)]'}>
-        <Input id={`${prefix}-date`} className={inputClass} type="date" value={form.shippedAt ?? ''} onChange={(event) => updateForm((value) => ({ ...value, shippedAt: emptyToNull(event.target.value) }))} />
-      </FormField>
-    </div>
-  )
-}
-
-function SaveStateText({ state, dirty }: { state: SaveState; dirty: boolean }) {
-  const { t } = useTranslation('procurements')
-  const key = state === 'saving' ? 'saving' : state === 'error' ? 'autosaveError' : dirty ? 'unsaved' : 'saved'
-  return <span className={state === 'error' ? 'text-destructive' : 'text-muted-foreground'}>{t(key)}</span>
-}
-
-type EditorProps = {
-  row: ProcurementRow
-  uploading: boolean
-  deletingAttachmentId?: string
-  onSave: (id: string, request: UpdateProcurementRequest) => Promise<ProcurementRow>
-  onReceiptUpload: (id: string, file: File) => Promise<void>
-  onPhotosUpload: (id: string, files: File[]) => Promise<void>
-  onDeleteAttachment: (id: string, attachmentId: string) => Promise<void>
-}
-
-function DesktopProcurementEditor(props: EditorProps) {
-  const state = useProcurementForm(props.row, props.onSave)
-  const fieldProps: FieldsProps = { ...props, form: state.form, updateForm: state.updateForm, mobile: false }
-
-  return (
-    <article className="grid w-full max-w-full grid-cols-[minmax(0,8fr)_minmax(0,13fr)_minmax(0,26fr)_minmax(0,27fr)_minmax(0,26fr)] border-t bg-white first:border-t-0">
-      <div className="min-w-0 p-2.5 2xl:p-3">
-        <Link to={`/admin/orders/${props.row.orderId}`} className="break-all font-mono text-sm font-semibold text-primary hover:underline">{props.row.trackingCode}</Link>
-      </div>
-      <div className="min-w-0 border-l p-2.5 2xl:p-3">
-        {props.row.productImageUrl ? <img src={props.row.productImageUrl} alt="" className="mb-2 aspect-square w-full max-w-[76px] rounded-lg bg-muted object-cover 2xl:max-w-[90px]" /> : <div className="mb-2 flex aspect-square w-full max-w-[76px] items-center justify-center rounded-lg bg-muted 2xl:max-w-[90px]"><Package className="size-6 text-muted-foreground" /></div>}
-        <p className="line-clamp-2 text-xs font-medium 2xl:text-sm">{props.row.itemName}</p>
-        {props.row.productUrl ? <a href={props.row.productUrl} target="_blank" rel="noreferrer" className="mt-1 flex max-w-full min-w-0 items-center gap-1 text-xs text-primary hover:underline"><span className="truncate">{props.row.productUrl}</span><ExternalLink className="size-3 shrink-0" /></a> : null}
-      </div>
-      <section className="min-w-0 border-l bg-white p-2.5 2xl:p-3"><PurchaseFields {...fieldProps} /></section>
-      <section className="min-w-0 border-l bg-white p-2.5 2xl:p-3"><WarehouseFields {...fieldProps} /></section>
-      <section className="min-w-0 border-l bg-white p-2.5 2xl:p-3"><ShippingFields {...fieldProps} /></section>
-    </article>
-  )
-}
-
-function OrderStatusBadge({ row }: { row: ProcurementRow }) {
-  const { t } = useTranslation('procurements')
-  const status = getDisplayStatus(row)
-  const classes = {
-    awaiting: 'border-amber-200 bg-amber-50 text-amber-700',
-    purchased: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    warehouse: 'border-blue-200 bg-blue-50 text-blue-700',
-    shipped: 'border-violet-200 bg-violet-50 text-violet-700',
-    error: 'border-red-200 bg-red-50 text-red-700',
-  }[status]
-  return <Badge variant="outline" className={classes}>{t(`mobile.status.${status}`)}</Badge>
-}
-
-function getDisplayStatus(row: ProcurementRow) {
-  if (row.purchaseStatus === 'Error') return 'error' as const
-  if (row.shipmentStatus === 'Shipped' || row.shipmentStatus === 'Delivered') return 'shipped' as const
-  if (row.arrivalStatus === 'Received') return 'warehouse' as const
-  if (row.purchaseStatus === 'Purchased') return 'purchased' as const
-  return 'awaiting' as const
-}
-
-function matchesFilter(row: ProcurementRow, filter: MobileFilter) {
-  if (filter === 'all') return true
-  if (filter === 'awaitingPurchase') return row.purchaseStatus === 'Pending'
-  if (filter === 'purchased') return row.purchaseStatus === 'Purchased'
-  if (filter === 'warehouseTransit') return row.purchaseStatus === 'Purchased' && row.arrivalStatus !== 'Received'
-  if (filter === 'warehouse') return row.arrivalStatus === 'Received'
-  if (filter === 'awaitingShipment') return row.arrivalStatus === 'Received' && row.shipmentStatus === 'AwaitingShipment'
-  return row.shipmentStatus === 'Shipped' || row.shipmentStatus === 'Delivered'
-}
-
-function MobileListSkeleton() {
-  return <div className="space-y-2">{Array.from({ length: 5 }, (_, index) => <div key={index} className="flex h-24 items-center gap-3 rounded-xl border bg-background p-3"><Skeleton className="size-14 shrink-0" /><div className="min-w-0 flex-1 space-y-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-4 w-4/5" /><Skeleton className="h-3 w-3/5" /></div><Skeleton className="h-5 w-16 rounded-full" /></div>)}</div>
-}
-
-function MobileDetailsSkeleton() {
-  return <div className="space-y-3"><Skeleton className="h-11 w-32" /><div className="flex h-28 gap-3 rounded-xl border bg-background p-3"><Skeleton className="size-[72px] shrink-0" /><div className="flex-1 space-y-2"><Skeleton className="h-5 w-4/5" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-2/3" /></div></div>{Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-[72px] w-full rounded-xl" />)}</div>
-}
-
-function ProductPlaceholder({ large = false }: { large?: boolean }) {
-  return <div className={`${large ? 'size-[72px]' : 'size-14'} flex shrink-0 items-center justify-center rounded-lg border bg-muted`}><Package className={`${large ? 'size-7' : 'size-5'} text-muted-foreground`} /></div>
-}
-
-function MobileOrdersList({
-  rows,
-  search,
-  filter,
-  sort,
-  onSearch,
-  onFilter,
-  onSort,
-  onOpen,
-}: {
-  rows: ProcurementRow[]
-  search: string
-  filter: MobileFilter
-  sort: SortOrder
-  onSearch: (value: string) => void
-  onFilter: (value: MobileFilter) => void
-  onSort: (value: SortOrder) => void
-  onOpen: (row: ProcurementRow) => void
-}) {
-  const { t } = useTranslation('procurements')
-  const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase())
-  const counts = useMemo(() => Object.fromEntries(mobileFilters.map((key) => [key, rows.filter((row) => matchesFilter(row, key)).length])) as Record<MobileFilter, number>, [rows])
-  const visibleRows = useMemo(() => rows
-    .filter((row) => matchesFilter(row, filter))
-    .filter((row) => !deferredSearch || [row.trackingCode, row.itemName, row.warehouseTrackingNumber, row.shippingTrackingNumber].some((value) => value?.toLocaleLowerCase().includes(deferredSearch)))
-    .sort((left, right) => (sort === 'newest' ? -1 : 1) * (new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())), [deferredSearch, filter, rows, sort])
-
-  return (
-    <div className="min-w-0 space-y-4 overflow-x-hidden">
-      <h1 className="text-2xl font-bold">{t('title')}</h1>
-      <div className="flex gap-2">
-        <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input className="h-11 pl-9 text-base" value={search} placeholder={t('mobile.searchPlaceholder')} onChange={(event) => onSearch(event.target.value)} /></div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button type="button" variant="outline" size="icon-lg" className="size-11" aria-label={t('mobile.sort')}><SlidersHorizontal /></Button></DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48"><DropdownMenuItem onSelect={() => onSort('newest')}>{sort === 'newest' ? <Check /> : null}{t('mobile.newest')}</DropdownMenuItem><DropdownMenuItem onSelect={() => onSort('oldest')}>{sort === 'oldest' ? <Check /> : null}{t('mobile.oldest')}</DropdownMenuItem></DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {mobileFilters.map((key) => <Button key={key} type="button" size="sm" variant={filter === key ? 'default' : 'outline'} className="h-9 shrink-0" onClick={() => onFilter(key)}>{t(`mobile.filters.${key}`)} <Badge variant={filter === key ? 'secondary' : 'outline'} className="ml-1 h-5 px-1.5">{counts[key]}</Badge></Button>)}
-      </div>
-      {visibleRows.length ? (
-        <div className="space-y-2">
-          {visibleRows.map((row) => {
-            const meta = [formatMoney(row.purchasePrice, row.purchaseCurrencyCode), row.warehouseTrackingNumber ? `${t('mobile.track')}: ${row.warehouseTrackingNumber}` : null].filter(Boolean).join(' · ')
-            return <button key={row.id} type="button" className="flex min-h-24 w-full items-center gap-3 rounded-xl border bg-background p-3 text-left transition-colors active:bg-muted/70" onClick={() => onOpen(row)}><ProductPlaceholder /><div className="min-w-0 flex-1"><p className="font-mono text-sm font-semibold">{row.trackingCode}</p><p className="mt-1 truncate text-sm">{row.itemName || t('item')}</p><p className="mt-1 truncate text-xs text-muted-foreground">{meta || t('mobile.noDetails')}</p></div><div className="flex shrink-0 items-center gap-1"><OrderStatusBadge row={row} /><ChevronRight className="size-4 text-muted-foreground" /></div></button>
-          })}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center rounded-xl border bg-background px-4 py-10 text-center"><Search className="mb-3 size-8 text-muted-foreground" /><p className="font-medium">{t('mobile.emptyTitle')}</p><p className="mt-1 text-sm text-muted-foreground">{t('mobile.emptyDescription')}</p></div>
-      )}
-    </div>
-  )
-}
-
-function DesktopOrdersList({
-  rows,
-  search,
-  filter,
-  sort,
-  onSearch,
-  onFilter,
-  onSort,
-  onOpen,
-}: {
-  rows: ProcurementRow[]
-  search: string
-  filter: MobileFilter
-  sort: SortOrder
-  onSearch: (value: string) => void
-  onFilter: (value: MobileFilter) => void
-  onSort: (value: SortOrder) => void
-  onOpen: (row: ProcurementRow) => void
-}) {
-  const { t } = useTranslation('procurements')
-  const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase())
-  const counts = useMemo(() => Object.fromEntries(mobileFilters.map((key) => [key, rows.filter((row) => matchesFilter(row, key)).length])) as Record<MobileFilter, number>, [rows])
-  const visibleRows = useMemo(() => rows
-    .filter((row) => matchesFilter(row, filter))
-    .filter((row) => !deferredSearch || [row.trackingCode, row.itemName, row.warehouseTrackingNumber, row.shippingTrackingNumber].some((value) => value?.toLocaleLowerCase().includes(deferredSearch)))
-    .sort((left, right) => (sort === 'newest' ? -1 : 1) * (new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())), [deferredSearch, filter, rows, sort])
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="relative min-w-0 max-w-md flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input className="h-9 bg-white pl-9" value={search} placeholder={t('mobile.searchPlaceholder')} onChange={(event) => onSearch(event.target.value)} /></div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button type="button" variant="outline" size="icon-sm" className="size-9" aria-label={t('mobile.sort')}><SlidersHorizontal /></Button></DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48"><DropdownMenuItem onSelect={() => onSort('newest')}>{sort === 'newest' ? <Check /> : null}{t('mobile.newest')}</DropdownMenuItem><DropdownMenuItem onSelect={() => onSort('oldest')}>{sort === 'oldest' ? <Check /> : null}{t('mobile.oldest')}</DropdownMenuItem></DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {mobileFilters.map((key) => <Button key={key} type="button" size="sm" variant={filter === key ? 'default' : 'outline'} className="h-8" onClick={() => onFilter(key)}>{t(`mobile.filters.${key}`)} <Badge variant={filter === key ? 'secondary' : 'outline'} className="ml-1 h-5 px-1.5">{counts[key]}</Badge></Button>)}
-      </div>
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <div className="grid h-10 grid-cols-[90px_minmax(0,1fr)_140px_140px_160px_32px] items-center border-b px-3 text-xs font-semibold text-muted-foreground">
-          <span>{t('request')}</span><span>{t('item')}</span><span>{t('purchase')}</span><span>{t('arrival')}</span><span>{t('shipment')}</span><span />
-        </div>
-        {visibleRows.map((row) => (
-          <button key={row.id} type="button" className="grid min-h-16 w-full grid-cols-[90px_minmax(0,1fr)_140px_140px_160px_32px] items-center border-t px-3 text-left first:border-t-0 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset" onClick={() => onOpen(row)}>
-            <span className="font-mono text-sm font-semibold text-primary">{row.trackingCode}</span>
-            <span className="flex min-w-0 items-center gap-3 pr-3">{row.productImageUrl ? <img src={row.productImageUrl} alt="" className="size-10 shrink-0 rounded-md bg-muted object-cover" /> : <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted"><Package className="size-4 text-muted-foreground" /></span>}<span className="truncate text-sm font-medium">{row.itemName}</span></span>
-            <Badge variant="outline" className="w-fit max-w-[130px] truncate">{t(`statuses.purchase.${row.purchaseStatus}`)}</Badge>
-            <Badge variant="outline" className="w-fit max-w-[130px] truncate">{t(`statuses.arrival.${row.arrivalStatus}`)}</Badge>
-            <Badge variant="outline" className="w-fit max-w-[150px] truncate">{t(`statuses.shipment.${row.shipmentStatus}`)}</Badge>
-            <ChevronRight className="size-4 text-muted-foreground" />
-          </button>
-        ))}
-        {!visibleRows.length ? <div className="px-4 py-10 text-center text-sm text-muted-foreground">{t('mobile.emptyTitle')}</div> : null}
-      </div>
-    </div>
-  )
-}
-
-function AccordionHeading({ icon, title, badge, summary }: { icon: ReactNode; title: string; badge: ReactNode; summary: string }) {
-  return <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="text-muted-foreground">{icon}</span><span className="font-medium">{title}</span><span className="ml-auto">{badge}</span></div><p className="mt-1 truncate pr-2 text-xs font-normal text-muted-foreground">{summary}</p></div>
-}
-
-function summary(parts: Array<string | number | null | undefined>, fallback: string) {
-  const result = parts.filter((value) => value !== null && value !== undefined && value !== '').join(' · ')
-  return result || fallback
-}
-
-function MobileOrderDetails(props: EditorProps & { onBack: () => void }) {
-  const { t, i18n } = useTranslation('procurements')
-  const state = useProcurementForm(props.row, props.onSave)
-  const [accordion, setAccordion] = useState(() => props.row.purchaseStatus !== 'Purchased' ? 'purchase' : props.row.arrivalStatus !== 'Received' ? 'warehouse' : props.row.shipmentStatus === 'AwaitingShipment' ? 'shipping' : '')
-  const [exitDialog, setExitDialog] = useState(false)
-  const fieldProps: FieldsProps = { ...props, form: state.form, updateForm: state.updateForm, mobile: true }
-  const date = new Intl.DateTimeFormat(i18n.language === 'ru' ? 'ru-RU' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(props.row.createdAt))
-  const receipt = (props.row.attachments ?? []).find((value) => value.kind === 'Receipt')
-  const back = () => state.dirty ? setExitDialog(true) : props.onBack()
-  const copyApplication = async () => navigator.clipboard.writeText(props.row.trackingCode)
-
-  const purchaseSummary = summary([formatMoney(state.form.purchasePrice, state.form.purchaseCurrencyCode), receipt ? t('fields.receipt') : null], t('mobile.purchaseEmpty'))
-  const warehouseSummary = summary([state.form.warehouseTrackingNumber ? `${t('mobile.track')}: ${state.form.warehouseTrackingNumber}` : null, formatDate(state.form.warehouseReceivedAt)], t('mobile.warehouseEmpty'))
-  const shippingSummary = summary([state.form.shippingTrackingNumber, state.form.shippingMethod, state.form.shippingWeight == null ? null : `${state.form.shippingWeight} кг`, formatMoney(state.form.shippingCost, state.form.shippingCurrencyCode)], t('mobile.shippingEmpty'))
-
-  return (
-    <div className="min-w-0 pb-4">
-      <Button type="button" variant="ghost" className="mb-3 min-h-11 -ml-2 px-2" onClick={back}><ArrowLeft /> {t('mobile.allOrders')}</Button>
-      <div className="mb-3 flex min-h-[104px] gap-3 rounded-xl border bg-background p-3">
-        <ProductPlaceholder large />
-        <div className="min-w-0 flex-1"><p className="line-clamp-2 font-semibold">{props.row.itemName || t('item')}</p>{props.row.productUrl ? <a href={props.row.productUrl} target="_blank" rel="noreferrer" className="mt-1 flex min-w-0 items-center gap-1 text-sm text-muted-foreground"><span className="truncate">{props.row.productUrl}</span><ExternalLink className="size-3.5 shrink-0" /></a> : null}<button type="button" className="mt-1 flex min-h-7 items-center gap-1 text-sm" aria-label="Скопировать номер заявки" onClick={() => void copyApplication()}>{t('request')}: <span className="font-mono font-medium">{props.row.trackingCode}</span><Copy className="size-3.5 text-muted-foreground" /></button><p className="text-xs text-muted-foreground">{date}</p></div>
-      </div>
-
-      <Accordion type="single" collapsible value={accordion} onValueChange={setAccordion} className="rounded-xl border bg-background px-4">
-        <AccordionItem value="purchase"><AccordionTrigger><AccordionHeading icon={<ShoppingBasket className="size-4" />} title={t('purchase')} badge={<Badge variant="outline">{t(`statuses.purchase.${state.form.purchaseStatus}`)}</Badge>} summary={purchaseSummary} /></AccordionTrigger><AccordionContent><PurchaseFields {...fieldProps} /></AccordionContent></AccordionItem>
-        <AccordionItem value="warehouse"><AccordionTrigger><AccordionHeading icon={<Package className="size-4" />} title={t('arrival')} badge={<Badge variant="outline">{t(`statuses.arrival.${state.form.arrivalStatus}`)}</Badge>} summary={warehouseSummary} /></AccordionTrigger><AccordionContent><WarehouseFields {...fieldProps} /></AccordionContent></AccordionItem>
-        <AccordionItem value="shipping"><AccordionTrigger><AccordionHeading icon={state.form.shipmentStatus === 'Shipped' || state.form.shipmentStatus === 'Delivered' ? <Plane className="size-4" /> : <Send className="size-4" />} title={t('shipment')} badge={<Badge variant="outline">{t(`statuses.shipment.${state.form.shipmentStatus}`)}</Badge>} summary={shippingSummary} /></AccordionTrigger><AccordionContent><ShippingFields {...fieldProps} /></AccordionContent></AccordionItem>
-      </Accordion>
-      <p className="mt-3 text-center text-xs" aria-live="polite"><SaveStateText state={state.saveState} dirty={state.dirty} /></p>
-
-      <AlertDialog open={exitDialog} onOpenChange={setExitDialog}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{t('mobile.unsavedTitle')}</AlertDialogTitle><AlertDialogDescription>{t('mobile.unsavedDescription')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>{t('mobile.continueEditing')}</AlertDialogCancel><AlertDialogAction onClick={() => { state.reset(); setExitDialog(false); props.onBack() }}>{t('mobile.exitWithoutSaving')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-    </div>
-  )
-}
-
-function formatDate(value: string | null) {
-  if (!value) return null
-  const [year, month, day] = value.split('-')
-  return year && month && day ? `${day}.${month}.${year}` : value
+function ProductImage({ row, className = 'size-14' }: { row: ProcurementRow; className?: string }) {
+  return row.productImageUrl
+    ? <img src={row.productImageUrl} alt="" className={`${className} shrink-0 rounded-lg bg-muted object-cover`} />
+    : <span className={`${className} flex shrink-0 items-center justify-center rounded-lg bg-muted`}><Package className="size-5 text-muted-foreground" /></span>
 }
 
 function formatMoney(value: number | null, currency: ProcurementCurrencyCode | null | undefined) {
   if (value == null) return null
   const code = currency ?? 'JPY'
-  return `${value.toLocaleString('ru-RU')} ${currencySymbols[code]}`
+  return `${currencySymbols[code]} ${value.toLocaleString('ru-RU')}`
 }
 
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} Б`
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`
-  return `${(bytes / 1024 / 1024).toFixed(1)} МБ`
+function orderTotal(rows: ProcurementRow[]) {
+  const totals = new Map<ProcurementCurrencyCode, number>()
+  rows.forEach((row) => {
+    if (row.purchasePrice == null) return
+    const code = row.purchaseCurrencyCode ?? 'JPY'
+    totals.set(code, (totals.get(code) ?? 0) + row.purchasePrice)
+  })
+  return Array.from(totals, ([currency, value]) => formatMoney(value, currency)).filter(Boolean).join(' · ')
+}
+
+function purchaseStatusClasses(status: PurchaseStatus) {
+  if (status === 'Purchased') return 'border-emerald-200 bg-emerald-50 text-emerald-700'
+  if (status === 'Error') return 'border-red-200 bg-red-50 text-red-700'
+  return 'border-amber-200 bg-amber-50 text-amber-700'
+}
+
+function PurchaseItemCard({ group, row, position }: { group: OrderGroup; row: ProcurementRow; position: number }) {
+  const { t } = useTranslation('procurements')
+  const priceCurrency = row.purchasePrice == null ? row.itemCurrencyCode as ProcurementCurrencyCode | null : row.purchaseCurrencyCode
+  return (
+    <Link to={`/admin/procurements/items/${row.id}`} className="block rounded-xl border bg-card p-3 shadow-sm transition-colors transition-shadow hover:border-border/80 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <div className="flex items-center justify-between gap-2"><OrderBadge group={group} /><span className="text-xs text-muted-foreground">{t('board.position', { current: position, total: group.rows.length })}</span></div>
+      <div className="mt-3 flex min-w-0 gap-3"><ProductImage row={row} /><div className="min-w-0 flex-1"><p className="line-clamp-2 text-sm font-semibold">{row.itemName}</p>{row.itemDescription ? <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{row.itemDescription}</p> : null}<p className="mt-1 truncate text-xs text-muted-foreground">{row.shopName || row.productSource}</p></div></div>
+      <div className="mt-3 flex items-center justify-between gap-2"><span className="text-sm font-semibold">{formatMoney(row.purchasePrice ?? row.unitPrice, priceCurrency) ?? '—'}</span><Badge variant="outline" className={purchaseStatusClasses(row.purchaseStatus)}>{t(`statuses.purchase.${row.purchaseStatus}`)}</Badge></div>
+    </Link>
+  )
+}
+
+function OrderItemPreview({ row, position, total }: { row: ProcurementRow; position: number; total: number }) {
+  return <div className="flex min-w-0 items-center gap-2"><ProductImage row={row} className="size-10" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{row.itemName}</p>{row.itemDescription ? <p className="truncate text-[11px] text-muted-foreground">{row.itemDescription}</p> : null}</div><span className="shrink-0 text-[10px] text-muted-foreground">{position} / {total}</span></div>
+}
+
+function stageStatus(group: OrderGroup, stage: BoardStage, t: (key: string) => string) {
+  if (stage === 'moscow') return group.rows.some((row) => row.arrivalStatus === 'InTransit') ? t('statuses.arrival.InTransit') : t('board.readyForMoscow')
+  if (stage === 'client') return group.rows.some((row) => row.shipmentStatus === 'Shipped') ? t('statuses.shipment.Shipped') : t('board.readyForClient')
+  return t('board.delivered')
+}
+
+function OrderCard({ group, stage }: { group: OrderGroup; stage: Exclude<BoardStage, 'purchase'> }) {
+  const { t } = useTranslation('procurements')
+  const preview = group.rows.slice(0, 3)
+  const shipping = group.rows.find((row) => row.shippingMethod || row.shippingTrackingNumber || row.shippingCost != null)
+  const total = orderTotal(group.rows)
+  return (
+    <Link to={`/admin/procurements/orders/${group.orderId}/${stage}`} className="block rounded-xl border bg-card p-3 shadow-sm transition-colors transition-shadow hover:border-border/80 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <div className="flex items-center justify-between gap-2"><OrderBadge group={group} /><Badge variant="outline" className={stage === 'completed' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : ''}>{stageStatus(group, stage, t)}</Badge></div>
+      <div className="mt-3"><p className="text-sm font-semibold">{t('board.orderNumber', { code: group.trackingCode })}</p><p className="text-xs text-muted-foreground">{t('board.itemCount', { count: group.rows.length })}</p></div>
+      <div className="mt-3 space-y-2">{preview.map((row, index) => <OrderItemPreview key={row.id} row={row} position={index + 1} total={group.rows.length} />)}{group.rows.length > 3 ? <p className="pl-12 text-xs text-muted-foreground">{t('board.moreItems', { count: group.rows.length - 3 })}</p> : null}</div>
+      {stage === 'moscow' && total ? <p className="mt-3 border-t pt-2 text-xs font-semibold">{t('board.total')}: {total}</p> : null}
+      {stage !== 'moscow' && shipping ? <div className="mt-3 border-t pt-2 text-xs text-muted-foreground">{shipping.shippingMethod ? <p>{shipping.shippingMethod}</p> : null}{shipping.shippingTrackingNumber ? <p className="truncate font-mono">{shipping.shippingTrackingNumber}</p> : null}{formatMoney(shipping.shippingCost, shipping.shippingCurrencyCode) ? <p>{formatMoney(shipping.shippingCost, shipping.shippingCurrencyCode)}</p> : null}</div> : null}
+    </Link>
+  )
+}
+
+function EmptyLane({ purchase }: { purchase: boolean }) {
+  const { t } = useTranslation('procurements')
+  return <p className="py-8 text-center text-sm text-muted-foreground">{t(purchase ? 'board.noItems' : 'board.noOrders')}</p>
+}
+
+function MoscowGroups({ groups }: { groups: OrderGroup[] }) {
+  const { t } = useTranslation('procurements')
+  const shipments = new Map<string, OrderGroup[]>()
+  const ungrouped: OrderGroup[] = []
+  groups.forEach((group) => {
+    const tracking = group.rows.find((row) => row.warehouseTrackingNumber)?.warehouseTrackingNumber
+    if (!tracking) ungrouped.push(group)
+    else shipments.set(tracking, [...(shipments.get(tracking) ?? []), group])
+  })
+  const section = (key: string, title: string, orders: OrderGroup[]) => <div key={key} className="space-y-2"><div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-xs font-medium"><Truck className="size-3.5" /><span className="truncate">{title}</span><span className="ml-auto shrink-0 text-muted-foreground">{t('board.orderCount', { count: orders.length })}</span></div><div className="space-y-3">{orders.map((group) => <OrderCard key={group.orderId} group={group} stage="moscow" />)}</div></div>
+  return <div className="space-y-4">{ungrouped.length ? section('ungrouped', t('board.ungrouped'), ungrouped) : null}{Array.from(shipments, ([tracking, orders]) => section(tracking, `MSK SHIP · ${tracking}`, orders))}</div>
+}
+
+function BoardLane({ stage, groups }: { stage: BoardStage; groups: OrderGroup[] }) {
+  const { t } = useTranslation('procurements')
+  const purchaseRows = stage === 'purchase' ? groups.flatMap((group) => group.rows.map((row, index) => ({ group, row, position: index + 1 }))) : []
+  const count = stage === 'purchase' ? purchaseRows.length : groups.length
+  return (
+    <section className="min-w-0">
+      <div className="mb-3 flex h-8 items-center justify-between gap-2"><h2 className="text-sm font-semibold">{t(`board.stages.${stage}`)}</h2><Badge variant="secondary">{count}</Badge></div>
+      {stage === 'moscow' ? <MoscowGroups groups={groups} /> : <div className="space-y-3">{stage === 'purchase' ? purchaseRows.map((item) => <PurchaseItemCard key={item.row.id} {...item} />) : groups.map((group) => <OrderCard key={group.orderId} group={group} stage={stage} />)}</div>}
+      {!count ? <EmptyLane purchase={stage === 'purchase'} /> : null}
+    </section>
+  )
+}
+
+function BoardSkeleton() {
+  return <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">{stages.map((stage) => <div key={stage}><Skeleton className="mb-3 h-8 w-36" /><div className="space-y-3"><Skeleton className="h-44 rounded-xl" /><Skeleton className="h-52 rounded-xl" /></div></div>)}</div>
+}
+
+function DesktopBoard({ groups }: { groups: OrderGroup[] }) {
+  return <div className="grid grid-cols-4 items-start gap-4 2xl:gap-5">{stages.map((stage) => <BoardLane key={stage} stage={stage} groups={groups.filter((group) => group.stage === stage)} />)}</div>
+}
+
+function MobileBoard({ groups }: { groups: OrderGroup[] }) {
+  const { t } = useTranslation('procurements')
+  const [active, setActive] = useState<BoardStage>('purchase')
+  const scrollerRef = useRef<HTMLDivElement>(null)
+  const animationRef = useRef<number | null>(null)
+  const activate = (stage: BoardStage) => { setActive(stage); const index = stages.indexOf(stage); scrollerRef.current?.scrollTo({ left: index * scrollerRef.current.clientWidth, behavior: 'smooth' }) }
+  const syncFromScroll = () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); animationRef.current = requestAnimationFrame(() => { const scroller = scrollerRef.current; if (!scroller?.clientWidth) return; setActive(stages[Math.max(0, Math.min(stages.length - 1, Math.round(scroller.scrollLeft / scroller.clientWidth)))]) }) }
+  return (
+    <Tabs value={active} onValueChange={(value) => activate(value as BoardStage)} className="min-w-0 gap-4">
+      <TabsList className="grid h-10 w-full grid-cols-4">{stages.map((stage) => <TabsTrigger key={stage} value={stage} className="min-w-0 px-1 text-xs"><span className="truncate">{t(`board.mobileStages.${stage}`)}</span></TabsTrigger>)}</TabsList>
+      <div ref={scrollerRef} className="-mx-1 flex snap-x snap-mandatory overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" onScroll={syncFromScroll}>
+        {stages.map((stage) => <TabsContent key={stage} value={stage} forceMount className="mt-0 block w-full min-w-full shrink-0 snap-start data-[state=inactive]:block"><BoardLane stage={stage} groups={groups.filter((group) => group.stage === stage)} /></TabsContent>)}
+      </div>
+    </Tabs>
+  )
+}
+
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches)
+  useEffect(() => { const media = window.matchMedia(query); const update = () => setMatches(media.matches); update(); media.addEventListener('change', update); return () => media.removeEventListener('change', update) }, [query])
+  return matches
+}
+
+function useProcurements() {
+  return useQuery({ queryKey: ['procurements'], queryFn: ({ signal }) => procurementsApi.getProcurements(signal) })
 }
 
 export function ProcurementsPage() {
   const { t } = useTranslation('procurements')
-  const queryClient = useQueryClient()
   const isMobile = useMediaQuery('(max-width: 1023px)')
-  const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<MobileFilter>('all')
-  const [sort, setSort] = useState<SortOrder>('newest')
-  const [error, setError] = useState<string | null>(null)
-  const scrollPositionRef = useRef(0)
+  const query = useProcurements()
+  const normalizedSearch = search.trim().toLocaleLowerCase()
+  const groups = useMemo(() => groupOrders(query.data ?? []).filter((group) => matchesSearch(group, normalizedSearch)), [normalizedSearch, query.data])
+  return <div className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h1 className="text-2xl font-bold">{t('title')}</h1><div className="relative w-full sm:max-w-sm"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input className="h-9 bg-white pl-9" value={search} placeholder={t('mobile.searchPlaceholder')} onChange={(event) => setSearch(event.target.value)} /></div></div>{query.isLoading ? <BoardSkeleton /> : query.isError ? <div className="rounded-xl border p-6 text-center"><p className="font-medium">{t('mobile.loadError')}</p><Button variant="outline" className="mt-3" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : isMobile ? <MobileBoard groups={groups} /> : <DesktopBoard groups={groups} />}</div>
+}
 
-  const updateRows = useCallback((updater: (rows: ProcurementRow[]) => ProcurementRow[]) => {
-    queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows ? updater(rows) : rows)
-  }, [queryClient])
+function emptyToNull(value: string) { return value === '' ? null : value }
+function numberOrNull(value: string) { if (!value) return null; const parsed = Number(value.replace(',', '.')); return Number.isFinite(parsed) ? parsed : null }
 
-  const query = useQuery({ queryKey: ['procurements'], queryFn: ({ signal }) => procurementsApi.getProcurements(signal) })
+function Field({ label, id, children }: { label: string; id: string; children: ReactNode }) {
+  return <div className="min-w-0 space-y-1.5"><Label htmlFor={id} className="text-sm text-muted-foreground">{label}</Label>{children}</div>
+}
 
-  const saveProcurement = useCallback(async (id: string, request: UpdateProcurementRequest) => {
-    try {
-      const updated = await procurementsApi.updateProcurement(id, request)
-      setError(null)
-      updateRows((rows) => rows.map((row) => row.id === updated.id ? updated : row))
-      return updated
-    } catch (value) {
-      setError(value instanceof ApiError ? value.message : t('updateError'))
-      throw value
-    }
-  }, [t, updateRows])
+function MoneyField({ id, value, currency, onValue, onCurrency }: { id: string; value: number | null; currency: ProcurementCurrencyCode; onValue: (value: number | null) => void; onCurrency: (value: ProcurementCurrencyCode) => void }) {
+  return <div className="flex min-w-0"><Input id={id} className="h-9 min-w-0 rounded-r-none bg-white" inputMode="decimal" value={value ?? ''} onChange={(event) => onValue(numberOrNull(event.target.value))} /><Select value={currency} onValueChange={(value) => onCurrency(value as ProcurementCurrencyCode)}><SelectTrigger aria-label="Валюта" className="w-[92px] shrink-0 rounded-l-none border-l-0 bg-white data-[size=default]:h-9"><SelectValue /></SelectTrigger><SelectContent>{currencies.map((code) => <SelectItem key={code} value={code}>{currencySymbols[code]} {code}</SelectItem>)}</SelectContent></Select></div>
+}
 
-  const receiptMutation = useMutation({ mutationFn: ({ id, file }: { id: string; file: File }) => procurementsApi.uploadReceipt(id, file), onSuccess: (receipt, { id }) => { setError(null); updateRows((rows) => rows.map((row) => row.id === id ? { ...row, attachments: [...(row.attachments ?? []).filter((value) => value.kind !== 'Receipt'), receipt] } : row)) }, onError: (value: unknown) => setError(value instanceof ApiError ? value.message : t('uploadError')) })
-  const photosMutation = useMutation({ mutationFn: ({ id, files }: { id: string; files: File[] }) => procurementsApi.uploadWarehousePhotos(id, files), onSuccess: (photos, { id }) => { setError(null); updateRows((rows) => rows.map((row) => row.id === id ? { ...row, attachments: [...(row.attachments ?? []), ...photos] } : row)) }, onError: (value: unknown) => setError(value instanceof ApiError ? value.message : t('uploadError')) })
-  const attachmentMutation = useMutation({ mutationFn: ({ id, attachmentId }: { id: string; attachmentId: string }) => procurementsApi.deleteAttachment(id, attachmentId), onSuccess: (_, { id, attachmentId }) => { setError(null); updateRows((rows) => rows.map((row) => row.id === id ? { ...row, attachments: (row.attachments ?? []).filter((value) => value.id !== attachmentId) } : row)) }, onError: (value: unknown) => setError(value instanceof ApiError ? value.message : t('uploadError')) })
+function StatusSelect<T extends string>({ id, value, values, group, onChange }: { id: string; value: T; values: T[]; group: 'purchase' | 'arrival' | 'shipment'; onChange: (value: T) => void }) {
+  const { t } = useTranslation('procurements')
+  return <Select value={value} onValueChange={(next) => onChange(next as T)}><SelectTrigger id={id} className="w-full bg-white data-[size=default]:h-9"><SelectValue /></SelectTrigger><SelectContent>{values.map((status) => <SelectItem key={status} value={status}>{t(`statuses.${group}.${status}`)}</SelectItem>)}</SelectContent></Select>
+}
 
-  const rows = query.data ?? []
-  const selectedId = searchParams.get('order')
-  const selectedRow = rows.find((row) => row.id === selectedId)
-  const openOrder = (row: ProcurementRow) => { scrollPositionRef.current = window.scrollY; const next = new URLSearchParams(searchParams); next.set('order', row.id); setSearchParams(next) }
-  const closeOrder = () => { const next = new URLSearchParams(searchParams); next.delete('order'); setSearchParams(next); window.requestAnimationFrame(() => window.scrollTo({ top: scrollPositionRef.current })) }
-  const sharedMutations = (row: ProcurementRow): Omit<EditorProps, 'row'> => ({
-    uploading: (receiptMutation.isPending && receiptMutation.variables?.id === row.id) || (photosMutation.isPending && photosMutation.variables?.id === row.id),
-    deletingAttachmentId: attachmentMutation.isPending && attachmentMutation.variables?.id === row.id ? attachmentMutation.variables.attachmentId : undefined,
-    onSave: saveProcurement,
-    onReceiptUpload: (id, file) => receiptMutation.mutateAsync({ id, file }).then(() => undefined),
-    onPhotosUpload: (id, files) => photosMutation.mutateAsync({ id, files }).then(() => undefined),
-    onDeleteAttachment: (id, attachmentId) => attachmentMutation.mutateAsync({ id, attachmentId }).then(() => undefined),
-  })
+function CopyField({ id, value, onChange }: { id: string; value: string; onChange: (value: string) => void }) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => { if (!value) return; await navigator.clipboard.writeText(value); setCopied(true); window.setTimeout(() => setCopied(false), 1200) }
+  return <div className="relative"><Input id={id} className="h-9 bg-white pr-10" value={value} onChange={(event) => onChange(event.target.value)} />{value ? <Button type="button" size="icon-sm" variant="ghost" className="absolute right-0 top-0 size-9" onClick={() => void copy()}>{copied ? <Check /> : <Copy />}</Button> : null}</div>
+}
 
-  if (isMobile) {
-    return (
-      <div className="min-w-0 overflow-x-hidden">
-        {error ? <Alert variant="destructive" className="mb-3"><AlertDescription>{error}</AlertDescription></Alert> : null}
-        {query.isLoading ? selectedId ? <MobileDetailsSkeleton /> : <><h1 className="mb-4 text-2xl font-bold">{t('title')}</h1><MobileListSkeleton /></> : query.isError ? <div className="rounded-xl border p-6 text-center"><p className="font-medium">{t('mobile.loadError')}</p><Button variant="outline" className="mt-3" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : selectedRow ? <MobileOrderDetails key={selectedRow.id} row={selectedRow} {...sharedMutations(selectedRow)} onBack={closeOrder} /> : <MobileOrdersList rows={rows} search={search} filter={filter} sort={sort} onSearch={setSearch} onFilter={setFilter} onSort={setSort} onOpen={openOrder} />}
-      </div>
-    )
-  }
+function useRowForm(row: ProcurementRow, onError: (message: string) => void) {
+  const { t } = useTranslation('procurements')
+  const queryClient = useQueryClient()
+  const initial = createForm(row)
+  const [form, setForm] = useState(initial)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const savedRef = useRef(initial)
+  const formRef = useRef(initial)
 
-  return (
-    <div className="space-y-5">
-      {selectedRow ? <Button type="button" variant="ghost" className="-mb-2 -ml-2" onClick={closeOrder}><ArrowLeft /> {t('mobile.allOrders')}</Button> : null}
-      <h1 className="text-2xl font-bold">{selectedRow ? `${t('title')} · ${selectedRow.trackingCode}` : t('title')}</h1>
-      {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
-      {query.isLoading ? <Card className="p-4"><Skeleton className="h-72 w-full" /></Card> : query.isError ? <div className="space-y-3 rounded-xl border p-4"><Alert variant="destructive"><AlertDescription>{t('error', { ns: 'common' })}</AlertDescription></Alert><Button variant="outline" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : selectedRow ? (
-        <Card className="w-full max-w-full gap-0 overflow-hidden rounded-xl border border-gray-200 bg-white py-0 shadow-none ring-0">
-          <CardHeader className="sr-only"><CardTitle>{t('title')}</CardTitle></CardHeader>
-          <CardContent className="p-0">
-            <div className="w-full max-w-full overflow-hidden">
-              <div className="grid h-11 w-full max-w-full grid-cols-[minmax(0,8fr)_minmax(0,13fr)_minmax(0,26fr)_minmax(0,27fr)_minmax(0,26fr)] border-b bg-white text-xs font-semibold 2xl:text-sm">
-                <div className="flex min-w-0 items-center px-2.5 2xl:px-3">{t('request')}</div>
-                <div className="flex min-w-0 items-center border-l px-2.5 2xl:px-3">{t('item')}</div>
-                <div className="flex min-w-0 items-center border-l px-2.5 2xl:px-3">{t('purchase')}</div>
-                <div className="flex min-w-0 items-center border-l px-2.5 2xl:px-3">{t('arrival')}</div>
-                <div className="flex min-w-0 items-center border-l px-2.5 2xl:px-3">{t('shipment')}</div>
-              </div>
-              <DesktopProcurementEditor key={selectedRow.id} row={selectedRow} {...sharedMutations(selectedRow)} />
-            </div>
-          </CardContent>
-        </Card>
-      ) : rows.length ? <DesktopOrdersList rows={rows} search={search} filter={filter} sort={sort} onSearch={setSearch} onFilter={setFilter} onSort={setSort} onOpen={openOrder} /> : <p className="rounded-xl border p-4 text-sm text-muted-foreground">{t('empty')}</p>}
-    </div>
-  )
+  useEffect(() => {
+    const next = createForm(row)
+    savedRef.current = next
+    formRef.current = next
+    setForm(next)
+    setSaveState('idle')
+  }, [row])
+
+  useEffect(() => { formRef.current = form }, [form])
+
+  useEffect(() => {
+    if (JSON.stringify(form) === JSON.stringify(savedRef.current)) return
+    const timer = window.setTimeout(async () => {
+      const snapshot = form
+      setSaveState('saving')
+      try {
+        const updated = await procurementsApi.updateProcurement(row.id, snapshot)
+        const saved = createForm(updated)
+        savedRef.current = saved
+        if (JSON.stringify(formRef.current) === JSON.stringify(snapshot)) {
+          formRef.current = saved
+          setForm(saved)
+        }
+        queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === updated.id ? updated : value))
+        void queryClient.invalidateQueries({ queryKey: ['procurements'] })
+        setSaveState('saved')
+      } catch (error) {
+        setSaveState('error')
+        onError(error instanceof ApiError ? error.message : t('updateError'))
+      }
+    }, autoSaveDelayMs)
+    return () => window.clearTimeout(timer)
+  }, [form, onError, queryClient, row.id, t])
+
+  useEffect(() => () => {
+    const snapshot = formRef.current
+    if (JSON.stringify(snapshot) !== JSON.stringify(savedRef.current)) void procurementsApi.updateProcurement(row.id, snapshot)
+  }, [row.id])
+
+  return { form, setForm, saveState }
+}
+
+function SaveStateLabel({ state }: { state: SaveState }) {
+  const { t } = useTranslation('procurements')
+  return <span className={`text-xs ${state === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>{t(state === 'saving' ? 'saving' : state === 'error' ? 'autosaveError' : 'saved')}</span>
+}
+
+function useAttachmentUrl(attachment: ProcurementAttachment) {
+  const [src, setSrc] = useState<string | null>(null)
+  useEffect(() => { let url: string | null = null; let cancelled = false; void authorizedRequest(attachment.url).then((response) => { if (!response.ok) throw new Error(); return response.blob() }).then((blob) => { if (cancelled) return; url = URL.createObjectURL(blob); setSrc(url) }).catch(() => undefined); return () => { cancelled = true; if (url) URL.revokeObjectURL(url) } }, [attachment.id, attachment.url])
+  return src
+}
+
+function AttachmentPreview({ attachment, onDelete }: { attachment: ProcurementAttachment; onDelete: () => void }) {
+  const src = useAttachmentUrl(attachment)
+  return <div className="relative size-16 shrink-0">{src && attachment.contentType.startsWith('image/') ? <a href={src} target="_blank" rel="noreferrer"><img src={src} alt="" className="size-16 rounded-lg border object-cover" /></a> : <div className="flex size-16 items-center justify-center rounded-lg border bg-muted"><FileText className="size-5 text-muted-foreground" /></div>}<Button type="button" variant="destructive" size="icon-xs" className="absolute -right-2 -top-2 size-6 rounded-full" onClick={onDelete}><X /></Button></div>
+}
+
+function DetailShell({ title, group, children }: { title: string; group: OrderGroup; children: ReactNode }) {
+  const { t } = useTranslation('procurements')
+  return <div className="mx-auto max-w-5xl space-y-5"><Button asChild variant="ghost" className="-ml-2"><Link to="/admin/procurements"><ArrowLeft />{t('board.back')}</Link></Button><div><h1 className="text-2xl font-bold">{title}</h1><div className="mt-2 flex items-center gap-2"><OrderBadge group={group} /><span className="text-sm text-muted-foreground">{t('board.itemCount', { count: group.rows.length })}</span></div></div>{children}</div>
+}
+
+function ItemPurchaseEditor({ row }: { row: ProcurementRow }) {
+  const { t } = useTranslation('procurements')
+  const queryClient = useQueryClient()
+  const [error, setError] = useState('')
+  const { form, setForm, saveState } = useRowForm(row, setError)
+  const receipt = row.attachments.find((attachment) => attachment.kind === 'Receipt')
+  const upload = useMutation({ mutationFn: (file: File) => procurementsApi.uploadReceipt(row.id, file), onSuccess: (attachment) => queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === row.id ? { ...value, attachments: [...value.attachments.filter((item) => item.kind !== 'Receipt'), attachment] } : value)), onError: () => setError(t('uploadError')) })
+  const remove = useMutation({ mutationFn: (attachmentId: string) => procurementsApi.deleteAttachment(row.id, attachmentId), onSuccess: (_, attachmentId) => queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === row.id ? { ...value, attachments: value.attachments.filter((item) => item.id !== attachmentId) } : value)), onError: () => setError(t('uploadError')) })
+  return <div className="rounded-xl border bg-card p-4 sm:p-5"><div className="mb-5 flex gap-3"><ProductImage row={row} className="size-20" /><div className="min-w-0"><h2 className="text-lg font-semibold">{row.itemName}</h2>{row.itemDescription ? <p className="text-sm text-muted-foreground">{row.itemDescription}</p> : null}{row.productUrl ? <a href={row.productUrl} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 text-sm text-primary"><span className="truncate">{row.productUrl}</span><ExternalLink className="size-3.5" /></a> : null}</div></div>{error ? <Alert variant="destructive" className="mb-4"><AlertDescription>{error}</AlertDescription></Alert> : null}<div className="grid gap-4 sm:grid-cols-2"><Field label={t('fields.purchaseStatus')} id="purchase-status"><StatusSelect id="purchase-status" value={form.purchaseStatus} values={purchaseStatuses} group="purchase" onChange={(purchaseStatus) => setForm((value) => ({ ...value, purchaseStatus }))} /></Field><Field label={t('fields.purchaseUrl')} id="purchase-url"><Input id="purchase-url" className="h-9 bg-white" value={form.purchaseUrl ?? ''} onChange={(event) => setForm((value) => ({ ...value, purchaseUrl: emptyToNull(event.target.value) }))} /></Field><Field label={t('fields.purchasePrice')} id="purchase-price"><MoneyField id="purchase-price" value={form.purchasePrice} currency={form.purchaseCurrencyCode} onValue={(purchasePrice) => setForm((value) => ({ ...value, purchasePrice }))} onCurrency={(purchaseCurrencyCode) => setForm((value) => ({ ...value, purchaseCurrencyCode }))} /></Field><div className="space-y-2"><Label className="text-sm text-muted-foreground">{t('fields.receipt')}</Label><div className="flex items-center gap-3">{receipt ? <AttachmentPreview attachment={receipt} onDelete={() => remove.mutate(receipt.id)} /> : null}<Button asChild variant="outline" size="sm"><label className="cursor-pointer"><ImagePlus />{receipt ? t('replaceReceipt') : t('addReceipt')}<input type="file" className="sr-only" accept="image/*,application/pdf" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) upload.mutate(file) }} /></label></Button></div></div></div><div className="mt-5"><SaveStateLabel state={saveState} /></div></div>
+}
+
+function WarehouseEditor({ row }: { row: ProcurementRow }) {
+  const { t } = useTranslation('procurements')
+  const queryClient = useQueryClient()
+  const [error, setError] = useState('')
+  const { form, setForm, saveState } = useRowForm(row, setError)
+  const photos = row.attachments.filter((attachment) => attachment.kind === 'WarehousePhoto')
+  const upload = useMutation({ mutationFn: (files: File[]) => procurementsApi.uploadWarehousePhotos(row.id, files), onSuccess: (attachments) => queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === row.id ? { ...value, attachments: [...value.attachments, ...attachments] } : value)), onError: () => setError(t('uploadError')) })
+  const remove = useMutation({ mutationFn: (attachmentId: string) => procurementsApi.deleteAttachment(row.id, attachmentId), onSuccess: (_, attachmentId) => queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === row.id ? { ...value, attachments: value.attachments.filter((item) => item.id !== attachmentId) } : value)), onError: () => setError(t('uploadError')) })
+  return <StageEditorCard row={row} error={error} state={saveState}><Field label={t('fields.warehouseTrackingNumber')} id={`${row.id}-track`}><CopyField id={`${row.id}-track`} value={form.warehouseTrackingNumber ?? ''} onChange={(warehouseTrackingNumber) => setForm((value) => ({ ...value, warehouseTrackingNumber: emptyToNull(warehouseTrackingNumber) }))} /></Field><Field label={t('fields.arrivalStatus')} id={`${row.id}-status`}><StatusSelect id={`${row.id}-status`} value={form.arrivalStatus} values={arrivalStatuses} group="arrival" onChange={(arrivalStatus) => setForm((value) => ({ ...value, arrivalStatus }))} /></Field><Field label={t('fields.warehouseReceivedAt')} id={`${row.id}-date`}><Input id={`${row.id}-date`} className="h-9 bg-white" type="date" value={form.warehouseReceivedAt ?? ''} onChange={(event) => setForm((value) => ({ ...value, warehouseReceivedAt: emptyToNull(event.target.value) }))} /></Field><div className="space-y-2 sm:col-span-2"><Label className="text-sm text-muted-foreground">{t('fields.warehousePhotos')}</Label><div className="flex flex-wrap items-center gap-3">{photos.map((photo) => <AttachmentPreview key={photo.id} attachment={photo} onDelete={() => remove.mutate(photo.id)} />)}<Button asChild variant="outline" size="sm"><label className="cursor-pointer"><ImagePlus />{t('addPhotos')}<input type="file" className="sr-only" multiple accept="image/*" onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ''; if (files.length) upload.mutate(files) }} /></label></Button></div></div></StageEditorCard>
+}
+
+function ShippingEditor({ row }: { row: ProcurementRow }) {
+  const { t } = useTranslation('procurements')
+  const [error, setError] = useState('')
+  const { form, setForm, saveState } = useRowForm(row, setError)
+  return <StageEditorCard row={row} error={error} state={saveState}><Field label={t('fields.shippingTrackingNumber')} id={`${row.id}-track`}><CopyField id={`${row.id}-track`} value={form.shippingTrackingNumber ?? ''} onChange={(shippingTrackingNumber) => setForm((value) => ({ ...value, shippingTrackingNumber: emptyToNull(shippingTrackingNumber) }))} /></Field><Field label={t('fields.shipmentStatus')} id={`${row.id}-status`}><StatusSelect id={`${row.id}-status`} value={form.shipmentStatus} values={shipmentStatuses} group="shipment" onChange={(shipmentStatus) => setForm((value) => ({ ...value, shipmentStatus }))} /></Field><Field label={t('fields.shippingMethod')} id={`${row.id}-method`}><Input id={`${row.id}-method`} className="h-9 bg-white" value={form.shippingMethod ?? ''} onChange={(event) => setForm((value) => ({ ...value, shippingMethod: emptyToNull(event.target.value) }))} /></Field><Field label={t('fields.shippingWeight')} id={`${row.id}-weight`}><Input id={`${row.id}-weight`} className="h-9 bg-white" inputMode="decimal" value={form.shippingWeight ?? ''} onChange={(event) => setForm((value) => ({ ...value, shippingWeight: numberOrNull(event.target.value) }))} /></Field><Field label={t('fields.shippingCost')} id={`${row.id}-cost`}><MoneyField id={`${row.id}-cost`} value={form.shippingCost} currency={form.shippingCurrencyCode} onValue={(shippingCost) => setForm((value) => ({ ...value, shippingCost }))} onCurrency={(shippingCurrencyCode) => setForm((value) => ({ ...value, shippingCurrencyCode }))} /></Field><Field label={t('fields.shippedAt')} id={`${row.id}-date`}><Input id={`${row.id}-date`} className="h-9 bg-white" type="date" value={form.shippedAt ?? ''} onChange={(event) => setForm((value) => ({ ...value, shippedAt: emptyToNull(event.target.value) }))} /></Field></StageEditorCard>
+}
+
+function StageEditorCard({ row, error, state, children }: { row: ProcurementRow; error: string; state: SaveState; children: ReactNode }) {
+  return <section className="rounded-xl border bg-card p-4"><div className="mb-4 flex items-center gap-3"><ProductImage row={row} className="size-14" /><div className="min-w-0"><h2 className="truncate font-semibold">{row.itemName}</h2>{row.itemDescription ? <p className="truncate text-sm text-muted-foreground">{row.itemDescription}</p> : null}</div></div>{error ? <Alert variant="destructive" className="mb-4"><AlertDescription>{error}</AlertDescription></Alert> : null}<div className="grid gap-4 sm:grid-cols-2">{children}</div><div className="mt-4"><SaveStateLabel state={state} /></div></section>
+}
+
+function CompletedSummary({ group }: { group: OrderGroup }) {
+  const { t } = useTranslation('procurements')
+  return <div className="rounded-xl border bg-card p-4"><div className="space-y-3">{group.rows.map((row, index) => <OrderItemPreview key={row.id} row={row} position={index + 1} total={group.rows.length} />)}</div><div className="mt-4 grid gap-2 border-t pt-4 text-sm sm:grid-cols-2"><p><span className="text-muted-foreground">{t('fields.shippingMethod')}:</span> {group.rows.find((row) => row.shippingMethod)?.shippingMethod ?? '—'}</p><p><span className="text-muted-foreground">{t('fields.shippingTrackingNumber')}:</span> {group.rows.find((row) => row.shippingTrackingNumber)?.shippingTrackingNumber ?? '—'}</p><p><span className="text-muted-foreground">{t('board.delivered')}:</span> {group.rows.find((row) => row.shippedAt)?.shippedAt ?? '—'}</p></div></div>
+}
+
+export function ProcurementItemDetailPage() {
+  const { t } = useTranslation('procurements')
+  const { procurementId } = useParams()
+  const query = useProcurements()
+  const row = query.data?.find((value) => value.id === procurementId)
+  const group = query.data ? groupOrders(query.data).find((value) => value.orderId === row?.orderId) : undefined
+  if (query.isLoading) return <Skeleton className="h-96 w-full rounded-xl" />
+  if (!row || !group) return <Alert variant="destructive"><AlertDescription>{t('board.notFound')}</AlertDescription></Alert>
+  return <DetailShell title={t('board.itemCard')} group={group}><p className="text-sm text-muted-foreground">{t('board.position', { current: group.rows.findIndex((value) => value.id === row.id) + 1, total: group.rows.length })}</p><ItemPurchaseEditor row={row} /></DetailShell>
+}
+
+export function ProcurementOrderDetailPage() {
+  const { t } = useTranslation('procurements')
+  const { orderId, stage } = useParams()
+  const query = useProcurements()
+  const group = query.data ? groupOrders(query.data).find((value) => value.orderId === orderId) : undefined
+  if (query.isLoading) return <Skeleton className="h-96 w-full rounded-xl" />
+  if (!group) return <Alert variant="destructive"><AlertDescription>{t('board.notFound')}</AlertDescription></Alert>
+  const currentStage = stages.includes(stage as BoardStage) ? stage as BoardStage : group.stage
+  return <DetailShell title={t('board.orderCard')} group={group}>{currentStage === 'moscow' ? <div className="space-y-4">{group.rows.map((row) => <WarehouseEditor key={row.id} row={row} />)}</div> : currentStage === 'client' ? <div className="space-y-4">{group.rows.map((row) => <ShippingEditor key={row.id} row={row} />)}</div> : <CompletedSummary group={group} />}</DetailShell>
 }

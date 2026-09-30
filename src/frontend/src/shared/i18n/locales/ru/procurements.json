@@ -98,9 +98,9 @@
   },
   "statuses": {
     "purchase": {
-      "Pending": "Ожидание",
-      "Purchased": "Выкуплено",
-      "Error": "Ошибка"
+      "Pending": "Ожидает выкупа",
+      "Purchased": "Выкуплен",
+      "Error": "Отменён"
     },
     "arrival": {
       "Pending": "Ожидание",
@@ -112,5 +112,41 @@
       "Shipped": "Отправлено",
       "Delivered": "Доставлено"
     }
+  },
+  "board": {
+    "stages": {
+      "purchase": "Выкупить",
+      "moscow": "Отправить в Москву",
+      "client": "Отправить клиенту",
+      "completed": "Завершено"
+    },
+    "mobileStages": {
+      "purchase": "Выкуп",
+      "moscow": "В Москву",
+      "client": "Клиенту",
+      "completed": "Завершено"
+    },
+    "position": "Позиция {{current}} из {{total}}",
+    "orderNumber": "Заказ №{{code}}",
+    "itemCount_one": "{{count}} товар",
+    "itemCount_few": "{{count}} товара",
+    "itemCount_many": "{{count}} товаров",
+    "itemCount_other": "{{count}} товара",
+    "moreItems": "+ {{count}} товара",
+    "total": "Итого",
+    "readyForMoscow": "Выкуплен",
+    "readyForClient": "Готов к отправке",
+    "delivered": "Доставлен",
+    "ungrouped": "Без группы отправки",
+    "orderCount_one": "{{count}} заказ",
+    "orderCount_few": "{{count}} заказа",
+    "orderCount_many": "{{count}} заказов",
+    "orderCount_other": "{{count}} заказа",
+    "noItems": "Нет позиций",
+    "noOrders": "Нет заказов",
+    "back": "К доске",
+    "itemCard": "Карточка позиции",
+    "orderCard": "Карточка заказа",
+    "notFound": "Запись не найдена"
   }
 }
