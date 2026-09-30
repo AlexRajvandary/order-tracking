@@ -23,8 +23,8 @@ export type TelegramWebApp = {
   setHeaderColor?: (color: string) => void
   setBackgroundColor?: (color: string) => void
   setBottomBarColor?: (color: string) => void
-  onEvent: (event: string, callback: () => void) => void
-  offEvent: (event: string, callback: () => void) => void
+  onEvent: (event: string, callback: (eventData?: { error?: string; is_fullscreen?: boolean }) => void) => void
+  offEvent: (event: string, callback: (eventData?: { error?: string; is_fullscreen?: boolean }) => void) => void
 }
 
 declare global {
@@ -132,14 +132,49 @@ export function initializeTelegramMiniApp() {
     if (webApp.isFullscreen) return
     requestFullscreen()
   }
+  const fullscreenButton = document.createElement('button')
+  fullscreenButton.type = 'button'
+  fullscreenButton.setAttribute('aria-label', 'Open Mini App in full screen')
+  fullscreenButton.textContent = document.documentElement.lang.toLowerCase().startsWith('ru')
+    ? 'Развернуть на весь экран'
+    : 'Open full screen'
+  Object.assign(fullscreenButton.style, {
+    position: 'fixed',
+    zIndex: '2147483647',
+    top: 'max(12px, env(safe-area-inset-top), var(--tg-safe-top, 0px))',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    padding: '10px 16px',
+    border: '0',
+    borderRadius: '999px',
+    background: '#2481cc',
+    color: '#ffffff',
+    font: '600 14px/20px system-ui, sans-serif',
+    boxShadow: '0 2px 12px rgb(0 0 0 / 18%)',
+  })
+  const onFullscreenFailed = (eventData?: { error?: string }) => {
+    if (eventData?.error === 'UNSUPPORTED') {
+      fullscreenButton.textContent = document.documentElement.lang.toLowerCase().startsWith('ru')
+        ? 'Полный экран не поддерживается Telegram'
+        : 'Full screen is unavailable in Telegram'
+      fullscreenButton.disabled = true
+      fullscreenButton.style.opacity = '0.8'
+    }
+  }
+  const onFullscreenChanged = (eventData?: { is_fullscreen?: boolean }) => {
+    updateInsets()
+    if (eventData?.is_fullscreen ?? webApp.isFullscreen) fullscreenButton.remove()
+  }
+  fullscreenButton.addEventListener('click', retryFullscreenOnInteraction)
   webApp.onEvent('themeChanged', updateThemeAndInsets)
   webApp.onEvent('safeAreaChanged', updateInsets)
   webApp.onEvent('contentSafeAreaChanged', updateInsets)
   webApp.onEvent('viewportChanged', updateInsets)
-  webApp.onEvent('fullscreenChanged', updateInsets)
-  webApp.onEvent('fullscreenFailed', updateInsets)
+  webApp.onEvent('fullscreenChanged', onFullscreenChanged)
+  webApp.onEvent('fullscreenFailed', onFullscreenFailed)
   webApp.ready()
   requestFullscreen()
+  if (!webApp.isFullscreen) document.body.append(fullscreenButton)
   // Some clients only allow fullscreen after a user gesture.
   document.addEventListener('pointerdown', retryFullscreenOnInteraction, { once: true })
   document.addEventListener('touchstart', retryFullscreenOnInteraction, { once: true, passive: true })
@@ -150,8 +185,10 @@ export function initializeTelegramMiniApp() {
     webApp.offEvent('safeAreaChanged', updateInsets)
     webApp.offEvent('contentSafeAreaChanged', updateInsets)
     webApp.offEvent('viewportChanged', updateInsets)
-    webApp.offEvent('fullscreenChanged', updateInsets)
-    webApp.offEvent('fullscreenFailed', updateInsets)
+    webApp.offEvent('fullscreenChanged', onFullscreenChanged)
+    webApp.offEvent('fullscreenFailed', onFullscreenFailed)
+    fullscreenButton.removeEventListener('click', retryFullscreenOnInteraction)
+    fullscreenButton.remove()
     document.removeEventListener('pointerdown', retryFullscreenOnInteraction)
     document.removeEventListener('touchstart', retryFullscreenOnInteraction)
     document.removeEventListener('gesturestart', preventGestureZoom)
