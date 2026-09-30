@@ -79,6 +79,27 @@ public sealed class AuthController : ControllerBase
         return Ok(result.Tokens);
     }
 
+    [HttpPost("telegram-mini-app")]
+    [AllowAnonymous]
+    [EnableRateLimiting("auth")]
+    public async Task<ActionResult<AuthTokensDto>> TelegramMiniAppLogin(
+        [FromBody] TelegramMiniAppLoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        var data = _telegramAuth.ParseMiniAppInitData(request.InitData, out var error);
+        if (data is null)
+        {
+            return Unauthorized(new ProblemDetails { Detail = error ?? "Invalid Telegram Mini App data" });
+        }
+
+        var result = await _mediator.Send(
+            new TelegramLoginCommand(data, GetIpAddress(), GetUserAgent()),
+            cancellationToken);
+
+        SetRefreshCookie(result.RefreshToken);
+        return Ok(result.Tokens);
+    }
+
     [HttpGet("telegram-config")]
     [AllowAnonymous]
     public ActionResult<TelegramConfigDto> TelegramConfig()
@@ -181,5 +202,7 @@ public sealed record TelegramLoginRequest(
     string? PhotoUrl,
     long AuthDate,
     string Hash);
+
+public sealed record TelegramMiniAppLoginRequest(string InitData);
 
 public sealed record TelegramConfigDto(bool Enabled, string? BotUsername);

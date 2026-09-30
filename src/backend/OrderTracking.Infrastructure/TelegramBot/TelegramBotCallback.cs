@@ -1,3 +1,5 @@
+using OrderTracking.Domain.Enums;
+
 namespace OrderTracking.Infrastructure.TelegramBot;
 
 internal static class TelegramBotCallback
@@ -17,6 +19,10 @@ internal static class TelegramBotCallback
     public const string OrderContactPrefix = "oc:";
     public const string OrderHistoryPrefix = "oh:";
     public const string OrderOpenPrefix = "oi:";
+    public const string OrderSetStatusPrefix = "os:";
+    public const string OrderNotificationSetStatusPrefix = "ons:";
+    public const string OrderDeletePrefix = "od:";
+    public const string OrderDeleteConfirmPrefix = "odc:";
     public const string OrdersPagePrefix = "op:";
     public const string Settings = "set";
     public const string SettingsCsvOff = "set:csv:0";
@@ -82,6 +88,34 @@ internal static class TelegramBotCallback
         return WithPage(OrderHistoryPrefix, orderId, page);
     }
 
+    public static string OrderSetStatus(Guid orderId, int page, OrderStatus status, bool notificationContext)
+    {
+        var prefix = notificationContext ? OrderNotificationSetStatusPrefix : OrderSetStatusPrefix;
+        return $"{prefix}{EncodeGuid(orderId)}:{Math.Max(1, page)}:{(int)status}";
+    }
+
+    public static string OrderDelete(Guid orderId, int page, bool confirm = false)
+    {
+        var prefix = confirm ? OrderDeleteConfirmPrefix : OrderDeletePrefix;
+        return $"{prefix}{EncodeGuid(orderId)}:{Math.Max(1, page)}";
+    }
+
+    public static bool TryParseOrderDelete(string data, out Guid orderId, out int page, out bool confirm)
+    {
+        confirm = data.StartsWith(OrderDeleteConfirmPrefix, StringComparison.Ordinal);
+        var prefix = confirm ? OrderDeleteConfirmPrefix
+            : data.StartsWith(OrderDeletePrefix, StringComparison.Ordinal) ? OrderDeletePrefix : null;
+        orderId = default;
+        page = 1;
+        if (prefix is null) return false;
+        var parts = data[prefix.Length..].Split(':', StringSplitOptions.None);
+        if (parts.Length != 2 || DecodeGuid(parts[0]) is not Guid parsedId
+            || !int.TryParse(parts[1], out var parsedPage) || parsedPage < 1) return false;
+        orderId = parsedId;
+        page = parsedPage;
+        return true;
+    }
+
     public static string OrderNotificationActions(Guid orderId)
     {
         return WithId(OrderNotificationActionsPrefix, orderId);
@@ -125,6 +159,42 @@ internal static class TelegramBotCallback
             page = p;
         }
 
+        return true;
+    }
+
+    public static bool TryParseOrderStatus(
+        string data,
+        out Guid orderId,
+        out int page,
+        out OrderStatus status,
+        out bool notificationContext)
+    {
+        var prefix = data.StartsWith(OrderNotificationSetStatusPrefix, StringComparison.Ordinal)
+            ? OrderNotificationSetStatusPrefix
+            : data.StartsWith(OrderSetStatusPrefix, StringComparison.Ordinal)
+                ? OrderSetStatusPrefix
+                : null;
+        notificationContext = prefix == OrderNotificationSetStatusPrefix;
+        orderId = default;
+        page = 1;
+        status = default;
+        if (prefix is null)
+        {
+            return false;
+        }
+
+        var parts = data[prefix.Length..].Split(':', StringSplitOptions.None);
+        if (parts.Length != 3 || DecodeGuid(parts[0]) is not Guid parsedId
+            || !int.TryParse(parts[1], out var parsedPage) || parsedPage < 1
+            || !int.TryParse(parts[2], out var parsedStatus)
+            || !Enum.IsDefined(typeof(OrderStatus), parsedStatus))
+        {
+            return false;
+        }
+
+        orderId = parsedId;
+        page = parsedPage;
+        status = (OrderStatus)parsedStatus;
         return true;
     }
 

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Infrastructure.TelegramBot.Ui;
 using Telegram.Bot.Types.ReplyMarkups;
+using Telegram.Bot.Types;
 
 namespace OrderTracking.Infrastructure.TelegramBot.Screens;
 
@@ -47,15 +48,22 @@ internal sealed class TelegramBotMenuScreen
             ?? _configuration["App:BaseUrl"]
             ?? "http://localhost:8080").TrimEnd('/');
         var url = $"{baseUrl}/admin/login";
+        var miniAppUrl = $"{baseUrl}/admin";
         var text =
-            "🔗 <b>Веб-админка</b>\n\n" +
-            $"Ссылка для входа:\n<code>{TelegramBotText.Escape(url)}</code>";
+            "🔗 <b>Админка и мини-приложение</b>\n\n" +
+            "В Mini App вход выполнится автоматически, если Telegram привязан к активному аккаунту администратора.\n\n" +
+            $"Ссылка для браузера:\n<code>{TelegramBotText.Escape(url)}</code>";
 
-        var keyboard = new InlineKeyboardMarkup(
-        [
-            [InlineKeyboardButton.WithUrl("Открыть админку", url)],
-            [InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)],
-        ]);
+        var rows = new List<InlineKeyboardButton[]>();
+        if (Uri.TryCreate(miniAppUrl, UriKind.Absolute, out var miniAppUri)
+            && miniAppUri.Scheme == Uri.UriSchemeHttps)
+        {
+            rows.Add([InlineKeyboardButton.WithWebApp("Открыть Mini App", new WebAppInfo(miniAppUrl))]);
+        }
+
+        rows.Add([InlineKeyboardButton.WithUrl("Открыть админку", url)]);
+        rows.Add([InlineKeyboardButton.WithCallbackData("🏠 Главное меню", TelegramBotCallback.Main)]);
+        var keyboard = new InlineKeyboardMarkup(rows);
 
         return _ui.RenderAsync(chatId, messageId, text, keyboard, cancellationToken);
     }

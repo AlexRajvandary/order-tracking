@@ -11,7 +11,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import type { VisibilityState } from '@tanstack/react-table'
 import * as authApi from '@/features/auth/api/authApi'
-import { loginWithTelegram as telegramLoginApi } from '@/features/auth/api/telegramAuth'
+import { loginWithTelegram as telegramLoginApi, loginWithTelegramMiniApp } from '@/features/auth/api/telegramAuth'
 import type { TelegramAuthPayload } from '@/features/admins/types'
 import {
   getTableColumnVisibility,
@@ -23,6 +23,7 @@ import {
 } from '@/features/auth/lib/userSettingsStorage'
 import type { CurrentUser, UserSettings } from '@/features/auth/types'
 import { registerAuthHolder } from '@/shared/api/authorizedClient'
+import { getTelegramWebApp, initializeTelegramMiniApp } from '@/shared/lib/telegram-mini-app'
 
 type AuthState = {
   user: CurrentUser | null
@@ -96,6 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearSession, navigate])
 
   useEffect(() => {
+    return initializeTelegramMiniApp()
+  }, [])
+
+  useEffect(() => {
     registerAuthHolder({
       getAccessToken: () => accessTokenRef.current,
       setAccessToken,
@@ -107,11 +112,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false
 
     async function restoreSession() {
+      const initData = getTelegramWebApp()?.initData
       try {
-        const tokens = await authApi.refreshSession()
-        if (cancelled) return
-        setAccessToken(tokens.accessToken)
-        applyUser(tokens.user)
+        if (initData) {
+          // Telegram identity takes precedence over any refresh cookie shared by the WebView.
+          const tokens = await loginWithTelegramMiniApp(initData)
+          if (cancelled) return
+          setAccessToken(tokens.accessToken)
+          applyUser(tokens.user)
+        } else {
+          const tokens = await authApi.refreshSession()
+          if (cancelled) return
+          setAccessToken(tokens.accessToken)
+          applyUser(tokens.user)
+        }
       } catch {
         if (!cancelled) {
           clearSession()

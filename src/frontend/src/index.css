@@ -134,3 +134,47 @@
     min-height: 100vh;
   }
 }
+
+html.telegram-mini-app,
+html.telegram-mini-app body,
+html.telegram-mini-app #root {
+  min-height: var(--tg-viewport-height, 100dvh);
+  overscroll-behavior: none;
+}
+
+html.telegram-mini-app body {
+  overflow-x: hidden;
+  touch-action: pan-x pan-y;
+}
+
+html.telegram-mini-app input,
+html.telegram-mini-app textarea,
+html.telegram-mini-app select {
+  font-size: 16px !important;
+}
+
+html.telegram-mini-app button,
+html.telegram-mini-app a,
+html.telegram-mini-app [role='button'] {
+  touch-action: manipulation;
+}
+
+html.telegram-mini-app button:not([data-icon-only='true']),
+html.telegram-mini-app [role='button'] {
+  min-height: 44px;
+}
+
+html.telegram-mini-app [data-slot='dialog-content'] {
+  max-height: calc(
+    var(--tg-viewport-height, 100dvh)
+    - max(1.5rem, var(--tg-safe-top, 0px), var(--tg-content-safe-top, 0px))
+    - max(1.5rem, var(--tg-safe-bottom, 0px), var(--tg-content-safe-bottom, 0px))
+  );
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+html.telegram-mini-app [data-slot='sheet-content'] {
+  padding-top: max(1rem, var(--tg-safe-top, 0px), var(--tg-content-safe-top, 0px));
+  padding-bottom: max(1rem, var(--tg-safe-bottom, 0px), var(--tg-content-safe-bottom, 0px));
+}

@@ -13,6 +13,13 @@ export function loginWithTelegram(payload: TelegramAuthPayload) {
   })
 }
 
+export function loginWithTelegramMiniApp(initData: string) {
+  return apiFetch<AuthTokens>('/auth/telegram-mini-app', {
+    method: 'POST',
+    body: JSON.stringify({ initData }),
+  })
+}
+
 /** Telegram Login Widget raw user → API payload */
 export function mapTelegramWidgetUser(user: Record<string, unknown>): TelegramAuthPayload {
   return {

@@ -47,6 +47,7 @@ import {
 } from '@/shared/ui/sheet'
 import { cn } from '@/shared/lib/utils'
 import type { AdminRole } from '@/features/admins/types'
+import { getTelegramWebApp, isTelegramMiniApp } from '@/shared/lib/telegram-mini-app'
 
 const operationalRoles: AdminRole[] = ['Moderator', 'Admin', 'SuperAdmin']
 const allRoles: AdminRole[] = ['Buyer', ...operationalRoles]
@@ -120,6 +121,39 @@ export function AdminShell() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordChanged, setPasswordChanged] = useState(false)
   const currentLanguage = i18n.language?.startsWith('en') ? 'en' : 'ru'
+  const miniApp = isTelegramMiniApp()
+
+  useEffect(() => {
+    if (!miniApp) return
+    const webApp = getTelegramWebApp()
+    if (!webApp) return
+
+    const back = () => {
+      if (menuOpen) {
+        setMenuOpen(false)
+        return
+      }
+      if (passwordDialogOpen) {
+        setPasswordDialogOpen(false)
+        return
+      }
+
+      const path = location.pathname
+      const parent = path === '/admin/orders/new' ? '/admin/orders'
+        : /^\/admin\/orders\/[^/]+/.test(path) ? '/admin/orders'
+          : /^\/admin\/customers\/[^/]+/.test(path) ? '/admin/customers'
+            : /^\/admin\/products\/[^/]+/.test(path) ? '/admin/products'
+              : /^\/admin\/audit\/[^/]+/.test(path) ? '/admin/audit'
+                : path.startsWith('/admin/procurements/') ? '/admin/procurements'
+                  : '/admin'
+      navigate(parent, { replace: true })
+    }
+
+    if (location.pathname === '/admin') webApp.BackButton.hide()
+    else webApp.BackButton.show()
+    webApp.BackButton.onClick(back)
+    return () => webApp.BackButton.offClick(back)
+  }, [location.pathname, menuOpen, miniApp, navigate, passwordDialogOpen])
 
   useEffect(() => {
     if (user?.role === 'Buyer' && location.pathname !== '/admin/procurements') {
@@ -155,9 +189,22 @@ export function AdminShell() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/80">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
+    <div
+      className={cn('min-h-screen bg-background', miniApp && 'telegram-mini-app-shell')}
+      style={miniApp ? { minHeight: 'var(--tg-viewport-height, 100dvh)' } : undefined}
+    >
+      <header
+        className="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/80"
+        style={miniApp ? { backgroundColor: 'var(--tg-app-background, var(--card))' } : undefined}
+      >
+        <div
+          className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3"
+          style={miniApp ? {
+            paddingTop: 'max(0.75rem, env(safe-area-inset-top), var(--tg-safe-top, 0px), var(--tg-content-safe-top, 0px))',
+            paddingLeft: 'max(1rem, env(safe-area-inset-left), var(--tg-safe-left, 0px), var(--tg-content-safe-left, 0px))',
+            paddingRight: 'max(1rem, env(safe-area-inset-right), var(--tg-safe-right, 0px), var(--tg-content-safe-right, 0px))',
+          } : undefined}
+        >
           <Button
             variant="ghost"
             size="icon-sm"
@@ -359,7 +406,14 @@ export function AdminShell() {
         </DialogContent>
       </Dialog>
 
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main
+        className="mx-auto max-w-6xl px-4 py-6"
+        style={miniApp ? {
+          paddingLeft: 'max(1rem, env(safe-area-inset-left), var(--tg-safe-left, 0px), var(--tg-content-safe-left, 0px))',
+          paddingRight: 'max(1rem, env(safe-area-inset-right), var(--tg-safe-right, 0px), var(--tg-content-safe-right, 0px))',
+          paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom), var(--tg-safe-bottom, 0px), var(--tg-content-safe-bottom, 0px))',
+        } : undefined}
+      >
         <Outlet />
       </main>
     </div>

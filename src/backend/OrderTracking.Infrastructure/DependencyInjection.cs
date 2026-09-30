@@ -131,6 +131,7 @@ public static class DependencyInjection
         services.AddScoped<IStatusDefinitionRepository, StatusDefinitionRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<ITelegramOutboxRepository, TelegramOutboxRepository>();
+        services.AddScoped<ITelegramBotActorContext, TelegramBot.Auth.TelegramBotActorContext>();
 
         services.AddSingleton<TelegramBot.TelegramWorkQueue>();
         services.AddSingleton(sp =>

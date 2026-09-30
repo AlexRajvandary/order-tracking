@@ -1,7 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MediatR;
 using OrderTracking.Application.Common.Interfaces;
 using OrderTracking.Application.Common.Persistence;
+using OrderTracking.Application.Orders.UpdateOrderStatus;
+using OrderTracking.Application.Orders.DeleteOrder;
 using OrderTracking.Infrastructure.TelegramBot.Ui;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -161,7 +164,7 @@ internal sealed class TelegramBotOrdersScreen
             listPage,
             notificationContext,
             hasAttachedPhoto,
-            order => $"<b>Действия · #{TelegramBotText.Escape(order.TrackingCode)}</b>",
+            order => $"<b>Управление · #{TelegramBotText.Escape(order.TrackingCode)}</b>\nТекущий статус: {TelegramBotText.Escape(order.Status.ToString())}",
             order => _keyboardBuilder.BuildActions(order, listPage, notificationContext),
             cancellationToken);
     }
@@ -206,6 +209,70 @@ internal sealed class TelegramBotOrdersScreen
             _messageFormatter.FormatHistory,
             order => _keyboardBuilder.BuildSubviewBack(order.Id, listPage, notificationContext),
             cancellationToken);
+    }
+
+    public async Task SetOrderStatusAsync(
+        long chatId,
+        int messageId,
+        Guid orderId,
+        int listPage,
+        OrderTracking.Domain.Enums.OrderStatus status,
+        bool notificationContext,
+        bool hasAttachedPhoto,
+        TelegramBotAdminContext admin,
+        CancellationToken cancellationToken)
+    {
+        using (var scope = _runtime.ScopeFactory.CreateScope())
+        {
+            var actor = scope.ServiceProvider.GetRequiredService<ITelegramBotActorContext>();
+            actor.AdminId = admin.AdminId;
+            actor.Login = admin.Login;
+            actor.Role = admin.Role;
+            await scope.ServiceProvider.GetRequiredService<IMediator>()
+                .Send(new UpdateOrderStatusCommand(orderId, status), cancellationToken);
+        }
+
+        if (notificationContext)
+        {
+            await RenderNotificationCardAsync(chatId, messageId, orderId, hasAttachedPhoto, cancellationToken);
+        }
+        else
+        {
+            await RenderCardAsync(chatId, messageId, orderId, listPage, cancellationToken);
+        }
+    }
+
+    public async Task HandleDeleteAsync(
+        long chatId,
+        int messageId,
+        Guid orderId,
+        int listPage,
+        bool confirm,
+        TelegramBotAdminContext admin,
+        CancellationToken cancellationToken)
+    {
+        if (!confirm)
+        {
+            await _ui.RenderAsync(
+                chatId,
+                messageId,
+                "<b>Удалить заявку?</b>\nЭто действие уберёт её из активного списка.",
+                _keyboardBuilder.BuildDeleteConfirmation(orderId, listPage),
+                cancellationToken);
+            return;
+        }
+
+        using (var scope = _runtime.ScopeFactory.CreateScope())
+        {
+            var actor = scope.ServiceProvider.GetRequiredService<ITelegramBotActorContext>();
+            actor.AdminId = admin.AdminId;
+            actor.Login = admin.Login;
+            actor.Role = admin.Role;
+            await scope.ServiceProvider.GetRequiredService<IMediator>()
+                .Send(new DeleteOrderCommand(orderId), cancellationToken);
+        }
+
+        await RenderPageAsync(chatId, messageId, listPage, cancellationToken);
     }
 
     private async Task RenderCardCoreAsync(

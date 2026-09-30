@@ -252,7 +252,7 @@ function BoardLane({ stage, groups, mobile = false }: { stage: BoardStage; group
   const count = stage === 'purchase' ? purchaseRows.length : groups.length
   return (
     <section className="min-w-0">
-      <div className={`mb-3 flex items-center justify-between gap-2 ${mobile ? 'min-h-9' : 'h-8'}`}><h2 className={mobile ? 'text-xl font-semibold tracking-tight' : 'text-sm font-semibold'}>{t(`board.stages.${stage}`)}</h2>{mobile ? <span className="text-sm text-muted-foreground">{t(stage === 'purchase' ? 'board.positionCount' : 'board.orderCount', { count })}</span> : <Badge variant="secondary">{count}</Badge>}</div>
+      <div className={`mb-3 flex items-center gap-2 ${mobile ? 'min-h-9 justify-between' : 'h-8 justify-start'}`}><h2 className={mobile ? 'text-xl font-semibold tracking-tight' : 'text-sm font-semibold'}>{t(`board.stages.${stage}`)}</h2><span className={mobile ? 'text-sm text-muted-foreground' : 'text-xs text-muted-foreground'}>{t(stage === 'purchase' ? 'board.positionCount' : 'board.orderCount', { count })}</span></div>
       {stage === 'moscow' ? <MoscowGroups groups={groups} /> : <div className="space-y-3">{stage === 'purchase' ? purchaseRows.map((item) => <PurchaseItemCard key={item.row.id} {...item} />) : groups.map((group) => <OrderCard key={group.orderId} group={group} stage={stage} />)}</div>}
       {!count ? <EmptyLane purchase={stage === 'purchase'} /> : null}
     </section>
@@ -280,8 +280,8 @@ function MobileBoard({ groups }: { groups: OrderGroup[] }) {
   return (
     <Tabs value={active} onValueChange={(value) => activate(value as BoardStage)} className="min-w-0 gap-4">
       <TabsList className="grid h-12 w-full grid-cols-4 rounded-2xl p-1">{stages.map((stage) => <TabsTrigger key={stage} value={stage} className="group min-w-0 gap-1 rounded-xl px-1 text-xs"><span className="truncate">{t(`board.mobileStages.${stage}`)}</span><span className="rounded-full bg-background/70 px-1.5 text-[10px] tabular-nums group-data-[state=active]:bg-blue-50 group-data-[state=active]:text-blue-700">{countFor(stage)}</span></TabsTrigger>)}</TabsList>
-      <div ref={scrollerRef} className="-mx-1 flex snap-x snap-mandatory overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" onScroll={syncFromScroll}>
-        {stages.map((stage) => <TabsContent key={stage} value={stage} forceMount className="mt-0 block w-full min-w-full shrink-0 snap-start data-[state=inactive]:block"><BoardLane mobile stage={stage} groups={groups.filter((group) => group.stage === stage)} /></TabsContent>)}
+      <div ref={scrollerRef} className="flex min-h-[calc(100dvh-13rem)] w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain touch-pan-x touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" onScroll={syncFromScroll}>
+        {stages.map((stage, index) => <TabsContent key={stage} value={stage} forceMount className={`mt-0 block min-h-full w-full min-w-full shrink-0 snap-start snap-always data-[state=inactive]:block ${index < stages.length - 1 ? 'pr-5' : ''}`}><BoardLane mobile stage={stage} groups={groups.filter((group) => group.stage === stage)} /></TabsContent>)}
       </div>
     </Tabs>
   )

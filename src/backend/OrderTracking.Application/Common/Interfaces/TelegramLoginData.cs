@@ -7,4 +7,5 @@ public sealed record TelegramLoginData(
     string? Username,
     string? PhotoUrl,
     long AuthDate,
-    string Hash);
+    string Hash,
+    string? MiniAppInitData = null);

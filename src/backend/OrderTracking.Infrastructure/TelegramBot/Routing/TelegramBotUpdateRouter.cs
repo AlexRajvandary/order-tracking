@@ -272,6 +272,39 @@ internal sealed class TelegramBotUpdateRouter
                 return;
             }
 
+            if (TelegramBotCallback.TryParseOrderStatus(
+                    data,
+                    out var statusOrderId,
+                    out var statusPage,
+                    out var orderStatus,
+                    out var statusNotificationContext))
+            {
+                await _orders.SetOrderStatusAsync(
+                    chatId.Value,
+                    messageId.Value,
+                    statusOrderId,
+                    statusPage,
+                    orderStatus,
+                    statusNotificationContext,
+                    callback.Message?.Photo is { Length: > 0 },
+                    admin,
+                    cancellationToken);
+                return;
+            }
+
+            if (TelegramBotCallback.TryParseOrderDelete(data, out var deleteOrderId, out var deletePage, out var confirmDelete))
+            {
+                await _orders.HandleDeleteAsync(
+                    chatId.Value,
+                    messageId.Value,
+                    deleteOrderId,
+                    deletePage,
+                    confirmDelete,
+                    admin,
+                    cancellationToken);
+                return;
+            }
+
             // Regular bot navigation sends a new message. Only a new-order notification
             // and its Back button edit the notification in place.
             int? navigationMessageId = null;
@@ -299,7 +332,7 @@ internal sealed class TelegramBotUpdateRouter
             if (data.StartsWith(TelegramBotCallback.OrdersPagePrefix, StringComparison.Ordinal))
             {
                 var page = int.TryParse(data[TelegramBotCallback.OrdersPagePrefix.Length..], out var p) ? p : 1;
-                await _orders.RenderPageAsync(chatId.Value, navigationMessageId, page, cancellationToken);
+                await _orders.RenderPageAsync(chatId.Value, messageId, page, cancellationToken);
                 return;
             }
 
@@ -364,7 +397,7 @@ internal sealed class TelegramBotUpdateRouter
             if (data.StartsWith(TelegramBotCallback.CustomersPagePrefix, StringComparison.Ordinal))
             {
                 var page = int.TryParse(data[TelegramBotCallback.CustomersPagePrefix.Length..], out var p) ? p : 1;
-                await _customers.RenderPageAsync(chatId.Value, navigationMessageId, page, cancellationToken);
+                await _customers.RenderPageAsync(chatId.Value, messageId, page, cancellationToken);
                 return;
             }
 
@@ -405,7 +438,7 @@ internal sealed class TelegramBotUpdateRouter
                 }
 
                 var page = int.TryParse(data[TelegramBotCallback.AdminsPagePrefix.Length..], out var p) ? p : 1;
-                await _admins.RenderPageAsync(chatId.Value, navigationMessageId, page, cancellationToken);
+                await _admins.RenderPageAsync(chatId.Value, messageId, page, cancellationToken);
                 return;
             }
 

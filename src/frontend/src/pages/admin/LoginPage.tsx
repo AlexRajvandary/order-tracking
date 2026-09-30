@@ -9,6 +9,7 @@ import { ApiError } from '@/shared/api/client'
 import { LoginForm } from '@/shared/login-form'
 import { LanguageSwitcher } from '@/shared/i18n/LanguageSwitcher'
 import { Globe } from '@/shared/ui/globe'
+import { isTelegramMiniApp } from '@/shared/lib/telegram-mini-app'
 
 export function LoginPage() {
   const { t } = useTranslation('auth')
@@ -18,6 +19,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [telegramHint, setTelegramHint] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const miniApp = isTelegramMiniApp()
 
   const { data: telegramConfig } = useQuery({
     queryKey: ['telegram-config'],
@@ -26,6 +28,28 @@ export function LoginPage() {
 
   if (!isLoading && isAuthenticated) {
     return <Navigate to="/admin" replace />
+  }
+
+  if (miniApp) {
+    return (
+      <div className="flex min-h-svh items-center justify-center p-5">
+        <div className="w-full max-w-sm rounded-2xl border bg-card p-6 text-center shadow-sm">
+          <p className="text-lg font-semibold">{t('login.brand')}</p>
+          <p className="mt-3 text-sm text-muted-foreground" role="status" aria-live="polite">
+            {isLoading ? t('login.miniAppLoading') : t('login.miniAppFailed')}
+          </p>
+          {!isLoading ? (
+            <button
+              type="button"
+              className="mt-5 min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground"
+              onClick={() => window.location.reload()}
+            >
+              {t('login.miniAppRetry')}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    )
   }
 
   return (

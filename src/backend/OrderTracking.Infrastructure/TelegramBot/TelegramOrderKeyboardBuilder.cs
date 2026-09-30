@@ -29,7 +29,9 @@ internal sealed class TelegramOrderKeyboardBuilder
         var kind = TelegramOrderKindMapper.GetKind(order);
         var rows = new List<InlineKeyboardButton[]>();
 
-        rows.Add([InlineKeyboardButton.WithUrl(GetPrimaryAction(order.Status, kind), GetAdminUrl(order.Id))]);
+        rows.Add([InlineKeyboardButton.WithCallbackData(
+            "🛠 Управлять заявкой",
+            TelegramBotCallback.OrderActions(order.Id, listPage))]);
 
         var secondRow = new List<InlineKeyboardButton>
         {
@@ -53,7 +55,7 @@ internal sealed class TelegramOrderKeyboardBuilder
         }
         else
         {
-            secondRow.Add(InlineKeyboardButton.WithUrl("Открыть заявку", GetAdminUrl(order.Id)));
+            secondRow.Add(InlineKeyboardButton.WithUrl("🌐 Админка", GetAdminUrl(order.Id)));
         }
 
         rows.Add(secondRow.ToArray());
@@ -93,14 +95,24 @@ internal sealed class TelegramOrderKeyboardBuilder
             rows.Add([InlineKeyboardButton.WithCallbackData("История", historyCallback)]);
         }
 
-        rows.Add([
-            InlineKeyboardButton.WithUrl("Изменить статус", adminUrl),
-            InlineKeyboardButton.WithUrl("Отменить", adminUrl),
-        ]);
+        rows.Add([InlineKeyboardButton.WithCallbackData("Статус: ожидает оплаты", TelegramBotCallback.OrderSetStatus(order.Id, listPage, OrderStatus.AwaitingPayment, notificationContext))]);
+        rows.Add([InlineKeyboardButton.WithCallbackData("Статус: в работе", TelegramBotCallback.OrderSetStatus(order.Id, listPage, OrderStatus.InProgress, notificationContext))]);
+        rows.Add([InlineKeyboardButton.WithCallbackData("Статус: завершён", TelegramBotCallback.OrderSetStatus(order.Id, listPage, OrderStatus.Completed, notificationContext))]);
+        rows.Add([InlineKeyboardButton.WithCallbackData("Статус: отменён", TelegramBotCallback.OrderSetStatus(order.Id, listPage, OrderStatus.Cancelled, notificationContext))]);
         rows.Add([InlineKeyboardButton.WithUrl("Открыть в админке", adminUrl)]);
+        rows.Add([InlineKeyboardButton.WithCallbackData("🗑 Удалить заявку", TelegramBotCallback.OrderDelete(order.Id, listPage))]);
         rows.Add([InlineKeyboardButton.WithCallbackData("← Назад", backCallback)]);
 
         return new InlineKeyboardMarkup(rows);
+    }
+
+    public InlineKeyboardMarkup BuildDeleteConfirmation(Guid orderId, int listPage)
+    {
+        return new InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton.WithCallbackData("Подтвердить удаление", TelegramBotCallback.OrderDelete(orderId, listPage, confirm: true))],
+            [InlineKeyboardButton.WithCallbackData("← Назад", TelegramBotCallback.OrderActions(orderId, listPage))],
+        ]);
     }
 
     public InlineKeyboardMarkup BuildSubviewBack(Guid orderId, int listPage, bool notificationContext)
@@ -116,28 +128,6 @@ internal sealed class TelegramOrderKeyboardBuilder
     private string GetAdminUrl(Guid orderId)
     {
         return $"{_baseUrl}/admin/orders/{orderId}";
-    }
-
-    private static string GetPrimaryAction(OrderStatus status, TelegramOrderKind kind)
-    {
-        if (status == OrderStatus.AwaitingPayment)
-        {
-            return kind switch
-            {
-                TelegramOrderKind.IndividualRequest => "Взять в работу",
-                TelegramOrderKind.Auction => "🔨 Сделать ставку",
-                TelegramOrderKind.Tickets => "🎫 Добавить вариант",
-                _ => "💳 Оплата получена",
-            };
-        }
-
-        return status switch
-        {
-            OrderStatus.InProgress => "Обновить заявку",
-            OrderStatus.Completed => "Открыть завершённую заявку",
-            OrderStatus.Cancelled => "Открыть отменённую заявку",
-            _ => "Открыть заявку",
-        };
     }
 
     private static bool IsWebUrl(string? value)
