@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Products.Api.Auth;
 using Products.Api.Middleware;
+using Products.Api.Services;
 using Products.Application;
 using Products.Infrastructure;
 using Products.Infrastructure.Persistence;
@@ -29,6 +30,8 @@ try
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddProductsAuth(builder.Configuration);
+    builder.Services.AddScoped<CatalogAnalyticsCacheService>();
+    builder.Services.AddHostedService<CatalogAnalyticsRefreshService>();
 
     builder.Services.AddControllers()
         .AddJsonOptions(options =>

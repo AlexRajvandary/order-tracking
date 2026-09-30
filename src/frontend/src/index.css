@@ -147,6 +147,22 @@ html.telegram-mini-app body {
   touch-action: pan-x pan-y;
 }
 
+html.telegram-mini-app h1,
+html.telegram-mini-app [data-slot='card-title'].text-2xl {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+
+html.telegram-mini-app h2 {
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+}
+
+html.telegram-mini-app h3 {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
 html.telegram-mini-app {
   --tg-navigation-top-offset: max(
     3.5rem,
