@@ -78,7 +78,8 @@ public sealed record CreateOrderItemDto(
     string? ImageUrl = null,
     string? AffiliateUrl = null,
     string? ShopCode = null,
-    string? ShopName = null);
+    string? ShopName = null,
+    bool SkipPreviewExtraction = false);
 
 public sealed record CreateOrderDeliveryAddressDto(
     string? City,

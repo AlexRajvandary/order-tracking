@@ -75,9 +75,18 @@ export type CreateOrderItemInput = {
   itemType: 'Product' | 'Service'
   name: string
   description?: string | null
+  sourceUrl?: string | null
   quantity?: number
   unitPrice?: number | null
   currencyCode?: CurrencyCode | null
+  skipPreviewExtraction?: boolean
+}
+
+export type OrderItemImage = {
+  primaryImageUrl: string | null
+  hasManualImage: boolean
+  hasPreviewImage: boolean
+  previewImageSource: string | null
 }
 
 export type UpsertOrderItemRequest = {

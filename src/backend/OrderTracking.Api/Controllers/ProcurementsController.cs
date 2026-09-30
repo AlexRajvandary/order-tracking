@@ -6,6 +6,7 @@ using OrderTracking.Domain.Common;
 using OrderTracking.Domain.Entities;
 using OrderTracking.Domain.Enums;
 using OrderTracking.Infrastructure.Persistence;
+using OrderTracking.Infrastructure.ProductPreviews;
 
 namespace OrderTracking.Api.Controllers;
 
@@ -15,7 +16,8 @@ namespace OrderTracking.Api.Controllers;
 public sealed class ProcurementsController(
     ApplicationDbContext db,
     IObjectStorage? objectStorage = null,
-    ILogger<ProcurementsController>? logger = null) : ControllerBase
+    ILogger<ProcurementsController>? logger = null,
+    ProductPreviewQueue? previewQueue = null) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<ProcurementRowDto>>> GetAll(
@@ -68,6 +70,14 @@ public sealed class ProcurementsController(
         order.Status = OrderStatus.InProgress;
         await db.SaveChangesAsync(cancellationToken);
 
+        if (previewQueue is not null)
+        {
+            foreach (var item in order.Items.Where(item => item.ManualImageObjectKey is null && item.PreviewImageObjectKey is null))
+            {
+                previewQueue.TryEnqueue(item.Id, item.SourceUrl);
+            }
+        }
+
         var rows = await ProjectRows(db.OrderItemProcurements
                 .AsNoTracking()
                 .Where(row => row.OrderItem.OrderId == orderId)
@@ -85,6 +95,7 @@ public sealed class ProcurementsController(
     {
         var row = await db.OrderItemProcurements
             .Include(value => value.Attachments)
+            .Include(value => value.OrderItem)
             .FirstOrDefaultAsync(value => value.Id == id, cancellationToken);
 
         if (row is null)
@@ -92,7 +103,18 @@ public sealed class ProcurementsController(
             return NotFound();
         }
 
+        var oldPurchaseUrl = row.PurchaseUrl;
+        var oldPreviewObjectKey = row.OrderItem.PreviewImageObjectKey;
         row.PurchaseUrl = Normalize(request.PurchaseUrl);
+        var purchaseUrlChanged = !string.Equals(oldPurchaseUrl, row.PurchaseUrl, StringComparison.Ordinal);
+        if (purchaseUrlChanged)
+        {
+            row.OrderItem.PreviewImageObjectKey = null;
+            row.OrderItem.PreviewImageContentType = null;
+            row.OrderItem.PreviewImageSource = null;
+            row.OrderItem.PreviewSourceUrl = null;
+            row.OrderItem.PreviewFetchedAt = null;
+        }
         row.PurchaseStatus = request.PurchaseStatus;
         row.PurchasePrice = request.PurchasePrice;
         row.PurchaseCurrencyCode = NormalizeCurrency(request.PurchaseCurrencyCode);
@@ -110,6 +132,23 @@ public sealed class ProcurementsController(
         row.ShippedAt = request.ShippedAt;
 
         await db.SaveChangesAsync(cancellationToken);
+
+        if (purchaseUrlChanged && oldPreviewObjectKey is not null && objectStorage is not null)
+        {
+            try
+            {
+                await objectStorage.DeleteAsync(oldPreviewObjectKey, cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                logger?.LogWarning(exception, "Could not delete stale product preview {ObjectKey}", oldPreviewObjectKey);
+            }
+        }
+
+        if (purchaseUrlChanged && row.OrderItem.ManualImageObjectKey is null)
+        {
+            previewQueue?.TryEnqueue(row.OrderItemId, row.PurchaseUrl);
+        }
 
         var result = await ProjectRows(db.OrderItemProcurements
                 .AsNoTracking()
@@ -166,7 +205,14 @@ public sealed class ProcurementsController(
             value.OrderItemId,
             value.OrderItem.Name,
             value.OrderItem.SourceUrl,
-            value.OrderItem.ImageUrl,
+            value.OrderItem.ManualImageObjectKey != null
+                ? $"/api/v1/order-items/{value.OrderItemId}/image"
+                : value.OrderItem.ImageUrl ?? (value.OrderItem.PreviewImageObjectKey != null
+                    ? $"/api/v1/order-items/{value.OrderItemId}/image"
+                    : null),
+            value.OrderItem.ManualImageObjectKey != null,
+            value.OrderItem.PreviewImageObjectKey != null,
+            value.OrderItem.PreviewImageSource,
             value.OrderItem.Description,
             value.OrderItem.ShopName,
             value.OrderItem.ProductSource,
@@ -222,6 +268,9 @@ public sealed record ProcurementRowDto(
     string ItemName,
     string? ProductUrl,
     string? ProductImageUrl,
+    bool HasManualImage,
+    bool HasPreviewImage,
+    string? PreviewImageSource,
     string? ItemDescription,
     string? ShopName,
     string ProductSource,

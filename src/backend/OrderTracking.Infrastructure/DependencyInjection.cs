@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +12,7 @@ using OrderTracking.Infrastructure.Monitoring;
 using OrderTracking.Infrastructure.Persistence;
 using OrderTracking.Infrastructure.Persistence.Interceptors;
 using OrderTracking.Infrastructure.Persistence.Repositories;
+using OrderTracking.Infrastructure.ProductPreviews;
 using OrderTracking.Infrastructure.Services;
 using OrderTracking.Infrastructure.Storage;
 using OrderTracking.Infrastructure.TelegramBot;
@@ -68,6 +71,33 @@ public static class DependencyInjection
         services.AddScoped<IAuditService, AuditService>();
         services.AddSingleton<IObjectStorage, MinioObjectStorage>();
         services.AddSingleton<IImageCompressor, ImageSharpCompressor>();
+        services.AddSingleton<ProductPreviewQueue>();
+        services.AddScoped<ProductPreviewExtractor>();
+        services.AddHttpClient("ProductPreview", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("OrderTrackingPreviewBot/1.0");
+        }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            ConnectCallback = async (context, cancellationToken) =>
+            {
+                var addresses = await Dns.GetHostAddressesAsync(context.DnsEndPoint.Host, cancellationToken);
+                var address = addresses.FirstOrDefault(ProductPreviewSsrfGuard.IsPublicAddress)
+                    ?? throw new HttpRequestException("Target host does not resolve to a public address.");
+                var socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                try
+                {
+                    await socket.ConnectAsync(new IPEndPoint(address, context.DnsEndPoint.Port), cancellationToken);
+                    return new NetworkStream(socket, ownsSocket: true);
+                }
+                catch
+                {
+                    socket.Dispose();
+                    throw;
+                }
+            },
+        });
         services.AddScoped<IStorageMetricsService, StorageMetricsService>();
         services.AddHttpClient<IProductCatalogClient, ProductCatalogClient>((_, client) =>
         {
@@ -139,6 +169,7 @@ public static class DependencyInjection
         services.AddHostedService<TelegramBot.TelegramDailyOrdersCsvBackgroundService>();
 
         services.AddHostedService<Background.StatusPublishBackgroundService>();
+        services.AddHostedService<ProductPreviewBackgroundService>();
 
         return services;
     }

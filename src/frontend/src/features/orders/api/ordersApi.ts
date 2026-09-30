@@ -4,6 +4,7 @@ import type {
   CreateOrderRequest,
   OrderDetails,
   OrderItem,
+  OrderItemImage,
   OrderListItem,
   OrderStatus,
   PaginatedResponse,
@@ -46,6 +47,16 @@ export function createOrder(request: CreateOrderRequest) {
     method: 'POST',
     body: JSON.stringify(request),
   })
+}
+
+export function uploadOrderItemImage(itemId: string, file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  return authorizedUpload<OrderItemImage>(`/order-items/${itemId}/image`, form)
+}
+
+export function deleteOrderItemImage(itemId: string) {
+  return authorizedJson<OrderItemImage>(`/order-items/${itemId}/image`, { method: 'DELETE' })
 }
 
 /** AI parse → order draft for autofill. Does not create an order. */

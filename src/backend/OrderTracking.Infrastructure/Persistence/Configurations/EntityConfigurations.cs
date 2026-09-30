@@ -213,6 +213,12 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.Property(e => e.ProductSource).HasMaxLength(30).IsRequired();
         builder.Property(e => e.ExternalProductId).HasMaxLength(300);
         builder.Property(e => e.ImageUrl).HasMaxLength(2000);
+        builder.Property(e => e.ManualImageObjectKey).HasMaxLength(1000);
+        builder.Property(e => e.ManualImageContentType).HasMaxLength(100);
+        builder.Property(e => e.PreviewImageObjectKey).HasMaxLength(1000);
+        builder.Property(e => e.PreviewImageContentType).HasMaxLength(100);
+        builder.Property(e => e.PreviewImageSource).HasMaxLength(30);
+        builder.Property(e => e.PreviewSourceUrl).HasMaxLength(2048);
         builder.Property(e => e.AffiliateUrl).HasMaxLength(2000);
         builder.Property(e => e.ShopCode).HasMaxLength(200);
         builder.Property(e => e.ShopName).HasMaxLength(500);

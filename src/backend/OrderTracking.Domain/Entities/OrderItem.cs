@@ -15,6 +15,13 @@ public class OrderItem : AuditableEntity
     public Guid? CatalogProductId { get; set; }
     public string? ExternalProductId { get; set; }
     public string? ImageUrl { get; set; }
+    public string? ManualImageObjectKey { get; set; }
+    public string? ManualImageContentType { get; set; }
+    public string? PreviewImageObjectKey { get; set; }
+    public string? PreviewImageContentType { get; set; }
+    public string? PreviewImageSource { get; set; }
+    public string? PreviewSourceUrl { get; set; }
+    public DateTimeOffset? PreviewFetchedAt { get; set; }
     public string? AffiliateUrl { get; set; }
     public string? ShopCode { get; set; }
     public string? ShopName { get; set; }

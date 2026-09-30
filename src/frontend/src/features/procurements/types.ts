@@ -22,6 +22,9 @@ export type ProcurementRow = {
   itemName: string
   productUrl: string | null
   productImageUrl: string | null
+  hasManualImage: boolean
+  hasPreviewImage: boolean
+  previewImageSource: string | null
   itemDescription: string | null
   shopName: string | null
   productSource: string

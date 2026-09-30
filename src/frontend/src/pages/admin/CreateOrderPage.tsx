@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Trash2 } from 'lucide-react'
+import { ImagePlus, Plus, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as customersApi from '@/features/customers/api/customersApi'
@@ -10,6 +10,7 @@ import type {
   AiOrderDraft,
   CreateOrderDeliveryAddress,
   CreateOrderItemInput,
+  CreateOrderRequest,
   CurrencyCode,
 } from '@/features/orders/types'
 import { ApiError } from '@/shared/api/client'
@@ -38,6 +39,13 @@ type DraftItem = Omit<CreateOrderItemInput, 'quantity' | 'unitPrice'> & {
   key: string
   quantity: string
   unitPrice: number | null
+  manualImage: File | null
+  manualPreviewUrl: string | null
+}
+
+type CreateOrderSubmission = {
+  request: CreateOrderRequest
+  uploads: Array<{ index: number; file: File }>
 }
 
 type NewCustomerForm = {
@@ -159,7 +167,6 @@ function mapAiItems(draft: AiOrderDraft): DraftItem[] {
     .filter((item) => item.name?.trim() || item.url?.trim() || item.description?.trim())
     .map((item) => {
       const url = item.url?.trim() || ''
-      const descriptionParts = [item.description?.trim(), url].filter(Boolean)
       const itemType =
         item.itemType?.toLowerCase() === 'service' ? ('Service' as const) : ('Product' as const)
       const quantity =
@@ -171,11 +178,15 @@ function mapAiItems(draft: AiOrderDraft): DraftItem[] {
         key: crypto.randomUUID(),
         itemType,
         name: (item.name?.trim() || url || item.description?.trim() || '').slice(0, 500),
-        description: descriptionParts.join('\n') || null,
+        description: item.description?.trim() || null,
+        sourceUrl: url || null,
+        skipPreviewExtraction: false,
         quantity,
         unitPrice:
           item.unitPrice != null && Number.isFinite(item.unitPrice) ? item.unitPrice : null,
         currencyCode: toCurrency(item.currencyCode),
+        manualImage: null,
+        manualPreviewUrl: null,
       }
     })
 }
@@ -297,7 +308,21 @@ export function CreateOrderPage() {
   )
 
   const createMutation = useMutation({
-    mutationFn: ordersApi.createOrder,
+    mutationFn: async ({ request, uploads }: CreateOrderSubmission) => {
+      const order = await ordersApi.createOrder(request)
+      await Promise.all(
+        uploads.map(({ index, file }) => {
+          const item = order.items[index]
+          return item
+            ? ordersApi.uploadOrderItemImage(item.id, file).catch(async (error) => {
+                await ordersApi.deleteOrderItemImage(item.id).catch(() => undefined)
+                throw error
+              })
+            : Promise.resolve()
+        }),
+      )
+      return order
+    },
     onSuccess: (order) => {
       navigate(`/admin/orders/${order.id}`, { replace: true })
     },
@@ -317,6 +342,10 @@ export function CreateOrderPage() {
         quantity: '1',
         unitPrice: null,
         currencyCode: 'RUB',
+        sourceUrl: null,
+        skipPreviewExtraction: false,
+        manualImage: null,
+        manualPreviewUrl: null,
       },
     ])
   }
@@ -676,7 +705,12 @@ export function CreateOrderPage() {
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
+                    onClick={() =>
+                      setItems((prev) => {
+                        if (item.manualPreviewUrl) URL.revokeObjectURL(item.manualPreviewUrl)
+                        return prev.filter((_, i) => i !== index)
+                      })
+                    }
                   >
                     <Trash2 className="text-destructive" />
                   </Button>
@@ -707,6 +741,94 @@ export function CreateOrderPage() {
                     )
                   }
                 />
+                {item.itemType === 'Product' ? (
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`source-url-${item.key}`}>{t('form.sourceUrl')}</Label>
+                    <Input
+                      id={`source-url-${item.key}`}
+                      type="url"
+                      placeholder="https://"
+                      value={item.sourceUrl ?? ''}
+                      onChange={(event) =>
+                        setItems((prev) =>
+                          prev.map((it, i) =>
+                            i === index ? { ...it, sourceUrl: event.target.value || null } : it,
+                          ),
+                        )
+                      }
+                    />
+                  </div>
+                ) : null}
+                {item.itemType === 'Product' ? (
+                  <div className="space-y-2">
+                    <Label>{t('form.productImage')}</Label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      {item.manualPreviewUrl ? (
+                        <img
+                          src={item.manualPreviewUrl}
+                          alt={t('form.productImagePreview')}
+                          className="size-20 rounded-lg border bg-muted object-cover"
+                        />
+                      ) : null}
+                      <Button type="button" variant="outline" size="sm" asChild>
+                        <label className="cursor-pointer">
+                          <ImagePlus />
+                          {item.manualImage ? t('form.replaceProductImage') : t('form.addProductImage')}
+                          <input
+                            className="sr-only"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0]
+                              event.target.value = ''
+                              if (!file) return
+                              if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                                setError(t('form.productImageUnsupported'))
+                                return
+                              }
+                              if (file.size > 10 * 1024 * 1024) {
+                                setError(t('form.productImageTooLarge'))
+                                return
+                              }
+                              setError(null)
+                              setItems((prev) =>
+                                prev.map((it, i) => {
+                                  if (i !== index) return it
+                                  if (it.manualPreviewUrl) URL.revokeObjectURL(it.manualPreviewUrl)
+                                  return {
+                                    ...it,
+                                    manualImage: file,
+                                    manualPreviewUrl: URL.createObjectURL(file),
+                                  }
+                                }),
+                              )
+                            }}
+                          />
+                        </label>
+                      </Button>
+                      {item.manualImage ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={t('form.removeProductImage')}
+                          onClick={() =>
+                            setItems((prev) =>
+                              prev.map((it, i) => {
+                                if (i !== index) return it
+                                if (it.manualPreviewUrl) URL.revokeObjectURL(it.manualPreviewUrl)
+                                return { ...it, manualImage: null, manualPreviewUrl: null }
+                              }),
+                            )
+                          }
+                        >
+                          <X />
+                        </Button>
+                      ) : null}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{t('form.productImageHint')}</p>
+                  </div>
+                ) : null}
                 <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-2">
                   <Input
                     type="number"
@@ -814,9 +936,9 @@ export function CreateOrderPage() {
             disabled={createMutation.isPending}
             onClick={() => {
               setError(null)
-              const validItems = items
-                .filter((i) => i.name.trim())
-                .map(({ itemType, name, description, quantity, unitPrice, currencyCode }) => {
+              const validDraftItems = items.filter((i) => i.name.trim())
+              const validItems = validDraftItems
+                .map(({ itemType, name, description, quantity, unitPrice, currencyCode, sourceUrl, manualImage }) => {
                   const parsedQuantity = Number(quantity)
                   return {
                     itemType,
@@ -828,8 +950,13 @@ export function CreateOrderPage() {
                         : 1,
                     unitPrice: unitPrice ?? null,
                     currencyCode: unitPrice == null ? null : (currencyCode ?? 'RUB'),
+                    sourceUrl: sourceUrl?.trim() || null,
+                    skipPreviewExtraction: Boolean(manualImage),
                   }
                 })
+              const uploads = validDraftItems.flatMap((item, index) =>
+                item.manualImage ? [{ index, file: item.manualImage }] : [],
+              )
 
               const creatingNew =
                 customerMode === 'new' && hasNewCustomerData(newCustomer)
@@ -852,11 +979,12 @@ export function CreateOrderPage() {
                   : null
 
               createMutation.mutate({
-                customerId:
+                request: {
+                  customerId:
                   customerMode === 'existing' && customerId !== NO_CUSTOMER
                     ? customerId
                     : null,
-                newCustomer: creatingNew
+                  newCustomer: creatingNew
                   ? {
                       lastName: newCustomer.lastName.trim() || null,
                       firstName: newCustomer.firstName.trim() || null,
@@ -868,10 +996,12 @@ export function CreateOrderPage() {
                       email: newCustomer.email.trim() || null,
                     }
                   : null,
-                deliveryAddressId: selectedAddress,
-                deliveryAddress: selectedAddress ? null : manualAddress,
-                adminNotes: adminNotes.trim() || null,
-                items: validItems,
+                  deliveryAddressId: selectedAddress,
+                  deliveryAddress: selectedAddress ? null : manualAddress,
+                  adminNotes: adminNotes.trim() || null,
+                  items: validItems,
+                },
+                uploads,
               })
             }}
           >

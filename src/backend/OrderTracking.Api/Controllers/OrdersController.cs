@@ -26,6 +26,7 @@ using OrderTracking.Application.Orders.UpdateOrderItemStatus;
 using OrderTracking.Application.Orders.UpdateOrderItemStatusHistory;
 using OrderTracking.Application.Statuses.Models;
 using OrderTracking.Domain.Enums;
+using OrderTracking.Infrastructure.ProductPreviews;
 
 namespace OrderTracking.Api.Controllers;
 
@@ -35,10 +36,12 @@ namespace OrderTracking.Api.Controllers;
 public sealed class OrdersController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ProductPreviewQueue? _previewQueue;
 
-    public OrdersController(IMediator mediator)
+    public OrdersController(IMediator mediator, ProductPreviewQueue? previewQueue = null)
     {
         _mediator = mediator;
+        _previewQueue = previewQueue;
     }
 
     [HttpGet]
@@ -82,6 +85,18 @@ public sealed class OrdersController : ControllerBase
                 request.DeliveryAddress,
                 request.Items),
             cancellationToken);
+
+        if (_previewQueue is not null)
+        {
+            var requestedItems = request.Items ?? [];
+            for (var index = 0; index < Math.Min(result.Items.Count, requestedItems.Count); index++)
+            {
+                if (!requestedItems[index].SkipPreviewExtraction)
+                {
+                    _previewQueue.TryEnqueue(result.Items[index].Id, result.Items[index].SourceUrl);
+                }
+            }
+        }
 
         return CreatedAtAction(nameof(GetOrderById), new { id = result.Id }, result);
     }
