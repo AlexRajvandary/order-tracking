@@ -23,7 +23,7 @@ import {
 } from '@/features/auth/lib/userSettingsStorage'
 import type { CurrentUser, UserSettings } from '@/features/auth/types'
 import { registerAuthHolder } from '@/shared/api/authorizedClient'
-import { getTelegramWebApp, initializeTelegramMiniApp } from '@/shared/lib/telegram-mini-app'
+import { getTelegramInitData, initializeTelegramMiniApp } from '@/shared/lib/telegram-mini-app'
 
 type AuthState = {
   user: CurrentUser | null
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false
 
     async function restoreSession() {
-      const initData = getTelegramWebApp()?.initData
+      const initData = getTelegramInitData()
       try {
         if (initData) {
           // Telegram identity takes precedence over any refresh cookie shared by the WebView.

@@ -18,6 +18,7 @@ export type TelegramWebApp = {
   ready: () => void
   expand: () => void
   requestFullscreen?: () => void
+  isFullscreen?: boolean
   isVersionAtLeast?: (version: string) => boolean
   setHeaderColor?: (color: string) => void
   setBackgroundColor?: (color: string) => void
@@ -36,8 +37,22 @@ export function getTelegramWebApp(): TelegramWebApp | null {
   return window.Telegram?.WebApp ?? null
 }
 
+/**
+ * Telegram normally exposes the signed payload through WebApp.initData. Reading
+ * tgWebAppData from the launch URL as a fallback also covers clients where the
+ * SDK object becomes available before it has copied launch parameters.
+ */
+export function getTelegramInitData(): string {
+  const fromSdk = getTelegramWebApp()?.initData
+  if (fromSdk) return fromSdk
+
+  const query = new URLSearchParams(window.location.search)
+  const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  return query.get('tgWebAppData') || fragment.get('tgWebAppData') || ''
+}
+
 export function isTelegramMiniApp(): boolean {
-  return Boolean(getTelegramWebApp()?.initData)
+  return Boolean(getTelegramWebApp() || getTelegramInitData())
 }
 
 function writeInsets(webApp: TelegramWebApp) {
@@ -57,7 +72,7 @@ function writeInsets(webApp: TelegramWebApp) {
 
 export function initializeTelegramMiniApp() {
   const webApp = getTelegramWebApp()
-  if (!webApp?.initData) return () => undefined
+  if (!webApp || !isTelegramMiniApp()) return () => undefined
 
   const root = document.documentElement
   const viewportMeta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]')
@@ -82,13 +97,28 @@ export function initializeTelegramMiniApp() {
     writeInsets(webApp)
   }
   const updateInsets = () => writeInsets(webApp)
+  const requestFullscreen = () => {
+    webApp.expand()
+    try {
+      webApp.requestFullscreen?.()
+    } catch {
+      // Older Telegram clients can reject fullscreen; expand() remains the fallback.
+    }
+  }
+  const retryFullscreenOnInteraction = () => {
+    if (webApp.isFullscreen) return
+    requestFullscreen()
+  }
   webApp.onEvent('themeChanged', updateThemeAndInsets)
   webApp.onEvent('safeAreaChanged', updateInsets)
   webApp.onEvent('contentSafeAreaChanged', updateInsets)
   webApp.onEvent('viewportChanged', updateInsets)
+  webApp.onEvent('fullscreenChanged', updateInsets)
+  webApp.onEvent('fullscreenFailed', updateInsets)
   webApp.ready()
-  webApp.expand()
-  if (!webApp.isVersionAtLeast || webApp.isVersionAtLeast('8.0')) webApp.requestFullscreen?.()
+  requestFullscreen()
+  // Some clients only allow fullscreen after a user gesture.
+  document.addEventListener('pointerdown', retryFullscreenOnInteraction, { once: true })
   updateThemeAndInsets()
 
   return () => {
@@ -96,6 +126,9 @@ export function initializeTelegramMiniApp() {
     webApp.offEvent('safeAreaChanged', updateInsets)
     webApp.offEvent('contentSafeAreaChanged', updateInsets)
     webApp.offEvent('viewportChanged', updateInsets)
+    webApp.offEvent('fullscreenChanged', updateInsets)
+    webApp.offEvent('fullscreenFailed', updateInsets)
+    document.removeEventListener('pointerdown', retryFullscreenOnInteraction)
     document.removeEventListener('gesturestart', preventGestureZoom)
     document.removeEventListener('touchmove', preventPinchZoom)
     root.classList.remove('telegram-mini-app')
