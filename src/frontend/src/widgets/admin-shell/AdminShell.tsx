@@ -198,11 +198,11 @@ export function AdminShell() {
         style={miniApp ? { backgroundColor: 'var(--tg-app-background, var(--card))' } : undefined}
       >
         <div
-          className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3"
+          className={cn(
+            'mx-auto flex max-w-6xl items-center gap-3 px-4 py-3',
+            miniApp && 'telegram-mini-app-header-inner',
+          )}
           style={miniApp ? {
-            // Telegram's iOS header controls can extend below the OS safe-area.
-            // Keep the app's own navigation row clear of both overlays.
-            paddingTop: 'max(3.5rem, calc(env(safe-area-inset-top) + 1.5rem), calc(var(--tg-safe-top, 0px) + 1.5rem), calc(var(--tg-content-safe-top, 0px) + 1.5rem))',
             paddingLeft: 'max(1rem, env(safe-area-inset-left), var(--tg-safe-left, 0px), var(--tg-content-safe-left, 0px))',
             paddingRight: 'max(1rem, env(safe-area-inset-right), var(--tg-safe-right, 0px), var(--tg-content-safe-right, 0px))',
           } : undefined}

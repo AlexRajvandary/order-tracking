@@ -147,6 +147,26 @@ html.telegram-mini-app body {
   touch-action: pan-x pan-y;
 }
 
+html.telegram-mini-app .telegram-mini-app-header-inner {
+  padding-top: max(
+    3.5rem,
+    calc(env(safe-area-inset-top) + 1.5rem),
+    calc(var(--tg-safe-top, 0px) + 1.5rem),
+    calc(var(--tg-content-safe-top, 0px) + 1.5rem)
+  );
+}
+
+@media (max-width: 767px) {
+  html.telegram-mini-app .telegram-mini-app-header-inner {
+    padding-top: max(
+      5.5rem,
+      calc(env(safe-area-inset-top) + 3rem),
+      calc(var(--tg-safe-top, 0px) + 3rem),
+      calc(var(--tg-content-safe-top, 0px) + 3rem)
+    );
+  }
+}
+
 html.telegram-mini-app input,
 html.telegram-mini-app textarea,
 html.telegram-mini-app select {
