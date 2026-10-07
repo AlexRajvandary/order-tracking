@@ -9,6 +9,7 @@ import { useFavorites } from "@/components/favorites-provider";
 import { mapApiProductToCatalog, type ApiProduct } from "@/lib/products-api";
 import type { CatalogProduct } from "@/lib/catalog-products";
 import { Button } from "@/components/ui/button";
+import { CustomerAreaNavigation } from "@/components/customer-area-navigation";
 
 export default function FavoritesPage() {
   const { ids, products: storedProducts, ready, clear } = useFavorites();
@@ -63,7 +64,9 @@ export default function FavoritesPage() {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-8 sm:px-8 lg:px-10">
+      <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-4 px-4 py-6 sm:px-8 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-8 lg:px-10">
+        <CustomerAreaNavigation />
+        <section className="min-w-0 py-2">
         <div className="mb-8 flex items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Избранное</h1>
           {ids.length > 0 ? (
@@ -84,6 +87,7 @@ export default function FavoritesPage() {
             ))}
           </div>
         )}
+        </section>
       </main>
     </div>
   );

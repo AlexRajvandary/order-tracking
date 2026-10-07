@@ -24,6 +24,7 @@ const STEPS = [
 ];
 
 const SERVICE_REQUEST_PATHS = new Set([
+  "/register",
   "/individual-request",
   "/auction-request",
   "/ticket-request",
@@ -66,7 +67,7 @@ export function OrderProcess() {
     return () => observer.disconnect();
   }, []);
 
-  if (SERVICE_REQUEST_PATHS.has(pathname)) return null;
+  if (SERVICE_REQUEST_PATHS.has(pathname) || pathname.startsWith("/account")) return null;
 
   return (
     <section ref={sectionRef} className="mx-auto w-full max-w-[1280px] bg-background px-4 py-12 sm:px-8 sm:py-16 lg:px-10">

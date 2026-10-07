@@ -129,9 +129,6 @@ function HeaderIconButton({
           </span>
         ) : null}
       </span>
-      <span className="hidden text-xs leading-none text-[#555] transition-colors duration-200 group-hover:text-[#F24676] sm:inline">
-        {label}
-      </span>
     </Link>
   );
 }
@@ -154,9 +151,6 @@ function CartIconButton() {
                 {itemCount > 99 ? "99" : itemCount}
               </span>
             ) : null}
-          </span>
-          <span className="hidden text-xs leading-none text-[#555] transition-colors duration-200 group-hover:text-[#F24676] sm:inline">
-            Корзина
           </span>
         </button>
       }
@@ -182,9 +176,6 @@ function FavoriteIconButton() {
                 {ids.length > 99 ? "99" : ids.length}
               </span>
             ) : null}
-          </span>
-          <span className="hidden text-xs leading-none text-[#555] transition-colors duration-200 group-hover:text-[#F24676] sm:inline">
-            Избранное
           </span>
         </button>
       }
@@ -681,7 +672,10 @@ function MobileBrandsMenu({
 
 export function SiteHeader() {
   const account = useCustomerAccount();
+  const { itemCount } = useCart();
+  const { ids: favoriteIds } = useFavorites();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [accountOrderCount, setAccountOrderCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileMenuScreen, setMobileMenuScreen] = useState<MobileMenuScreen>("main");
   const [activeMegaMenu, setActiveMegaMenu] = useState<MegaMenuItem | null>(null);
@@ -691,6 +685,29 @@ export function SiteHeader() {
   const [brands, setBrands] = useState<ApiBrand[] | null>(null);
   const [brandsError, setBrandsError] = useState(false);
   const [brandsRetry, setBrandsRetry] = useState(0);
+
+  useEffect(() => {
+    if (!account.token) {
+      setAccountOrderCount(0);
+      return;
+    }
+
+    const controller = new AbortController();
+    void fetch("/api/v1/customer-account/orders", {
+      headers: { Authorization: `Bearer ${account.token}` },
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const orders = await response.json() as unknown[];
+        if (!controller.signal.aborted) setAccountOrderCount(orders.length);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setAccountOrderCount(0);
+      });
+
+    return () => controller.abort();
+  }, [account.token]);
   const megaMenuRef = useRef<HTMLDivElement>(null);
   const categoriesRequestStarted = useRef(false);
   const brandsRequestStarted = useRef(false);
@@ -915,17 +932,17 @@ export function SiteHeader() {
             <div className="relative">
               <button type="button" aria-label="Личный кабинет" aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen((open) => !open)} className="group inline-flex size-11 flex-col items-center justify-center gap-0.5 text-[#555] sm:h-auto sm:w-auto sm:gap-1">
                 <User className="size-5 stroke-[1.6] sm:size-6" aria-hidden />
-                <span className="hidden text-xs leading-none sm:inline">Кабинет</span>
               </button>
               {accountMenuOpen ? (
                 <div className="absolute right-0 top-full z-50 mt-3 w-56 rounded-xl border border-[#ECECEC] bg-white p-2 shadow-xl">
                   {account.user ? <>
                     <p className="truncate px-3 py-2 text-sm font-medium">{account.user.displayName || account.user.login}</p>
-                    <Link onClick={() => setAccountMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-muted" href="/account/orders">Заказы</Link>
+                    <Link onClick={() => setAccountMenuOpen(false)} className="flex items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-muted" href="/favorites"><span>Избранное</span>{favoriteIds.length > 0 ? <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[#F24676] px-1.5 py-0.5 text-[10px] leading-none text-white">{favoriteIds.length > 99 ? "99+" : favoriteIds.length}</span> : null}</Link>
+                    <Link onClick={() => setAccountMenuOpen(false)} className="flex items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-muted" href="/cart"><span>Корзина</span>{itemCount > 0 ? <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[#F24676] px-1.5 py-0.5 text-[10px] leading-none text-white">{itemCount > 99 ? "99+" : itemCount}</span> : null}</Link>
+                    <Link onClick={() => setAccountMenuOpen(false)} className="flex items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-muted" href="/account/orders"><span>Заказы</span>{accountOrderCount > 0 ? <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[#F24676] px-1.5 py-0.5 text-[10px] leading-none text-white">{accountOrderCount > 99 ? "99+" : accountOrderCount}</span> : null}</Link>
                     <Link onClick={() => setAccountMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-muted" href="/account/settings">Настройки</Link>
-                    <button onClick={() => { setAccountMenuOpen(false); void account.logout(); }} className="w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted">Выйти</button>
+                    <button onClick={() => { setAccountMenuOpen(false); void account.logout(); }} className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50">Выйти</button>
                   </> : <>
-                    <p className="px-3 py-2 text-sm text-muted-foreground">Войдите, чтобы отслеживать заявки</p>
                     <Link onClick={() => setAccountMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted" href="/login">Войти</Link>
                     <Link onClick={() => setAccountMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-muted" href="/register">Зарегистрироваться</Link>
                   </>}
