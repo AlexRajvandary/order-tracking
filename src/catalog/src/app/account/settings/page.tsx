@@ -10,9 +10,9 @@ const inputClass = "mt-2 h-12 w-full rounded-lg border border-[#dededb] bg-white
 const secondaryButtonClass = "inline-flex min-h-11 items-center justify-center rounded-lg border border-[#dcdcdc] bg-white px-5 text-sm font-medium text-[#222] transition hover:bg-[#f5f5f5] disabled:cursor-not-allowed disabled:opacity-50";
 const primaryButtonClass = "inline-flex min-h-11 items-center justify-center rounded-lg bg-black px-5 text-sm font-medium text-white transition hover:bg-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50";
 
-function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+function SettingsSection({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
-    <section className="py-8 first:pt-0 sm:py-10">
+    <section id={id} className="scroll-mt-8 py-8 first:pt-0 sm:py-10">
       <h2 className="text-xl font-semibold tracking-tight text-[#171717]">{title}</h2>
       <div className="mt-5">{children}</div>
     </section>
@@ -149,7 +149,7 @@ export default function AccountSettingsPage() {
       {error || accountDataError ? <p role="alert" className="mt-4 text-sm text-destructive">{error || accountDataError}</p> : null}
 
       {profile ? <div className="mt-8 divide-y divide-[#e7e7e7] sm:mt-10">
-        <SettingsSection title="Контактные данные">
+        <SettingsSection id="contact" title="Контактные данные">
           <form onSubmit={saveProfile} className="space-y-5">
             <div className="grid gap-5 sm:grid-cols-2">
               {([ ["name", "Имя", profile.name], ["phone", "Телефон", profile.phone], ["telegram", "Telegram для связи", profile.contactTelegram], ["whatsApp", "WhatsApp", profile.whatsApp], ["vk", "VK", profile.vk] ] as const).map(([name, label, value]) => (
@@ -212,7 +212,7 @@ export default function AccountSettingsPage() {
           </div> : null}
         </SettingsSection>
 
-        <SettingsSection title="Адреса">
+        <SettingsSection id="addresses" title="Адреса">
           {addresses.length ? <ul className="divide-y divide-[#ededed]">
             {addresses.map((address) => <li key={address.id} className="flex flex-wrap items-start justify-between gap-3 py-4 first:pt-0 last:pb-0">
               <div className="min-w-0 text-sm">

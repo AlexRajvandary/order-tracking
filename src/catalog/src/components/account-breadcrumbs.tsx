@@ -24,7 +24,7 @@ export function AccountBreadcrumbs() {
   const isHome = pathname === "/account";
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-4 pt-4 pb-5 sm:px-8 sm:pb-6 lg:px-10">
+    <div className="mx-auto w-full max-w-[1280px] pr-6 pt-4 pb-5 sm:pr-10 sm:pb-6 lg:pr-12">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
