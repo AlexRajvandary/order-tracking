@@ -7,6 +7,7 @@ public class AdminUser : AuditableEntity
 {
     public string Login { get; set; } = string.Empty;
     public string? Email { get; set; }
+    public DateTimeOffset? EmailVerifiedAt { get; set; }
     public string PasswordHash { get; set; } = string.Empty;
     public string? DisplayName { get; set; }
     public AdminRole Role { get; set; }
@@ -14,6 +15,15 @@ public class AdminUser : AuditableEntity
 
     /// <summary>Telegram user id from Login Widget (unique when set).</summary>
     public long? TelegramId { get; set; }
+
+    /// <summary>Telegram ID for a customer account using the separate customer bot.</summary>
+    public long? CustomerTelegramId { get; set; }
+
+    public Guid? CustomerId { get; set; }
+
+    public bool CustomerNotificationsEnabled { get; set; } = true;
+
+    public bool CustomerNotificationsDisabledByAdmin { get; set; }
 
     public string? TelegramUsername { get; set; }
 
@@ -30,4 +40,6 @@ public class AdminUser : AuditableEntity
     public ICollection<OrderItemStatusHistory> StatusChanges { get; set; } = [];
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public ICollection<AuditLogEntry> AuditLogs { get; set; } = [];
+
+    public Customer? Customer { get; set; }
 }

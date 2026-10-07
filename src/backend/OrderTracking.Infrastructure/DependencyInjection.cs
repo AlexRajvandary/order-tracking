@@ -30,6 +30,15 @@ public static class DependencyInjection
 
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.Configure<TelegramSettings>(configuration.GetSection(TelegramSettings.SectionName));
+        services.Configure<CustomerTelegramSettings>(options =>
+        {
+            configuration.GetSection(CustomerTelegramSettings.SectionName).Bind(options);
+            options.BotToken = configuration["CUSTOMER_TELEGRAM_BOT_TOKEN"] ?? options.BotToken;
+            options.BotUsername = configuration["CUSTOMER_TELEGRAM_BOT_USERNAME"] ?? options.BotUsername;
+            options.LoginClientId = configuration["CUSTOMER_TELEGRAM_LOGIN_CLIENT_ID"] ?? options.LoginClientId;
+            options.LoginClientSecret = configuration["CUSTOMER_TELEGRAM_LOGIN_CLIENT_SECRET"] ?? options.LoginClientSecret;
+            options.LoginRedirectUri = configuration["CUSTOMER_TELEGRAM_LOGIN_REDIRECT_URI"] ?? options.LoginRedirectUri;
+        });
         services.Configure<MinioSettings>(configuration.GetSection(MinioSettings.SectionName));
         services.Configure<MonitoringSettings>(configuration.GetSection(MonitoringSettings.SectionName));
         services.Configure<FornexSettings>(configuration.GetSection(FornexSettings.SectionName));
@@ -63,8 +72,13 @@ public static class DependencyInjection
         services.AddScoped<SoftDeleteInterceptor>();
 
         services.AddScoped<IPasswordHasher, PasswordHasher>();
+        services.AddHttpClient<ITransactionalEmailSender, ResendTransactionalEmailSender>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+        services.AddScoped<ICustomerOrderClaimService, CustomerOrderClaimService>();
+        services.AddHttpClient<CustomerTelegramOAuthClient>();
+        services.AddSingleton<CustomerTelegramBotRuntime>();
+        services.AddScoped<ICustomerTelegramNotifier, CustomerTelegramNotifier>();
         services.AddSingleton<ITelegramAuthValidator, TelegramAuthValidator>();
         services.AddSingleton<ITrackingCodeGenerator, NanoIdTrackingCodeGenerator>();
         services.AddSingleton<IQrCodeGenerator, QrCodeGeneratorService>();

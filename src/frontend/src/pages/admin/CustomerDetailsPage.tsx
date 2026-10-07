@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { DataTable } from '@/shared/ui/data-table'
 
 export function CustomerDetailsPage() {
+  const queryClient = useQueryClient()
   const { t } = useTranslation('customers')
   const { id = '' } = useParams()
 
@@ -25,6 +26,17 @@ export function CustomerDetailsPage() {
     queryKey: ['customers', id, 'addresses'],
     queryFn: () => customersApi.getCustomerAddresses(id),
     enabled: Boolean(id),
+  })
+
+  const accountNotificationsQuery = useQuery({
+    queryKey: ['customers', id, 'account-notifications'],
+    queryFn: () => customersApi.getCustomerAccountNotificationSettings(id),
+    enabled: Boolean(id),
+    retry: false,
+  })
+  const accountNotificationsMutation = useMutation({
+    mutationFn: (disabled: boolean) => customersApi.setCustomerAccountNotificationsDisabled(id, disabled),
+    onSuccess: (data) => queryClient.setQueryData(['customers', id, 'account-notifications'], data),
   })
 
   const columns = useMemo<ColumnDef<CustomerAddress>[]>(
@@ -185,6 +197,23 @@ export function CustomerDetailsPage() {
           )}
         </CardContent>
       </Card>
+
+      {accountNotificationsQuery.data ? (
+        <Card size="sm">
+          <CardHeader><CardTitle>Уведомления личного кабинета</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {accountNotificationsMutation.isError ? <Alert variant="destructive"><AlertDescription>Не удалось изменить настройку уведомлений.</AlertDescription></Alert> : null}
+            {!accountNotificationsQuery.data.telegramLinked ? <p className="text-sm text-muted-foreground">У пользователя не привязан Telegram.</p> : <>
+              <p className="text-sm">Настройка пользователя: {accountNotificationsQuery.data.enabledByCustomer ? 'уведомления включены' : 'уведомления выключены'}</p>
+              <label className="flex items-center gap-3 text-sm">
+                <input type="checkbox" checked={accountNotificationsQuery.data.disabledByAdmin} disabled={accountNotificationsMutation.isPending} onChange={(event) => accountNotificationsMutation.mutate(event.target.checked)} />
+                Приостановить уведомления для пользователя
+              </label>
+              <p className="text-xs text-muted-foreground">Пока настройка включена, пользователь не сможет включить уведомления в кабинете.</p>
+            </>}
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   )
 }

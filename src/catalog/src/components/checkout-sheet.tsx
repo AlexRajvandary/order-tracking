@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { formatCartMoney } from "@/components/cart-provider";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export type CheckoutItem = {
   lineId?: string;
@@ -40,6 +41,7 @@ type CheckoutSheetProps = {
 type CheckoutResult = {
   orderId: string;
   trackingCode: string;
+  claimToken: string;
 };
 
 type ContactMethod = "phone" | "telegram" | "vk";
@@ -167,6 +169,11 @@ export function CheckoutSheet({ items, trigger, onSuccess }: CheckoutSheetProps)
               <p className="mt-1 text-sm text-muted-foreground">
                 Номер для отслеживания: <strong>{result.trackingCode}</strong>
               </p>
+              <p className="mt-3 max-w-sm text-sm text-muted-foreground">Заявка уже создана. Чтобы отслеживать её в личном кабинете и получать уведомление в Telegram, привяжите её к аккаунту в течение 30 минут.</p>
+            </div>
+            <div className="grid w-full max-w-sm gap-2">
+              <Link className="rounded-lg bg-[#229ED9] px-4 py-3 text-sm font-medium text-white" href={`/login?claimToken=${encodeURIComponent(result.claimToken)}`}>Войти или продолжить через Telegram</Link>
+              <Link className="rounded-lg border px-4 py-3 text-sm font-medium" href={`/register?claimToken=${encodeURIComponent(result.claimToken)}`}>Зарегистрироваться по email</Link>
             </div>
             <Button type="button" onClick={() => setOpen(false)}>
               Закрыть

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using OrderTracking.Application.Orders.CreatePublicOrder;
+using OrderTracking.Application.Common.Interfaces;
 
 namespace OrderTracking.Api.Controllers;
 
@@ -12,10 +13,12 @@ namespace OrderTracking.Api.Controllers;
 public sealed class PublicOrdersController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ICustomerOrderClaimService _orderClaims;
 
-    public PublicOrdersController(IMediator mediator)
+    public PublicOrdersController(IMediator mediator, ICustomerOrderClaimService orderClaims)
     {
         _mediator = mediator;
+        _orderClaims = orderClaims;
     }
 
     [HttpPost]
@@ -46,9 +49,10 @@ public sealed class PublicOrdersController : ControllerBase
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails { Title = "Внешний каталог временно недоступен", Detail = ex.Message });
         }
 
+        var claimToken = await _orderClaims.CreateAsync(result.Id, cancellationToken);
         return StatusCode(
             StatusCodes.Status201Created,
-            new CreatePublicOrderResponse(result.Id, result.TrackingCode));
+            new CreatePublicOrderResponse(result.Id, result.TrackingCode, claimToken));
     }
 }
 
@@ -64,4 +68,4 @@ public sealed record CreatePublicOrderRequest(
 public sealed record CreatePublicOrderItemRequest(string? Source, Guid? ProductId, string? ExternalId, int Quantity,
     decimal? ExpectedUnitPrice, string? ExpectedCurrencyCode, string? SelectedColor = null, string? SelectedSize = null);
 
-public sealed record CreatePublicOrderResponse(Guid OrderId, string TrackingCode);
+public sealed record CreatePublicOrderResponse(Guid OrderId, string TrackingCode, string ClaimToken);

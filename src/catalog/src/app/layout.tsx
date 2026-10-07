@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Suspense } from "react";
 import { CartProvider } from "@/components/cart-provider";
+import { CustomerAccountProvider } from "@/components/customer-account-provider";
 import { FavoritesProvider } from "@/components/favorites-provider";
 import { Footer } from "@/components/footer";
 import { OrderProcess } from "@/components/order-process";
@@ -74,6 +75,7 @@ export default function RootLayout({
             />
           </div>
         </noscript>
+        <CustomerAccountProvider>
         <CartProvider>
           <FavoritesProvider>
             <main className="flex min-h-full flex-1 flex-col bg-background">{children}</main>
@@ -81,6 +83,7 @@ export default function RootLayout({
             <Footer />
           </FavoritesProvider>
         </CartProvider>
+        </CustomerAccountProvider>
       </body>
     </html>
   );

@@ -7,6 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export type ServiceRequestType = "find-product" | "individual" | "auction" | "ticket";
 type ContactType = "telegram" | "phone" | "whatsapp" | "vk";
@@ -14,6 +15,7 @@ type ContactType = "telegram" | "phone" | "whatsapp" | "vk";
 type RequestResult = {
   orderId: string;
   trackingCode: string;
+  claimToken: string;
 };
 
 const maxImages = 5;
@@ -166,6 +168,11 @@ export function ServiceRequestForm({ type }: { type: ServiceRequestType }) {
           Мы свяжемся с вами после обработки. Номер заявки: {" "}
           <strong className="text-foreground">{result.trackingCode}</strong>
         </p>
+        <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">Заявка уже создана. Чтобы отслеживать её в кабинете и получить подтверждение в Telegram, привяжите её в течение 30 минут.</p>
+        <div className="mt-5 grid w-full max-w-sm gap-2">
+          <Link className="rounded-lg bg-[#229ED9] px-4 py-3 text-sm font-medium text-white" href={`/login?claimToken=${encodeURIComponent(result.claimToken)}`}>Войти или продолжить через Telegram</Link>
+          <Link className="rounded-lg border px-4 py-3 text-sm font-medium" href={`/register?claimToken=${encodeURIComponent(result.claimToken)}`}>Зарегистрироваться по email</Link>
+        </div>
         <Button
           type="button"
           variant="outline"

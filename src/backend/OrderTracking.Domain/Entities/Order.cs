@@ -15,6 +15,7 @@ public class Order : AuditableEntity
     public string? DeliveryPostalCode { get; set; }
     public string? DeliveryNote { get; set; }
     public string? AdminNotes { get; set; }
+    public string RequestImagesJson { get; set; } = "[]";
     public Guid CreatedByAdminId { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.AwaitingPayment;
     public DateTimeOffset? ExpectedDeliveryAt { get; set; }

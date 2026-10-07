@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using OrderTracking.Application.Common.Interfaces;
@@ -127,6 +128,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
             DeliveryPostalCode = delivery.PostalCode,
             DeliveryNote = delivery.Note,
             AdminNotes = Normalize(request.AdminNotes),
+            RequestImagesJson = JsonSerializer.Serialize(request.NotificationImages ?? [], new JsonSerializerOptions(JsonSerializerDefaults.Web)),
             CreatedByAdminId = adminId.Value,
             Status = OrderStatus.AwaitingPayment,
             CreatedAt = orderNow,

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using OrderTracking.Application.Orders.CreatePublicServiceRequest;
+using OrderTracking.Application.Common.Interfaces;
 
 namespace OrderTracking.Api.Controllers;
 
@@ -12,10 +13,12 @@ namespace OrderTracking.Api.Controllers;
 public sealed class PublicFindProductRequestsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ICustomerOrderClaimService _orderClaims;
 
-    public PublicFindProductRequestsController(IMediator mediator)
+    public PublicFindProductRequestsController(IMediator mediator, ICustomerOrderClaimService orderClaims)
     {
         _mediator = mediator;
+        _orderClaims = orderClaims;
     }
 
     [HttpPost]
@@ -38,9 +41,10 @@ public sealed class PublicFindProductRequestsController : ControllerBase
                 Images: PublicServiceRequestUploadMapper.Map(request.Images)),
             cancellationToken);
 
+        var claimToken = await _orderClaims.CreateAsync(result.Id, cancellationToken);
         return StatusCode(
             StatusCodes.Status201Created,
-            new CreatePublicFindProductRequestResponse(result.Id, result.TrackingCode));
+            new CreatePublicFindProductRequestResponse(result.Id, result.TrackingCode, claimToken));
     }
 }
 
@@ -54,4 +58,4 @@ public sealed class CreatePublicFindProductRequestRequest
     public List<IFormFile> Images { get; init; } = [];
 }
 
-public sealed record CreatePublicFindProductRequestResponse(Guid OrderId, string TrackingCode);
+public sealed record CreatePublicFindProductRequestResponse(Guid OrderId, string TrackingCode, string ClaimToken);

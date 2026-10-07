@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using OrderTracking.Application.Orders.CreatePublicServiceRequest;
+using OrderTracking.Application.Common.Interfaces;
 
 namespace OrderTracking.Api.Controllers;
 
@@ -12,10 +13,12 @@ namespace OrderTracking.Api.Controllers;
 public sealed class PublicAuctionRequestsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ICustomerOrderClaimService _orderClaims;
 
-    public PublicAuctionRequestsController(IMediator mediator)
+    public PublicAuctionRequestsController(IMediator mediator, ICustomerOrderClaimService orderClaims)
     {
         _mediator = mediator;
+        _orderClaims = orderClaims;
     }
 
     [HttpPost]
@@ -39,9 +42,10 @@ public sealed class PublicAuctionRequestsController : ControllerBase
                 Images: PublicServiceRequestUploadMapper.Map(request.Images)),
             cancellationToken);
 
+        var claimToken = await _orderClaims.CreateAsync(result.Id, cancellationToken);
         return StatusCode(
             StatusCodes.Status201Created,
-            new CreatePublicAuctionRequestResponse(result.Id, result.TrackingCode));
+            new CreatePublicAuctionRequestResponse(result.Id, result.TrackingCode, claimToken));
     }
 }
 
@@ -62,4 +66,4 @@ public sealed class CreatePublicAuctionRequestRequest
     public List<IFormFile> Images { get; init; } = [];
 }
 
-public sealed record CreatePublicAuctionRequestResponse(Guid OrderId, string TrackingCode);
+public sealed record CreatePublicAuctionRequestResponse(Guid OrderId, string TrackingCode, string ClaimToken);

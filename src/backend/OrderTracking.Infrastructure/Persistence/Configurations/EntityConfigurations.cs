@@ -20,6 +20,12 @@ public class AdminUserConfiguration : IEntityTypeConfiguration<AdminUser>
         builder.Property(e => e.DisplayName).HasMaxLength(200);
         builder.Property(e => e.TelegramUsername).HasMaxLength(100);
         builder.Property(e => e.TelegramAvatarUrl).HasMaxLength(512);
+        builder.Property(e => e.CustomerId);
+
+        builder.HasOne(e => e.Customer)
+            .WithOne()
+            .HasForeignKey<AdminUser>(e => e.CustomerId)
+            .OnDelete(DeleteBehavior.SetNull);
         builder.Property(e => e.Role).HasConversion<string>().HasMaxLength(50);
         builder.Property(e => e.SettingsJson)
             .HasColumnType("jsonb")
@@ -34,6 +40,18 @@ public class AdminUserConfiguration : IEntityTypeConfiguration<AdminUser>
         builder.HasIndex(e => e.TelegramId)
             .IsUnique()
             .HasFilter("\"TelegramId\" IS NOT NULL AND \"IsDeleted\" = false");
+
+        builder.HasIndex(e => e.CustomerTelegramId)
+            .IsUnique()
+            .HasFilter("\"CustomerTelegramId\" IS NOT NULL AND \"IsDeleted\" = false");
+
+        builder.HasIndex(e => e.CustomerId)
+            .IsUnique()
+            .HasFilter("\"CustomerId\" IS NOT NULL AND \"IsDeleted\" = false");
+
+        builder.HasIndex(e => e.Email)
+            .IsUnique()
+            .HasFilter("\"Email\" IS NOT NULL AND \"Role\" = 'Buyer' AND \"IsDeleted\" = false");
 
         builder.HasQueryFilter(e => !e.IsDeleted);
     }
@@ -142,6 +160,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
             .IsRequired();
 
         builder.Property(e => e.AdminNotes).HasColumnType("text");
+        builder.Property(e => e.RequestImagesJson).HasColumnType("jsonb").HasDefaultValueSql("'[]'::jsonb").IsRequired();
         builder.Property(e => e.DeliveryCity).HasMaxLength(200);
         builder.Property(e => e.DeliveryStreet).HasMaxLength(300);
         builder.Property(e => e.DeliveryBuilding).HasMaxLength(50);

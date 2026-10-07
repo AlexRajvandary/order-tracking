@@ -32,6 +32,19 @@ export function getCustomer(id: string) {
   return authorizedJson<Customer>(`/customers/${id}`)
 }
 
+export type CustomerAccountNotificationSettings = { telegramLinked: boolean; enabledByCustomer: boolean; disabledByAdmin: boolean }
+
+export function getCustomerAccountNotificationSettings(id: string) {
+  return authorizedJson<CustomerAccountNotificationSettings>(`/customers/${id}/account-notifications`)
+}
+
+export function setCustomerAccountNotificationsDisabled(id: string, disabledByAdmin: boolean) {
+  return authorizedJson<CustomerAccountNotificationSettings>(`/customers/${id}/account-notifications`, {
+    method: 'PUT',
+    body: JSON.stringify({ disabledByAdmin }),
+  })
+}
+
 export function createCustomer(request: UpsertCustomerRequest) {
   return authorizedJson<Customer>('/customers', {
     method: 'POST',

@@ -33,13 +33,14 @@ import {
 } from "@/lib/products-api";
 import { formatPrice } from "@/lib/products";
 import { cn } from "@/lib/utils";
+import { useCustomerAccount } from "@/components/customer-account-provider";
 
 const MEGA_MENU_ITEMS = ["Категории", "Бренды", "Магазины"] as const;
 
 // Temporary public header switches. Keep the implementations in place so these
 // entries can be restored without rebuilding their UI and behavior.
 const PUBLIC_HEADER_FEATURES = {
-  accountEntry: false,
+  accountEntry: true,
   shopsMenu: false,
 } as const;
 
@@ -679,6 +680,8 @@ function MobileBrandsMenu({
 }
 
 export function SiteHeader() {
+  const account = useCustomerAccount();
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileMenuScreen, setMobileMenuScreen] = useState<MobileMenuScreen>("main");
   const [activeMegaMenu, setActiveMegaMenu] = useState<MegaMenuItem | null>(null);
@@ -909,7 +912,26 @@ export function SiteHeader() {
           <FavoriteIconButton />
           <CartIconButton />
           {PUBLIC_HEADER_FEATURES.accountEntry ? (
-            <HeaderIconButton href="/login" label="Войти" icon={User} />
+            <div className="relative">
+              <button type="button" aria-label="Личный кабинет" aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen((open) => !open)} className="group inline-flex size-11 flex-col items-center justify-center gap-0.5 text-[#555] sm:h-auto sm:w-auto sm:gap-1">
+                <User className="size-5 stroke-[1.6] sm:size-6" aria-hidden />
+                <span className="hidden text-xs leading-none sm:inline">Кабинет</span>
+              </button>
+              {accountMenuOpen ? (
+                <div className="absolute right-0 top-full z-50 mt-3 w-56 rounded-xl border border-[#ECECEC] bg-white p-2 shadow-xl">
+                  {account.user ? <>
+                    <p className="truncate px-3 py-2 text-sm font-medium">{account.user.displayName || account.user.login}</p>
+                    <Link onClick={() => setAccountMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-muted" href="/account/orders">Заказы</Link>
+                    <Link onClick={() => setAccountMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-muted" href="/account/settings">Настройки</Link>
+                    <button onClick={() => { setAccountMenuOpen(false); void account.logout(); }} className="w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted">Выйти</button>
+                  </> : <>
+                    <p className="px-3 py-2 text-sm text-muted-foreground">Войдите, чтобы отслеживать заявки</p>
+                    <Link onClick={() => setAccountMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted" href="/login">Войти</Link>
+                    <Link onClick={() => setAccountMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-muted" href="/register">Зарегистрироваться</Link>
+                  </>}
+                </div>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>

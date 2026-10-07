@@ -14,6 +14,9 @@ public class ApplicationDbContext : DbContext, IUnitOfWork
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<CustomerEmailOtp> CustomerEmailOtps => Set<CustomerEmailOtp>();
+    public DbSet<CustomerOrderClaim> CustomerOrderClaims => Set<CustomerOrderClaim>();
+    public DbSet<CustomerTelegramLoginState> CustomerTelegramLoginStates => Set<CustomerTelegramLoginState>();
     public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
