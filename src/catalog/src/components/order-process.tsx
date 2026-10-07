@@ -24,6 +24,7 @@ const STEPS = [
 ];
 
 const SERVICE_REQUEST_PATHS = new Set([
+  "/login",
   "/register",
   "/individual-request",
   "/auction-request",

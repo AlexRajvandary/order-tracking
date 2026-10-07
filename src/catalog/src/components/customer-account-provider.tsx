@@ -39,10 +39,12 @@ export function CustomerAccountProvider({ children }: { children: React.ReactNod
       .finally(() => setReady(true));
   }, [accept]);
   const logout = useCallback(async () => {
+    const shouldReturnToHome = window.location.pathname === "/account" || window.location.pathname.startsWith("/account/");
     try { await fetch("/api/v1/auth/logout", { method: "POST", credentials: "same-origin" }); } finally {
       setUser(null);
       setToken(null);
       window.localStorage.removeItem(ACCOUNT_USER_STORAGE_KEY);
+      if (shouldReturnToHome) window.location.assign("/");
     }
   }, []);
   const value = useMemo(() => ({ user, ready, token, accept, logout }), [user, ready, token, accept, logout]);

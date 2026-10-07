@@ -1,26 +1,265 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { useCustomerAccount } from "@/components/customer-account-provider";
-type Profile = { email?: string; emailVerified: boolean; name?: string; phone?: string; contactTelegram?: string; whatsApp?: string; vk?: string; telegramLinked: boolean; notificationsEnabled: boolean; notificationsDisabledByAdmin: boolean };
+
+type Profile = {
+  email?: string;
+  emailVerified: boolean;
+  name?: string;
+  phone?: string;
+  contactTelegram?: string;
+  whatsApp?: string;
+  vk?: string;
+  telegramLinked: boolean;
+  notificationsEnabled: boolean;
+  notificationsDisabledByAdmin: boolean;
+};
 type Address = { id: string; city?: string; street?: string; building?: string; apartment?: string; postalCode?: string; note?: string };
+
+const inputClass = "mt-2 h-12 w-full rounded-lg border border-[#dededb] bg-white px-3.5 text-[15px] outline-none transition focus:border-neutral-800 focus:ring-2 focus:ring-neutral-900/10";
+const secondaryButtonClass = "inline-flex min-h-11 items-center justify-center rounded-lg border border-[#dcdcdc] bg-white px-5 text-sm font-medium text-[#222] transition hover:bg-[#f5f5f5] disabled:cursor-not-allowed disabled:opacity-50";
+const primaryButtonClass = "inline-flex min-h-11 items-center justify-center rounded-lg bg-black px-5 text-sm font-medium text-white transition hover:bg-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50";
+
+function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="py-8 first:pt-0 sm:py-10">
+      <h2 className="text-xl font-semibold tracking-tight text-[#171717]">{title}</h2>
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
 export default function AccountSettingsPage() {
-  const { token, user, logout } = useCustomerAccount(); const [profile,setProfile]=useState<Profile|null>(null); const [addresses,setAddresses]=useState<Address[]>([]); const [notice,setNotice]=useState(""); const [error,setError]=useState(""); const [emailCodeSent,setEmailCodeSent]=useState(false);
-  async function api<T>(path:string, init:RequestInit={}):Promise<T>{ const r=await fetch(`/api/v1/customer-account/${path}`,{...init,headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json",...init.headers}}); if(!r.ok) {const e=await r.json().catch(()=>({})); throw new Error(e.message||e.title||"Не удалось сохранить изменения");} return r.status===204?undefined as T:await r.json() as T; }
-  useEffect(()=>{ if(!token)return; void Promise.all([api<Profile>("profile"),api<Address[]>("addresses")]).then(([p,a])=>{setProfile(p);setAddresses(a)}).catch(e=>setError(e.message)); },[token]);
-  async function saveProfile(event:React.FormEvent<HTMLFormElement>){event.preventDefault(); if(!profile)return; const form=new FormData(event.currentTarget); try{await api("profile",{method:"PUT",body:JSON.stringify({name:form.get("name"),phone:form.get("phone"),telegram:form.get("telegram"),whatsApp:form.get("whatsApp"),vk:form.get("vk")})}); setNotice("Контактные данные сохранены.");}catch(e){setError((e as Error).message)}}
-  async function toggleNotifications(){if(!profile)return;try{await api("notifications",{method:"PUT",body:JSON.stringify({enabled:!profile.notificationsEnabled})});setProfile({...profile,notificationsEnabled:!profile.notificationsEnabled});}catch(e){setError((e as Error).message)}}
-  async function linkTelegram(){try{const d=await api<{authorizationUrl:string}>("telegram/link/start",{method:"POST",body:"{}"});sessionStorage.setItem("customerTelegramLink","1");window.location.assign(d.authorizationUrl);}catch(e){setError((e as Error).message)}}
-  async function unlinkTelegram(){try{await api("telegram",{method:"DELETE"});setProfile(profile?{...profile,telegramLinked:false,notificationsEnabled:false}:null);}catch(e){setError((e as Error).message)}}
-  async function addAddress(event:React.FormEvent<HTMLFormElement>){event.preventDefault();const form=new FormData(event.currentTarget);try{const a=await api<Address>("addresses",{method:"POST",body:JSON.stringify({city:form.get("city"),street:form.get("street"),building:form.get("building"),apartment:form.get("apartment"),postalCode:form.get("postalCode"),note:form.get("note")})});setAddresses([a,...addresses]);event.currentTarget.reset();setNotice("Адрес добавлен.");}catch(e){setError((e as Error).message)}}
-  async function deleteAddress(id:string){try{await api(`addresses/${id}`,{method:"DELETE"});setAddresses(addresses.filter(a=>a.id!==id));}catch(e){setError((e as Error).message)}}
-  async function changeEmail(event:React.FormEvent<HTMLFormElement>){event.preventDefault();const form=new FormData(event.currentTarget);const email=String(form.get("email")||"");try{if(!emailCodeSent){await api("email/change/send-code",{method:"POST",body:JSON.stringify({email})});setEmailCodeSent(true);setNotice("Код подтверждения отправлен на новый email.");}else{await api("email/change/verify-code",{method:"POST",body:JSON.stringify({email,code:form.get("code")})});setEmailCodeSent(false);setProfile(profile?{...profile,email,emailVerified:true}:null);setNotice("Email изменён.");}}catch(e){setError((e as Error).message)}}
-  async function changePassword(event:React.FormEvent<HTMLFormElement>){event.preventDefault();const f=new FormData(event.currentTarget);try{await fetch("/api/v1/auth/change-password",{method:"PUT",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({currentPassword:f.get("currentPassword"),newPassword:f.get("newPassword")})}).then(async r=>{if(!r.ok){const x=await r.json().catch(()=>({}));throw new Error(x.detail||x.title||"Не удалось изменить пароль")}});await logout();window.location.assign("/login");}catch(e){setError((e as Error).message)}}
-  if(!user)return <main className="mx-auto flex-1 px-4 py-12 text-center">Сначала <Link className="underline" href="/login">войдите в кабинет</Link>.</main>;
-  return <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10"><h1 className="text-3xl font-semibold">Настройки</h1>{notice?<p className="mt-4 text-sm text-emerald-700">{notice}</p>:null}{error?<p role="alert" className="mt-4 text-sm text-destructive">{error}</p>:null}
-  {profile?<><form onSubmit={saveProfile} className="mt-6 space-y-4 rounded-xl border p-5"><h2 className="text-lg font-semibold">Контактные данные</h2><p className="text-sm text-muted-foreground">Email: {profile.email||user.login} {profile.emailVerified?"(подтверждён)":""}</p>{([['name','Имя',profile.name],['phone','Телефон',profile.phone],['telegram','Telegram для связи',profile.contactTelegram],['whatsApp','WhatsApp',profile.whatsApp],['vk','VK',profile.vk]] as const).map(([name,label,value])=><label key={name} className="block text-sm">{label}<input name={name} defaultValue={value||""} className="mt-1 h-10 w-full rounded-lg border px-3"/></label>)}<button className="rounded-lg bg-black px-4 py-2 text-white">Сохранить</button></form>
-  <form onSubmit={changeEmail} className="mt-4 space-y-3 rounded-xl border p-5"><h2 className="text-lg font-semibold">Изменить email</h2><input name="email" type="email" required placeholder="Новый email" className="h-10 w-full rounded-lg border px-3"/>{emailCodeSent?<input name="code" required inputMode="numeric" maxLength={6} placeholder="Код из письма" className="h-10 w-full rounded-lg border px-3"/>:null}<button className="rounded-lg border px-4 py-2 text-sm">{emailCodeSent?"Подтвердить новый email":"Отправить код"}</button></form>
-  <form onSubmit={changePassword} className="mt-4 space-y-3 rounded-xl border p-5"><h2 className="text-lg font-semibold">Сменить пароль</h2><input name="currentPassword" type="password" required placeholder="Текущий пароль" className="h-10 w-full rounded-lg border px-3"/><input name="newPassword" type="password" minLength={8} required placeholder="Новый пароль (от 8 символов)" className="h-10 w-full rounded-lg border px-3"/><button className="rounded-lg border px-4 py-2 text-sm">Изменить пароль</button></form>
-  <section className="mt-4 rounded-xl border p-5"><h2 className="text-lg font-semibold">Telegram и уведомления</h2><p className="mt-1 text-sm text-muted-foreground">Уведомление о создании заявки придёт в привязанный Telegram.</p><div className="mt-4 flex flex-wrap items-center gap-3">{profile.telegramLinked?<><span className="text-sm">Telegram привязан</span><button onClick={()=>void unlinkTelegram()} className="rounded-lg border px-3 py-2 text-sm">Отвязать</button></>:<button onClick={()=>void linkTelegram()} className="rounded-lg bg-[#229ED9] px-4 py-2 text-white">Привязать Telegram</button>}</div>{profile.telegramLinked?<label className="mt-4 flex items-center gap-3 text-sm"><input type="checkbox" checked={profile.notificationsEnabled} disabled={profile.notificationsDisabledByAdmin} onChange={()=>void toggleNotifications()}/>Получать уведомления{profile.notificationsDisabledByAdmin?" (временно отключены поддержкой)":""}</label>:null}</section>
-  <section className="mt-4 rounded-xl border p-5"><h2 className="text-lg font-semibold">Адреса</h2><div className="mt-3 space-y-2">{addresses.map(a=><div key={a.id} className="flex justify-between gap-3 rounded-lg bg-muted/40 p-3 text-sm"><span>{[a.city,a.street,a.building,a.apartment].filter(Boolean).join(", ")}</span><button onClick={()=>void deleteAddress(a.id)} className="text-destructive">Удалить</button></div>)}</div><form onSubmit={addAddress} className="mt-4 grid gap-2 sm:grid-cols-2">{[['city','Город'],['street','Улица'],['building','Дом'],['apartment','Квартира'],['postalCode','Индекс'],['note','Комментарий']].map(([n,l])=><input key={n} name={n} placeholder={l} className="h-10 rounded-lg border px-3 text-sm"/>)}<button className="rounded-lg border px-4 py-2 text-sm sm:col-span-2">Добавить адрес</button></form></section></>:<p className="mt-6">Загрузка настроек…</p>}</main>;
+  const { token, user, logout } = useCustomerAccount();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [emailCodeSent, setEmailCodeSent] = useState(false);
+  const [addressFormOpen, setAddressFormOpen] = useState(false);
+
+  const api = useCallback(async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
+    const response = await fetch(`/api/v1/customer-account/${path}`, {
+      ...init,
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...init.headers },
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.message || payload.title || "Не удалось сохранить изменения");
+    }
+    return response.status === 204 ? undefined as T : await response.json() as T;
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    void Promise.all([api<Profile>("profile"), api<Address[]>("addresses")])
+      .then(([nextProfile, nextAddresses]) => { setProfile(nextProfile); setAddresses(nextAddresses); })
+      .catch((reason: Error) => setError(reason.message));
+  }, [api, token]);
+
+  async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!profile) return;
+    const form = new FormData(event.currentTarget);
+    try {
+      await api("profile", { method: "PUT", body: JSON.stringify({
+        name: form.get("name"), phone: form.get("phone"), telegram: form.get("telegram"),
+        whatsApp: form.get("whatsApp"), vk: form.get("vk"),
+      }) });
+      setNotice("Контактные данные сохранены.");
+      setError("");
+    } catch (reason) { setError((reason as Error).message); }
+  }
+
+  async function toggleNotifications() {
+    if (!profile) return;
+    try {
+      const enabled = !profile.notificationsEnabled;
+      await api("notifications", { method: "PUT", body: JSON.stringify({ enabled }) });
+      setProfile({ ...profile, notificationsEnabled: enabled });
+    } catch (reason) { setError((reason as Error).message); }
+  }
+
+  async function linkTelegram() {
+    try {
+      const result = await api<{ authorizationUrl: string }>("telegram/link/start", { method: "POST", body: "{}" });
+      sessionStorage.setItem("customerTelegramLink", "1");
+      window.location.assign(result.authorizationUrl);
+    } catch (reason) { setError((reason as Error).message); }
+  }
+
+  async function unlinkTelegram() {
+    try {
+      await api("telegram", { method: "DELETE" });
+      setProfile(profile ? { ...profile, telegramLinked: false, notificationsEnabled: false } : null);
+      setNotice("Telegram отвязан.");
+    } catch (reason) { setError((reason as Error).message); }
+  }
+
+  async function addAddress(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    try {
+      const address = await api<Address>("addresses", { method: "POST", body: JSON.stringify({
+        city: form.get("city"), street: form.get("street"), building: form.get("building"),
+        apartment: form.get("apartment"), postalCode: form.get("postalCode"), note: form.get("note"),
+      }) });
+      setAddresses([address, ...addresses]);
+      event.currentTarget.reset();
+      setAddressFormOpen(false);
+      setNotice("Адрес добавлен.");
+      setError("");
+    } catch (reason) { setError((reason as Error).message); }
+  }
+
+  async function deleteAddress(id: string) {
+    try {
+      await api(`addresses/${id}`, { method: "DELETE" });
+      setAddresses(addresses.filter((address) => address.id !== id));
+      setNotice("Адрес удалён.");
+    } catch (reason) { setError((reason as Error).message); }
+  }
+
+  async function changeEmail(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const email = String(form.get("email") || "");
+    try {
+      if (!emailCodeSent) {
+        await api("email/change/send-code", { method: "POST", body: JSON.stringify({ email }) });
+        setEmailCodeSent(true);
+        setNotice("Код подтверждения отправлен на новый email.");
+      } else {
+        await api("email/change/verify-code", { method: "POST", body: JSON.stringify({ email, code: form.get("code") }) });
+        setEmailCodeSent(false);
+        setProfile(profile ? { ...profile, email, emailVerified: true } : null);
+        setNotice("Email изменён.");
+      }
+      setError("");
+    } catch (reason) { setError((reason as Error).message); }
+  }
+
+  async function changePassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    try {
+      const response = await fetch("/api/v1/auth/change-password", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: form.get("currentPassword"), newPassword: form.get("newPassword") }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.detail || payload.title || "Не удалось изменить пароль");
+      }
+      await logout();
+    } catch (reason) { setError((reason as Error).message); }
+  }
+
+  if (!user) return <main className="mx-auto flex-1 px-4 py-12 text-center">Сначала <Link className="underline" href="/login">войдите в кабинет</Link>.</main>;
+
+  const currentEmail = [profile?.email, user.login].find((value) => value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value));
+
+  return (
+    <main className="mx-auto w-full max-w-[820px] flex-1 px-1 py-4 sm:px-4 sm:py-8">
+      <h1 className="text-[30px] font-semibold tracking-tight text-[#171717] sm:text-[34px]">Настройки</h1>
+      {notice ? <p role="status" className="mt-4 text-sm text-emerald-700">{notice}</p> : null}
+      {error ? <p role="alert" className="mt-4 text-sm text-destructive">{error}</p> : null}
+
+      {profile ? <div className="mt-8 divide-y divide-[#e7e7e7] sm:mt-10">
+        <SettingsSection title="Контактные данные">
+          <form onSubmit={saveProfile} className="space-y-5">
+            <div className="grid gap-5 sm:grid-cols-2">
+              {([ ["name", "Имя", profile.name], ["phone", "Телефон", profile.phone], ["telegram", "Telegram для связи", profile.contactTelegram], ["whatsApp", "WhatsApp", profile.whatsApp], ["vk", "VK", profile.vk] ] as const).map(([name, label, value]) => (
+                <label key={name} className="block text-sm font-medium text-[#333]">{label}
+                  <input name={name} defaultValue={value || ""} className={inputClass} autoComplete={name === "name" ? "name" : name === "phone" ? "tel" : "off"} />
+                </label>
+              ))}
+            </div>
+            <button className={`${primaryButtonClass} w-full sm:w-auto`}>Сохранить</button>
+          </form>
+        </SettingsSection>
+
+        <SettingsSection title="Email">
+          <div className="mb-5 text-sm">
+            <p className="text-neutral-500">Текущий email</p>
+            <p className="mt-1 font-medium text-[#222]">{currentEmail || "Email не привязан"}{currentEmail && profile.emailVerified ? <span className="ml-2 text-xs font-normal text-neutral-500">Подтверждён</span> : null}</p>
+          </div>
+          <form onSubmit={changeEmail} className="space-y-4">
+            <label className="block text-sm font-medium text-[#333]">Новый email
+              <input name="email" type="email" required placeholder="Новый email" className={inputClass} />
+            </label>
+            {emailCodeSent ? <label className="block text-sm font-medium text-[#333]">Код из письма
+              <input name="code" required inputMode="numeric" maxLength={6} placeholder="Введите код" className={inputClass} autoComplete="one-time-code" />
+            </label> : null}
+            <button className={`${secondaryButtonClass} w-full sm:w-auto`}>{emailCodeSent ? "Подтвердить новый email" : "Отправить код"}</button>
+          </form>
+        </SettingsSection>
+
+        <SettingsSection title="Пароль">
+          <form onSubmit={changePassword} className="space-y-4">
+            <label className="block text-sm font-medium text-[#333]">Текущий пароль
+              <input name="currentPassword" type="password" required autoComplete="current-password" className={inputClass} />
+            </label>
+            <label className="block text-sm font-medium text-[#333]">Новый пароль
+              <input name="newPassword" type="password" minLength={8} required autoComplete="new-password" placeholder="Новый пароль (от 8 символов)" className={inputClass} />
+            </label>
+            <button className={`${primaryButtonClass} w-full sm:w-auto`}>Изменить пароль</button>
+          </form>
+        </SettingsSection>
+
+        <SettingsSection title="Telegram и уведомления">
+          <p className="text-sm text-neutral-500">Уведомление о создании заявки придёт в привязанный Telegram.</p>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-[#ededed] pb-5">
+            <div><p className="text-sm font-medium text-[#222]">Telegram</p><p className="mt-1 text-sm text-neutral-500">{profile.telegramLinked ? "Аккаунт подключён" : "Аккаунт не подключён"}</p></div>
+            {profile.telegramLinked
+              ? <button type="button" onClick={() => void unlinkTelegram()} className="rounded-md px-2 py-2 text-sm text-neutral-600 underline underline-offset-4 hover:text-red-700">Отвязать</button>
+              : <button type="button" onClick={() => void linkTelegram()} className={secondaryButtonClass}>Привязать Telegram</button>}
+          </div>
+          {profile.telegramLinked ? <div className="flex items-center justify-between gap-4 pt-5">
+            <div><p className="text-sm font-medium text-[#222]">Получать уведомления</p>{profile.notificationsDisabledByAdmin ? <p className="mt-1 text-xs text-neutral-500">Временно отключены поддержкой</p> : null}</div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={profile.notificationsEnabled}
+              aria-label="Получать уведомления в Telegram"
+              disabled={profile.notificationsDisabledByAdmin}
+              onClick={() => void toggleNotifications()}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-45 ${profile.notificationsEnabled ? "bg-black" : "bg-[#d4d4d4]"}`}
+            ><span className={`size-5 rounded-full bg-white shadow-sm transition-transform ${profile.notificationsEnabled ? "translate-x-[22px]" : "translate-x-0.5"}`} /></button>
+          </div> : null}
+        </SettingsSection>
+
+        <SettingsSection title="Адреса">
+          {addresses.length ? <ul className="divide-y divide-[#ededed]">
+            {addresses.map((address) => <li key={address.id} className="flex flex-wrap items-start justify-between gap-3 py-4 first:pt-0 last:pb-0">
+              <div className="min-w-0 text-sm">
+                <p className="font-medium text-[#222]">Адрес</p>
+                <p className="mt-1 text-neutral-600">{[address.city, address.street, address.building, address.apartment ? `кв. ${address.apartment}` : null].filter(Boolean).join(", ")}</p>
+                {address.postalCode || address.note ? <p className="mt-1 text-xs text-neutral-500">{[address.postalCode, address.note].filter(Boolean).join(" · ")}</p> : null}
+              </div>
+              <button type="button" onClick={() => void deleteAddress(address.id)} className="px-1 py-1 text-sm text-neutral-500 underline underline-offset-4 hover:text-red-700">Удалить</button>
+            </li>)}
+          </ul> : <p className="text-sm text-neutral-500">Сохранённых адресов пока нет.</p>}
+
+          {!addressFormOpen ? <button type="button" onClick={() => setAddressFormOpen(true)} className="mt-5 inline-flex items-center gap-2 py-2 text-sm font-medium text-[#222] hover:underline"><Plus className="size-4" aria-hidden="true" />Добавить адрес</button> : (
+            <form onSubmit={addAddress} className="mt-5 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {([ ["city", "Город"], ["street", "Улица"], ["building", "Дом"], ["apartment", "Квартира"], ["postalCode", "Индекс"], ["note", "Комментарий"] ] as const).map(([name, label]) => (
+                  <label key={name} className="block text-sm font-medium text-[#333]">{label}<input name={name} className={inputClass} /></label>
+                ))}
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button className={`${primaryButtonClass} w-full sm:w-auto`}>Сохранить адрес</button>
+                <button type="button" onClick={() => setAddressFormOpen(false)} className={`${secondaryButtonClass} w-full sm:w-auto`}>Отмена</button>
+              </div>
+            </form>
+          )}
+        </SettingsSection>
+      </div> : <p className="mt-8 text-sm text-neutral-500">Загрузка настроек…</p>}
+    </main>
+  );
 }

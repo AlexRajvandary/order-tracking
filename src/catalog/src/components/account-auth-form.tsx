@@ -59,23 +59,23 @@ export function AccountAuthForm({ mode }: { mode: "login" | "register" }) {
 
   const fieldClass = "mt-2 h-13 w-full rounded-xl border border-[#dededb] bg-white px-4 text-[15px] outline-none transition focus:border-neutral-800 focus:ring-2 focus:ring-neutral-900/10";
 
-  return <section className="mx-auto grid min-h-[min(780px,calc(100svh-48px))] w-full max-w-[1500px] overflow-hidden rounded-[24px] border border-black/[0.06] bg-white shadow-[0_20px_70px_rgba(0,0,0,0.08)] lg:grid-cols-2">
-    <div className="flex items-center justify-center px-5 py-8 sm:px-10 sm:py-12 lg:px-14 xl:px-20">
-      <div className="w-full max-w-[480px]">
-        <Link href="/" aria-label="The Get — на главную" className="mb-12 inline-flex">
+  return <section className="mx-auto grid min-h-[min(680px,calc(100svh-48px))] w-full max-w-[1240px] overflow-hidden rounded-[24px] border border-black/[0.06] bg-white shadow-[0_20px_70px_rgba(0,0,0,0.08)] lg:grid-cols-2">
+    <div className="flex items-center justify-center px-5 py-7 sm:px-10 sm:py-10 lg:px-12 xl:px-16">
+      <div className="w-full max-w-[410px]">
+        <Link href="/" aria-label="The Get — на главную" className="mb-8 inline-flex">
           <Image src="/thegetlogo.png" alt="The Get" width={90} height={90} className="h-12 w-12 object-contain" priority />
         </Link>
         <h1 className="text-[30px] font-semibold tracking-tight text-[#171717] sm:text-[36px]">{mode === "login" ? "С возвращением" : "Регистрация"}</h1>
         {mode === "login" ? <p className="mt-2 text-[15px] text-neutral-500">Войдите в свой аккаунт The Get</p> : null}
 
-        <button type="button" disabled={busy} onClick={() => void telegram()} className="mt-7 flex h-13 w-full items-center justify-center gap-3 rounded-xl border border-[#e5e5e5] bg-white font-medium text-[#222] transition hover:border-[#cfcfcf] hover:bg-[#f8f8f7] disabled:cursor-not-allowed disabled:opacity-60">
+        <button type="button" disabled={busy} onClick={() => void telegram()} className="mt-5 flex h-13 w-full items-center justify-center gap-3 rounded-xl border border-[#e5e5e5] bg-white font-medium text-[#222] transition hover:border-[#cfcfcf] hover:bg-[#f8f8f7] disabled:cursor-not-allowed disabled:opacity-60">
           <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5 fill-[#229ED9]"><path d="M21.7 3.3a1.5 1.5 0 0 0-1.56-.24L2.83 9.92c-1.17.46-1.12 2.13.08 2.51l4.43 1.39 1.39 4.43c.38 1.2 2.05 1.25 2.51.08l6.86-17.31a1.5 1.5 0 0 0-.4-1.72ZM9.8 13.78l7.16-7.16-5.67 14.3-1.49-4.76 4.43-4.43-4.43 2.05Z"/></svg>
           Продолжить через Telegram
         </button>
 
-        <div className="my-6 flex items-center gap-4 text-xs text-neutral-400"><span className="h-px flex-1 bg-[#e8e8e6]"/><span>или по email</span><span className="h-px flex-1 bg-[#e8e8e6]"/></div>
+        <div className="my-5 flex items-center gap-4 text-xs text-neutral-400"><span className="h-px flex-1 bg-[#e8e8e6]"/><span>или по email</span><span className="h-px flex-1 bg-[#e8e8e6]"/></div>
 
-        <form onSubmit={submit} className="space-y-5">
+        <form onSubmit={submit} className="space-y-4">
           {mode === "register" && !sent ? <label className="block text-sm font-medium text-[#333]">Имя<input required value={name} onChange={(e) => setName(e.target.value)} className={fieldClass} placeholder="Введите ваше имя" autoComplete="name"/></label> : null}
           <label className="block text-sm font-medium text-[#333]">Email<input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={fieldClass} placeholder="example@mail.com" autoComplete="email"/></label>
           {!sent ? <label className="block text-sm font-medium text-[#333]">Пароль{mode === "login" ? <Link className="float-right font-normal text-neutral-500 underline underline-offset-4 hover:text-neutral-900" href="/forgot-password">Забыли пароль?</Link> : null}<input required minLength={8} type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={fieldClass} placeholder={mode === "login" ? "Введите пароль" : "Создайте пароль"} autoComplete={mode === "login" ? "current-password" : "new-password"}/></label> : <label className="block text-sm font-medium text-[#333]">Код из письма<input required inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value)} className={fieldClass} autoComplete="one-time-code"/></label>}
