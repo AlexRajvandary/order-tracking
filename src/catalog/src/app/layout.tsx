@@ -55,8 +55,8 @@ export default function RootLayout({
             if(!window.__theGetMetrikaInitialized){
               ym(112574449,'init',{ssr:true,defer:true,webvisor:true,clickmap:true,ecommerce:'dataLayer',accurateTrackBounce:true,trackLinks:true});
               ym(112574449,'hit',location.href,{referer:document.referrer,title:document.title});
-              window.__theGetMetrikaInitialized=true;
               window.__theGetMetrikaLastUrl=location.href;
+              window.__theGetMetrikaInitialized=true;
             }
           `}
         </Script>

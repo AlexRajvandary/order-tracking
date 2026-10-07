@@ -10,6 +10,7 @@ import { mapApiProductToCatalog, type ApiProduct } from "@/lib/products-api";
 import type { CatalogProduct } from "@/lib/catalog-products";
 import { Button } from "@/components/ui/button";
 import { CustomerAreaNavigation } from "@/components/customer-area-navigation";
+import { AccountBreadcrumbs } from "@/components/account-breadcrumbs";
 
 export default function FavoritesPage() {
   const { ids, products: storedProducts, ready, clear } = useFavorites();
@@ -64,7 +65,8 @@ export default function FavoritesPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
       <SiteHeader />
-      <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-4 px-4 py-6 sm:px-8 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-8 lg:px-10">
+      <AccountBreadcrumbs />
+      <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-4 px-4 py-6 pb-16 sm:px-8 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-8 lg:px-10">
         <CustomerAreaNavigation />
         <section className="min-w-0 py-2">
         <div className="mb-8 flex items-center justify-between gap-4">

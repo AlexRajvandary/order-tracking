@@ -17,6 +17,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { CheckoutSheet } from "@/components/checkout-sheet";
 import { CustomerAreaNavigation } from "@/components/customer-area-navigation";
+import { AccountBreadcrumbs } from "@/components/account-breadcrumbs";
 
 export default function CartPage() {
   const { items, itemCount, totalRub, setQuantity, removeItem, clear } = useCart();
@@ -24,7 +25,8 @@ export default function CartPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
       <SiteHeader />
-      <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-4 px-4 py-6 sm:px-8 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-8 lg:px-10">
+      <AccountBreadcrumbs />
+      <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-4 px-4 py-6 pb-16 sm:px-8 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-8 lg:px-10">
         <CustomerAreaNavigation />
         <section className="mx-auto w-full max-w-4xl min-w-0 py-2">
         <div className="mb-6 space-y-1">

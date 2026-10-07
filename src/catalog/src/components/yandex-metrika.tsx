@@ -30,7 +30,7 @@ export function YandexMetrika() {
     if (window.__theGetMetrikaLastUrl === url) return;
 
     window.ym(COUNTER_ID, "hit", url, {
-      referrer: window.__theGetMetrikaLastUrl,
+      referer: window.__theGetMetrikaLastUrl || document.referrer,
       title: document.title,
     });
     window.__theGetMetrikaLastUrl = url;
