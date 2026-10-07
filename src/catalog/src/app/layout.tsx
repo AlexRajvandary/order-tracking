@@ -61,7 +61,7 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className="flex min-h-full flex-col bg-background font-sans antialiased">
+      <body className="flex min-h-dvh flex-col bg-background font-sans antialiased">
         <Suspense fallback={null}>
           <YandexMetrika />
         </Suspense>
@@ -78,7 +78,7 @@ export default function RootLayout({
         <CustomerAccountProvider>
         <CartProvider>
           <FavoritesProvider>
-            <main className="flex min-h-full flex-1 flex-col bg-background">{children}</main>
+            <div className="flex min-h-0 flex-1 flex-col bg-background">{children}</div>
             <OrderProcess />
             <Footer />
           </FavoritesProvider>

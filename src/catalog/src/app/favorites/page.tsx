@@ -62,7 +62,7 @@ export default function FavoritesPage() {
     .filter((product): product is CatalogProduct => product !== undefined);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-0 flex-1 flex-col bg-background">
       <SiteHeader />
       <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-4 px-4 py-6 sm:px-8 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-8 lg:px-10">
         <CustomerAreaNavigation />

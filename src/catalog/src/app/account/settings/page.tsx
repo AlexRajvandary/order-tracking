@@ -1,23 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { useCustomerAccount } from "@/components/customer-account-provider";
-
-type Profile = {
-  email?: string;
-  emailVerified: boolean;
-  name?: string;
-  phone?: string;
-  contactTelegram?: string;
-  whatsApp?: string;
-  vk?: string;
-  telegramLinked: boolean;
-  notificationsEnabled: boolean;
-  notificationsDisabledByAdmin: boolean;
-};
-type Address = { id: string; city?: string; street?: string; building?: string; apartment?: string; postalCode?: string; note?: string };
+import { useCustomerAccountData, type CustomerAddressData } from "@/components/use-customer-account-data";
 
 const inputClass = "mt-2 h-12 w-full rounded-lg border border-[#dededb] bg-white px-3.5 text-[15px] outline-none transition focus:border-neutral-800 focus:ring-2 focus:ring-neutral-900/10";
 const secondaryButtonClass = "inline-flex min-h-11 items-center justify-center rounded-lg border border-[#dcdcdc] bg-white px-5 text-sm font-medium text-[#222] transition hover:bg-[#f5f5f5] disabled:cursor-not-allowed disabled:opacity-50";
@@ -34,8 +21,7 @@ function SettingsSection({ title, children }: { title: string; children: React.R
 
 export default function AccountSettingsPage() {
   const { token, user, logout } = useCustomerAccount();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [addresses, setAddresses] = useState<Address[]>([]);
+  const { profile, setProfile, addresses, setAddresses, loading: accountDataLoading, error: accountDataError } = useCustomerAccountData(token);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [emailCodeSent, setEmailCodeSent] = useState(false);
@@ -52,13 +38,6 @@ export default function AccountSettingsPage() {
     }
     return response.status === 204 ? undefined as T : await response.json() as T;
   }, [token]);
-
-  useEffect(() => {
-    if (!token) return;
-    void Promise.all([api<Profile>("profile"), api<Address[]>("addresses")])
-      .then(([nextProfile, nextAddresses]) => { setProfile(nextProfile); setAddresses(nextAddresses); })
-      .catch((reason: Error) => setError(reason.message));
-  }, [api, token]);
 
   async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -103,7 +82,7 @@ export default function AccountSettingsPage() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     try {
-      const address = await api<Address>("addresses", { method: "POST", body: JSON.stringify({
+      const address = await api<CustomerAddressData>("addresses", { method: "POST", body: JSON.stringify({
         city: form.get("city"), street: form.get("street"), building: form.get("building"),
         apartment: form.get("apartment"), postalCode: form.get("postalCode"), note: form.get("note"),
       }) });
@@ -167,7 +146,7 @@ export default function AccountSettingsPage() {
     <main className="mx-auto w-full max-w-[820px] flex-1 px-1 py-4 sm:px-4 sm:py-8">
       <h1 className="text-[30px] font-semibold tracking-tight text-[#171717] sm:text-[34px]">Настройки</h1>
       {notice ? <p role="status" className="mt-4 text-sm text-emerald-700">{notice}</p> : null}
-      {error ? <p role="alert" className="mt-4 text-sm text-destructive">{error}</p> : null}
+      {error || accountDataError ? <p role="alert" className="mt-4 text-sm text-destructive">{error || accountDataError}</p> : null}
 
       {profile ? <div className="mt-8 divide-y divide-[#e7e7e7] sm:mt-10">
         <SettingsSection title="Контактные данные">
@@ -259,7 +238,7 @@ export default function AccountSettingsPage() {
             </form>
           )}
         </SettingsSection>
-      </div> : <p className="mt-8 text-sm text-neutral-500">Загрузка настроек…</p>}
+      </div> : <p className="mt-8 text-sm text-neutral-500">{accountDataLoading ? "Загрузка настроек…" : "Настройки профиля пока недоступны."}</p>}
     </main>
   );
 }
