@@ -180,6 +180,7 @@ public static class DependencyInjection
             sp.GetRequiredService<TelegramBot.Reports.TelegramOrdersCsvService>()));
         services.AddScoped<ITelegramAdminNotifier, TelegramBot.TelegramOutboxNotifier>();
         services.AddHostedService<TelegramBot.TelegramBotHostedService>();
+        services.AddHostedService<TelegramBot.CustomerTelegramBotHostedService>();
         services.AddHostedService<TelegramBot.TelegramOutboxProcessorHostedService>();
         services.AddHostedService<TelegramBot.TelegramDailyOrdersCsvBackgroundService>();
 
