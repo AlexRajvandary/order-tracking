@@ -70,7 +70,7 @@ export default function FavoritesPage() {
       <AccountBreadcrumbs />
       <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-4 px-4 py-6 pb-24 sm:px-8 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-8 lg:px-10">
         <CustomerAreaNavigation />
-        <section className="min-w-0 py-2">
+        <section className="min-w-0 py-2 lg:px-4">
         <div className="mb-8 flex items-center justify-between gap-4">
           <h1 className="text-[30px] font-semibold tracking-tight text-[#111] sm:text-[34px]">Избранное</h1>
           {ids.length > 0 ? (
