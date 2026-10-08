@@ -152,6 +152,7 @@ public sealed class CustomerTelegramBotHostedService : BackgroundService
 
         string text;
         InlineKeyboardMarkup? keyboard = null;
+        var hasNoOrders = false;
         if (customerId is null)
         {
             text = "Чтобы посмотреть заказы, привяжите Telegram к личному кабинету на сайте The Get.";
@@ -160,6 +161,7 @@ public sealed class CustomerTelegramBotHostedService : BackgroundService
         {
             var query = db.Orders.AsNoTracking().Where(order => order.CustomerId == customerId);
             var total = await query.CountAsync(cancellationToken);
+            hasNoOrders = total == 0;
             var totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)PageSize));
             var page = Math.Clamp(requestedPage, 1, totalPages);
             var orders = await query
@@ -197,7 +199,18 @@ public sealed class CustomerTelegramBotHostedService : BackgroundService
 
         if (messageId is null)
         {
-            await bot.SendMessage(chatId, text, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
+            if (hasNoOrders)
+            {
+                await using var photo = typeof(CustomerTelegramBotHostedService).Assembly
+                    .GetManifestResourceStream("OrderTracking.Infrastructure.TelegramBot.Assets.CustomerOrdersEmpty.png")
+                    ?? throw new InvalidOperationException("The customer orders empty-state image is missing.");
+                await bot.SendPhoto(chatId, InputFile.FromStream(photo, "customer-orders-empty.png"),
+                    caption: text, parseMode: ParseMode.Html, cancellationToken: cancellationToken);
+            }
+            else
+            {
+                await bot.SendMessage(chatId, text, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
+            }
         }
         else
         {
