@@ -144,7 +144,7 @@ export default function AccountSettingsPage() {
 
   return (
     <main className="mx-auto w-full max-w-[820px] flex-1 px-1 py-4 sm:px-4 sm:py-8">
-      <h1 className="text-[30px] font-semibold tracking-tight text-[#171717] sm:text-[34px]">Настройки</h1>
+      <h1 className="text-[30px] font-semibold tracking-tight text-[#111] sm:text-[34px]">Настройки</h1>
       {notice ? <p role="status" className="mt-4 text-sm text-emerald-700">{notice}</p> : null}
       {error || accountDataError ? <p role="alert" className="mt-4 text-sm text-destructive">{error || accountDataError}</p> : null}
 

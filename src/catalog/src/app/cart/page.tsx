@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { MinusIcon, PlusIcon, ShoppingBagIcon, Trash2Icon } from "lucide-react";
+import Image from "next/image";
+import { MinusIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { formatCartMoney, useCart } from "@/components/cart-provider";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
@@ -26,29 +27,40 @@ export default function CartPage() {
     <div className="flex min-h-0 flex-1 flex-col bg-background">
       <SiteHeader />
       <AccountBreadcrumbs />
-      <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-4 px-4 py-6 pb-16 sm:px-8 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-8 lg:px-10">
+      <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-4 px-4 py-6 pb-24 sm:px-8 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-8 lg:px-10">
         <CustomerAreaNavigation />
         <section className="mx-auto w-full max-w-4xl min-w-0 py-2">
         <div className="mb-6 space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">Корзина</h1>
-          <p className="text-sm text-muted-foreground">
-            {itemCount === 0
-              ? "Пока пусто. Добавьте товары со страниц каталога."
-              : `${itemCount} позиций · сумма считается в памяти браузера`}
-          </p>
+          <h1 className="text-[30px] font-semibold tracking-tight text-[#111] sm:text-[34px]">Корзина</h1>
+          {itemCount > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {`${itemCount} позиций · сумма считается в памяти браузера`}
+            </p>
+          ) : null}
         </div>
 
         {items.length === 0 ? (
-          <Card>
-            <CardHeader className="items-center text-center">
-              <ShoppingBagIcon className="mb-2 size-10 text-muted-foreground" />
-              <CardTitle className="text-xl">Корзина пуста</CardTitle>
-              <CardDescription>Откройте каталог и нажмите «В корзину».</CardDescription>
-            </CardHeader>
-            <CardFooter className="justify-center">
-              <Button render={<Link href="/" />}>К каталогу</Button>
-            </CardFooter>
-          </Card>
+          <div className="mt-12 flex max-w-[840px] flex-col items-start gap-6 sm:gap-8 lg:flex-row lg:items-center lg:gap-14">
+            <Image
+              src="/assets/cart-empty.png"
+              alt=""
+              width={512}
+              height={512}
+              className="h-auto w-[240px] max-w-full shrink-0 object-contain sm:w-[280px] lg:w-[320px] lg:max-w-[40%]"
+            />
+            <div className="w-full">
+              <h2 className="text-xl font-semibold text-[#111]">В корзине пока пусто</h2>
+              <p className="mt-2 text-sm leading-relaxed text-neutral-500 sm:text-base">
+                Добавьте понравившиеся товары — они появятся здесь.
+              </p>
+              <Link
+                href="/"
+                className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-black px-5 text-sm font-medium text-white transition hover:bg-[#1a1a1a] sm:w-auto"
+              >
+                Перейти к товарам
+              </Link>
+            </div>
+          </div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
             <Card className="gap-0 py-0">

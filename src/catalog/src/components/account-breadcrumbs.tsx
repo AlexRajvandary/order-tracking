@@ -34,7 +34,7 @@ export function AccountBreadcrumbs() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] pr-6 pt-4 pb-5 sm:pr-10 sm:pb-6 lg:pr-12">
+    <div className="mx-auto w-full max-w-[1440px] px-4 pt-8 pb-1 sm:px-8 sm:pt-10 sm:pb-1 lg:px-10">
       <button type="button" onClick={goBack} className="mb-3 inline-flex items-center gap-2 rounded-md py-1 text-sm text-neutral-600 transition-colors hover:text-[#111] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900">
         <ArrowLeft className="size-4" aria-hidden="true" />
         Назад

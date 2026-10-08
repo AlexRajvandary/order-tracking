@@ -45,7 +45,7 @@ export default function AccountPage() {
   return (
     <main className="mx-auto w-full max-w-[900px] flex-1 px-4 py-4 sm:px-6 sm:py-8">
       <header className="border-b border-[#e6e6e6] pb-7 sm:pb-8">
-        <h1 className="text-[32px] font-bold tracking-[-0.035em] text-[#111] sm:text-4xl">Личный кабинет</h1>
+      <h1 className="text-[30px] font-semibold tracking-tight text-[#111] sm:text-[34px]">Личный кабинет</h1>
         <div className="mt-6">
           <p className="text-[22px] font-semibold tracking-tight text-[#171717]">{displayName}</p>
           <p className="mt-1 text-sm text-neutral-500">{email || "Email не указан"}</p>

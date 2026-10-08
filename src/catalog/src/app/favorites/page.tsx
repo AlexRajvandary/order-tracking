@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { ProductCard } from "@/components/product-card";
@@ -66,11 +68,11 @@ export default function FavoritesPage() {
     <div className="flex min-h-0 flex-1 flex-col bg-background">
       <SiteHeader />
       <AccountBreadcrumbs />
-      <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-4 px-4 py-6 pb-16 sm:px-8 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-8 lg:px-10">
+      <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-4 px-4 py-6 pb-24 sm:px-8 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-8 lg:px-10">
         <CustomerAreaNavigation />
         <section className="min-w-0 py-2">
         <div className="mb-8 flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Избранное</h1>
+          <h1 className="text-[30px] font-semibold tracking-tight text-[#111] sm:text-[34px]">Избранное</h1>
           {ids.length > 0 ? (
             <Button type="button" variant="outline" onClick={clear}>
               <Trash2 data-icon="inline-start" />
@@ -79,8 +81,26 @@ export default function FavoritesPage() {
           ) : null}
         </div>
         {loading ? <ProductGridSkeleton count={5} /> : products.length === 0 ? (
-          <div className="border border-border px-5 py-16 text-center text-sm text-muted-foreground">
-            Вы ещё не добавили товары в избранное.
+          <div className="mt-12 flex max-w-[840px] flex-col items-start gap-6 sm:gap-8 lg:flex-row lg:items-center lg:gap-14">
+            <Image
+              src="/assets/favorites-empty.png"
+              alt=""
+              width={512}
+              height={512}
+              className="h-auto w-[240px] max-w-full shrink-0 object-contain sm:w-[280px] lg:w-[320px] lg:max-w-[40%]"
+            />
+            <div className="w-full">
+              <h2 className="text-xl font-semibold text-[#111]">В избранном пока пусто</h2>
+              <p className="mt-2 text-sm leading-relaxed text-neutral-500 sm:text-base">
+                Сохраняйте понравившиеся товары, чтобы вернуться к ним позже.
+              </p>
+              <Link
+                href="/"
+                className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-black px-5 text-sm font-medium text-white transition hover:bg-[#1a1a1a] sm:w-auto"
+              >
+                Перейти к товарам
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">

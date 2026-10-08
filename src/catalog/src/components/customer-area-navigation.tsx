@@ -17,7 +17,7 @@ export function CustomerAreaNavigation() {
   const isFavoritesOrCart = pathname === "/favorites" || pathname === "/cart";
 
   return (
-    <nav aria-label="Разделы личного кабинета" className={`min-w-0 ${isFavoritesOrCart ? "lg:pt-6" : "lg:pt-8"}`}>
+    <nav aria-label="Разделы личного кабинета" className={`min-w-0 ${isFavoritesOrCart ? "lg:pt-2" : "lg:pt-8"}`}>
       <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:rounded-xl lg:border lg:bg-card lg:p-2">
         {items.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || (href !== "/account" && pathname.startsWith(`${href}/`));
