@@ -175,7 +175,7 @@ public sealed class CustomerTelegramBotHostedService : BackgroundService
                 .ToListAsync(cancellationToken);
 
             text = total == 0
-                ? "📦 У вас пока нет заказов."
+                ? "📦 У вас пока нет заказов и заявок."
                 : $"📦 <b>Мои заказы</b> (стр. {page}/{totalPages}, всего {total})\n\n" +
                     string.Join("\n\n", orders.Select((order, index) =>
                         $"{(page - 1) * PageSize + index + 1}. <b>№ {Escape(order.TrackingCode)}</b>\n" +
