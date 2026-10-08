@@ -42,6 +42,7 @@ export default function RootLayout({
   return (
     <html lang="ru" className="h-full">
       <head>
+        <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
         <Script id="yandex-metrika" strategy="beforeInteractive">
           {`
             (function(m,e,t,r,i,k,a){
