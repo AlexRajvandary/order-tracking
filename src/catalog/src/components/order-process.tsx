@@ -40,8 +40,8 @@ export function OrderProcess() {
   if (SERVICE_REQUEST_PATHS.has(pathname) || pathname.startsWith("/account")) return null;
 
   return (
-    <section className="mx-auto w-full max-w-[1280px] bg-[#F4F4F5] px-4 py-14 sm:px-8 sm:py-16 lg:px-10 lg:py-20">
-      <div>
+    <section className="w-full bg-[#F4F4F5]">
+      <div className="mx-auto w-full max-w-[1280px] px-4 py-14 sm:px-8 sm:py-16 lg:px-10 lg:py-20">
         <h2 className="flex items-center gap-3 text-[22px] font-bold tracking-tight text-[#111] sm:text-[30px]">
           <span aria-hidden className="h-[0.85em] w-1 shrink-0 rounded-full bg-[#F24676]" />
           КАК РАБОТАЕТ <span className="text-[#111]">THEGET</span>
