@@ -17,6 +17,7 @@ type FigureCategorySectionProps = {
   sectionId: string;
   title?: string;
   allLabel?: string;
+  matchCategoryGridSpacing?: boolean;
 };
 
 export function FigureCategorySection({
@@ -24,13 +25,14 @@ export function FigureCategorySection({
   sectionId,
   title = "Фигурки",
   allLabel = "Все",
+  matchCategoryGridSpacing = false,
 }: FigureCategorySectionProps) {
   const [swiper, setSwiper] = useState<SwiperInstance | null>(null);
 
   return (
     <section aria-labelledby={`${sectionId}-section-title`} className="w-full">
       <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-0">
-        <div className="mb-0 flex items-center justify-between gap-4 sm:mb-1">
+        <div className={`flex items-center justify-between gap-4 ${matchCategoryGridSpacing ? "mb-5 sm:mb-10" : "mb-0 sm:mb-1"}`}>
           <h2
             id={`${sectionId}-section-title`}
             className="flex min-w-0 items-center gap-3 text-[28px] font-bold leading-[1.15] tracking-tight text-[#111] sm:text-[32px]"
@@ -63,7 +65,7 @@ export function FigureCategorySection({
             }}
             scrollbar={{ draggable: true, hide: false }}
             onSwiper={setSwiper}
-            className="figure-swiper sm:-mt-5"
+            className={`figure-swiper ${matchCategoryGridSpacing ? "" : "sm:-mt-5"}`}
           >
             {[...items, ...items, ...items].map((item, index) => (
               <SwiperSlide key={`${item.id}-${index}`}>

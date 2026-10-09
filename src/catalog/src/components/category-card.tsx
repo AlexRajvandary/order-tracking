@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CategoryItem } from "@/lib/categories";
 import { categoryHref } from "@/lib/categories-api";
@@ -13,20 +14,18 @@ export function CategoryCard({ item, sectionId }: CategoryCardProps) {
     <Link
       href={categoryHref(sectionId, item.slug)}
       className={cn(
-        "group flex h-full cursor-pointer flex-col items-center rounded-[14px] border border-[#EFEFEF] bg-white p-3",
-        "shadow-[0_8px_30px_rgba(0,0,0,0.04)] sm:rounded-[18px] sm:p-6",
-        "transition-[transform,box-shadow] duration-[250ms] ease-out",
-        "hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.1)]",
+        "group flex h-full min-w-0 cursor-pointer flex-col items-center px-1 py-2 text-center",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F24676]",
       )}
     >
-      <span className="flex h-[72px] w-full shrink-0 items-center justify-center sm:h-[100px]">
+      <span className="flex h-[132px] w-full shrink-0 items-center justify-center sm:h-[152px] lg:h-[160px]">
         {item.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.imageUrl}
             alt=""
             loading="lazy"
-            className="max-h-[72px] max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.06] sm:max-h-[100px]"
+            className="h-full max-h-full max-w-full object-contain transition-transform duration-200 ease-out motion-safe:group-hover:-translate-y-1 motion-safe:group-hover:scale-105 motion-reduce:transition-none motion-reduce:transform-none"
           />
         ) : (
           <span
@@ -35,10 +34,14 @@ export function CategoryCard({ item, sectionId }: CategoryCardProps) {
           />
         )}
       </span>
-      <span className="mt-3 flex min-h-[40px] w-full items-start justify-center sm:mt-5 sm:min-h-[48px]">
-        <span className="line-clamp-2 text-center text-[13px] font-semibold leading-snug text-[#111] transition-colors duration-200 group-hover:text-[#F24676] sm:text-lg">
+      <span className="mt-3 flex min-h-10 w-full items-center justify-center gap-1.5">
+        <span className="line-clamp-2 min-w-0 text-center text-[15px] font-medium leading-5 text-[#111] sm:text-base sm:font-semibold">
           {item.label}
         </span>
+        <ArrowRight
+          aria-hidden="true"
+          className="size-4 shrink-0 text-[#FF4081] transition-transform duration-200 ease-out motion-safe:group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:transform-none"
+        />
       </span>
     </Link>
   );

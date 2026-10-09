@@ -8,7 +8,7 @@ export function StorefrontAnnouncement({ text }: StorefrontAnnouncementProps) {
 
   return (
     <div
-      className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[#111] text-white"
+      className="relative w-full overflow-hidden bg-[#111] text-white"
       role="status"
       aria-label="Объявление"
     >

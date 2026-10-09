@@ -163,6 +163,7 @@ export default async function HomePage() {
                   sectionId={sectionRouteId(section.id)}
                   title={section.title}
                   allLabel="Все"
+                  matchCategoryGridSpacing={section.id === "books"}
                 />
               ) : fashionSections.has(section.id) ? (() => {
                 const fashion = fashionSections.get(section.id)!;
