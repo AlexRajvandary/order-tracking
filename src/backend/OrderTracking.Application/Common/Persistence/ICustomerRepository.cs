@@ -8,6 +8,8 @@ public interface ICustomerRepository
 {
     void Add(Customer customer);
 
+    void Remove(Customer customer);
+
     void AddAddress(CustomerAddress address);
 
     Task<Customer?> GetByIdTrackedAsync(Guid id, CancellationToken cancellationToken = default);

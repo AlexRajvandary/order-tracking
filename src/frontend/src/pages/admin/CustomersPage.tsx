@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -234,6 +234,15 @@ export function CustomersPage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: customersApi.deleteCustomer,
+    onSuccess: (_result, id) => {
+      void queryClient.invalidateQueries({ queryKey: ['customers'] })
+      void queryClient.invalidateQueries({ queryKey: ['orders'] })
+      void queryClient.removeQueries({ queryKey: ['customers', id] })
+    },
+  })
+
   const columns = useMemo<ColumnDef<Customer>[]>(
     () => [
       {
@@ -318,8 +327,31 @@ export function CustomersPage() {
         ),
         cell: ({ row }) => formatDate(row.original.createdAt),
       },
+      {
+        id: 'actions',
+        enableColumnFilter: false,
+        enableSorting: false,
+        meta: { label: t('columns.actions') },
+        header: () => t('columns.actions'),
+        cell: ({ row }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t('delete')}
+            title={t('delete')}
+            disabled={deleteMutation.isPending}
+            onClick={(event) => {
+              event.stopPropagation()
+              deleteMutation.mutate(row.original.id)
+            }}
+          >
+            <Trash2 className="size-4 text-destructive" />
+          </Button>
+        ),
+      },
     ],
-    [t],
+    [t, deleteMutation],
   )
 
   return (
@@ -335,6 +367,11 @@ export function CustomersPage() {
           <span>{t('title')}</span>
         </CardHeader>
         <CardContent className="space-y-4">
+          {deleteMutation.isError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{t('deleteError')}</AlertDescription>
+            </Alert>
+          ) : null}
           {isLoading ? (
             <p className="text-sm text-muted-foreground">{t('loading', { ns: 'common' })}</p>
           ) : isError ? (

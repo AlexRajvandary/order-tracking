@@ -3,6 +3,8 @@
   "subtitle": "Manage your customer database",
   "add": "Add customer",
   "edit": "Edit",
+  "delete": "Delete customer",
+  "deleteError": "Failed to delete customer",
   "orders": "Requests",
   "searchPlaceholder": "Search by name, phone or telegram...",
   "search": "Search",

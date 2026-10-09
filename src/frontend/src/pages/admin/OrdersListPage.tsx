@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -42,11 +42,20 @@ function isOrderStatus(value: string): value is OrderStatus {
 export function OrdersListPage() {
   const { t } = useTranslation('orders')
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [toolbarSlot, setToolbarSlot] = useState<HTMLDivElement | null>(null)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search)
   const normalizedSearch = debouncedSearch.trim()
   const activeSearch = normalizedSearch.length >= 2 ? normalizedSearch : null
+
+  const deleteMutation = useMutation({
+    mutationFn: ordersApi.deleteOrder,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['orders'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+    },
+  })
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['orders', activeSearch],
@@ -170,8 +179,31 @@ export function OrdersListPage() {
         ),
         cell: ({ row }) => formatDate(row.original.updatedAt),
       },
+      {
+        id: 'actions',
+        enableColumnFilter: false,
+        enableSorting: false,
+        meta: { label: t('columns.actions') },
+        header: () => t('columns.actions'),
+        cell: ({ row }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t('delete')}
+            title={t('delete')}
+            disabled={deleteMutation.isPending}
+            onClick={(event) => {
+              event.stopPropagation()
+              deleteMutation.mutate(row.original.id)
+            }}
+          >
+            <Trash2 className="size-4 text-destructive" />
+          </Button>
+        ),
+      },
     ],
-    [t],
+    [t, deleteMutation],
   )
 
   return (
@@ -187,6 +219,11 @@ export function OrdersListPage() {
           <span>{t('title')}</span>
         </CardHeader>
         <CardContent className="space-y-4">
+          {deleteMutation.isError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{t('deleteError')}</AlertDescription>
+            </Alert>
+          ) : null}
           {isLoading ? (
             <p className="text-sm text-muted-foreground">{t('loading', { ns: 'common' })}</p>
           ) : isError ? (

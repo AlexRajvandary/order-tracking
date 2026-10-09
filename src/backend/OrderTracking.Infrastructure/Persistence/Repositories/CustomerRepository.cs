@@ -17,6 +17,8 @@ public sealed class CustomerRepository : ICustomerRepository
 
     public void Add(Customer customer) => _db.Customers.Add(customer);
 
+    public void Remove(Customer customer) => _db.Customers.Remove(customer);
+
     public void AddAddress(CustomerAddress address) => _db.CustomerAddresses.Add(address);
 
     public Task<Customer?> GetByIdTrackedAsync(Guid id, CancellationToken cancellationToken = default) =>

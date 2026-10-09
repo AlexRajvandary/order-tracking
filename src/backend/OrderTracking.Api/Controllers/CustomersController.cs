@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OrderTracking.Application.Common.Models;
 using OrderTracking.Application.Customers.CreateCustomer;
+using OrderTracking.Application.Customers.DeleteCustomer;
 using OrderTracking.Application.Customers.GetCustomerAddresses;
 using OrderTracking.Application.Customers.GetCustomerById;
 using OrderTracking.Application.Customers.GetCustomerOrders;
@@ -109,6 +110,13 @@ public sealed class CustomersController : ControllerBase
             cancellationToken);
 
         return Ok(result);
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteCustomer(Guid id, CancellationToken cancellationToken)
+    {
+        await _mediator.Send(new DeleteCustomerCommand(id), cancellationToken);
+        return NoContent();
     }
 
     [HttpGet("{id:guid}/orders")]

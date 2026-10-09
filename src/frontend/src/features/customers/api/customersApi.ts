@@ -59,6 +59,10 @@ export function updateCustomer(id: string, request: UpsertCustomerRequest) {
   })
 }
 
+export function deleteCustomer(id: string) {
+  return authorizedJson<void>(`/customers/${id}`, { method: 'DELETE' })
+}
+
 export function getCustomerOrders(id: string, page = 1, pageSize = 20) {
   return authorizedJson<PaginatedResponse<CustomerOrderSummary>>(
     `/customers/${id}/orders?page=${page}&pageSize=${pageSize}`,
