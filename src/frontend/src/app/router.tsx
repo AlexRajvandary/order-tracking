@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { LoginPage } from '@/pages/admin/LoginPage'
 import { DashboardPage } from '@/pages/admin/DashboardPage'
@@ -18,6 +18,7 @@ import { ChangesPage } from '@/pages/admin/ChangesPage'
 import { VpsMonitoringPage } from '@/pages/admin/VpsMonitoringPage'
 import { StorefrontAnnouncementPage } from '@/pages/admin/StorefrontAnnouncementPage'
 import { CatalogAnalyticsPage } from '@/pages/admin/CatalogAnalyticsPage'
+import { CatalogPage } from '@/pages/admin/CatalogPage'
 import { ProcurementItemDetailPage, ProcurementOrderDetailPage, ProcurementsPage } from '@/pages/admin/ProcurementsPage'
 import { TrackingPage } from '@/pages/public/TrackingPage'
 import { AdminShell } from '@/widgets/admin-shell/AdminShell'
@@ -37,6 +38,16 @@ function PublicTrackingRoutes() {
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
+}
+
+function LegacyCatalogRedirect() {
+  const { pathname, search, hash } = useLocation()
+  const target = pathname.startsWith('/admin/products')
+    ? pathname.replace('/admin/products', '/admin/catalog/products')
+    : pathname === '/admin/catalog-analytics'
+      ? '/admin/catalog/analytics'
+      : '/admin/catalog/storefront-announcement'
+  return <Navigate to={`${target}${search}${hash}`} replace />
 }
 
 function AdminAndLegacyRoutes() {
@@ -64,12 +75,18 @@ function AdminAndLegacyRoutes() {
             <Route path="procurements/orders/:orderId/:stage" element={<ProcurementOrderDetailPage />} />
             <Route path="customers" element={<CustomersPage />} />
             <Route path="customers/:id" element={<CustomerDetailsPage />} />
-            <Route path="products" element={<ProductsPage />} />
-            <Route path="catalog-analytics" element={<CatalogAnalyticsPage />} />
-            <Route path="products/:id" element={<ProductDetailsPage />} />
+            <Route path="catalog" element={<CatalogPage />}>
+              <Route path="products" element={<ProductsPage />} />
+              <Route path="products/:id" element={<ProductDetailsPage />} />
+              <Route path="analytics" element={<CatalogAnalyticsPage />} />
+              <Route path="storefront-announcement" element={<StorefrontAnnouncementPage />} />
+            </Route>
+            <Route path="products" element={<LegacyCatalogRedirect />} />
+            <Route path="products/:id" element={<LegacyCatalogRedirect />} />
+            <Route path="catalog-analytics" element={<LegacyCatalogRedirect />} />
             <Route path="changes" element={<ChangesPage />} />
             <Route path="monitoring" element={<VpsMonitoringPage />} />
-            <Route path="storefront-announcement" element={<StorefrontAnnouncementPage />} />
+            <Route path="storefront-announcement" element={<LegacyCatalogRedirect />} />
             <Route path="admins" element={<AdminsPage />} />
             <Route path="statuses" element={<StatusManagementPage />} />
             <Route path="help" element={<HelpPage />} />
