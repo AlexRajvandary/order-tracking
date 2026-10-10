@@ -133,6 +133,7 @@
   },
   "actions": {
     "Purchased": "Выкуплен",
+    "undoPurchase": "Отменить выкуп",
     "AwaitingWarehouse": "Передать на склад",
     "AtOriginWarehouse": "Поступил на склад",
     "AwaitingTransitShipment": "Подготовить к транзиту",

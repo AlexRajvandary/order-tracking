@@ -133,6 +133,7 @@
   },
   "actions": {
     "Purchased": "Purchased",
+    "undoPurchase": "Undo purchase",
     "AwaitingWarehouse": "Send to warehouse",
     "AtOriginWarehouse": "Received at warehouse",
     "AwaitingTransitShipment": "Prepare transit shipment",

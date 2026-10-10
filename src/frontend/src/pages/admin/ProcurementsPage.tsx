@@ -19,6 +19,7 @@ import {
   GripVertical,
   ImageOff,
   ImagePlus,
+  RotateCcw,
   Search,
   Trash2,
   Truck,
@@ -262,6 +263,7 @@ function LifecycleActions({ row, onTransition }: { row: ProcurementRow; onTransi
   return <div className="mt-2 space-y-2" onClick={(event) => event.stopPropagation()}>
     <div className="flex flex-wrap items-center gap-2">
       {row.openErrorCount > 0 ? <Badge variant="destructive" className="gap-1"><CircleAlert className="size-3" />{t('board.openErrors', { count: row.openErrorCount })}</Badge> : null}
+      {row.status === 'Purchased' && row.previousStatus === 'RequiredPurchase' ? <Button size="sm" variant="outline" className="h-8" onClick={() => onTransition(row, row.previousStatus ?? undefined)}><RotateCcw />{t('actions.undoPurchase')}</Button> : null}
       {row.nextStatus ? <Button size="sm" className="h-8" disabled={blocked} onClick={() => onTransition(row, row.nextStatus ?? undefined)}>{t(`actions.${row.nextStatus}`)}<ArrowRight /></Button> : null}
       {row.status !== 'Delivered' ? <Button size="sm" variant="outline" className="h-8" onClick={() => setShowErrorForm((value) => !value)}><CircleAlert />{t('board.reportError')}</Button> : null}
     </div>
