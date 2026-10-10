@@ -37,5 +37,5 @@ public sealed class SearchOrdersQueryHandler : IRequestHandler<SearchOrdersQuery
             row.Id, row.TrackingCode, row.CustomerId, row.CustomerName, row.CustomerPhone,
             row.CustomerWhatsApp, row.CustomerVk, row.CustomerEmail, row.CustomerTelegram,
             row.AdminNotes, row.Status,
-            row.ItemsCount, row.CreatedAt, row.UpdatedAt);
+            row.ItemsCount, row.CreatedAt, row.UpdatedAt, row.ConvertedToSalesOrderId);
 }

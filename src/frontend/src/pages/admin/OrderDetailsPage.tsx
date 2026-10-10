@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next'
 import * as ordersApi from '@/features/orders/api/ordersApi'
 import * as customersApi from '@/features/customers/api/customersApi'
 import * as statusesApi from '@/features/statuses/api/statusesApi'
-import * as procurementsApi from '@/features/procurements/api/procurementsApi'
+import * as salesOrdersApi from '@/features/orders/api/salesOrdersApi'
 import type {
   CurrencyCode,
   OrderItem,
@@ -753,8 +753,18 @@ function StatusUpdateDialog({
   )
 }
 
-export function OrderDetailsPage() {
-  const { id = '' } = useParams()
+export function OrderDetailsPage({
+  requestId,
+  salesOrderId,
+  displayTrackingCode,
+}: {
+  requestId?: string
+  salesOrderId?: string
+  displayTrackingCode?: string
+} = {}) {
+  const routeParams = useParams()
+  const id = requestId ?? routeParams.id ?? ''
+  const isSalesOrder = Boolean(salesOrderId)
   const navigate = useNavigate()
   const { t, i18n } = useTranslation('orders')
   const { t: ts } = useTranslation('statuses')
@@ -786,6 +796,7 @@ export function OrderDetailsPage() {
     queryFn: () => ordersApi.getOrder(id),
     enabled: Boolean(id),
   })
+  const visibleTrackingCode = displayTrackingCode ?? order?.trackingCode ?? ''
 
   const { data: trackingLink } = useQuery({
     queryKey: ['order-tracking-link', id],
@@ -863,11 +874,17 @@ export function OrderDetailsPage() {
   })
 
   const deleteOrderMutation = useMutation({
-    mutationFn: () => ordersApi.deleteOrder(id),
+    mutationFn: () => isSalesOrder
+      ? salesOrdersApi.deleteSalesOrder(salesOrderId!)
+      : ordersApi.deleteOrder(id),
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: ['order', id] })
       void queryClient.invalidateQueries({ queryKey: ['orders'] })
-      navigate('/admin/orders', { replace: true })
+      if (isSalesOrder) {
+        queryClient.removeQueries({ queryKey: ['sales-order', salesOrderId] })
+        void queryClient.invalidateQueries({ queryKey: ['sales-orders'] })
+      }
+      navigate(isSalesOrder ? '/admin/orders' : '/admin/requests', { replace: true })
     },
     onError: (err: unknown) => {
       setDeleteError(err instanceof ApiError ? err.message : t('deleteError'))
@@ -875,11 +892,25 @@ export function OrderDetailsPage() {
   })
 
   const convertMutation = useMutation({
-    mutationFn: () => procurementsApi.convertRequest(id),
-    onSuccess: () => {
+    mutationFn: async () => {
+      if (isSalesOrder) {
+        await salesOrdersApi.sendToProcurement(salesOrderId!)
+        return null
+      }
+      return salesOrdersApi.convertRequest(id)
+    },
+    onSuccess: (result) => {
       setConversionError(null)
-      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
-      navigate('/admin/procurements')
+      if (isSalesOrder) {
+        void queryClient.invalidateQueries({ queryKey: ['procurements'] })
+        void queryClient.invalidateQueries({ queryKey: ['order', id] })
+        void queryClient.invalidateQueries({ queryKey: ['sales-orders'] })
+      } else if (result) {
+        void queryClient.invalidateQueries({ queryKey: ['order', id] })
+        void queryClient.invalidateQueries({ queryKey: ['orders'] })
+        void queryClient.invalidateQueries({ queryKey: ['sales-orders'] })
+        navigate(`/admin/orders/${result.id}`)
+      }
     },
     onError: (err: unknown) => {
       setConversionError(err instanceof ApiError ? err.message : tp('convertError'))
@@ -962,25 +993,25 @@ export function OrderDetailsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to="/admin/orders" className="text-sm text-primary hover:underline">
-          ← {t('details.back')}
+        <Link to={isSalesOrder ? '/admin/orders' : '/admin/requests'} className="text-sm text-primary hover:underline">
+          ← {isSalesOrder ? t('salesOrders.back') : t('details.back')}
         </Link>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="flex flex-wrap items-center gap-2 text-2xl font-bold">
-              <span>{t('details.title')}</span>
+              <span>{isSalesOrder ? t('salesOrders.detailTitle') : t('details.title')}</span>
               <button
                 type="button"
                 className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 font-mono text-base font-semibold transition-colors hover:bg-primary/15"
                 title={copiedCode ? t('codeCopied') : t('copyCode')}
                 onClick={async () => {
-                  await navigator.clipboard.writeText(order.trackingCode)
+                  await navigator.clipboard.writeText(visibleTrackingCode)
                   setCopiedCode(true)
                   window.setTimeout(() => setCopiedCode(false), 2000)
                 }}
               >
                 <span className="text-foreground">№</span>
-                <span className="text-primary">{order.trackingCode}</span>
+                <span className="text-primary">{visibleTrackingCode}</span>
                 <Copy
                   className={
                     copiedCode
@@ -992,17 +1023,29 @@ export function OrderDetailsPage() {
             </h1>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              disabled={convertMutation.isPending}
-              onClick={() => {
-                setConversionError(null)
-                convertMutation.mutate()
-              }}
-            >
-              <PackageCheck />
-              {convertMutation.isPending ? tp('converting') : tp('convert')}
-            </Button>
+            {isSalesOrder
+              ? order.status === 'AwaitingPayment' ? (
+                <Button type="button" disabled={convertMutation.isPending} onClick={() => {
+                  setConversionError(null)
+                  convertMutation.mutate()
+                }}>
+                  <PackageCheck />
+                  {convertMutation.isPending ? t('salesOrders.sendingToProcurement') : t('salesOrders.sendToProcurement')}
+                </Button>
+              ) : null
+              : order.convertedToSalesOrderId ? (
+                <Button asChild variant="outline">
+                  <Link to={`/admin/orders/${order.convertedToSalesOrderId}`}>{t('salesOrders.openConverted')}</Link>
+                </Button>
+              ) : (
+                <Button type="button" disabled={convertMutation.isPending} onClick={() => {
+                  setConversionError(null)
+                  convertMutation.mutate()
+                }}>
+                  <PackageCheck />
+                  {convertMutation.isPending ? t('salesOrders.converting') : t('salesOrders.convert')}
+                </Button>
+              )}
             <Button
               type="button"
               variant="destructive"
@@ -1179,7 +1222,7 @@ export function OrderDetailsPage() {
               ) : qrObjectUrl ? (
                 <img
                   src={qrObjectUrl}
-                  alt={t('details.qrAlt', { code: order.trackingCode })}
+                  alt={t('details.qrAlt', { code: visibleTrackingCode })}
                   className="h-44 w-44 rounded-lg border bg-card p-2"
                 />
               ) : qrError ? (
@@ -1195,7 +1238,7 @@ export function OrderDetailsPage() {
                 variant="outline"
                 size="sm"
                 className="w-full"
-                onClick={() => void ordersApi.downloadOrderQr(id, order.trackingCode)}
+                onClick={() => void ordersApi.downloadOrderQr(id, visibleTrackingCode)}
               >
                 <Download />
                 {t('details.downloadQr')}
@@ -1481,7 +1524,7 @@ export function OrderDetailsPage() {
           <DialogHeader>
             <DialogTitle>{t('deleteDialog.title')}</DialogTitle>
             <DialogDescription>
-              {t('deleteDialog.description', { code: order.trackingCode })}
+              {t('deleteDialog.description', { code: visibleTrackingCode })}
             </DialogDescription>
           </DialogHeader>
           {deleteError ? (

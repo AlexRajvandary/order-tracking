@@ -10,6 +10,7 @@
   "nav": {
     "dashboard": "Панель",
     "orders": "Заявки",
+    "salesOrders": "Заказы",
     "procurements": "Выкуп и отправка",
     "customers": "Клиенты",
     "catalog": "Каталог",

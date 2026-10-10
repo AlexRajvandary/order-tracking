@@ -96,6 +96,7 @@ public sealed class ProcurementsController(
         var row = await db.OrderItemProcurements
             .Include(value => value.Attachments)
             .Include(value => value.OrderItem)
+            .ThenInclude(value => value.Order)
             .FirstOrDefaultAsync(value => value.Id == id, cancellationToken);
 
         if (row is null)
@@ -115,6 +116,7 @@ public sealed class ProcurementsController(
             row.OrderItem.PreviewSourceUrl = null;
             row.OrderItem.PreviewFetchedAt = null;
         }
+        var purchaseStatusChanged = row.PurchaseStatus != request.PurchaseStatus;
         row.PurchaseStatus = request.PurchaseStatus;
         row.PurchasePrice = request.PurchasePrice;
         row.PurchaseCurrencyCode = NormalizeCurrency(request.PurchaseCurrencyCode);
@@ -130,6 +132,14 @@ public sealed class ProcurementsController(
         row.ShippingCost = request.ShippingCost;
         row.ShippingCurrencyCode = NormalizeCurrency(request.ShippingCurrencyCode);
         row.ShippedAt = request.ShippedAt;
+
+        if (purchaseStatusChanged && row.OrderItem.Order.IsSalesOrderWorkspace)
+        {
+            row.OrderItem.Order.Status = request.PurchaseStatus == PurchaseStatus.Purchased
+                ? OrderStatus.InProgress
+                : OrderStatus.AwaitingPayment;
+            row.OrderItem.Order.UpdatedAt = DateTimeOffset.UtcNow;
+        }
 
         await db.SaveChangesAsync(cancellationToken);
 
@@ -163,6 +173,8 @@ public sealed class ProcurementsController(
     {
         var row = await db.OrderItemProcurements
             .Include(value => value.Attachments)
+            .Include(value => value.OrderItem)
+            .ThenInclude(value => value.Order)
             .FirstOrDefaultAsync(value => value.Id == id, cancellationToken);
 
         if (row is null)
@@ -171,6 +183,10 @@ public sealed class ProcurementsController(
         }
 
         var objectKeys = row.Attachments.Select(value => value.ObjectKey).ToList();
+        // Removing a procurement entry does not delete the product or its order. Return the
+        // order to the state where it can be sent to procurement again.
+        row.OrderItem.Order.Status = OrderStatus.AwaitingPayment;
+        row.OrderItem.Order.UpdatedAt = DateTimeOffset.UtcNow;
         db.OrderItemProcurementAttachments.RemoveRange(row.Attachments);
         db.OrderItemProcurements.Remove(row);
         await db.SaveChangesAsync(cancellationToken);

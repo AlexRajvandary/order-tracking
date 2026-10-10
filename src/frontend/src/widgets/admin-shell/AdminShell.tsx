@@ -59,7 +59,8 @@ const navItems: Array<{
   roles?: AdminRole[]
 }> = [
   { to: '/admin', labelKey: 'nav.dashboard', end: true, roles: operationalRoles },
-  { to: '/admin/orders', labelKey: 'nav.orders', roles: operationalRoles },
+  { to: '/admin/requests', labelKey: 'nav.orders', roles: operationalRoles },
+  { to: '/admin/orders', labelKey: 'nav.salesOrders', roles: operationalRoles },
   { to: '/admin/procurements', labelKey: 'nav.procurements', roles: allRoles },
   { to: '/admin/customers', labelKey: 'nav.customers', roles: operationalRoles },
   { to: '/admin/catalog', labelKey: 'nav.catalog', roles: operationalRoles },
@@ -137,8 +138,9 @@ export function AdminShell() {
       }
 
       const path = location.pathname
-      const parent = path === '/admin/orders/new' ? '/admin/orders'
-        : /^\/admin\/orders\/[^/]+/.test(path) ? '/admin/orders'
+      const parent = path === '/admin/requests/new' ? '/admin/requests'
+        : /^\/admin\/requests\/[^/]+/.test(path) ? '/admin/requests'
+          : /^\/admin\/orders\/[^/]+/.test(path) ? '/admin/orders'
           : /^\/admin\/customers\/[^/]+/.test(path) ? '/admin/customers'
               : /^\/admin\/catalog\/products\/[^/]+/.test(path) || /^\/admin\/products\/[^/]+/.test(path) ? '/admin/catalog/products'
               : path.startsWith('/admin/catalog/') ? '/admin/catalog'

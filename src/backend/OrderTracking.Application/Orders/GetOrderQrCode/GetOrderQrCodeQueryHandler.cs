@@ -34,13 +34,15 @@ public sealed class GetOrderQrCodeQueryHandler : IRequestHandler<GetOrderQrCodeQ
             ?? _configuration["App:BaseUrl"]
             ?? "http://localhost:5173").TrimEnd('/');
         var legacyPath = string.IsNullOrWhiteSpace(trackingBaseUrl) ? "/track" : string.Empty;
-        var trackingUrl = $"{baseUrl}{legacyPath}/{order.TrackingCode}";
+        var trackingCode = await _orderRepository.GetPublicTrackingCodeByOrderIdAsync(request.OrderId, cancellationToken)
+            ?? order.TrackingCode;
+        var trackingUrl = $"{baseUrl}{legacyPath}/{trackingCode}";
         var png = _qrCodeGenerator.GeneratePng(trackingUrl);
 
         return new OrderQrCodeResult(
-            order.TrackingCode,
+            trackingCode,
             trackingUrl,
             png,
-            $"order-{order.TrackingCode}-qr.png");
+            $"order-{trackingCode}-qr.png");
     }
 }

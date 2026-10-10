@@ -35,6 +35,7 @@ public interface IOrderRepository
     Task<Order?> GetDeletedByIdWithCustomerAndItemsAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<Order?> GetByIdUntrackedAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<string?> GetPublicTrackingCodeByOrderIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<bool> IsActiveTrackingCodeTakenAsync(string trackingCode, CancellationToken cancellationToken = default);
 

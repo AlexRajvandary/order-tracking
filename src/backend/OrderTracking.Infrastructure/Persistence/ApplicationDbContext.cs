@@ -19,6 +19,7 @@ public class ApplicationDbContext : DbContext, IUnitOfWork
     public DbSet<CustomerTelegramLoginState> CustomerTelegramLoginStates => Set<CustomerTelegramLoginState>();
     public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
     public DbSet<Order> Orders => Set<Order>();
+    public DbSet<SalesOrder> SalesOrders => Set<SalesOrder>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<OrderItemProcurement> OrderItemProcurements => Set<OrderItemProcurement>();
     public DbSet<OrderItemProcurementAttachment> OrderItemProcurementAttachments => Set<OrderItemProcurementAttachment>();

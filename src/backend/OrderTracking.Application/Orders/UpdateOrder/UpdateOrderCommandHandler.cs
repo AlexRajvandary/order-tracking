@@ -121,6 +121,7 @@ public sealed class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderComma
                 i.CurrentStatusText,
                 i.CurrentStatusUpdatedAt,
                 i.SourceUrl, i.ProductSource, i.CatalogProductId, i.ExternalProductId,
-                i.ImageUrl, i.AffiliateUrl, i.ShopCode, i.ShopName)).ToList());
+                i.ImageUrl, i.AffiliateUrl, i.ShopCode, i.ShopName)).ToList(),
+            order.ConvertedToSalesOrderId);
     }
 }

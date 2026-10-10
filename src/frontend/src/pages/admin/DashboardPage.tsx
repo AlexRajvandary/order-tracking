@@ -248,7 +248,7 @@ export function DashboardPage() {
       size="icon"
       className="fixed bottom-6 left-1/2 z-20 size-14 -translate-x-1/2 rounded-full shadow-lg [&_svg]:size-6"
       aria-label={t('create', { ns: 'orders' })}
-      onClick={() => navigate('/admin/orders/new')}
+      onClick={() => navigate('/admin/requests/new')}
     >
       <Plus />
     </Button>
@@ -292,7 +292,7 @@ export function DashboardPage() {
               icon={<ClipboardList />}
               value={data.totalOrders}
               label={t('metrics.orders')}
-              onClick={() => navigate('/admin/orders')}
+              onClick={() => navigate('/admin/requests')}
             />
           </CarouselItem>
           <CarouselItem className="basis-auto">
@@ -376,7 +376,7 @@ export function DashboardPage() {
                   <li
                     key={order.id}
                     className="flex cursor-pointer items-start justify-between gap-3 py-2 -mx-2 px-2 rounded-md hover:bg-muted/50"
-                    onClick={() => navigate(`/admin/orders/${order.id}`)}
+                    onClick={() => navigate(`/admin/requests/${order.id}`)}
                   >
                     <div className="space-y-1">
                       <span className="block font-mono font-medium text-primary">

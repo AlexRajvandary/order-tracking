@@ -10,6 +10,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "orders": "Requests",
+    "salesOrders": "Orders",
     "procurements": "Purchasing & shipping",
     "customers": "Customers",
     "catalog": "Catalog",

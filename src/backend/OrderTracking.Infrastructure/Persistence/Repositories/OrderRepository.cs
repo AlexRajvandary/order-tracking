@@ -69,6 +69,20 @@ public sealed class OrderRepository : IOrderRepository
     public Task<Order?> GetByIdUntrackedAsync(Guid id, CancellationToken cancellationToken = default) =>
         _db.Orders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
 
+    public async Task<string?> GetPublicTrackingCodeByOrderIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var code = await _db.SalesOrders.AsNoTracking()
+            .Where(order => order.WorkspaceRequestId == id)
+            .Select(order => order.SourceRequest.TrackingCode)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (code is not null) return code;
+
+        return await _db.Orders.AsNoTracking()
+            .Where(order => order.Id == id && !order.IsSalesOrderWorkspace)
+            .Select(order => order.TrackingCode)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public Task<bool> IsActiveTrackingCodeTakenAsync(
         string trackingCode,
         CancellationToken cancellationToken = default) =>
@@ -119,26 +133,44 @@ public sealed class OrderRepository : IOrderRepository
                         i.CurrentStatusUpdatedAt,
                         i.SourceUrl, i.ProductSource, i.CatalogProductId, i.ExternalProductId,
                         i.ImageUrl, i.AffiliateUrl, i.ShopCode, i.ShopName))
-                    .ToList()))
+                    .ToList(),
+                o.ConvertedToSalesOrderId))
             .FirstOrDefaultAsync(cancellationToken);
 
-    public Task<OrderTrackingPresenceRow?> GetTrackingPresenceByCodeAsync(
+    public async Task<OrderTrackingPresenceRow?> GetTrackingPresenceByCodeAsync(
         string trackingCode,
-        CancellationToken cancellationToken = default) =>
-        _db.Orders
+        CancellationToken cancellationToken = default)
+    {
+        var workspace = await _db.SalesOrders
             .AsNoTracking()
-            .Where(o => o.TrackingCode == trackingCode)
+            .Where(order => order.SourceRequest.TrackingCode == trackingCode)
+            .Select(order => new OrderTrackingPresenceRow(order.WorkspaceRequestId, order.WorkspaceRequest.CustomerId))
+            .FirstOrDefaultAsync(cancellationToken);
+        if (workspace is not null) return workspace;
+
+        return await _db.Orders
+            .AsNoTracking()
+            .Where(o => o.TrackingCode == trackingCode && !o.IsSalesOrderWorkspace)
             .Select(o => new OrderTrackingPresenceRow(o.Id, o.CustomerId))
             .FirstOrDefaultAsync(cancellationToken);
+    }
 
-    public Task<PublicTrackingOrderRow?> GetPublicTrackingByCodeAsync(
+    public async Task<PublicTrackingOrderRow?> GetPublicTrackingByCodeAsync(
         string trackingCode,
-        CancellationToken cancellationToken = default) =>
-        _db.Orders
+        CancellationToken cancellationToken = default)
+    {
+        var workspaceRequestId = await _db.SalesOrders
             .AsNoTracking()
-            .Where(o => o.TrackingCode == trackingCode)
+            .Where(order => order.SourceRequest.TrackingCode == trackingCode)
+            .Select(order => (Guid?)order.WorkspaceRequestId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return await _db.Orders.AsNoTracking()
+            .Where(order => workspaceRequestId.HasValue
+                ? order.Id == workspaceRequestId.Value
+                : order.TrackingCode == trackingCode && !order.IsSalesOrderWorkspace)
             .Select(o => new PublicTrackingOrderRow(
-                o.TrackingCode,
+                trackingCode,
                 o.CreatedAt,
                 o.ExpectedDeliveryAt,
                 o.Status.ToString(),
@@ -170,6 +202,7 @@ public sealed class OrderRepository : IOrderRepository
                             .ToList()))
                     .ToList()))
             .FirstOrDefaultAsync(cancellationToken);
+    }
 
     public async Task<PaginatedList<OrderListRow>> GetPagedAsync(
         int page,
@@ -179,7 +212,7 @@ public sealed class OrderRepository : IOrderRepository
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 500);
 
-        var query = _db.Orders.AsNoTracking();
+        var query = _db.Orders.AsNoTracking().Where(order => !order.IsSalesOrderWorkspace);
         var totalCount = await query.CountAsync(cancellationToken);
 
         var items = await ProjectOrderList(query
@@ -199,7 +232,7 @@ public sealed class OrderRepository : IOrderRepository
         var page = Math.Max(1, criteria.Page);
         var pageSize = Math.Clamp(criteria.PageSize, 1, 500);
 
-        var query = _db.Orders.AsNoTracking();
+        var query = _db.Orders.AsNoTracking().Where(order => !order.IsSalesOrderWorkspace);
         query = ApplySearchFilters(query, criteria);
 
         var totalCount = await query.CountAsync(cancellationToken);
@@ -225,7 +258,7 @@ public sealed class OrderRepository : IOrderRepository
 
         var query = _db.Orders
             .AsNoTracking()
-            .Where(o => o.CustomerId == customerId);
+            .Where(o => o.CustomerId == customerId && !o.IsSalesOrderWorkspace);
 
         var totalCount = await query.CountAsync(cancellationToken);
 
@@ -274,19 +307,20 @@ public sealed class OrderRepository : IOrderRepository
     }
 
     public Task<int> CountOrdersAsync(CancellationToken cancellationToken = default) =>
-        _db.Orders.CountAsync(cancellationToken);
+        _db.Orders.CountAsync(order => !order.IsSalesOrderWorkspace, cancellationToken);
 
     public Task<int> CountOrdersCreatedSinceAsync(DateTimeOffset since, CancellationToken cancellationToken = default) =>
-        _db.Orders.CountAsync(o => o.CreatedAt >= since, cancellationToken);
+        _db.Orders.CountAsync(o => !o.IsSalesOrderWorkspace && o.CreatedAt >= since, cancellationToken);
 
     public Task<int> CountOrdersUpdatedSinceAsync(DateTimeOffset since, CancellationToken cancellationToken = default) =>
-        _db.Orders.CountAsync(o => (o.UpdatedAt ?? o.CreatedAt) >= since, cancellationToken);
+        _db.Orders.CountAsync(o => !o.IsSalesOrderWorkspace && (o.UpdatedAt ?? o.CreatedAt) >= since, cancellationToken);
 
     public async Task<IReadOnlyList<DashboardRecentOrderRow>> GetRecentOrdersForDashboardAsync(
         int take,
         CancellationToken cancellationToken = default) =>
         await _db.Orders
             .AsNoTracking()
+            .Where(order => !order.IsSalesOrderWorkspace)
             .OrderByDescending(o => o.CreatedAt)
             .Take(take)
             .Select(o => new DashboardRecentOrderRow(
@@ -305,6 +339,7 @@ public sealed class OrderRepository : IOrderRepository
         await ProjectOrderList(
                 _db.Orders
                     .AsNoTracking()
+                    .Where(order => !order.IsSalesOrderWorkspace)
                     .OrderByDescending(o => o.CreatedAt))
             .ToListAsync(cancellationToken);
 
@@ -626,5 +661,6 @@ public sealed class OrderRepository : IOrderRepository
             o.Status.ToString(),
             o.Items.Count,
             o.CreatedAt,
-            o.UpdatedAt ?? o.CreatedAt));
+            o.UpdatedAt ?? o.CreatedAt,
+            o.ConvertedToSalesOrderId));
 }

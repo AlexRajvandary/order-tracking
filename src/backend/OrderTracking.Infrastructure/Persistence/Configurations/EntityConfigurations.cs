@@ -150,7 +150,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
 {
     public void Configure(EntityTypeBuilder<Order> builder)
     {
-        builder.ToTable("orders");
+        builder.ToTable("requests");
 
         builder.HasKey(e => e.Id);
 
@@ -161,6 +161,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         builder.Property(e => e.AdminNotes).HasColumnType("text");
         builder.Property(e => e.RequestImagesJson).HasColumnType("jsonb").HasDefaultValueSql("'[]'::jsonb").IsRequired();
+        builder.Property(e => e.IsSalesOrderWorkspace).HasDefaultValue(false);
         builder.Property(e => e.DeliveryCity).HasMaxLength(200);
         builder.Property(e => e.DeliveryStreet).HasMaxLength(300);
         builder.Property(e => e.DeliveryBuilding).HasMaxLength(50);
@@ -211,7 +212,7 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
 {
     public void Configure(EntityTypeBuilder<OrderItem> builder)
     {
-        builder.ToTable("order_items", table =>
+        builder.ToTable("request_items", table =>
             table.HasCheckConstraint(
                 "CK_order_items_price_currency",
                 """
@@ -258,6 +259,20 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
             .HasForeignKey(e => e.CurrentStatusId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasQueryFilter(e => !e.IsDeleted);
+    }
+}
+
+public sealed class SalesOrderConfiguration : IEntityTypeConfiguration<SalesOrder>
+{
+    public void Configure(EntityTypeBuilder<SalesOrder> builder)
+    {
+        builder.ToTable("orders");
+        builder.HasKey(e => e.Id);
+        builder.HasIndex(e => e.SourceRequestId).IsUnique();
+        builder.HasIndex(e => e.WorkspaceRequestId).IsUnique();
+        builder.HasOne(e => e.SourceRequest).WithMany().HasForeignKey(e => e.SourceRequestId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.WorkspaceRequest).WithMany().HasForeignKey(e => e.WorkspaceRequestId).OnDelete(DeleteBehavior.Restrict);
         builder.HasQueryFilter(e => !e.IsDeleted);
     }
 }

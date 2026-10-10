@@ -16,7 +16,8 @@ public sealed record OrderListItemDto(
     string Status,
     int ItemsCount,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    Guid? ConvertedToSalesOrderId = null);
 
 public sealed record OrderItemDto(
     Guid Id,
@@ -62,7 +63,8 @@ public sealed record OrderDetailsDto(
     string? DeliveryApartment,
     string? DeliveryPostalCode,
     string? DeliveryNote,
-    IReadOnlyList<OrderItemDto> Items);
+    IReadOnlyList<OrderItemDto> Items,
+    Guid? ConvertedToSalesOrderId = null);
 
 public sealed record CreateOrderItemDto(
     OrderItemType ItemType,

@@ -198,7 +198,7 @@ export function AuditDetailsPage() {
       </Card>
 
       {data.entityType === 'Order' ? (
-        <Button type="button" variant="outline" onClick={() => navigate(`/admin/orders/${data.entityId}`)}>
+        <Button type="button" variant="outline" onClick={() => navigate(`/admin/requests/${data.entityId}`)}>
           {t('details.openOrder')}
         </Button>
       ) : null}

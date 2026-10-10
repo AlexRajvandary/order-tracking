@@ -31,8 +31,10 @@ public sealed class GetOrderTrackingLinkQueryHandler : IRequestHandler<GetOrderT
             ?? _configuration["App:BaseUrl"]
             ?? "http://localhost:5173").TrimEnd('/');
         var legacyPath = string.IsNullOrWhiteSpace(trackingBaseUrl) ? "/track" : string.Empty;
-        var url = $"{baseUrl}{legacyPath}/{order.TrackingCode}";
+        var trackingCode = await _orderRepository.GetPublicTrackingCodeByOrderIdAsync(request.OrderId, cancellationToken)
+            ?? order.TrackingCode;
+        var url = $"{baseUrl}{legacyPath}/{trackingCode}";
 
-        return new TrackingLinkDto(order.TrackingCode, url);
+        return new TrackingLinkDto(trackingCode, url);
     }
 }

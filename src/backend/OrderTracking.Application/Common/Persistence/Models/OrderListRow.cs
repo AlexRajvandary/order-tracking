@@ -14,7 +14,8 @@ public sealed record OrderListRow(
     string Status,
     int ItemsCount,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    Guid? ConvertedToSalesOrderId);
 
 public sealed record OrderSearchCriteria(
     string? TrackingCode,
@@ -53,7 +54,8 @@ public sealed record OrderDetailsRow(
     string? DeliveryApartment,
     string? DeliveryPostalCode,
     string? DeliveryNote,
-    IReadOnlyList<OrderItemRow> Items);
+    IReadOnlyList<OrderItemRow> Items,
+    Guid? ConvertedToSalesOrderId);
 
 public sealed record OrderItemRow(
     Guid Id,

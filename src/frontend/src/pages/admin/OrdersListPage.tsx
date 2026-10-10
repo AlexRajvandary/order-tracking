@@ -132,15 +132,17 @@ export function OrdersListPage() {
       },
       {
         id: 'status',
-        accessorFn: (row) =>
-          isOrderStatus(row.status)
-            ? t(`details.orderStatus.${row.status}`)
-            : row.status,
+        accessorFn: (row) => row.convertedToSalesOrderId
+          ? t('salesOrders.convertedStatus')
+          : isOrderStatus(row.status) ? t(`details.orderStatus.${row.status}`) : row.status,
         meta: { label: t('columns.status') },
         header: ({ column, table }) => (
           <DataTableColumnHeader column={column} table={table} title={t('columns.status')} />
         ),
         cell: ({ row }) => {
+          if (row.original.convertedToSalesOrderId) {
+            return <Badge variant="outline">{t('salesOrders.convertedStatus')}</Badge>
+          }
           const status = isOrderStatus(row.original.status)
             ? row.original.status
             : 'AwaitingPayment'
@@ -237,12 +239,12 @@ export function OrdersListPage() {
             </div>
           ) : (
             <DataTable
-              tableId="orders"
+              tableId="requests"
               columns={columns}
               data={data?.items ?? []}
               pageSize={10}
               emptyMessage={activeSearch ? t('emptySearch') : t('empty')}
-              onRowClick={(row) => navigate(`/admin/orders/${row.original.id}`)}
+              onRowClick={(row) => navigate(`/admin/requests/${row.original.id}`)}
               getRowClassName={() => 'cursor-pointer'}
               toolbarContainer={toolbarSlot}
               toolbar={
@@ -259,7 +261,7 @@ export function OrdersListPage() {
 
       <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/80 lg:static lg:mx-0 lg:flex lg:justify-end lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
         <Button asChild className="w-full lg:w-auto">
-          <Link to="/admin/orders/new">
+          <Link to="/admin/requests/new">
             <Plus />
             {t('create')}
           </Link>

@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type DragEvent as ReactDragEvent,
   type ReactNode,
 } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -12,13 +13,15 @@ import {
   Copy,
   ExternalLink,
   FileText,
+  GripVertical,
   ImageOff,
   ImagePlus,
   Search,
+  Trash2,
   Truck,
   X,
 } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import * as ordersApi from '@/features/orders/api/ordersApi'
 import * as procurementsApi from '@/features/procurements/api/procurementsApi'
@@ -53,6 +56,7 @@ const autoSaveDelayMs = 650
 type BoardStage = typeof stages[number]
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 type OrderGroup = { orderId: string; trackingCode: string; rows: ProcurementRow[]; stage: BoardStage }
+type ActiveProcurementDrag = { rowId: string; sourceStage: BoardStage; width: number; offsetX: number }
 
 function createForm(row: ProcurementRow): UpdateProcurementRequest {
   return {
@@ -82,13 +86,76 @@ function deriveStage(rows: ProcurementRow[]): BoardStage {
   return 'completed'
 }
 
-function groupOrders(rows: ProcurementRow[]) {
+function deriveItemStage(row: ProcurementRow): BoardStage {
+  if (row.purchaseStatus !== 'Purchased') return 'purchase'
+  if (row.arrivalStatus !== 'Received') return 'moscow'
+  if (row.shipmentStatus !== 'Delivered') return 'client'
+  return 'completed'
+}
+
+function startItemDrag(
+  event: ReactDragEvent<HTMLElement>,
+  row: ProcurementRow,
+  onDragStart: (drag: ActiveProcurementDrag) => void,
+) {
+  const rect = event.currentTarget.getBoundingClientRect()
+  const offsetX = Math.max(0, Math.min(rect.width, event.clientX - rect.left))
+  event.dataTransfer.setData('text/plain', row.id)
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setDragImage(event.currentTarget, offsetX, Math.max(0, event.clientY - rect.top))
+  onDragStart({ rowId: row.id, sourceStage: deriveItemStage(row), width: rect.width, offsetX })
+}
+
+function useColumnDropTarget(activeDrag: ActiveProcurementDrag | null, onMove: (rowId: string, stage: BoardStage) => void) {
+  const [dropStage, setDropStage] = useState<BoardStage | null>(null)
+  const findTarget = (root: HTMLElement, clientX: number) => {
+    if (!activeDrag) return null
+    const left = clientX - activeDrag.offsetX
+    const right = left + activeDrag.width
+    const lanes = Array.from(root.querySelectorAll<HTMLElement>('[data-procurement-stage]'))
+    return lanes.map((lane) => {
+      const rect = lane.getBoundingClientRect()
+      const overlap = Math.max(0, Math.min(right, rect.right) - Math.max(left, rect.left))
+      return { stage: lane.dataset.procurementStage as BoardStage, overlap, distance: Math.abs((rect.left + rect.right) / 2 - (left + right) / 2) }
+    }).filter((candidate) => candidate.stage !== activeDrag.sourceStage && candidate.overlap >= activeDrag.width * 0.25)
+      .sort((a, b) => b.overlap - a.overlap || a.distance - b.distance)[0]?.stage ?? null
+  }
+  const onDragOver = (event: ReactDragEvent<HTMLElement>) => {
+    if (!activeDrag) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    const next = findTarget(event.currentTarget, event.clientX)
+    setDropStage(next)
+    if (event.currentTarget.hasAttribute('data-procurement-scroll')) {
+      const rect = event.currentTarget.getBoundingClientRect()
+      if (event.clientX > rect.right - 36) event.currentTarget.scrollLeft += 12
+      else if (event.clientX < rect.left + 36) event.currentTarget.scrollLeft -= 12
+    }
+  }
+  const onDrop = (event: ReactDragEvent<HTMLElement>) => {
+    if (!activeDrag) return
+    event.preventDefault()
+    const target = findTarget(event.currentTarget, event.clientX)
+    if (target) onMove(activeDrag.rowId, target)
+    setDropStage(null)
+  }
+  const onDragLeave = (event: ReactDragEvent<HTMLElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropStage(null)
+  }
+  return { dropStage, onDragOver, onDrop, onDragLeave }
+}
+
+function groupOrders(rows: ProcurementRow[], stageOverride?: BoardStage) {
   const grouped = new Map<string, ProcurementRow[]>()
   rows.forEach((row) => grouped.set(row.orderId, [...(grouped.get(row.orderId) ?? []), row]))
   return Array.from(grouped, ([orderId, orderRows]) => {
     const sortedRows = orderRows.toSorted((left, right) => left.sortOrder - right.sortOrder || left.itemName.localeCompare(right.itemName))
-    return { orderId, trackingCode: sortedRows[0]?.trackingCode ?? '', rows: sortedRows, stage: deriveStage(sortedRows) } satisfies OrderGroup
+    return { orderId, trackingCode: sortedRows[0]?.trackingCode ?? '', rows: sortedRows, stage: stageOverride ?? deriveStage(sortedRows) } satisfies OrderGroup
   })
+}
+
+function groupsForStage(groups: OrderGroup[], stage: BoardStage): OrderGroup[] {
+  return groupOrders(groups.flatMap((group) => group.rows.filter((row) => deriveItemStage(row) === stage)), stage)
 }
 
 function matchesSearch(group: OrderGroup, search: string) {
@@ -190,20 +257,20 @@ function purchaseStatusClasses(status: PurchaseStatus) {
   return 'border-amber-200 bg-amber-50 text-amber-700'
 }
 
-function PurchaseItemCard({ group, row, position }: { group: OrderGroup; row: ProcurementRow; position: number }) {
+function PurchaseItemCard({ group, row, position, onDragStart, onDragEnd }: { group: OrderGroup; row: ProcurementRow; position: number; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void }) {
   const { t } = useTranslation('procurements')
   const priceCurrency = row.purchasePrice == null ? row.itemCurrencyCode as ProcurementCurrencyCode | null : row.purchaseCurrencyCode
   return (
-    <Link to={`/admin/procurements/items/${row.id}`} className="block rounded-2xl border bg-card p-4 shadow-sm transition-colors transition-shadow hover:border-border/80 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:rounded-xl lg:p-3">
-      <div className="flex items-center justify-between gap-2"><OrderBadge group={group} /><span className="text-xs text-muted-foreground">{t('board.positionShort', { current: position, total: group.rows.length })}</span></div>
+    <Link draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} to={`/admin/procurements/items/${row.id}`} className="block cursor-grab rounded-2xl border bg-card p-4 shadow-sm transition-colors transition-shadow active:cursor-grabbing hover:border-border/80 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:rounded-xl lg:p-3">
+      <div className="flex items-center justify-between gap-2"><OrderBadge group={group} /><span className="flex items-center gap-1 text-xs text-muted-foreground"><GripVertical className="size-3.5" />{t('board.positionShort', { current: position, total: group.rows.length })}</span></div>
       <div className="mt-3 flex min-w-0 gap-3"><ProductImage row={row} className="size-[72px] lg:size-14" /><div className="min-w-0 flex-1"><p className="line-clamp-2 text-base font-semibold lg:text-sm">{row.itemName}</p>{row.itemDescription ? <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{row.itemDescription}</p> : null}<p className="mt-1 truncate text-xs text-muted-foreground">{row.shopName || row.productSource}</p></div></div>
       <div className="mt-3 flex items-center justify-between gap-2">{formatMoney(row.purchasePrice ?? row.unitPrice, priceCurrency) ? <span className="text-sm font-semibold">{formatMoney(row.purchasePrice ?? row.unitPrice, priceCurrency)}</span> : <span />}<Badge variant="outline" className={purchaseStatusClasses(row.purchaseStatus)}>{t(`statuses.purchase.${row.purchaseStatus}`)}</Badge></div>
     </Link>
   )
 }
 
-function OrderItemPreview({ row, position, total }: { row: ProcurementRow; position: number; total: number }) {
-  return <div className="flex min-w-0 items-center gap-2"><ProductImage row={row} className="size-10" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{row.itemName}</p>{row.itemDescription ? <p className="truncate text-[11px] text-muted-foreground">{row.itemDescription}</p> : null}</div><span className="shrink-0 text-[10px] text-muted-foreground">{position} / {total}</span></div>
+function OrderItemPreview({ row, position, total, canDrag = true, onDragStart, onDragEnd }: { row: ProcurementRow; position: number; total: number; canDrag?: boolean; onDragStart?: (drag: ActiveProcurementDrag) => void; onDragEnd?: () => void }) {
+  return <div draggable={canDrag} onDragStart={canDrag && onDragStart ? (event) => startItemDrag(event, row, onDragStart) : undefined} onDragEnd={canDrag ? onDragEnd : undefined} className={`flex min-w-0 items-center gap-2 rounded-md p-1 ${canDrag ? 'cursor-grab active:cursor-grabbing' : ''}`}><ProductImage row={row} className="size-10" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{row.itemName}</p>{row.itemDescription ? <p className="truncate text-[11px] text-muted-foreground">{row.itemDescription}</p> : null}</div><span className="shrink-0 text-[10px] text-muted-foreground">{position} / {total}</span>{canDrag ? <GripVertical className="size-3.5 shrink-0 text-muted-foreground" /> : null}</div>
 }
 
 function stageStatus(group: OrderGroup, stage: BoardStage, t: (key: string) => string) {
@@ -212,19 +279,20 @@ function stageStatus(group: OrderGroup, stage: BoardStage, t: (key: string) => s
   return t('board.delivered')
 }
 
-function OrderCard({ group, stage }: { group: OrderGroup; stage: Exclude<BoardStage, 'purchase'> }) {
+function OrderCard({ group, stage, onDragStart, onDragEnd }: { group: OrderGroup; stage: Exclude<BoardStage, 'purchase'>; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void }) {
   const { t } = useTranslation('procurements')
-  const preview = group.rows.slice(0, 3)
   const shipping = group.rows.find((row) => row.shippingMethod || row.shippingTrackingNumber || row.shippingCost != null)
   const total = orderTotal(group.rows)
   return (
-    <Link to={`/admin/procurements/orders/${group.orderId}/${stage}`} className="block rounded-xl border bg-card p-3 shadow-sm transition-colors transition-shadow hover:border-border/80 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-      <div className="flex items-center justify-between gap-2"><OrderBadge group={group} /><Badge variant="outline" className={stage === 'completed' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : ''}>{stageStatus(group, stage, t)}</Badge></div>
-      <div className="mt-3"><p className="text-sm font-semibold">{t('board.orderNumber', { code: group.trackingCode })}</p><p className="text-xs text-muted-foreground">{t('board.itemCount', { count: group.rows.length })}</p></div>
-      <div className="mt-3 space-y-2">{preview.map((row, index) => <OrderItemPreview key={row.id} row={row} position={index + 1} total={group.rows.length} />)}{group.rows.length > 3 ? <p className="pl-12 text-xs text-muted-foreground">{t('board.moreItems', { count: group.rows.length - 3 })}</p> : null}</div>
+    <article className="rounded-xl border bg-card p-3 shadow-sm">
+      <Link to={`/admin/procurements/orders/${group.orderId}/${stage}`} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <div className="flex items-center justify-between gap-2"><OrderBadge group={group} /><Badge variant="outline" className={stage === 'completed' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : ''}>{stageStatus(group, stage, t)}</Badge></div>
+        <div className="mt-3"><p className="text-sm font-semibold">{t('board.orderNumber', { code: group.trackingCode })}</p><p className="text-xs text-muted-foreground">{t('board.itemCount', { count: group.rows.length })}</p></div>
+      </Link>
+      <div className="mt-3 space-y-1">{group.rows.map((row, index) => <OrderItemPreview key={row.id} row={row} position={index + 1} total={group.rows.length} onDragStart={onDragStart} onDragEnd={onDragEnd} />)}</div>
       {stage === 'moscow' && total ? <p className="mt-3 border-t pt-2 text-xs font-semibold">{t('board.total')}: {total}</p> : null}
       {stage !== 'moscow' && shipping ? <div className="mt-3 border-t pt-2 text-xs text-muted-foreground">{shipping.shippingMethod ? <p>{shipping.shippingMethod}</p> : null}{shipping.shippingTrackingNumber ? <p className="truncate font-mono">{shipping.shippingTrackingNumber}</p> : null}{formatMoney(shipping.shippingCost, shipping.shippingCurrencyCode) ? <p>{formatMoney(shipping.shippingCost, shipping.shippingCurrencyCode)}</p> : null}</div> : null}
-    </Link>
+    </article>
   )
 }
 
@@ -233,7 +301,7 @@ function EmptyLane({ purchase }: { purchase: boolean }) {
   return <p className="py-8 text-center text-sm text-muted-foreground">{t(purchase ? 'board.noItems' : 'board.noOrders')}</p>
 }
 
-function MoscowGroups({ groups }: { groups: OrderGroup[] }) {
+function MoscowGroups({ groups, onDragStart, onDragEnd }: { groups: OrderGroup[]; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void }) {
   const { t } = useTranslation('procurements')
   const shipments = new Map<string, OrderGroup[]>()
   const ungrouped: OrderGroup[] = []
@@ -242,18 +310,21 @@ function MoscowGroups({ groups }: { groups: OrderGroup[] }) {
     if (!tracking) ungrouped.push(group)
     else shipments.set(tracking, [...(shipments.get(tracking) ?? []), group])
   })
-  const section = (key: string, title: string, orders: OrderGroup[]) => <div key={key} className="space-y-2"><div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-xs font-medium"><Truck className="size-3.5" /><span className="truncate">{title}</span><span className="ml-auto shrink-0 text-muted-foreground">{t('board.orderCount', { count: orders.length })}</span></div><div className="space-y-3">{orders.map((group) => <OrderCard key={group.orderId} group={group} stage="moscow" />)}</div></div>
+  const section = (key: string, title: string, orders: OrderGroup[]) => <div key={key} className="space-y-2"><div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-xs font-medium"><Truck className="size-3.5" /><span className="truncate">{title}</span><span className="ml-auto shrink-0 text-muted-foreground">{t('board.orderCount', { count: orders.length })}</span></div><div className="space-y-3">{orders.map((group) => <OrderCard key={group.orderId} group={group} stage="moscow" onDragStart={onDragStart} onDragEnd={onDragEnd} />)}</div></div>
   return <div className="space-y-4">{ungrouped.length ? section('ungrouped', t('board.ungrouped'), ungrouped) : null}{Array.from(shipments, ([tracking, orders]) => section(tracking, `MSK SHIP · ${tracking}`, orders))}</div>
 }
 
-function BoardLane({ stage, groups, mobile = false }: { stage: BoardStage; groups: OrderGroup[]; mobile?: boolean }) {
+function BoardLane({ stage, groups, mobile = false, dropStage, onDragStart, onDragEnd }: { stage: BoardStage; groups: OrderGroup[]; mobile?: boolean; dropStage: BoardStage | null; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void }) {
   const { t } = useTranslation('procurements')
   const purchaseRows = stage === 'purchase' ? groups.flatMap((group) => group.rows.map((row, index) => ({ group, row, position: index + 1 }))) : []
-  const count = stage === 'purchase' ? purchaseRows.length : groups.length
+  const count = groups.reduce((sum, group) => sum + group.rows.length, 0)
   return (
-    <section className="min-w-0">
-      <div className={`mb-3 flex items-center gap-2 ${mobile ? 'min-h-9 justify-between' : 'h-8 justify-start'}`}><h2 className={mobile ? 'text-xl font-semibold tracking-tight' : 'text-sm font-semibold'}>{t(`board.stages.${stage}`)}</h2><span className={mobile ? 'text-sm text-muted-foreground' : 'text-xs text-muted-foreground'}>{t(stage === 'purchase' ? 'board.positionCount' : 'board.orderCount', { count })}</span></div>
-      {stage === 'moscow' ? <MoscowGroups groups={groups} /> : <div className="space-y-3">{stage === 'purchase' ? purchaseRows.map((item) => <PurchaseItemCard key={item.row.id} {...item} />) : groups.map((group) => <OrderCard key={group.orderId} group={group} stage={stage} />)}</div>}
+    <section
+      data-procurement-stage={stage}
+      className={`min-h-[50dvh] min-w-0 rounded-2xl p-2 transition-colors ${dropStage === stage ? 'bg-muted/70 ring-2 ring-muted-foreground/10' : ''}`}
+    >
+      <div className={`mb-3 flex items-center gap-2 ${mobile ? 'min-h-9 justify-between' : 'h-8 justify-start'}`}><h2 className={mobile ? 'text-xl font-semibold tracking-tight' : 'text-sm font-semibold'}>{t(`board.stages.${stage}`)}</h2><span className={mobile ? 'text-sm text-muted-foreground' : 'text-xs text-muted-foreground'}>{t('board.positionCount', { count })}</span></div>
+      {stage === 'moscow' ? <MoscowGroups groups={groups} onDragStart={onDragStart} onDragEnd={onDragEnd} /> : <div className="space-y-3">{stage === 'purchase' ? purchaseRows.map((item) => <PurchaseItemCard key={item.row.id} {...item} onDragStart={onDragStart} onDragEnd={onDragEnd} />) : groups.map((group) => <OrderCard key={group.orderId} group={group} stage={stage} onDragStart={onDragStart} onDragEnd={onDragEnd} />)}</div>}
       {!count ? <EmptyLane purchase={stage === 'purchase'} /> : null}
     </section>
   )
@@ -263,25 +334,25 @@ function BoardSkeleton() {
   return <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">{stages.map((stage) => <div key={stage}><Skeleton className="mb-3 h-8 w-36" /><div className="space-y-3"><Skeleton className="h-44 rounded-xl" /><Skeleton className="h-52 rounded-xl" /></div></div>)}</div>
 }
 
-function DesktopBoard({ groups }: { groups: OrderGroup[] }) {
-  return <div className="grid grid-cols-4 items-start gap-4 2xl:gap-5">{stages.map((stage) => <BoardLane key={stage} stage={stage} groups={groups.filter((group) => group.stage === stage)} />)}</div>
+function DesktopBoard({ groups, activeDrag, onMove, onDragStart, onDragEnd }: { groups: OrderGroup[]; activeDrag: ActiveProcurementDrag | null; onMove: (rowId: string, stage: BoardStage) => void; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void }) {
+  const drop = useColumnDropTarget(activeDrag, onMove)
+  return <div className="grid grid-cols-4 items-start gap-4 2xl:gap-5" onDragOver={drop.onDragOver} onDragLeave={drop.onDragLeave} onDrop={drop.onDrop}>{stages.map((stage) => <BoardLane key={stage} stage={stage} groups={groupsForStage(groups, stage)} dropStage={drop.dropStage} onDragStart={onDragStart} onDragEnd={onDragEnd} />)}</div>
 }
 
-function MobileBoard({ groups }: { groups: OrderGroup[] }) {
+function MobileBoard({ groups, activeDrag, onMove, onDragStart, onDragEnd }: { groups: OrderGroup[]; activeDrag: ActiveProcurementDrag | null; onMove: (rowId: string, stage: BoardStage) => void; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void }) {
   const { t } = useTranslation('procurements')
   const [active, setActive] = useState<BoardStage>('purchase')
   const scrollerRef = useRef<HTMLDivElement>(null)
   const animationRef = useRef<number | null>(null)
   const activate = (stage: BoardStage) => { setActive(stage); const index = stages.indexOf(stage); scrollerRef.current?.scrollTo({ left: index * scrollerRef.current.clientWidth, behavior: 'smooth' }) }
   const syncFromScroll = () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); animationRef.current = requestAnimationFrame(() => { const scroller = scrollerRef.current; if (!scroller?.clientWidth) return; setActive(stages[Math.max(0, Math.min(stages.length - 1, Math.round(scroller.scrollLeft / scroller.clientWidth)))]) }) }
-  const countFor = (stage: BoardStage) => stage === 'purchase'
-    ? groups.filter((group) => group.stage === stage).reduce((sum, group) => sum + group.rows.length, 0)
-    : groups.filter((group) => group.stage === stage).length
+  const countFor = (stage: BoardStage) => groupsForStage(groups, stage).reduce((sum, group) => sum + group.rows.length, 0)
+  const drop = useColumnDropTarget(activeDrag, onMove)
   return (
     <Tabs value={active} onValueChange={(value) => activate(value as BoardStage)} className="min-w-0 gap-4">
       <TabsList className="grid h-12 w-full grid-cols-4 rounded-2xl p-1">{stages.map((stage) => <TabsTrigger key={stage} value={stage} className="group min-w-0 gap-1 rounded-xl px-1 text-xs"><span className="truncate">{t(`board.mobileStages.${stage}`)}</span><span className="rounded-full bg-background/70 px-1.5 text-[10px] tabular-nums group-data-[state=active]:bg-blue-50 group-data-[state=active]:text-blue-700">{countFor(stage)}</span></TabsTrigger>)}</TabsList>
-      <div ref={scrollerRef} className="flex min-h-[calc(100dvh-13rem)] w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain touch-pan-x touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" onScroll={syncFromScroll}>
-        {stages.map((stage, index) => <TabsContent key={stage} value={stage} forceMount className={`mt-0 block min-h-full w-full min-w-full shrink-0 snap-start snap-always data-[state=inactive]:block ${index < stages.length - 1 ? 'pr-5' : ''}`}><BoardLane mobile stage={stage} groups={groups.filter((group) => group.stage === stage)} /></TabsContent>)}
+      <div ref={scrollerRef} data-procurement-scroll className="flex min-h-[calc(100dvh-13rem)] w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain touch-pan-x touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" onScroll={syncFromScroll} onDragOver={drop.onDragOver} onDragLeave={drop.onDragLeave} onDrop={drop.onDrop}>
+        {stages.map((stage, index) => <TabsContent key={stage} value={stage} forceMount className={`mt-0 block min-h-full w-full min-w-full shrink-0 snap-start snap-always data-[state=inactive]:block ${index < stages.length - 1 ? 'pr-5' : ''}`}><BoardLane mobile stage={stage} groups={groupsForStage(groups, stage)} dropStage={drop.dropStage} onDragStart={onDragStart} onDragEnd={onDragEnd} /></TabsContent>)}
       </div>
     </Tabs>
   )
@@ -300,11 +371,51 @@ function useProcurements() {
 export function ProcurementsPage() {
   const { t } = useTranslation('procurements')
   const isMobile = useMediaQuery('(max-width: 1023px)')
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [moveError, setMoveError] = useState<string | null>(null)
+  const [activeDrag, setActiveDrag] = useState<ActiveProcurementDrag | null>(null)
   const query = useProcurements()
   const normalizedSearch = search.trim().toLocaleLowerCase()
   const groups = useMemo(() => groupOrders(query.data ?? []).filter((group) => matchesSearch(group, normalizedSearch)), [normalizedSearch, query.data])
-  return <div className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h1 className="text-[29px] font-bold leading-tight tracking-tight lg:text-2xl">{t('title')}</h1><div className="relative w-full sm:max-w-sm"><Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground lg:left-3" /><Input aria-label={t('mobile.searchPlaceholder')} className="h-12 rounded-2xl bg-white pl-11 lg:h-9 lg:rounded-md lg:pl-9" value={search} placeholder={t('mobile.searchPlaceholder')} onChange={(event) => setSearch(event.target.value)} /></div></div>{query.isLoading ? <BoardSkeleton /> : query.isError ? <div className="rounded-xl border p-6 text-center"><p className="font-medium">{t('mobile.loadError')}</p><Button variant="outline" className="mt-3" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : isMobile ? <MobileBoard groups={groups} /> : <DesktopBoard groups={groups} />}</div>
+  const moveMutation = useMutation({
+    mutationFn: async ({ row, stage }: { row: ProcurementRow; stage: BoardStage }) => {
+      const payload = createForm(row)
+      if (stage === 'purchase') {
+        payload.purchaseStatus = 'Pending'
+        payload.arrivalStatus = 'Pending'
+        payload.shipmentStatus = 'AwaitingShipment'
+      } else if (stage === 'moscow') {
+        payload.purchaseStatus = 'Purchased'
+        payload.arrivalStatus = 'Pending'
+        payload.shipmentStatus = 'AwaitingShipment'
+      } else if (stage === 'client') {
+        payload.purchaseStatus = 'Purchased'
+        payload.arrivalStatus = 'Received'
+        payload.shipmentStatus = 'AwaitingShipment'
+      } else {
+        payload.purchaseStatus = 'Purchased'
+        payload.arrivalStatus = 'Received'
+        payload.shipmentStatus = 'Delivered'
+      }
+      return procurementsApi.updateProcurement(row.id, payload)
+    },
+    onSuccess: (updated) => {
+      setMoveError(null)
+      queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((row) => row.id === updated.id ? updated : row))
+      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
+      void queryClient.invalidateQueries({ queryKey: ['sales-orders'] })
+    },
+    onError: (error) => setMoveError(error instanceof ApiError ? error.message : t('board.moveError')),
+  })
+  const moveItem = (rowId: string, stage: BoardStage) => {
+    const row = query.data?.find((item) => item.id === rowId)
+    if (!row || moveMutation.isPending || deriveItemStage(row) === stage) return
+    setMoveError(null)
+    moveMutation.mutate({ row, stage })
+  }
+  const dragProps = { activeDrag, onMove: moveItem, onDragStart: setActiveDrag, onDragEnd: () => setActiveDrag(null) }
+  return <div className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h1 className="text-[29px] font-bold leading-tight tracking-tight lg:text-2xl">{t('title')}</h1><div className="relative w-full sm:max-w-sm"><Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground lg:left-3" /><Input aria-label={t('mobile.searchPlaceholder')} className="h-12 rounded-2xl bg-white pl-11 lg:h-9 lg:rounded-md lg:pl-9" value={search} placeholder={t('mobile.searchPlaceholder')} onChange={(event) => setSearch(event.target.value)} /></div></div>{moveError ? <Alert variant="destructive"><AlertDescription>{moveError}</AlertDescription></Alert> : null}{query.isLoading ? <BoardSkeleton /> : query.isError ? <div className="rounded-xl border p-6 text-center"><p className="font-medium">{t('mobile.loadError')}</p><Button variant="outline" className="mt-3" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : isMobile ? <MobileBoard groups={groups} {...dragProps} /> : <DesktopBoard groups={groups} {...dragProps} />}</div>
 }
 
 function emptyToNull(value: string) { return value === '' ? null : value }
@@ -377,7 +488,7 @@ function useRowForm(row: ProcurementRow, onError: (message: string) => void) {
     if (JSON.stringify(snapshot) !== JSON.stringify(savedRef.current)) void procurementsApi.updateProcurement(row.id, snapshot)
   }, [row.id])
 
-  return { form, setForm, saveState }
+  return { form, setForm, saveState, isDirty: JSON.stringify(form) !== JSON.stringify(savedRef.current) }
 }
 
 function SaveStateLabel({ state }: { state: SaveState }) {
@@ -491,12 +602,22 @@ function ProductImageEditor({ row, onError }: { row: ProcurementRow; onError: (m
 function ItemPurchaseEditor({ row }: { row: ProcurementRow }) {
   const { t } = useTranslation('procurements')
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [error, setError] = useState('')
-  const { form, setForm, saveState } = useRowForm(row, setError)
+  const { form, setForm, saveState, isDirty } = useRowForm(row, setError)
+  const removeProcurement = useMutation({
+    mutationFn: () => procurementsApi.deleteProcurement(row.id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
+      void queryClient.invalidateQueries({ queryKey: ['sales-orders'] })
+      navigate('/admin/procurements', { replace: true })
+    },
+    onError: () => setError(t('removeError')),
+  })
   const receipt = row.attachments.find((attachment) => attachment.kind === 'Receipt')
   const upload = useMutation({ mutationFn: (file: File) => procurementsApi.uploadReceipt(row.id, file), onSuccess: (attachment) => queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === row.id ? { ...value, attachments: [...value.attachments.filter((item) => item.kind !== 'Receipt'), attachment] } : value)), onError: () => setError(t('uploadError')) })
   const remove = useMutation({ mutationFn: (attachmentId: string) => procurementsApi.deleteAttachment(row.id, attachmentId), onSuccess: (_, attachmentId) => queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === row.id ? { ...value, attachments: value.attachments.filter((item) => item.id !== attachmentId) } : value)), onError: () => setError(t('uploadError')) })
-  return <div className="rounded-xl border bg-card p-4 sm:p-5"><div className="mb-5 min-w-0"><h2 className="text-lg font-semibold">{row.itemName}</h2>{row.itemDescription ? <p className="text-sm text-muted-foreground">{row.itemDescription}</p> : null}{row.productUrl ? <a href={row.productUrl} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 text-sm text-primary"><span className="truncate">{row.productUrl}</span><ExternalLink className="size-3.5" /></a> : null}</div>{error ? <Alert variant="destructive" className="mb-4"><AlertDescription>{error}</AlertDescription></Alert> : null}<ProductImageEditor row={row} onError={setError} /><div className="grid gap-4 sm:grid-cols-2"><Field label={t('fields.purchaseStatus')} id="purchase-status"><StatusSelect id="purchase-status" value={form.purchaseStatus} values={purchaseStatuses} group="purchase" onChange={(purchaseStatus) => setForm((value) => ({ ...value, purchaseStatus }))} /></Field><Field label={t('fields.purchaseUrl')} id="purchase-url"><Input id="purchase-url" className="h-9 bg-white" value={form.purchaseUrl ?? ''} onChange={(event) => setForm((value) => ({ ...value, purchaseUrl: emptyToNull(event.target.value) }))} /></Field><Field label={t('fields.purchasePrice')} id="purchase-price"><MoneyField id="purchase-price" value={form.purchasePrice} currency={form.purchaseCurrencyCode} onValue={(purchasePrice) => setForm((value) => ({ ...value, purchasePrice }))} onCurrency={(purchaseCurrencyCode) => setForm((value) => ({ ...value, purchaseCurrencyCode }))} /></Field><div className="space-y-2"><Label className="text-sm text-muted-foreground">{t('fields.receipt')}</Label><div className="flex items-center gap-3">{receipt ? <AttachmentPreview attachment={receipt} onDelete={() => remove.mutate(receipt.id)} /> : null}<Button asChild variant="outline" size="sm"><label className="cursor-pointer"><ImagePlus />{receipt ? t('replaceReceipt') : t('addReceipt')}<input type="file" className="sr-only" accept="image/*,application/pdf" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) upload.mutate(file) }} /></label></Button></div></div></div><div className="mt-5"><SaveStateLabel state={saveState} /></div></div>
+  return <div className="rounded-xl border bg-card p-4 sm:p-5"><div className="mb-5 min-w-0"><h2 className="text-lg font-semibold">{row.itemName}</h2>{row.itemDescription ? <p className="text-sm text-muted-foreground">{row.itemDescription}</p> : null}{row.productUrl ? <a href={row.productUrl} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 text-sm text-primary"><span className="truncate">{row.productUrl}</span><ExternalLink className="size-3.5" /></a> : null}</div>{error ? <Alert variant="destructive" className="mb-4"><AlertDescription>{error}</AlertDescription></Alert> : null}<ProductImageEditor row={row} onError={setError} /><div className="grid gap-4 sm:grid-cols-2"><Field label={t('fields.purchaseStatus')} id="purchase-status"><StatusSelect id="purchase-status" value={form.purchaseStatus} values={purchaseStatuses} group="purchase" onChange={(purchaseStatus) => setForm((value) => ({ ...value, purchaseStatus }))} /></Field><Field label={t('fields.purchaseUrl')} id="purchase-url"><Input id="purchase-url" className="h-9 bg-white" value={form.purchaseUrl ?? ''} onChange={(event) => setForm((value) => ({ ...value, purchaseUrl: emptyToNull(event.target.value) }))} /></Field><Field label={t('fields.purchasePrice')} id="purchase-price"><MoneyField id="purchase-price" value={form.purchasePrice} currency={form.purchaseCurrencyCode} onValue={(purchasePrice) => setForm((value) => ({ ...value, purchasePrice }))} onCurrency={(purchaseCurrencyCode) => setForm((value) => ({ ...value, purchaseCurrencyCode }))} /></Field><div className="space-y-2"><Label className="text-sm text-muted-foreground">{t('fields.receipt')}</Label><div className="flex items-center gap-3">{receipt ? <AttachmentPreview attachment={receipt} onDelete={() => remove.mutate(receipt.id)} /> : null}<Button asChild variant="outline" size="sm"><label className="cursor-pointer"><ImagePlus />{receipt ? t('replaceReceipt') : t('addReceipt')}<input type="file" className="sr-only" accept="image/*,application/pdf" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) upload.mutate(file) }} /></label></Button></div></div></div><div className="mt-5 flex flex-wrap items-center justify-between gap-3"><SaveStateLabel state={saveState} /><Button type="button" variant="destructive" disabled={removeProcurement.isPending || isDirty || saveState === 'saving'} onClick={() => { if (window.confirm(t('removeConfirm'))) removeProcurement.mutate() }}><Trash2 />{removeProcurement.isPending ? t('removing') : t('removeFromProcurement')}</Button></div></div>
 }
 
 function WarehouseEditor({ row }: { row: ProcurementRow }) {
@@ -523,7 +644,7 @@ function StageEditorCard({ row, error, state, children }: { row: ProcurementRow;
 
 function CompletedSummary({ group }: { group: OrderGroup }) {
   const { t } = useTranslation('procurements')
-  return <div className="rounded-xl border bg-card p-4"><div className="space-y-3">{group.rows.map((row, index) => <OrderItemPreview key={row.id} row={row} position={index + 1} total={group.rows.length} />)}</div><div className="mt-4 grid gap-2 border-t pt-4 text-sm sm:grid-cols-2"><p><span className="text-muted-foreground">{t('fields.shippingMethod')}:</span> {group.rows.find((row) => row.shippingMethod)?.shippingMethod ?? '—'}</p><p><span className="text-muted-foreground">{t('fields.shippingTrackingNumber')}:</span> {group.rows.find((row) => row.shippingTrackingNumber)?.shippingTrackingNumber ?? '—'}</p><p><span className="text-muted-foreground">{t('board.delivered')}:</span> {group.rows.find((row) => row.shippedAt)?.shippedAt ?? '—'}</p></div></div>
+  return <div className="rounded-xl border bg-card p-4"><div className="space-y-3">{group.rows.map((row, index) => <OrderItemPreview key={row.id} row={row} position={index + 1} total={group.rows.length} canDrag={false} />)}</div><div className="mt-4 grid gap-2 border-t pt-4 text-sm sm:grid-cols-2"><p><span className="text-muted-foreground">{t('fields.shippingMethod')}:</span> {group.rows.find((row) => row.shippingMethod)?.shippingMethod ?? '—'}</p><p><span className="text-muted-foreground">{t('fields.shippingTrackingNumber')}:</span> {group.rows.find((row) => row.shippingTrackingNumber)?.shippingTrackingNumber ?? '—'}</p><p><span className="text-muted-foreground">{t('board.delivered')}:</span> {group.rows.find((row) => row.shippedAt)?.shippedAt ?? '—'}</p></div></div>
 }
 
 export function ProcurementItemDetailPage() {

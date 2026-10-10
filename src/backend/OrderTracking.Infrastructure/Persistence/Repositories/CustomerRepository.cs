@@ -40,14 +40,14 @@ public sealed class CustomerRepository : ICustomerRepository
                 c.Email,
                 c.Notes,
                 c.CreatedAt,
-                c.Orders.Count))
+                _db.SalesOrders.Count(order => order.WorkspaceRequest.CustomerId == c.Id)))
             .FirstOrDefaultAsync(cancellationToken);
 
     public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default) =>
         _db.Customers.AnyAsync(c => c.Id == id, cancellationToken);
 
     public Task<int> CountAsync(CancellationToken cancellationToken = default) =>
-        _db.Customers.CountAsync(cancellationToken);
+        CustomersWithSalesOrders().CountAsync(cancellationToken);
 
     public async Task<PaginatedList<CustomerListRow>> GetPagedAsync(
         int page,
@@ -57,7 +57,7 @@ public sealed class CustomerRepository : ICustomerRepository
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 500);
 
-        var query = _db.Customers.AsNoTracking();
+        var query = CustomersWithSalesOrders();
         var totalCount = await query.CountAsync(cancellationToken);
 
         var items = await query
@@ -76,7 +76,7 @@ public sealed class CustomerRepository : ICustomerRepository
                 c.Email,
                 c.Notes,
                 c.CreatedAt,
-                c.Orders.Count))
+                _db.SalesOrders.Count(order => order.WorkspaceRequest.CustomerId == c.Id)))
             .ToListAsync(cancellationToken);
 
         return new PaginatedList<CustomerListRow>(items, totalCount, page, pageSize);
@@ -89,7 +89,7 @@ public sealed class CustomerRepository : ICustomerRepository
         var page = Math.Max(1, criteria.Page);
         var pageSize = Math.Clamp(criteria.PageSize, 1, 500);
 
-        var query = _db.Customers.AsNoTracking();
+        var query = CustomersWithSalesOrders();
 
         if (!string.IsNullOrWhiteSpace(criteria.Q))
         {
@@ -128,14 +128,18 @@ public sealed class CustomerRepository : ICustomerRepository
                 c.Email,
                 c.Notes,
                 c.CreatedAt,
-                c.Orders.Count))
+                _db.SalesOrders.Count(order => order.WorkspaceRequest.CustomerId == c.Id)))
             .ToListAsync(cancellationToken);
 
         return new PaginatedList<CustomerListRow>(items, totalCount, page, pageSize);
     }
 
     public Task<int> CountOrdersForCustomerAsync(Guid customerId, CancellationToken cancellationToken = default) =>
-        _db.Orders.CountAsync(o => o.CustomerId == customerId, cancellationToken);
+        _db.SalesOrders.CountAsync(order => order.WorkspaceRequest.CustomerId == customerId, cancellationToken);
+
+    private IQueryable<Customer> CustomersWithSalesOrders() =>
+        _db.Customers.AsNoTracking()
+            .Where(customer => _db.SalesOrders.Any(order => order.WorkspaceRequest.CustomerId == customer.Id));
 
     public async Task<IReadOnlyList<CustomerAddressListRow>> GetAddressesByCustomerIdAsync(
         Guid? customerId,
@@ -143,7 +147,7 @@ public sealed class CustomerRepository : ICustomerRepository
         await _db.CustomerAddresses
             .AsNoTracking()
             .Where(a => a.CustomerId == customerId)
-            .OrderByDescending(a => a.Orders.Max(order => (DateTimeOffset?)order.CreatedAt))
+            .OrderByDescending(a => a.Orders.Where(order => !order.IsSalesOrderWorkspace).Max(order => (DateTimeOffset?)order.CreatedAt))
             .ThenByDescending(a => a.CreatedAt)
             .Select(a => new CustomerAddressListRow(
                 a.Id,
@@ -156,7 +160,7 @@ public sealed class CustomerRepository : ICustomerRepository
                 a.Note,
                 a.CreatedAt,
                 a.UpdatedAt ?? a.CreatedAt,
-                a.Orders.Max(order => (DateTimeOffset?)order.CreatedAt)))
+                a.Orders.Where(order => !order.IsSalesOrderWorkspace).Max(order => (DateTimeOffset?)order.CreatedAt)))
             .ToListAsync(cancellationToken);
 
     public Task<CustomerAddress?> GetAddressByIdAsync(Guid id, CancellationToken cancellationToken = default) =>

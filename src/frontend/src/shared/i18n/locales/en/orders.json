@@ -1,4 +1,24 @@
 {
+  "salesOrders": {
+    "title": "Orders",
+    "empty": "There are no orders yet",
+    "columns": {
+      "number": "Order number",
+      "request": "Source request"
+    },
+    "convert": "Convert to order",
+    "converting": "Creating order…",
+    "convertError": "Could not create an order from this request",
+    "sendToProcurement": "Send to purchasing",
+    "sendingToProcurement": "Sending to purchasing…",
+    "sendSuccess": "Order sent to purchasing and shipping",
+    "sendError": "Could not send the order to purchasing",
+    "alreadyConverted": "This request has already been converted to an order",
+    "detailTitle": "Order",
+    "back": "Back to orders",
+    "openConverted": "Open created order",
+    "convertedStatus": "Converted"
+  },
   "title": "Requests",
   "subtitle": "Manage customer requests",
   "create": "Create request",

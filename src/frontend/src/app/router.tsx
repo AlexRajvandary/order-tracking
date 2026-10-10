@@ -10,6 +10,8 @@ import { CustomerDetailsPage } from '@/pages/admin/CustomerDetailsPage'
 import { AdminsPage } from '@/pages/admin/AdminsPage'
 import { HelpPage } from '@/pages/admin/HelpPage'
 import { OrdersListPage } from '@/pages/admin/OrdersListPage'
+import { SalesOrdersListPage } from '@/pages/admin/SalesOrdersListPage'
+import { SalesOrderDetailsPage } from '@/pages/admin/SalesOrderDetailsPage'
 import { CreateOrderPage } from '@/pages/admin/CreateOrderPage'
 import { OrderDetailsPage } from '@/pages/admin/OrderDetailsPage'
 import { ProductsPage } from '@/pages/admin/ProductsPage'
@@ -67,9 +69,11 @@ function AdminAndLegacyRoutes() {
             <Route index element={<DashboardPage />} />
             <Route path="audit" element={<AuditPage />} />
             <Route path="audit/:id" element={<AuditDetailsPage />} />
-            <Route path="orders" element={<OrdersListPage />} />
-            <Route path="orders/new" element={<CreateOrderPage />} />
-            <Route path="orders/:id" element={<OrderDetailsPage />} />
+            <Route path="requests" element={<OrdersListPage />} />
+            <Route path="requests/new" element={<CreateOrderPage />} />
+            <Route path="requests/:id" element={<OrderDetailsPage />} />
+            <Route path="orders" element={<SalesOrdersListPage />} />
+            <Route path="orders/:id" element={<SalesOrderDetailsPage />} />
             <Route path="procurements" element={<ProcurementsPage />} />
             <Route path="procurements/items/:procurementId" element={<ProcurementItemDetailPage />} />
             <Route path="procurements/orders/:orderId/:stage" element={<ProcurementOrderDetailPage />} />

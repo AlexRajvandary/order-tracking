@@ -324,7 +324,7 @@ export function CreateOrderPage() {
       return order
     },
     onSuccess: (order) => {
-      navigate(`/admin/orders/${order.id}`, { replace: true })
+      navigate(`/admin/requests/${order.id}`, { replace: true })
     },
     onError: (err: unknown) => {
       setError(err instanceof ApiError ? err.message : t('error', { ns: 'common' }))
@@ -422,7 +422,7 @@ export function CreateOrderPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <Link to="/admin/orders" className="text-sm text-primary hover:underline">
+        <Link to="/admin/requests" className="text-sm text-primary hover:underline">
           ← {t('details.back')}
         </Link>
         <h1 className="mt-2 text-2xl font-bold">{t('form.title')}</h1>

@@ -21,6 +21,7 @@ export type OrderListItem = {
   itemsCount: number
   createdAt: string
   updatedAt: string
+  convertedToSalesOrderId: string | null
 }
 
 export type OrderItem = {
@@ -68,6 +69,7 @@ export type OrderDetails = {
   deliveryApartment: string | null
   deliveryPostalCode: string | null
   deliveryNote: string | null
+  convertedToSalesOrderId: string | null
   items: OrderItem[]
 }
 
