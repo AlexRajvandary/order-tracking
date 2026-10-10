@@ -313,9 +313,7 @@ public class OrderItemProcurementConfiguration : IEntityTypeConfiguration<OrderI
         builder.Property(e => e.ShippingWeight).HasPrecision(12, 3);
         builder.Property(e => e.ShippingCost).HasPrecision(18, 2);
         builder.Property(e => e.ShippingCurrencyCode).HasMaxLength(3).IsFixedLength().HasDefaultValue(CurrencyCodes.Jpy);
-        builder.Property(e => e.PurchaseStatus).HasConversion<string>().HasMaxLength(30);
-        builder.Property(e => e.ArrivalStatus).HasConversion<string>().HasMaxLength(30);
-        builder.Property(e => e.ShipmentStatus).HasConversion<string>().HasMaxLength(30);
+        builder.Property(e => e.CurrentStatus).HasConversion<string>().HasMaxLength(40);
         builder.Property(e => e.WarehouseCondition).HasConversion<string>().HasMaxLength(30);
 
         builder.HasIndex(e => e.OrderItemId)
@@ -328,6 +326,37 @@ public class OrderItemProcurementConfiguration : IEntityTypeConfiguration<OrderI
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasQueryFilter(e => !e.IsDeleted);
+    }
+}
+
+public class OrderItemProcurementStatusHistoryConfiguration : IEntityTypeConfiguration<OrderItemProcurementStatusHistory>
+{
+    public void Configure(EntityTypeBuilder<OrderItemProcurementStatusHistory> builder)
+    {
+        builder.ToTable("order_item_procurement_status_history");
+        builder.HasKey(value => value.Id);
+        builder.Property(value => value.PreviousStatus).HasConversion<string>().HasMaxLength(40);
+        builder.Property(value => value.Status).HasConversion<string>().HasMaxLength(40).IsRequired();
+        builder.Property(value => value.Comment).HasColumnType("text");
+        builder.HasIndex(value => new { value.ProcurementId, value.ChangedAt });
+        builder.HasOne(value => value.Procurement).WithMany(value => value.StatusHistory)
+            .HasForeignKey(value => value.ProcurementId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class OrderItemProcurementErrorConfiguration : IEntityTypeConfiguration<OrderItemProcurementError>
+{
+    public void Configure(EntityTypeBuilder<OrderItemProcurementError> builder)
+    {
+        builder.ToTable("order_item_procurement_errors");
+        builder.HasKey(value => value.Id);
+        builder.Property(value => value.Text).HasColumnType("text").IsRequired();
+        builder.Property(value => value.StatusAtCreation).HasConversion<string>().HasMaxLength(40);
+        builder.Property(value => value.StageAtCreation).HasMaxLength(40).IsRequired();
+        builder.HasIndex(value => new { value.ProcurementId, value.CreatedAt });
+        builder.HasIndex(value => new { value.ProcurementId, value.IsResolved, value.IsBlocking });
+        builder.HasOne(value => value.Procurement).WithMany(value => value.Errors)
+            .HasForeignKey(value => value.ProcurementId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

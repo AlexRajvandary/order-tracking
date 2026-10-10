@@ -25,6 +25,7 @@ public sealed class ProcurementsControllerTests
         Assert.IsType<OkObjectResult>(first.Result);
         Assert.IsType<OkObjectResult>(second.Result);
         Assert.Equal(2, await db.OrderItemProcurements.CountAsync());
+        Assert.Equal(2, await db.OrderItemProcurementStatusHistories.CountAsync());
         Assert.Equal(OrderStatus.InProgress, order.Status);
     }
 
@@ -73,16 +74,13 @@ public sealed class ProcurementsControllerTests
             row.Id,
             new UpdateProcurementRequest(
                 " https://shop.example/order/42 ",
-                PurchaseStatus.Purchased,
                 125.50m,
                 "USD",
                 " SELLER-42 ",
                 " LOCAL-TRACK ",
-                ArrivalStatus.Received,
                 receivedAt,
                 WarehouseCondition.Ok,
                 " INTERNATIONAL-TRACK ",
-                ShipmentStatus.Shipped,
                 "Air",
                 1.250m,
                 32.75m,
@@ -107,7 +105,95 @@ public sealed class ProcurementsControllerTests
         Assert.Equal(32.75m, saved.ShippingCost);
         Assert.Equal("EUR", saved.ShippingCurrencyCode);
         Assert.Equal(shippedAt, saved.ShippedAt);
+        Assert.Equal(ProcurementLifecycleStatus.RequiredPurchase, saved.CurrentStatus);
         Assert.Empty(dto.Attachments);
+    }
+
+    [Fact]
+    public async Task Transition_rejects_skipped_states_and_records_valid_changes()
+    {
+        await using var db = CreateDbContext();
+        var order = CreateOrder(1);
+        var row = new OrderItemProcurement { Id = Guid.NewGuid(), OrderItemId = order.Items.Single().Id };
+        db.Orders.Add(order);
+        db.OrderItemProcurements.Add(row);
+        await db.SaveChangesAsync();
+        var controller = new ProcurementsController(db);
+
+        var skipped = await controller.Transition(row.Id,
+            new TransitionProcurementRequest(ProcurementLifecycleStatus.AwaitingWarehouse), CancellationToken.None);
+        Assert.IsType<BadRequestObjectResult>(skipped.Result);
+
+        var accepted = await controller.Transition(row.Id,
+            new TransitionProcurementRequest(ProcurementLifecycleStatus.Purchased), CancellationToken.None);
+        Assert.IsType<OkObjectResult>(accepted.Result);
+        Assert.Equal(ProcurementLifecycleStatus.Purchased, row.CurrentStatus);
+        var history = await db.OrderItemProcurementStatusHistories.SingleAsync();
+        Assert.Equal(ProcurementLifecycleStatus.RequiredPurchase, history.PreviousStatus);
+        Assert.Equal(ProcurementLifecycleStatus.Purchased, history.Status);
+    }
+
+    [Fact]
+    public async Task Blocking_issue_prevents_forward_transition_and_can_be_resolved()
+    {
+        await using var db = CreateDbContext();
+        var order = CreateOrder(1);
+        var row = new OrderItemProcurement { Id = Guid.NewGuid(), OrderItemId = order.Items.Single().Id };
+        db.Orders.Add(order);
+        db.OrderItemProcurements.Add(row);
+        await db.SaveChangesAsync();
+        var controller = new ProcurementsController(db);
+
+        var created = await controller.CreateError(row.Id, new CreateProcurementErrorRequest("Package damaged"), CancellationToken.None);
+        Assert.IsType<CreatedAtActionResult>(created.Result);
+        Assert.Equal("purchase", (await db.OrderItemProcurementErrors.SingleAsync()).StageAtCreation);
+
+        var blocked = await controller.Transition(row.Id,
+            new TransitionProcurementRequest(ProcurementLifecycleStatus.Purchased), CancellationToken.None);
+        Assert.IsType<ConflictObjectResult>(blocked.Result);
+
+        var error = await db.OrderItemProcurementErrors.SingleAsync();
+        var resolved = await controller.ResolveError(error.Id, CancellationToken.None);
+        Assert.IsType<OkObjectResult>(resolved.Result);
+        var accepted = await controller.Transition(row.Id,
+            new TransitionProcurementRequest(ProcurementLifecycleStatus.Purchased), CancellationToken.None);
+        Assert.IsType<OkObjectResult>(accepted.Result);
+        Assert.Equal(ProcurementLifecycleStatus.Purchased, row.CurrentStatus);
+    }
+
+    [Fact]
+    public async Task Active_board_and_archive_share_the_same_lifecycle_status()
+    {
+        await using var db = CreateDbContext();
+        var order = CreateOrder(2);
+        db.Orders.Add(order);
+        db.OrderItemProcurements.AddRange(
+            new OrderItemProcurement
+            {
+                Id = Guid.NewGuid(), OrderItemId = order.Items.First().Id,
+                CurrentStatus = ProcurementLifecycleStatus.AwaitingTransitShipment,
+            },
+            new OrderItemProcurement
+            {
+                Id = Guid.NewGuid(), OrderItemId = order.Items.Last().Id,
+                CurrentStatus = ProcurementLifecycleStatus.Delivered,
+            });
+        await db.SaveChangesAsync();
+        var controller = new ProcurementsController(db);
+
+        var activeResult = await controller.GetAll(CancellationToken.None);
+        var archiveResult = await controller.GetArchive(CancellationToken.None);
+        var active = Assert.IsType<OkObjectResult>(activeResult.Result);
+        var archive = Assert.IsType<OkObjectResult>(archiveResult.Result);
+        var activeRows = Assert.IsAssignableFrom<IReadOnlyList<ProcurementRowDto>>(active.Value);
+        var archivedRows = Assert.IsAssignableFrom<IReadOnlyList<ProcurementRowDto>>(archive.Value);
+
+        Assert.Single(activeRows);
+        Assert.Equal(ProcurementLifecycleStatus.AwaitingTransitShipment, activeRows[0].Status);
+        Assert.Equal("transit", activeRows[0].Stage);
+        Assert.Single(archivedRows);
+        Assert.Equal(ProcurementLifecycleStatus.Delivered, archivedRows[0].Status);
+        Assert.Equal("archive", archivedRows[0].Stage);
     }
 
     private static Order CreateOrder(int itemCount)

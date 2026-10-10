@@ -115,6 +115,37 @@
     }
   },
   "statuses": {
+    "lifecycle": {
+      "RequiredPurchase": "Purchase required",
+      "Purchased": "Purchased",
+      "AwaitingWarehouse": "Awaiting warehouse receipt",
+      "AtOriginWarehouse": "Received at origin warehouse",
+      "AwaitingTransitShipment": "Awaiting transit shipment",
+      "SentToTransit": "Shipped to transit country",
+      "ArrivedTransitCountry": "Arrived in transit country",
+      "AwaitingMoscowShipment": "Awaiting shipment to Moscow",
+      "SentToMoscow": "Shipped to Moscow",
+      "ArrivedMoscow": "Arrived in Moscow",
+      "AwaitingCustomerShipment": "Awaiting customer shipment",
+      "HandedToDelivery": "Handed to delivery",
+      "Delivered": "Delivered to customer"
+    }
+  },
+  "actions": {
+    "Purchased": "Purchased",
+    "AwaitingWarehouse": "Send to warehouse",
+    "AtOriginWarehouse": "Received at warehouse",
+    "AwaitingTransitShipment": "Prepare transit shipment",
+    "SentToTransit": "Shipped to transit country",
+    "ArrivedTransitCountry": "Confirm arrival",
+    "AwaitingMoscowShipment": "Prepare shipment to Moscow",
+    "SentToMoscow": "Shipped to Moscow",
+    "ArrivedMoscow": "Arrived in Moscow",
+    "AwaitingCustomerShipment": "Prepare customer delivery",
+    "HandedToDelivery": "Handed to delivery",
+    "Delivered": "Delivered"
+  },
+  "statusesLegacy": {
     "purchase": {
       "Pending": "Awaiting purchase",
       "Purchased": "Purchased",
@@ -134,15 +165,17 @@
   "board": {
     "stages": {
       "purchase": "Purchase",
-      "moscow": "Ship to Moscow",
-      "client": "Ship to customer",
-      "completed": "Completed"
+      "originWarehouse": "Origin warehouse",
+      "transit": "Transit country",
+      "moscow": "Moscow",
+      "customerDelivery": "Customer delivery"
     },
     "mobileStages": {
-      "purchase": "Purchase",
-      "moscow": "To Moscow",
-      "client": "Customer",
-      "completed": "Completed"
+      "purchase": "Buy",
+      "originWarehouse": "Warehouse",
+      "transit": "Transit",
+      "moscow": "Moscow",
+      "customerDelivery": "Customer"
     },
     "position": "Item {{current}} of {{total}}",
     "positionShort": "{{current}} of {{total}}",
@@ -161,6 +194,21 @@
     "orderCount_other": "{{count}} orders",
     "noItems": "No items",
     "moveError": "Could not move the product. Please try again.",
+    "archive": "Delivered archive",
+    "restoreToDelivery": "Return to delivery",
+    "archiveEmpty": "No completed products yet",
+    "reportError": "Report issue",
+    "errorPlaceholder": "Describe the product issue",
+    "sendError": "Register issue",
+    "errorCreateFailed": "Could not register the issue",
+    "issueHistory": "Product issues",
+    "errorsLoadFailed": "Could not load issues",
+    "blockingIssue": "Blocks progress",
+    "resolved": "Resolved",
+    "resolveIssue": "Resolve issue",
+    "noIssues": "No issues",
+    "openErrors_one": "Open issue",
+    "openErrors_other": "Open issues: {{count}}",
     "noOrders": "No orders",
     "back": "Back to board",
     "itemCard": "Item details",

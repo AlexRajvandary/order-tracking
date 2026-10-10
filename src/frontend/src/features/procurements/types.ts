@@ -1,6 +1,5 @@
-export type PurchaseStatus = 'Pending' | 'Purchased' | 'Error'
-export type ArrivalStatus = 'Pending' | 'InTransit' | 'Received'
-export type ShipmentStatus = 'AwaitingShipment' | 'Shipped' | 'Delivered'
+export type ProcurementStatus = 'RequiredPurchase' | 'Purchased' | 'AwaitingWarehouse' | 'AtOriginWarehouse' | 'AwaitingTransitShipment' | 'SentToTransit' | 'ArrivedTransitCountry' | 'AwaitingMoscowShipment' | 'SentToMoscow' | 'ArrivedMoscow' | 'AwaitingCustomerShipment' | 'HandedToDelivery' | 'Delivered'
+export type ProcurementStage = 'purchase' | 'originWarehouse' | 'transit' | 'moscow' | 'customerDelivery' | 'archive'
 export type WarehouseCondition = 'Ok' | 'Good' | 'Damaged' | 'WrongItem' | 'Incomplete'
 export type ProcurementAttachmentKind = 'Receipt' | 'WarehousePhoto'
 export type ProcurementCurrencyCode = 'JPY' | 'RUB' | 'USD' | 'EUR'
@@ -32,16 +31,20 @@ export type ProcurementRow = {
   itemCurrencyCode: string | null
   sortOrder: number
   purchaseUrl: string | null
-  purchaseStatus: PurchaseStatus
+  status: ProcurementStatus
+  stage: ProcurementStage
+  nextStatus: ProcurementStatus | null
+  previousStatus: ProcurementStatus | null
+  nextStage: ProcurementStage | null
+  previousStage: ProcurementStage | null
+  openErrorCount: number
   purchasePrice: number | null
   purchaseCurrencyCode: ProcurementCurrencyCode
   sellerOrderNumber: string | null
   warehouseTrackingNumber: string | null
-  arrivalStatus: ArrivalStatus
   warehouseReceivedAt: string | null
   warehouseCondition: WarehouseCondition | null
   shippingTrackingNumber: string | null
-  shipmentStatus: ShipmentStatus
   shippingMethod: string | null
   shippingWeight: number | null
   shippingCost: number | null
@@ -55,16 +58,13 @@ export type ProcurementRow = {
 export type UpdateProcurementRequest = Pick<
   ProcurementRow,
   | 'purchaseUrl'
-  | 'purchaseStatus'
   | 'purchasePrice'
   | 'purchaseCurrencyCode'
   | 'sellerOrderNumber'
   | 'warehouseTrackingNumber'
-  | 'arrivalStatus'
   | 'warehouseReceivedAt'
   | 'warehouseCondition'
   | 'shippingTrackingNumber'
-  | 'shipmentStatus'
   | 'shippingMethod'
   | 'shippingWeight'
   | 'shippingCost'

@@ -4,8 +4,10 @@
     "empty": "There are no orders yet",
     "columns": {
       "number": "Order number",
-      "request": "Source request"
+      "request": "Source request",
+      "productStatuses": "Product statuses"
     },
+    "notSentToProcurement": "Not sent to purchasing",
     "convert": "Convert to order",
     "converting": "Creating order…",
     "convertError": "Could not create an order from this request",

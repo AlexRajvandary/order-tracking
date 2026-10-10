@@ -7,16 +7,14 @@ public sealed class OrderItemProcurement : AuditableEntity
 {
     public Guid OrderItemId { get; set; }
     public string? PurchaseUrl { get; set; }
-    public PurchaseStatus PurchaseStatus { get; set; } = PurchaseStatus.Pending;
+    public ProcurementLifecycleStatus CurrentStatus { get; set; } = ProcurementLifecycleStatus.RequiredPurchase;
     public decimal? PurchasePrice { get; set; }
     public string PurchaseCurrencyCode { get; set; } = CurrencyCodes.Jpy;
     public string? SellerOrderNumber { get; set; }
     public string? WarehouseTrackingNumber { get; set; }
-    public ArrivalStatus ArrivalStatus { get; set; } = ArrivalStatus.Pending;
     public DateOnly? WarehouseReceivedAt { get; set; }
     public WarehouseCondition? WarehouseCondition { get; set; }
     public string? ShippingTrackingNumber { get; set; }
-    public ShipmentStatus ShipmentStatus { get; set; } = ShipmentStatus.AwaitingShipment;
     public string? ShippingMethod { get; set; }
     public decimal? ShippingWeight { get; set; }
     public decimal? ShippingCost { get; set; }
@@ -25,4 +23,6 @@ public sealed class OrderItemProcurement : AuditableEntity
 
     public OrderItem OrderItem { get; set; } = null!;
     public ICollection<OrderItemProcurementAttachment> Attachments { get; set; } = [];
+    public ICollection<OrderItemProcurementStatusHistory> StatusHistory { get; set; } = [];
+    public ICollection<OrderItemProcurementError> Errors { get; set; } = [];
 }

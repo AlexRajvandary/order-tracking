@@ -16,6 +16,7 @@ function formatDate(value: string) {
 
 export function SalesOrdersListPage() {
   const { t } = useTranslation('orders')
+  const { t: tp } = useTranslation('procurements')
   const navigate = useNavigate()
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['sales-orders'],
@@ -46,10 +47,13 @@ export function SalesOrdersListPage() {
       header: ({ column, table }) => <DataTableColumnHeader column={column} table={table} title={t('columns.phone')} />,
     },
     {
-      accessorKey: 'status',
-      meta: { label: t('columns.status') },
-      header: ({ column, table }) => <DataTableColumnHeader column={column} table={table} title={t('columns.status')} />,
-      cell: ({ row }) => t(`details.orderStatus.${row.original.status}`, { defaultValue: row.original.status }),
+      id: 'productStatuses',
+      accessorFn: (row) => row.productStatuses.map((status) => tp(`statuses.lifecycle.${status}`)).join(', '),
+      meta: { label: t('salesOrders.columns.productStatuses') },
+      header: ({ column, table }) => <DataTableColumnHeader column={column} table={table} title={t('salesOrders.columns.productStatuses')} />,
+      cell: ({ row }) => row.original.productStatuses.length
+        ? <div className="flex flex-wrap gap-1">{row.original.productStatuses.map((status) => <span key={status} className="rounded-full bg-muted px-2 py-0.5 text-xs">{tp(`statuses.lifecycle.${status}`)}</span>)}</div>
+        : <span className="text-muted-foreground">{t('salesOrders.notSentToProcurement')}</span>,
     },
     {
       accessorKey: 'itemsCount',
@@ -63,7 +67,7 @@ export function SalesOrdersListPage() {
       header: ({ column, table }) => <DataTableColumnHeader column={column} table={table} title={t('columns.created')} />,
       cell: ({ row }) => formatDate(row.original.createdAt),
     },
-  ], [t])
+  ], [t, tp])
 
   return (
     <div className="space-y-6">

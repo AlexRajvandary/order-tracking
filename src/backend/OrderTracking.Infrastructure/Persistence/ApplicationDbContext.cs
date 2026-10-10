@@ -23,6 +23,8 @@ public class ApplicationDbContext : DbContext, IUnitOfWork
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<OrderItemProcurement> OrderItemProcurements => Set<OrderItemProcurement>();
     public DbSet<OrderItemProcurementAttachment> OrderItemProcurementAttachments => Set<OrderItemProcurementAttachment>();
+    public DbSet<OrderItemProcurementStatusHistory> OrderItemProcurementStatusHistories => Set<OrderItemProcurementStatusHistory>();
+    public DbSet<OrderItemProcurementError> OrderItemProcurementErrors => Set<OrderItemProcurementError>();
     public DbSet<StatusDefinition> StatusDefinitions => Set<StatusDefinition>();
     public DbSet<OrderItemStatusHistory> OrderItemStatusHistories => Set<OrderItemStatusHistory>();
     public DbSet<OrderItemStatusAttachment> OrderItemStatusAttachments => Set<OrderItemStatusAttachment>();

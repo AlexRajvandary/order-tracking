@@ -21,7 +21,7 @@ import { VpsMonitoringPage } from '@/pages/admin/VpsMonitoringPage'
 import { StorefrontAnnouncementPage } from '@/pages/admin/StorefrontAnnouncementPage'
 import { CatalogAnalyticsPage } from '@/pages/admin/CatalogAnalyticsPage'
 import { CatalogPage } from '@/pages/admin/CatalogPage'
-import { ProcurementItemDetailPage, ProcurementOrderDetailPage, ProcurementsPage } from '@/pages/admin/ProcurementsPage'
+import { ProcurementItemDetailPage, ProcurementOrderDetailPage, ProcurementsArchivePage, ProcurementsPage } from '@/pages/admin/ProcurementsPage'
 import { TrackingPage } from '@/pages/public/TrackingPage'
 import { AdminShell } from '@/widgets/admin-shell/AdminShell'
 import { AuthProvider } from '@/features/auth/model/AuthContext'
@@ -75,6 +75,7 @@ function AdminAndLegacyRoutes() {
             <Route path="orders" element={<SalesOrdersListPage />} />
             <Route path="orders/:id" element={<SalesOrderDetailsPage />} />
             <Route path="procurements" element={<ProcurementsPage />} />
+            <Route path="procurements/archive" element={<ProcurementsArchivePage />} />
             <Route path="procurements/items/:procurementId" element={<ProcurementItemDetailPage />} />
             <Route path="procurements/orders/:orderId/:stage" element={<ProcurementOrderDetailPage />} />
             <Route path="customers" element={<CustomersPage />} />

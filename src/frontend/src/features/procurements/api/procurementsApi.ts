@@ -1,8 +1,27 @@
 import { authorizedJson, authorizedUpload } from '@/shared/api/authorizedClient'
-import type { ProcurementAttachment, ProcurementRow, UpdateProcurementRequest } from '../types'
+import type { ProcurementAttachment, ProcurementRow, ProcurementStatus, UpdateProcurementRequest } from '../types'
 
 export function getProcurements(signal?: AbortSignal) {
   return authorizedJson<ProcurementRow[]>('/procurements', { signal })
+}
+
+export function getProcurementArchive(signal?: AbortSignal) {
+  return authorizedJson<ProcurementRow[]>('/procurements/archive', { signal })
+}
+
+export function transitionProcurement(id: string, request: { status?: ProcurementStatus; targetStage?: string }) {
+  return authorizedJson<ProcurementRow>(`/procurements/${id}/transition`, { method: 'POST', body: JSON.stringify(request) })
+}
+
+export type ProcurementError = { id: string; procurementId: string; text: string; statusAtCreation: ProcurementStatus; stageAtCreation: string; createdAt: string; authorId: string | null; isBlocking: boolean; isResolved: boolean; resolvedAt: string | null; resolvedByAdminId: string | null }
+export function getProcurementErrors(id: string, signal?: AbortSignal) {
+  return authorizedJson<ProcurementError[]>(`/procurements/${id}/errors`, { signal })
+}
+export function createProcurementError(id: string, text: string, isBlocking = true) {
+  return authorizedJson<ProcurementError>(`/procurements/${id}/errors`, { method: 'POST', body: JSON.stringify({ text, isBlocking }) })
+}
+export function resolveProcurementError(id: string) {
+  return authorizedJson<ProcurementError>(`/procurements/errors/${id}/resolve`, { method: 'POST' })
 }
 
 export function convertRequest(orderId: string) {

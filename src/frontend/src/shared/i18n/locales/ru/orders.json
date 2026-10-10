@@ -4,8 +4,10 @@
     "empty": "Заказов пока нет",
     "columns": {
       "number": "Номер заказа",
-      "request": "Исходная заявка"
+      "request": "Исходная заявка",
+      "productStatuses": "Статусы товаров"
     },
+    "notSentToProcurement": "Не отправлен на выкуп",
     "convert": "Конвертировать в заказ",
     "converting": "Создаём заказ…",
     "convertError": "Не удалось создать заказ из заявки",

@@ -115,6 +115,37 @@
     }
   },
   "statuses": {
+    "lifecycle": {
+      "RequiredPurchase": "Требуется выкуп",
+      "Purchased": "Выкуплен",
+      "AwaitingWarehouse": "Ожидается поступление",
+      "AtOriginWarehouse": "Поступил на склад отправления",
+      "AwaitingTransitShipment": "Ожидает отправки в транзит",
+      "SentToTransit": "Отправлен в транзит",
+      "ArrivedTransitCountry": "Прибыл в страну транзита",
+      "AwaitingMoscowShipment": "Ожидает отправки в Москву",
+      "SentToMoscow": "Отправлен в Москву",
+      "ArrivedMoscow": "Прибыл в Москву",
+      "AwaitingCustomerShipment": "Ожидает отправки клиенту",
+      "HandedToDelivery": "Передан в доставку",
+      "Delivered": "Доставлен клиенту"
+    }
+  },
+  "actions": {
+    "Purchased": "Выкуплен",
+    "AwaitingWarehouse": "Передать на склад",
+    "AtOriginWarehouse": "Поступил на склад",
+    "AwaitingTransitShipment": "Подготовить к транзиту",
+    "SentToTransit": "Отправлен в транзит",
+    "ArrivedTransitCountry": "Подтвердить прибытие",
+    "AwaitingMoscowShipment": "Подготовить отправку в Москву",
+    "SentToMoscow": "Отправлен в Москву",
+    "ArrivedMoscow": "Прибыл в Москву",
+    "AwaitingCustomerShipment": "Подготовить доставку клиенту",
+    "HandedToDelivery": "Передан в доставку",
+    "Delivered": "Доставлен"
+  },
+  "statusesLegacy": {
     "purchase": {
       "Pending": "Ожидает выкупа",
       "Purchased": "Выкуплен",
@@ -133,16 +164,18 @@
   },
   "board": {
     "stages": {
-      "purchase": "Выкупить",
-      "moscow": "Отправить в Москву",
-      "client": "Отправить клиенту",
-      "completed": "Завершено"
+      "purchase": "Выкуп",
+      "originWarehouse": "Склад отправления",
+      "transit": "Страна транзита",
+      "moscow": "Москва",
+      "customerDelivery": "Доставка клиенту"
     },
     "mobileStages": {
       "purchase": "Выкуп",
-      "moscow": "В Москву",
-      "client": "Клиенту",
-      "completed": "Завершено"
+      "originWarehouse": "Склад",
+      "transit": "Транзит",
+      "moscow": "Москва",
+      "customerDelivery": "Клиенту"
     },
     "position": "Позиция {{current}} из {{total}}",
     "positionShort": "{{current}} из {{total}}",
@@ -167,6 +200,23 @@
     "orderCount_other": "{{count}} заказа",
     "noItems": "Нет позиций",
     "moveError": "Не удалось переместить товар. Попробуйте ещё раз.",
+    "archive": "Архив доставленных",
+    "restoreToDelivery": "Вернуть в доставку",
+    "archiveEmpty": "Завершённых товаров пока нет",
+    "reportError": "Ошибка",
+    "errorPlaceholder": "Опишите проблему с товаром",
+    "sendError": "Зарегистрировать",
+    "errorCreateFailed": "Не удалось зарегистрировать ошибку",
+    "issueHistory": "Ошибки товара",
+    "errorsLoadFailed": "Не удалось загрузить ошибки",
+    "blockingIssue": "Блокирует переход",
+    "resolved": "Решена",
+    "resolveIssue": "Разрешить",
+    "noIssues": "Ошибок нет",
+    "openErrors_one": "Открыта ошибка",
+    "openErrors_few": "Открыто ошибок: {{count}}",
+    "openErrors_many": "Открыто ошибок: {{count}}",
+    "openErrors_other": "Открыто ошибок: {{count}}",
     "noOrders": "Нет заказов",
     "back": "К доске",
     "itemCard": "Карточка позиции",

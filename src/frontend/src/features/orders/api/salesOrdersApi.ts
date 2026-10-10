@@ -6,7 +6,7 @@ export type SalesOrderListItem = {
   requestTrackingCode: string
   customerName: string | null
   customerPhone: string | null
-  status: string
+  productStatuses: string[]
   itemsCount: number
   createdAt: string
   updatedAt: string

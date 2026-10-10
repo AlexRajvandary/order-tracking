@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using System.Text.Json;
 using OrderTracking.Domain.Entities;
 using OrderTracking.Domain.Enums;
@@ -20,23 +21,40 @@ public sealed class SalesOrdersController(
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<SalesOrderListDto>>> GetAll(CancellationToken cancellationToken)
     {
-        var rows = await db.SalesOrders.AsNoTracking()
+        var orders = await db.SalesOrders.AsNoTracking()
             .OrderByDescending(order => order.CreatedAt)
-            .Select(order => new SalesOrderListDto(
+            .Select(order => new
+            {
                 order.Id,
+                order.WorkspaceRequestId,
                 order.SourceRequest.TrackingCode,
-                order.SourceRequest.TrackingCode,
-                order.WorkspaceRequest.Customer != null
+                RequestTrackingCode = order.SourceRequest.TrackingCode,
+                CustomerName = order.WorkspaceRequest.Customer != null
                     ? ((order.WorkspaceRequest.Customer.LastName ?? "") + " " +
                        (order.WorkspaceRequest.Customer.FirstName ?? "") + " " +
                        (order.WorkspaceRequest.Customer.Patronymic ?? "")).Trim()
                     : null,
-                order.WorkspaceRequest.Customer != null ? order.WorkspaceRequest.Customer.Phone : null,
-                order.WorkspaceRequest.Status.ToString(),
-                order.WorkspaceRequest.Items.Count,
+                CustomerPhone = order.WorkspaceRequest.Customer != null ? order.WorkspaceRequest.Customer.Phone : null,
+                ItemsCount = order.WorkspaceRequest.Items.Count,
                 order.CreatedAt,
-                order.UpdatedAt ?? order.CreatedAt))
+                UpdatedAt = order.UpdatedAt ?? order.CreatedAt,
+            })
             .ToListAsync(cancellationToken);
+        var workspaceIds = orders.Select(order => order.WorkspaceRequestId).ToList();
+        var productStatuses = await db.OrderItemProcurements.AsNoTracking()
+            .Where(row => workspaceIds.Contains(row.OrderItem.OrderId))
+            .Select(row => new { OrderId = row.OrderItem.OrderId, row.CurrentStatus })
+            .ToListAsync(cancellationToken);
+        var rows = orders.Select(order => new SalesOrderListDto(
+            order.Id,
+            order.TrackingCode,
+            order.RequestTrackingCode,
+            order.CustomerName,
+            order.CustomerPhone,
+            productStatuses.Where(value => value.OrderId == order.WorkspaceRequestId).Select(value => value.CurrentStatus.ToString()).Distinct().ToList(),
+            order.ItemsCount,
+            order.CreatedAt,
+            order.UpdatedAt)).ToList();
         return Ok(rows);
     }
 
@@ -213,7 +231,19 @@ public sealed class SalesOrdersController(
             {
                 Id = Guid.NewGuid(),
                 OrderItemId = item.Id,
+                CurrentStatus = ProcurementLifecycleStatus.RequiredPurchase,
                 CreatedAt = DateTimeOffset.UtcNow,
+                StatusHistory =
+                {
+                    new OrderItemProcurementStatusHistory
+                    {
+                        Id = Guid.NewGuid(),
+                        Status = ProcurementLifecycleStatus.RequiredPurchase,
+                        ChangedAt = DateTimeOffset.UtcNow,
+                        ChangedByAdminId = GetAuthorId(),
+                        Comment = "Order sent to procurement",
+                    },
+                },
             });
         }
 
@@ -266,6 +296,14 @@ public sealed class SalesOrdersController(
         throw new InvalidOperationException("Could not generate a unique tracking code for the order.");
     }
 
+    private Guid? GetAuthorId()
+    {
+        var principal = ControllerContext?.HttpContext?.User;
+        if (principal is null) return null;
+        var value = principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? principal.FindFirstValue("sub");
+        return Guid.TryParse(value, out var id) ? id : null;
+    }
+
     private async Task<string?> CopyOptionalObjectAsync(
         string? sourceKey,
         string? contentType,
@@ -298,7 +336,7 @@ public sealed class SalesOrdersController(
 }
 
 public sealed record SalesOrderListDto(Guid Id, string TrackingCode, string RequestTrackingCode, string? CustomerName,
-    string? CustomerPhone, string Status, int ItemsCount, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+    string? CustomerPhone, IReadOnlyList<string> ProductStatuses, int ItemsCount, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
 
 public sealed record SalesOrderDetailsDto(Guid Id, Guid SourceRequestId, Guid WorkspaceRequestId,
     string RequestTrackingCode, string TrackingCode, string Status, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
