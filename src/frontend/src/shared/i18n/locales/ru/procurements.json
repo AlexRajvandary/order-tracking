@@ -186,6 +186,7 @@
       "customerDelivery": "Клиент"
     },
     "progressLabel": "Прогресс доставки",
+    "dragHandle": "Перетащить товар",
     "nextActionLabel": "Следующее действие",
     "actionBlocked": "Сначала разрешите открытые блокирующие ошибки.",
     "statusUpdated": "Статус товара обновлён",

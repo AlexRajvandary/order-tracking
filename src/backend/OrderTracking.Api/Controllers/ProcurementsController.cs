@@ -364,6 +364,7 @@ public sealed class ProcurementsController(
                     $"/api/v1/procurements/attachments/{attachment.Id}"))
                 .ToList(),
             value.Errors.Count(error => !error.IsResolved),
+            value.Errors.Any(error => error.IsBlocking && !error.IsResolved),
             string.Empty,
             null,
             null,
@@ -438,6 +439,7 @@ public sealed record ProcurementRowDto(
     DateOnly? ShippedAt,
     IReadOnlyList<ProcurementAttachmentDto> Attachments,
     int OpenErrorCount,
+    bool HasBlockingErrors,
     string Stage,
     ProcurementLifecycleStatus? NextStatus,
     ProcurementLifecycleStatus? PreviousStatus,

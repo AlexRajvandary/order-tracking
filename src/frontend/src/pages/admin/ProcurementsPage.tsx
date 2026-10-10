@@ -86,11 +86,13 @@ function startItemDrag(
   row: ProcurementRow,
   onDragStart: (drag: ActiveProcurementDrag) => void,
 ) {
-  const rect = event.currentTarget.getBoundingClientRect()
+  const dragImage = event.currentTarget.closest<HTMLElement>('[data-procurement-item]') ?? event.currentTarget
+  const rect = dragImage.getBoundingClientRect()
   const offsetX = Math.max(0, Math.min(rect.width, event.clientX - rect.left))
+  const offsetY = Math.max(0, Math.min(rect.height, event.clientY - rect.top))
   event.dataTransfer.setData('text/plain', row.id)
   event.dataTransfer.effectAllowed = 'move'
-  event.dataTransfer.setDragImage(event.currentTarget, offsetX, Math.max(0, event.clientY - rect.top))
+  event.dataTransfer.setDragImage(dragImage, offsetX, offsetY)
   onDragStart({ rowId: row.id, sourceStage: deriveItemStage(row), allowedStages: [row.nextStage, row.previousStage].filter((stage): stage is ProcurementStage => Boolean(stage)), width: rect.width, offsetX })
 }
 
@@ -309,7 +311,7 @@ function LifecycleActions({ row, onTransition }: { row: ProcurementRow; onTransi
     },
     onError: (value) => setError(value instanceof ApiError ? value.message : t('board.errorCreateFailed')),
   })
-  const blocked = row.openErrorCount > 0
+  const blocked = row.hasBlockingErrors
   const transition = (status: ProcurementStatus) => {
     const operation = onTransition(row, status)
     if (!operation) return
@@ -328,9 +330,9 @@ function LifecycleActions({ row, onTransition }: { row: ProcurementRow; onTransi
 function PurchaseItemCard({ group, row, position, onDragStart, onDragEnd, onTransition }: { group: OrderGroup; row: ProcurementRow; position: number; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
   return (
-    <article draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} className="cursor-grab rounded-[15px] border bg-card p-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition-shadow active:cursor-grabbing hover:shadow-[0_3px_10px_rgba(15,23,42,0.08)] lg:p-3">
+    <article data-procurement-item className="rounded-[15px] border bg-card p-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition-shadow hover:shadow-[0_3px_10px_rgba(15,23,42,0.08)] lg:p-3">
       <Link to={`/admin/procurements/items/${row.id}`} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <div className="flex min-w-0 items-center justify-between gap-2"><OrderBadge group={group} /><Badge variant="outline" className={`max-w-[65%] truncate rounded-full px-2 py-0.5 text-[10px] ${lifecycleStatusClasses(row.status)}`}>{t(`statuses.lifecycle.${row.status}`)}</Badge><GripVertical className="size-3.5 shrink-0 text-muted-foreground" /></div>
+        <div className="flex min-w-0 items-center justify-between gap-2"><OrderBadge group={group} /><Badge variant="outline" className={`max-w-[65%] truncate rounded-full px-2 py-0.5 text-[10px] ${lifecycleStatusClasses(row.status)}`}>{t(`statuses.lifecycle.${row.status}`)}</Badge><span draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} onClick={(event) => event.preventDefault()} title={t('board.dragHandle')} aria-label={t('board.dragHandle')} className="flex shrink-0 cursor-grab touch-none text-muted-foreground active:cursor-grabbing"><GripVertical className="size-3.5" /></span></div>
         <div className="mt-3 flex min-w-0 gap-2.5"><ProductImage row={row} className="size-12 rounded-lg" /><div className="min-w-0 flex-1"><p className="line-clamp-2 text-[13px] font-semibold leading-snug" title={row.itemName}>{row.itemName}</p>{row.itemDescription ? <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">{row.itemDescription}</p> : null}<p className="mt-1 text-[10px] text-muted-foreground">{t('board.positionShort', { current: position, total: group.rows.length })}</p></div></div>
         <ProcurementContext row={row} />
       </Link>
@@ -342,15 +344,15 @@ function PurchaseItemCard({ group, row, position, onDragStart, onDragEnd, onTran
 
 function OrderItemPreview({ row, position, total, canDrag = true, onDragStart, onDragEnd }: { row: ProcurementRow; position: number; total: number; canDrag?: boolean; onDragStart?: (drag: ActiveProcurementDrag) => void; onDragEnd?: () => void }) {
   const { t } = useTranslation('procurements')
-  return <div draggable={canDrag} onDragStart={canDrag && onDragStart ? (event) => startItemDrag(event, row, onDragStart) : undefined} onDragEnd={canDrag ? onDragEnd : undefined} className={`flex min-w-0 items-center gap-2 rounded-md ${canDrag ? 'cursor-grab active:cursor-grabbing' : ''}`}><ProductImage row={row} className="size-12 rounded-lg" /><div className="min-w-0 flex-1"><p className="line-clamp-2 text-[13px] font-semibold leading-snug" title={row.itemName}>{row.itemName}</p>{row.itemDescription ? <p className="truncate text-[11px] text-muted-foreground">{row.itemDescription}</p> : null}<p className="mt-1 truncate text-[10px] text-muted-foreground">{t('board.positionShort', { current: position, total })}</p></div><Badge variant="outline" className={`max-w-[42%] truncate rounded-full px-2 py-0.5 text-[10px] ${lifecycleStatusClasses(row.status)}`}>{t(`statuses.lifecycle.${row.status}`)}</Badge>{canDrag ? <GripVertical className="size-3.5 shrink-0 text-muted-foreground" /> : null}</div>
+  return <div className="flex min-w-0 items-center gap-2 rounded-md"><ProductImage row={row} className="size-12 rounded-lg" /><div className="min-w-0 flex-1"><p className="line-clamp-2 text-[13px] font-semibold leading-snug" title={row.itemName}>{row.itemName}</p>{row.itemDescription ? <p className="truncate text-[11px] text-muted-foreground">{row.itemDescription}</p> : null}<p className="mt-1 truncate text-[10px] text-muted-foreground">{t('board.positionShort', { current: position, total })}</p></div><Badge variant="outline" className={`max-w-[42%] truncate rounded-full px-2 py-0.5 text-[10px] ${lifecycleStatusClasses(row.status)}`}>{t(`statuses.lifecycle.${row.status}`)}</Badge>{canDrag && onDragStart ? <span draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} onClick={(event) => event.preventDefault()} title={t('board.dragHandle')} aria-label={t('board.dragHandle')} className="flex shrink-0 cursor-grab touch-none text-muted-foreground active:cursor-grabbing"><GripVertical className="size-3.5" /></span> : null}</div>
 }
 
 function OrderCard({ group, stage, onDragStart, onDragEnd, onTransition }: { group: OrderGroup; stage: Exclude<BoardStage, 'purchase'>; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
   const total = orderTotal(group.rows)
   return <article className="rounded-[15px] border bg-card p-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition-shadow hover:shadow-[0_3px_10px_rgba(15,23,42,0.08)]">
-    <Link to={`/admin/procurements/orders/${group.orderId}/${stage}`} className="flex items-center justify-between gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="flex min-w-0 items-center gap-2"><OrderBadge group={group} /><span className="truncate text-xs font-semibold">{t('board.orderNumber', { code: group.trackingCode })}</span></span><span className="shrink-0 text-[10px] text-muted-foreground">{t('board.itemCount', { count: group.rows.length })}</span></Link>
-    <div className="mt-3 divide-y">{group.rows.map((row, index) => <div key={row.id} className={index ? 'pt-3' : ''}><Link to={`/admin/procurements/items/${row.id}`} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><OrderItemPreview row={row} position={index + 1} total={group.rows.length} onDragStart={onDragStart} onDragEnd={onDragEnd} /><ProcurementContext row={row} /></Link><LifecycleActions row={row} onTransition={onTransition} /><LifecycleProgressStepper row={row} /></div>)}</div>
+    <Link to={`/admin/procurements/orders/${group.orderId}/${stage}`} className="flex items-center justify-between gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><OrderBadge group={group} /><span className="shrink-0 text-[10px] text-muted-foreground">{t('board.itemCount', { count: group.rows.length })}</span></Link>
+    <div className="mt-3 divide-y">{group.rows.map((row, index) => <div key={row.id} data-procurement-item className={index ? 'pt-3' : ''}><Link to={`/admin/procurements/items/${row.id}`} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><OrderItemPreview row={row} position={index + 1} total={group.rows.length} onDragStart={onDragStart} onDragEnd={onDragEnd} /><ProcurementContext row={row} /></Link><LifecycleActions row={row} onTransition={onTransition} /><LifecycleProgressStepper row={row} /></div>)}</div>
     {stage === 'moscow' && total ? <p className="mt-3 border-t pt-2 text-xs font-semibold">{t('board.total')}: {total}</p> : null}
   </article>
 }

@@ -186,6 +186,7 @@
       "customerDelivery": "Customer"
     },
     "progressLabel": "Delivery progress",
+    "dragHandle": "Drag product",
     "nextActionLabel": "Next action",
     "actionBlocked": "Resolve open blocking issues first.",
     "statusUpdated": "Product status updated",

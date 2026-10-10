@@ -38,6 +38,7 @@ export type ProcurementRow = {
   nextStage: ProcurementStage | null
   previousStage: ProcurementStage | null
   openErrorCount: number
+  hasBlockingErrors: boolean
   purchasePrice: number | null
   purchaseCurrencyCode: ProcurementCurrencyCode
   sellerOrderNumber: string | null
