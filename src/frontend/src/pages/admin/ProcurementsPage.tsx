@@ -263,7 +263,7 @@ function LifecycleActions({ row, onTransition }: { row: ProcurementRow; onTransi
   return <div className="mt-2 space-y-2" onClick={(event) => event.stopPropagation()}>
     <div className="flex flex-wrap items-center gap-2">
       {row.openErrorCount > 0 ? <Badge variant="destructive" className="gap-1"><CircleAlert className="size-3" />{t('board.openErrors', { count: row.openErrorCount })}</Badge> : null}
-      {row.status === 'Purchased' && row.previousStatus === 'RequiredPurchase' ? <Button size="sm" variant="outline" className="h-8" onClick={() => onTransition(row, row.previousStatus ?? undefined)}><RotateCcw />{t('actions.undoPurchase')}</Button> : null}
+      {row.status === 'Purchased' ? <Button size="sm" variant="outline" className="h-8" onClick={() => onTransition(row, 'RequiredPurchase')}><RotateCcw />{t('actions.undoPurchase')}</Button> : null}
       {row.nextStatus ? <Button size="sm" className="h-8" disabled={blocked} onClick={() => onTransition(row, row.nextStatus ?? undefined)}>{t(`actions.${row.nextStatus}`)}<ArrowRight /></Button> : null}
       {row.status !== 'Delivered' ? <Button size="sm" variant="outline" className="h-8" onClick={() => setShowErrorForm((value) => !value)}><CircleAlert />{t('board.reportError')}</Button> : null}
     </div>
@@ -678,7 +678,22 @@ export function ProcurementItemDetailPage() {
   const group = query.data ? groupOrders(query.data).find((value) => value.orderId === row?.orderId) : undefined
   if (query.isLoading) return <Skeleton className="h-96 w-full rounded-xl" />
   if (!row || !group) return <Alert variant="destructive"><AlertDescription>{t('board.notFound')}</AlertDescription></Alert>
-  return <DetailShell title={t('board.itemCard')} group={group}><p className="text-sm text-muted-foreground">{t('board.position', { current: group.rows.findIndex((value) => value.id === row.id) + 1, total: group.rows.length })}</p><ItemPurchaseEditor row={row} /><ProcurementErrorHistory procurementId={row.id} /></DetailShell>
+  return <DetailShell title={t('board.itemCard')} group={group}><p className="text-sm text-muted-foreground">{t('board.position', { current: group.rows.findIndex((value) => value.id === row.id) + 1, total: group.rows.length })}</p><ItemPurchaseEditor row={row} /><UndoPurchaseAction row={row} /><ProcurementErrorHistory procurementId={row.id} /></DetailShell>
+}
+
+function UndoPurchaseAction({ row }: { row: ProcurementRow }) {
+  const { t } = useTranslation('procurements')
+  const queryClient = useQueryClient()
+  const undo = useMutation({
+    mutationFn: () => procurementsApi.transitionProcurement(row.id, { status: 'RequiredPurchase' }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === updated.id ? updated : value))
+      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
+      void queryClient.invalidateQueries({ queryKey: ['sales-orders'] })
+    },
+  })
+  if (row.status !== 'Purchased') return null
+  return <div className="flex flex-wrap items-center justify-end gap-2">{undo.isError ? <p role="alert" className="text-sm text-destructive">{undo.error instanceof ApiError ? undo.error.message : t('board.moveError')}</p> : null}<Button variant="outline" disabled={undo.isPending} onClick={() => undo.mutate()}><RotateCcw />{t('actions.undoPurchase')}</Button></div>
 }
 
 export function ProcurementOrderDetailPage() {
