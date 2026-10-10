@@ -178,6 +178,19 @@
       "moscow": "Moscow",
       "customerDelivery": "Customer"
     },
+    "stepper": {
+      "purchase": "Purchase",
+      "originWarehouse": "Warehouse",
+      "transit": "Transit",
+      "moscow": "Moscow",
+      "customerDelivery": "Customer"
+    },
+    "progressLabel": "Delivery progress",
+    "nextActionLabel": "Next action",
+    "actionBlocked": "Resolve open blocking issues first.",
+    "statusUpdated": "Product status updated",
+    "updating": "Updating…",
+    "errorSaved": "Issue reported",
     "position": "Item {{current}} of {{total}}",
     "positionShort": "{{current}} of {{total}}",
     "positionCount_one": "{{count}} item",

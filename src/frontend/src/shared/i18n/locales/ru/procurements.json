@@ -178,6 +178,19 @@
       "moscow": "Москва",
       "customerDelivery": "Клиенту"
     },
+    "stepper": {
+      "purchase": "Выкуп",
+      "originWarehouse": "Склад",
+      "transit": "Транзит",
+      "moscow": "Москва",
+      "customerDelivery": "Клиент"
+    },
+    "progressLabel": "Прогресс доставки",
+    "nextActionLabel": "Следующее действие",
+    "actionBlocked": "Сначала разрешите открытые блокирующие ошибки.",
+    "statusUpdated": "Статус товара обновлён",
+    "updating": "Обновляем…",
+    "errorSaved": "Проблема зарегистрирована",
     "position": "Позиция {{current}} из {{total}}",
     "positionShort": "{{current}} из {{total}}",
     "positionCount_one": "{{count}} позиция",

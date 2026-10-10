@@ -19,6 +19,7 @@ import {
   GripVertical,
   ImageOff,
   ImagePlus,
+  LoaderCircle,
   RotateCcw,
   Search,
   Trash2,
@@ -58,6 +59,7 @@ type BoardStage = typeof stages[number]
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 type OrderGroup = { orderId: string; trackingCode: string; rows: ProcurementRow[]; stage: BoardStage }
 type ActiveProcurementDrag = { rowId: string; sourceStage: BoardStage; allowedStages: ProcurementStage[]; width: number; offsetX: number }
+type TransitionAction = (row: ProcurementRow, status?: ProcurementStatus, stage?: string) => Promise<ProcurementRow> | undefined
 
 function createForm(row: ProcurementRow): UpdateProcurementRequest {
   return {
@@ -240,72 +242,117 @@ function orderTotal(rows: ProcurementRow[]) {
 function lifecycleStatusClasses(status: ProcurementStatus) {
   if (status === 'Delivered') return 'border-emerald-200 bg-emerald-50 text-emerald-700'
   if (status === 'RequiredPurchase') return 'border-amber-200 bg-amber-50 text-amber-700'
+  if (status === 'AtOriginWarehouse' || status === 'ArrivedTransitCountry' || status === 'ArrivedMoscow') return 'border-teal-200 bg-teal-50 text-teal-700'
+  if (status === 'SentToTransit' || status === 'SentToMoscow') return 'border-violet-200 bg-violet-50 text-violet-700'
   return 'border-blue-200 bg-blue-50 text-blue-700'
 }
 
-function LifecycleActions({ row, onTransition }: { row: ProcurementRow; onTransition: (row: ProcurementRow, status?: ProcurementStatus, stage?: string) => void }) {
+function LifecycleProgressStepper({ row }: { row: ProcurementRow }) {
+  const { t } = useTranslation('procurements')
+  const current = row.status === 'Delivered' ? stages.length : stages.indexOf(row.stage as BoardStage)
+  return <div className="mt-3 border-t pt-3" aria-label={t('board.progressLabel')}>
+    <div className="flex items-start">
+      {stages.map((stage, index) => {
+        const complete = index < current
+        const active = index === current
+        const showIssue = row.openErrorCount > 0 && active
+        return <div key={stage} className="relative flex min-w-0 flex-1 flex-col items-center">
+          {index < stages.length - 1 ? <span aria-hidden="true" className={`absolute left-1/2 right-[-50%] top-[7px] h-px ${index < current ? 'bg-emerald-500' : 'bg-slate-200'}`} /> : null}
+          <span title={`${t(`board.stepper.${stage}`)} · ${t(`statuses.lifecycle.${row.status}`)}`} className={`relative z-10 flex size-4 items-center justify-center rounded-full transition-colors motion-reduce:transition-none ${complete ? 'bg-emerald-500 text-white' : active ? 'border-2 border-blue-500 bg-white ring-2 ring-blue-100' : 'border border-slate-300 bg-slate-50'}`}>
+            {complete ? <Check className="size-2.5" strokeWidth={3} /> : active ? <span className="size-1.5 rounded-full bg-blue-500" /> : null}
+            {showIssue ? <span className="absolute -right-1 -top-1 size-1.5 rounded-full bg-rose-500 ring-2 ring-white" /> : null}
+          </span>
+          <span className={`mt-1.5 max-w-full truncate text-center text-[9px] leading-tight ${active ? 'font-semibold text-blue-700' : complete ? 'text-emerald-700' : 'text-muted-foreground'}`}>{t(`board.stepper.${stage}`)}</span>
+        </div>
+      })}
+    </div>
+  </div>
+}
+
+function ProcurementContext({ row }: { row: ProcurementRow }) {
+  const { t } = useTranslation('procurements')
+  const values = row.stage === 'purchase'
+    ? [formatMoney(row.purchasePrice ?? row.unitPrice, row.purchasePrice == null ? row.itemCurrencyCode as ProcurementCurrencyCode | null : row.purchaseCurrencyCode), row.shopName || row.productSource]
+    : row.stage === 'originWarehouse'
+      ? [row.warehouseTrackingNumber, row.warehouseReceivedAt]
+      : row.stage === 'transit'
+        ? [row.shippingMethod, row.shippingTrackingNumber]
+        : row.stage === 'moscow'
+          ? [row.shippingTrackingNumber, formatMoney(row.shippingCost, row.shippingCurrencyCode)]
+          : [row.shippingMethod, row.shippingTrackingNumber]
+  const details = values.filter((value): value is string => Boolean(value?.trim())).slice(0, 2)
+  if (!details.length) return null
+  return <p className="mt-2 flex min-w-0 gap-1 truncate text-[11px] text-muted-foreground" title={details.join(' · ')}><span className="truncate">{details.join(' · ')}</span><span className="sr-only">{t(`board.stages.${row.stage}`)}</span></p>
+}
+
+function LifecycleActions({ row, onTransition }: { row: ProcurementRow; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
   const queryClient = useQueryClient()
   const [showErrorForm, setShowErrorForm] = useState(false)
   const [errorText, setErrorText] = useState('')
   const [error, setError] = useState('')
+  const [transitioning, setTransitioning] = useState(false)
+  const [issueSaved, setIssueSaved] = useState(false)
+  useEffect(() => {
+    if (!issueSaved) return
+    const timer = window.setTimeout(() => setIssueSaved(false), 3000)
+    return () => window.clearTimeout(timer)
+  }, [issueSaved])
   const report = useMutation({
     mutationFn: () => procurementsApi.createProcurementError(row.id, errorText, true),
     onSuccess: () => {
       setErrorText('')
       setError('')
       setShowErrorForm(false)
+      setIssueSaved(true)
       void queryClient.invalidateQueries({ queryKey: ['procurements'] })
     },
     onError: (value) => setError(value instanceof ApiError ? value.message : t('board.errorCreateFailed')),
   })
   const blocked = row.openErrorCount > 0
-  return <div className="mt-2 space-y-2" onClick={(event) => event.stopPropagation()}>
-    <div className="flex flex-wrap items-center gap-2">
-      {row.openErrorCount > 0 ? <Badge variant="destructive" className="gap-1"><CircleAlert className="size-3" />{t('board.openErrors', { count: row.openErrorCount })}</Badge> : null}
-      {row.status === 'Purchased' ? <Button size="sm" variant="outline" className="h-8" onClick={() => onTransition(row, 'RequiredPurchase')}><RotateCcw />{t('actions.undoPurchase')}</Button> : null}
-      {row.nextStatus ? <Button size="sm" className="h-8" disabled={blocked} onClick={() => onTransition(row, row.nextStatus ?? undefined)}>{t(`actions.${row.nextStatus}`)}<ArrowRight /></Button> : null}
-      {row.status !== 'Delivered' ? <Button size="sm" variant="outline" className="h-8" onClick={() => setShowErrorForm((value) => !value)}><CircleAlert />{t('board.reportError')}</Button> : null}
-    </div>
-    {showErrorForm ? <div className="space-y-2 rounded-lg bg-muted/50 p-2"><textarea value={errorText} onChange={(event) => setErrorText(event.target.value)} maxLength={2000} rows={2} placeholder={t('board.errorPlaceholder')} className="w-full resize-y rounded-md border bg-background p-2 text-sm" />{error ? <p className="text-xs text-destructive">{error}</p> : null}<div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setShowErrorForm(false)}>{t('cancel')}</Button><Button size="sm" disabled={!errorText.trim() || report.isPending} onClick={() => report.mutate()}>{t('board.sendError')}</Button></div></div> : null}
+  const transition = (status: ProcurementStatus) => {
+    const operation = onTransition(row, status)
+    if (!operation) return
+    setTransitioning(true)
+    void operation.then(() => setTransitioning(false), () => setTransitioning(false))
+  }
+  return <div className="mt-3 space-y-2" onClick={(event) => event.stopPropagation()}>
+    {row.nextStatus ? <div className="space-y-1.5"><p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{t('board.nextActionLabel')}</p><Button size="sm" className="h-9 w-full rounded-lg bg-slate-900 text-xs font-semibold text-white shadow-none transition-colors hover:bg-slate-700" disabled={blocked || transitioning} title={blocked ? t('board.actionBlocked') : undefined} onClick={() => transition(row.nextStatus!)}>{transitioning ? <><LoaderCircle className="animate-spin motion-reduce:animate-none" />{t('board.updating')}</> : <>{t(`actions.${row.nextStatus}`)}<ArrowRight /></>}</Button>{blocked ? <p className="text-[10px] text-rose-700">{t('board.actionBlocked')}</p> : null}</div> : null}
+    {row.status === 'Purchased' ? <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground" disabled={transitioning} onClick={() => transition('RequiredPurchase')}><RotateCcw />{t('actions.undoPurchase')}</Button> : null}
+    {row.status !== 'Delivered' ? <div className="flex items-center justify-between gap-2"><Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-[11px] text-muted-foreground" onClick={() => setShowErrorForm((value) => !value)}><CircleAlert className="size-3.5" />{t('board.reportError')}</Button>{row.openErrorCount > 0 ? <Badge variant="destructive" className="h-6 gap-1 rounded-lg px-2 text-[10px]"><CircleAlert className="size-3" />{t('board.openErrors', { count: row.openErrorCount })}</Badge> : null}</div> : null}
+    {issueSaved ? <p role="status" className="text-[11px] text-emerald-700">{t('board.errorSaved')}</p> : null}
+    {showErrorForm ? <div className="animate-in fade-in-0 slide-in-from-top-1 space-y-2 rounded-lg bg-muted/50 p-2 duration-200"><textarea value={errorText} onChange={(event) => setErrorText(event.target.value)} maxLength={2000} rows={2} placeholder={t('board.errorPlaceholder')} className="w-full resize-y rounded-md border bg-background p-2 text-sm" />{error ? <p className="text-xs text-destructive">{error}</p> : null}<div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setShowErrorForm(false)}>{t('cancel')}</Button><Button size="sm" disabled={!errorText.trim() || report.isPending} onClick={() => report.mutate()}>{t('board.sendError')}</Button></div></div> : null}
   </div>
 }
 
-function PurchaseItemCard({ group, row, position, onDragStart, onDragEnd, onTransition }: { group: OrderGroup; row: ProcurementRow; position: number; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: (row: ProcurementRow, status?: ProcurementStatus, stage?: string) => void }) {
+function PurchaseItemCard({ group, row, position, onDragStart, onDragEnd, onTransition }: { group: OrderGroup; row: ProcurementRow; position: number; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
-  const priceCurrency = row.purchasePrice == null ? row.itemCurrencyCode as ProcurementCurrencyCode | null : row.purchaseCurrencyCode
   return (
-    <article draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} className="cursor-grab rounded-2xl border bg-card p-4 shadow-sm transition-colors transition-shadow active:cursor-grabbing hover:border-border/80 hover:shadow-md lg:rounded-xl lg:p-3">
+    <article draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} className="cursor-grab rounded-[15px] border bg-card p-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition-shadow active:cursor-grabbing hover:shadow-[0_3px_10px_rgba(15,23,42,0.08)] lg:p-3">
       <Link to={`/admin/procurements/items/${row.id}`} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <div className="flex items-center justify-between gap-2"><OrderBadge group={group} /><span className="flex items-center gap-1 text-xs text-muted-foreground"><GripVertical className="size-3.5" />{t('board.positionShort', { current: position, total: group.rows.length })}</span></div>
-        <div className="mt-3 flex min-w-0 gap-3"><ProductImage row={row} className="size-[72px] lg:size-14" /><div className="min-w-0 flex-1"><p className="line-clamp-2 text-base font-semibold lg:text-sm">{row.itemName}</p>{row.itemDescription ? <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{row.itemDescription}</p> : null}<p className="mt-1 truncate text-xs text-muted-foreground">{row.shopName || row.productSource}</p></div></div>
-        <div className="mt-3 flex items-center justify-between gap-2">{formatMoney(row.purchasePrice ?? row.unitPrice, priceCurrency) ? <span className="text-sm font-semibold">{formatMoney(row.purchasePrice ?? row.unitPrice, priceCurrency)}</span> : <span />}<Badge variant="outline" className={lifecycleStatusClasses(row.status)}>{t(`statuses.lifecycle.${row.status}`)}</Badge></div>
+        <div className="flex min-w-0 items-center justify-between gap-2"><OrderBadge group={group} /><Badge variant="outline" className={`max-w-[65%] truncate rounded-full px-2 py-0.5 text-[10px] ${lifecycleStatusClasses(row.status)}`}>{t(`statuses.lifecycle.${row.status}`)}</Badge><GripVertical className="size-3.5 shrink-0 text-muted-foreground" /></div>
+        <div className="mt-3 flex min-w-0 gap-2.5"><ProductImage row={row} className="size-12 rounded-lg" /><div className="min-w-0 flex-1"><p className="line-clamp-2 text-[13px] font-semibold leading-snug" title={row.itemName}>{row.itemName}</p>{row.itemDescription ? <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">{row.itemDescription}</p> : null}<p className="mt-1 text-[10px] text-muted-foreground">{t('board.positionShort', { current: position, total: group.rows.length })}</p></div></div>
+        <ProcurementContext row={row} />
       </Link>
       <LifecycleActions row={row} onTransition={onTransition} />
+      <LifecycleProgressStepper row={row} />
     </article>
   )
 }
 
 function OrderItemPreview({ row, position, total, canDrag = true, onDragStart, onDragEnd }: { row: ProcurementRow; position: number; total: number; canDrag?: boolean; onDragStart?: (drag: ActiveProcurementDrag) => void; onDragEnd?: () => void }) {
   const { t } = useTranslation('procurements')
-  return <div draggable={canDrag} onDragStart={canDrag && onDragStart ? (event) => startItemDrag(event, row, onDragStart) : undefined} onDragEnd={canDrag ? onDragEnd : undefined} className={`flex min-w-0 items-center gap-2 rounded-md p-1 ${canDrag ? 'cursor-grab active:cursor-grabbing' : ''}`}><ProductImage row={row} className="size-10" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{row.itemName}</p>{row.itemDescription ? <p className="truncate text-[11px] text-muted-foreground">{row.itemDescription}</p> : null}<p className="truncate text-[10px] text-muted-foreground">{t(`statuses.lifecycle.${row.status}`)}</p></div><span className="shrink-0 text-[10px] text-muted-foreground">{position} / {total}</span>{canDrag ? <GripVertical className="size-3.5 shrink-0 text-muted-foreground" /> : null}</div>
+  return <div draggable={canDrag} onDragStart={canDrag && onDragStart ? (event) => startItemDrag(event, row, onDragStart) : undefined} onDragEnd={canDrag ? onDragEnd : undefined} className={`flex min-w-0 items-center gap-2 rounded-md ${canDrag ? 'cursor-grab active:cursor-grabbing' : ''}`}><ProductImage row={row} className="size-12 rounded-lg" /><div className="min-w-0 flex-1"><p className="line-clamp-2 text-[13px] font-semibold leading-snug" title={row.itemName}>{row.itemName}</p>{row.itemDescription ? <p className="truncate text-[11px] text-muted-foreground">{row.itemDescription}</p> : null}<p className="mt-1 truncate text-[10px] text-muted-foreground">{t('board.positionShort', { current: position, total })}</p></div><Badge variant="outline" className={`max-w-[42%] truncate rounded-full px-2 py-0.5 text-[10px] ${lifecycleStatusClasses(row.status)}`}>{t(`statuses.lifecycle.${row.status}`)}</Badge>{canDrag ? <GripVertical className="size-3.5 shrink-0 text-muted-foreground" /> : null}</div>
 }
 
-function OrderCard({ group, stage, onDragStart, onDragEnd, onTransition }: { group: OrderGroup; stage: Exclude<BoardStage, 'purchase'>; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: (row: ProcurementRow, status?: ProcurementStatus, stage?: string) => void }) {
+function OrderCard({ group, stage, onDragStart, onDragEnd, onTransition }: { group: OrderGroup; stage: Exclude<BoardStage, 'purchase'>; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
-  const shipping = group.rows.find((row) => row.shippingMethod || row.shippingTrackingNumber || row.shippingCost != null)
   const total = orderTotal(group.rows)
-  return (
-    <article className="rounded-xl border bg-card p-3 shadow-sm">
-      <Link to={`/admin/procurements/orders/${group.orderId}/${stage}`} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <div className="flex items-center justify-between gap-2"><OrderBadge group={group} /><Badge variant="outline" className={lifecycleStatusClasses(group.rows[0].status)}>{t(`statuses.lifecycle.${group.rows[0].status}`)}</Badge></div>
-        <div className="mt-3"><p className="text-sm font-semibold">{t('board.orderNumber', { code: group.trackingCode })}</p><p className="text-xs text-muted-foreground">{t('board.itemCount', { count: group.rows.length })}</p></div>
-      </Link>
-      <div className="mt-3 space-y-1">{group.rows.map((row, index) => <div key={row.id}><OrderItemPreview row={row} position={index + 1} total={group.rows.length} onDragStart={onDragStart} onDragEnd={onDragEnd} /><LifecycleActions row={row} onTransition={onTransition} /></div>)}</div>
-      {stage === 'moscow' && total ? <p className="mt-3 border-t pt-2 text-xs font-semibold">{t('board.total')}: {total}</p> : null}
-      {stage !== 'moscow' && shipping ? <div className="mt-3 border-t pt-2 text-xs text-muted-foreground">{shipping.shippingMethod ? <p>{shipping.shippingMethod}</p> : null}{shipping.shippingTrackingNumber ? <p className="truncate font-mono">{shipping.shippingTrackingNumber}</p> : null}{formatMoney(shipping.shippingCost, shipping.shippingCurrencyCode) ? <p>{formatMoney(shipping.shippingCost, shipping.shippingCurrencyCode)}</p> : null}</div> : null}
-    </article>
-  )
+  return <article className="rounded-[15px] border bg-card p-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition-shadow hover:shadow-[0_3px_10px_rgba(15,23,42,0.08)]">
+    <Link to={`/admin/procurements/orders/${group.orderId}/${stage}`} className="flex items-center justify-between gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="flex min-w-0 items-center gap-2"><OrderBadge group={group} /><span className="truncate text-xs font-semibold">{t('board.orderNumber', { code: group.trackingCode })}</span></span><span className="shrink-0 text-[10px] text-muted-foreground">{t('board.itemCount', { count: group.rows.length })}</span></Link>
+    <div className="mt-3 divide-y">{group.rows.map((row, index) => <div key={row.id} className={index ? 'pt-3' : ''}><Link to={`/admin/procurements/items/${row.id}`} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><OrderItemPreview row={row} position={index + 1} total={group.rows.length} onDragStart={onDragStart} onDragEnd={onDragEnd} /><ProcurementContext row={row} /></Link><LifecycleActions row={row} onTransition={onTransition} /><LifecycleProgressStepper row={row} /></div>)}</div>
+    {stage === 'moscow' && total ? <p className="mt-3 border-t pt-2 text-xs font-semibold">{t('board.total')}: {total}</p> : null}
+  </article>
 }
 
 function EmptyLane({ purchase }: { purchase: boolean }) {
@@ -313,7 +360,7 @@ function EmptyLane({ purchase }: { purchase: boolean }) {
   return <p className="py-8 text-center text-sm text-muted-foreground">{t(purchase ? 'board.noItems' : 'board.noOrders')}</p>
 }
 
-function MoscowGroups({ groups, onDragStart, onDragEnd, onTransition }: { groups: OrderGroup[]; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: (row: ProcurementRow, status?: ProcurementStatus, stage?: string) => void }) {
+function MoscowGroups({ groups, onDragStart, onDragEnd, onTransition }: { groups: OrderGroup[]; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
   const shipments = new Map<string, OrderGroup[]>()
   const ungrouped: OrderGroup[] = []
@@ -326,7 +373,7 @@ function MoscowGroups({ groups, onDragStart, onDragEnd, onTransition }: { groups
   return <div className="space-y-4">{ungrouped.length ? section('ungrouped', t('board.ungrouped'), ungrouped) : null}{Array.from(shipments, ([tracking, orders]) => section(tracking, `MSK SHIP · ${tracking}`, orders))}</div>
 }
 
-function BoardLane({ stage, groups, mobile = false, dropStage, onDragStart, onDragEnd, onTransition }: { stage: BoardStage; groups: OrderGroup[]; mobile?: boolean; dropStage: BoardStage | null; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: (row: ProcurementRow, status?: ProcurementStatus, stage?: string) => void }) {
+function BoardLane({ stage, groups, mobile = false, dropStage, onDragStart, onDragEnd, onTransition }: { stage: BoardStage; groups: OrderGroup[]; mobile?: boolean; dropStage: BoardStage | null; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
   const purchaseRows = stage === 'purchase' ? groups.flatMap((group) => group.rows.map((row, index) => ({ group, row, position: index + 1 }))) : []
   const count = groups.reduce((sum, group) => sum + group.rows.length, 0)
@@ -346,12 +393,12 @@ function BoardSkeleton() {
   return <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">{stages.map((stage) => <div key={stage}><Skeleton className="mb-3 h-8 w-36" /><div className="space-y-3"><Skeleton className="h-44 rounded-xl" /><Skeleton className="h-52 rounded-xl" /></div></div>)}</div>
 }
 
-function DesktopBoard({ groups, activeDrag, onMove, onDragStart, onDragEnd, onTransition }: { groups: OrderGroup[]; activeDrag: ActiveProcurementDrag | null; onMove: (rowId: string, stage: BoardStage) => void; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: (row: ProcurementRow, status?: ProcurementStatus, stage?: string) => void }) {
+function DesktopBoard({ groups, activeDrag, onMove, onDragStart, onDragEnd, onTransition }: { groups: OrderGroup[]; activeDrag: ActiveProcurementDrag | null; onMove: (rowId: string, stage: BoardStage) => void; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const drop = useColumnDropTarget(activeDrag, onMove)
   return <div className="grid grid-cols-5 items-start gap-4 2xl:gap-5" onDragOver={drop.onDragOver} onDragLeave={drop.onDragLeave} onDrop={drop.onDrop}>{stages.map((stage) => <BoardLane key={stage} stage={stage} groups={groupsForStage(groups, stage)} dropStage={drop.dropStage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />)}</div>
 }
 
-function MobileBoard({ groups, activeDrag, onMove, onDragStart, onDragEnd, onTransition }: { groups: OrderGroup[]; activeDrag: ActiveProcurementDrag | null; onMove: (rowId: string, stage: BoardStage) => void; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: (row: ProcurementRow, status?: ProcurementStatus, stage?: string) => void }) {
+function MobileBoard({ groups, activeDrag, onMove, onDragStart, onDragEnd, onTransition }: { groups: OrderGroup[]; activeDrag: ActiveProcurementDrag | null; onMove: (rowId: string, stage: BoardStage) => void; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
   const [active, setActive] = useState<BoardStage>('purchase')
   const scrollerRef = useRef<HTMLDivElement>(null)
@@ -393,7 +440,13 @@ export function ProcurementsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [moveError, setMoveError] = useState<string | null>(null)
+  const [moveSuccess, setMoveSuccess] = useState(false)
   const [activeDrag, setActiveDrag] = useState<ActiveProcurementDrag | null>(null)
+  useEffect(() => {
+    if (!moveSuccess) return
+    const timer = window.setTimeout(() => setMoveSuccess(false), 2500)
+    return () => window.clearTimeout(timer)
+  }, [moveSuccess])
   const query = useProcurements()
   const normalizedSearch = search.trim().toLocaleLowerCase()
   const groups = useMemo(() => groupOrders(query.data ?? []).filter((group) => matchesSearch(group, normalizedSearch)), [normalizedSearch, query.data])
@@ -403,6 +456,7 @@ export function ProcurementsPage() {
     },
     onSuccess: (updated) => {
       setMoveError(null)
+      setMoveSuccess(true)
       queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((row) => row.id === updated.id ? updated : row))
       void queryClient.invalidateQueries({ queryKey: ['procurements'] })
       void queryClient.invalidateQueries({ queryKey: ['sales-orders'] })
@@ -413,15 +467,17 @@ export function ProcurementsPage() {
     const row = query.data?.find((item) => item.id === rowId)
     if (!row || moveMutation.isPending || deriveItemStage(row) === stage) return
     setMoveError(null)
+    setMoveSuccess(false)
     moveMutation.mutate({ row, stage })
   }
-  const transitionItem = (row: ProcurementRow, status?: ProcurementStatus, stage?: string) => {
-    if (moveMutation.isPending) return
+  const transitionItem: TransitionAction = (row, status, stage) => {
+    if (moveMutation.isPending) return undefined
     setMoveError(null)
-    moveMutation.mutate({ row, status, stage })
+    setMoveSuccess(false)
+    return moveMutation.mutateAsync({ row, status, stage })
   }
   const dragProps = { activeDrag, onMove: moveItem, onDragStart: setActiveDrag, onDragEnd: () => setActiveDrag(null), onTransition: transitionItem }
-  return <div className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><h1 className="text-[29px] font-bold leading-tight tracking-tight lg:text-2xl">{t('title')}</h1><Button asChild size="sm" variant="outline"><Link to="/admin/procurements/archive"><Archive />{t('board.archive')}</Link></Button></div><div className="relative w-full sm:max-w-sm"><Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground lg:left-3" /><Input aria-label={t('mobile.searchPlaceholder')} className="h-12 rounded-2xl bg-white pl-11 lg:h-9 lg:rounded-md lg:pl-9" value={search} placeholder={t('mobile.searchPlaceholder')} onChange={(event) => setSearch(event.target.value)} /></div></div>{moveError ? <Alert variant="destructive"><AlertDescription>{moveError}</AlertDescription></Alert> : null}{query.isLoading ? <BoardSkeleton /> : query.isError ? <div className="rounded-xl border p-6 text-center"><p className="font-medium">{t('mobile.loadError')}</p><Button variant="outline" className="mt-3" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : isMobile ? <MobileBoard groups={groups} {...dragProps} /> : <DesktopBoard groups={groups} {...dragProps} />}</div>
+  return <div className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><h1 className="text-[29px] font-bold leading-tight tracking-tight lg:text-2xl">{t('title')}</h1><Button asChild size="sm" variant="outline"><Link to="/admin/procurements/archive"><Archive />{t('board.archive')}</Link></Button></div><div className="relative w-full sm:max-w-sm"><Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground lg:left-3" /><Input aria-label={t('mobile.searchPlaceholder')} className="h-12 rounded-2xl bg-white pl-11 lg:h-9 lg:rounded-md lg:pl-9" value={search} placeholder={t('mobile.searchPlaceholder')} onChange={(event) => setSearch(event.target.value)} /></div></div>{moveError ? <Alert variant="destructive"><AlertDescription>{moveError}</AlertDescription></Alert> : moveSuccess ? <p role="status" className="text-sm text-emerald-700">{t('board.statusUpdated')}</p> : null}{query.isLoading ? <BoardSkeleton /> : query.isError ? <div className="rounded-xl border p-6 text-center"><p className="font-medium">{t('mobile.loadError')}</p><Button variant="outline" className="mt-3" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : isMobile ? <MobileBoard groups={groups} {...dragProps} /> : <DesktopBoard groups={groups} {...dragProps} />}</div>
 }
 
 export function ProcurementsArchivePage() {
