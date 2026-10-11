@@ -542,7 +542,7 @@ function OrderCard({ group, stage, onDragStart, onDragEnd, onTransition }: { gro
       const compactAction = row.nextStatus === 'AtOriginWarehouse' || row.nextStatus === 'AwaitingTransitShipment' || row.nextStatus === 'SentToTransit' || row.nextStatus === 'SentToMoscow'
       if (stage === 'originWarehouse' || stage === 'transit' || stage === 'moscow') return <CommentableOrderItem key={row.id} group={group} row={row} position={index + 1} stage={stage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} onCommentOpenChange={(rowId, open) => setActiveCommentRowId((current) => open ? rowId : current === rowId ? null : current)} />
       return <div key={row.id} data-procurement-item draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} className={`cursor-grab active:cursor-grabbing ${index ? 'pt-3' : ''}`}>
-        <OrderItemPreview row={row} position={index + 1} total={group.rows.length} compactAction={compactAction} hidePosition={stage === 'originWarehouse'} hideStatus={stage === 'transit'} onTransition={onTransition} />
+        <OrderItemPreview row={row} position={index + 1} total={group.rows.length} compactAction={compactAction} onTransition={onTransition} />
         <ProcurementContext row={row} />
         <LifecycleProgressStepper row={row} />
         {!compactAction ? <LifecycleActions row={row} onTransition={onTransition} /> : null}
