@@ -23,6 +23,9 @@ export function createProcurementError(id: string, text: string, isBlocking = tr
 export function resolveProcurementError(id: string) {
   return authorizedJson<ProcurementError>(`/procurements/errors/${id}/resolve`, { method: 'POST' })
 }
+export function deleteProcurementError(id: string) {
+  return authorizedJson<void>(`/procurements/errors/${id}`, { method: 'DELETE' })
+}
 
 export function convertRequest(orderId: string) {
   return authorizedJson<ProcurementRow[]>(`/procurements/orders/${orderId}/convert`, {

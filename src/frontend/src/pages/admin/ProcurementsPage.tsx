@@ -7,19 +7,21 @@ import {
   type ReactNode,
 } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ContextMenu as ContextMenuPrimitive } from 'radix-ui'
 import {
   ArrowLeft,
-  ArrowRight,
   Archive,
+  ArrowUp,
   Check,
-  CircleAlert,
   Copy,
   ExternalLink,
   FileText,
-  GripVertical,
   ImageOff,
   ImagePlus,
   LoaderCircle,
+  MessageSquare,
+  MoreHorizontal,
+  Plus,
   RotateCcw,
   Search,
   Trash2,
@@ -49,6 +51,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/shared/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import { Card, CardContent } from '@/shared/ui/card'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/ui/dropdown-menu'
 
 const currencies: ProcurementCurrencyCode[] = ['JPY', 'RUB', 'USD', 'EUR']
 const currencySymbols: Record<ProcurementCurrencyCode, string> = { JPY: '¥', RUB: '₽', USD: '$', EUR: '€' }
@@ -86,6 +89,12 @@ function startItemDrag(
   row: ProcurementRow,
   onDragStart: (drag: ActiveProcurementDrag) => void,
 ) {
+  const target = event.target instanceof Element ? event.target : null
+  if (target?.closest('button,a,input,textarea,select,[role="menu"],[contenteditable="true"],[data-no-drag]')) {
+    event.preventDefault()
+    event.stopPropagation()
+    return
+  }
   const dragImage = event.currentTarget.closest<HTMLElement>('[data-procurement-item]') ?? event.currentTarget
   const rect = dragImage.getBoundingClientRect()
   const offsetX = Math.max(0, Math.min(rect.width, event.clientX - rect.left))
@@ -161,23 +170,46 @@ function matchesSearch(group: OrderGroup, search: string) {
   ].some((value) => value?.toLocaleLowerCase().includes(search)))
 }
 
-function badgeClasses(orderId: string) {
-  const palette = [
-    'border-blue-200 bg-blue-50 text-blue-700',
-    'border-orange-200 bg-orange-50 text-orange-700',
-    'border-emerald-200 bg-emerald-50 text-emerald-700',
-    'border-violet-200 bg-violet-50 text-violet-700',
-    'border-pink-200 bg-pink-50 text-pink-700',
-    'border-cyan-200 bg-cyan-50 text-cyan-700',
-    'border-amber-200 bg-amber-50 text-amber-700',
-  ]
-  let hash = 0
-  for (const character of orderId) hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0
-  return palette[Math.abs(hash) % palette.length]
+function OrderBadge({ group }: { group: Pick<OrderGroup, 'orderId' | 'trackingCode'> }) {
+  return <span className="block max-w-full truncate text-[11px] font-semibold text-[#111827]" title={group.trackingCode}>{group.trackingCode}</span>
 }
 
-function OrderBadge({ group }: { group: Pick<OrderGroup, 'orderId' | 'trackingCode'> }) {
-  return <Badge variant="outline" className={badgeClasses(group.orderId)}>{group.trackingCode}</Badge>
+function safeProductUrl(value: string | null) {
+  if (!value) return null
+  try {
+    const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url : null
+  } catch { return null }
+}
+
+function isUrlLike(value: string | null | undefined) {
+  return Boolean(value && (/^https?:\/\//i.test(value) || /^(www\.)?[\w-]+\.[a-z]{2,}(\/|$)/i.test(value)))
+}
+
+function productTitle(row: ProcurementRow) {
+  if (row.itemName.trim() && !isUrlLike(row.itemName)) return row.itemName.trim()
+  if (row.itemDescription?.trim() && !isUrlLike(row.itemDescription)) return row.itemDescription.trim()
+  const url = safeProductUrl(row.productUrl) ?? safeProductUrl(row.itemName)
+  return url?.hostname.replace(/^www\./, '') ?? row.itemName.trim()
+}
+
+function compactProductUrl(value: string) {
+  const url = safeProductUrl(value)
+  if (!url) return value.length > 36 ? `${value.slice(0, 33)}…` : value
+  return `${url.hostname.replace(/^www\./, '')}${url.pathname !== '/' ? '/…' : ''}`
+}
+
+function CardMenu({ row, group }: { row: ProcurementRow; group: Pick<OrderGroup, 'trackingCode'> }) {
+  const { t } = useTranslation('procurements')
+  const url = safeProductUrl(row.productUrl)
+  return <DropdownMenu>
+    <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon-lg" aria-label={t('board.cardMenu')} title={t('board.cardMenu')} className="size-10 shrink-0 text-[#667085]"><MoreHorizontal className="size-[18px]" /></Button></DropdownMenuTrigger>
+    <DropdownMenuContent align="end" className="w-52">
+      <DropdownMenuItem onSelect={() => { void navigator.clipboard?.writeText(group.trackingCode).catch(() => undefined) }}><Copy />{t('board.copyOrderNumber')}</DropdownMenuItem>
+      <DropdownMenuItem asChild><Link to={`/admin/procurements/items/${row.id}`}><FileText />{t('board.openItem')}</Link></DropdownMenuItem>
+      {url ? <DropdownMenuItem asChild><a href={url.href} target="_blank" rel="noopener noreferrer"><ExternalLink />{t('board.openProduct')}</a></DropdownMenuItem> : null}
+    </DropdownMenuContent>
+  </DropdownMenu>
 }
 
 function useProductImageUrl(source: string | null) {
@@ -215,14 +247,13 @@ function useProductImageUrl(source: string | null) {
   return resolved
 }
 
-function ProductImage({ row, className = 'size-14' }: { row: ProcurementRow; className?: string }) {
-  const { t } = useTranslation('procurements')
+function ProductImage({ row, className = 'size-20' }: { row: ProcurementRow; className?: string }) {
   const src = useProductImageUrl(row.productImageUrl)
   const [failed, setFailed] = useState(false)
   useEffect(() => setFailed(false), [src])
   return src && !failed
-    ? <img src={src} alt={row.itemName} onError={() => setFailed(true)} className={`${className} shrink-0 rounded-xl border bg-muted object-cover`} />
-    : <span className={`${className} flex shrink-0 flex-col items-center justify-center rounded-xl border border-dashed bg-muted/40 text-center`}><ImageOff className="size-4 text-muted-foreground" /><span className="mt-1 hidden text-[9px] leading-none text-muted-foreground sm:block">{t('productImage.empty')}</span></span>
+    ? <img src={src} alt={productTitle(row)} onError={() => setFailed(true)} className={`${className} shrink-0 rounded-[6px] border border-[#E5E7EB] bg-[#F3F4F6] object-contain`} />
+    : <span aria-label={productTitle(row)} className={`${className} flex shrink-0 items-center justify-center rounded-[6px] border border-[#E5E7EB] bg-[#F3F4F6]`}><ImageOff className="size-6 text-slate-400" /></span>
 }
 
 function formatMoney(value: number | null, currency: ProcurementCurrencyCode | null | undefined) {
@@ -241,30 +272,30 @@ function orderTotal(rows: ProcurementRow[]) {
   return Array.from(totals, ([currency, value]) => formatMoney(value, currency)).filter(Boolean).join(' · ')
 }
 
-function lifecycleStatusClasses(status: ProcurementStatus) {
-  if (status === 'Delivered') return 'border-emerald-200 bg-emerald-50 text-emerald-700'
-  if (status === 'RequiredPurchase') return 'border-amber-200 bg-amber-50 text-amber-700'
-  if (status === 'AtOriginWarehouse' || status === 'ArrivedTransitCountry' || status === 'ArrivedMoscow') return 'border-teal-200 bg-teal-50 text-teal-700'
-  if (status === 'SentToTransit' || status === 'SentToMoscow') return 'border-violet-200 bg-violet-50 text-violet-700'
-  return 'border-blue-200 bg-blue-50 text-blue-700'
+const statusProgressIndex: Record<ProcurementStatus, number> = {
+  RequiredPurchase: 0, Purchased: 0,
+  AwaitingWarehouse: 1, AtOriginWarehouse: 1,
+  AwaitingTransitShipment: 2, SentToTransit: 2, ArrivedTransitCountry: 2,
+  AwaitingMoscowShipment: 3, SentToMoscow: 3, ArrivedMoscow: 3,
+  AwaitingCustomerShipment: 4, HandedToDelivery: 4, Delivered: stages.length,
 }
 
 function LifecycleProgressStepper({ row }: { row: ProcurementRow }) {
   const { t } = useTranslation('procurements')
-  const current = row.status === 'Delivered' ? stages.length : stages.indexOf(row.stage as BoardStage)
-  return <div className="mt-3 border-t pt-3" aria-label={t('board.progressLabel')}>
-    <div className="flex items-start">
+  const current = statusProgressIndex[row.status]
+  return <div className="mx-[-8px] mt-2 pt-2 pb-1.5">
+    <div role="list" aria-label={t('board.progressLabel')} className="flex items-start">
       {stages.map((stage, index) => {
         const complete = index < current
         const active = index === current
         const showIssue = row.openErrorCount > 0 && active
-        return <div key={stage} className="relative flex min-w-0 flex-1 flex-col items-center">
-          {index < stages.length - 1 ? <span aria-hidden="true" className={`absolute left-1/2 right-[-50%] top-[7px] h-px ${index < current ? 'bg-emerald-500' : 'bg-slate-200'}`} /> : null}
-          <span title={`${t(`board.stepper.${stage}`)} · ${t(`statuses.lifecycle.${row.status}`)}`} className={`relative z-10 flex size-4 items-center justify-center rounded-full transition-colors motion-reduce:transition-none ${complete ? 'bg-emerald-500 text-white' : active ? 'border-2 border-blue-500 bg-white ring-2 ring-blue-100' : 'border border-slate-300 bg-slate-50'}`}>
-            {complete ? <Check className="size-2.5" strokeWidth={3} /> : active ? <span className="size-1.5 rounded-full bg-blue-500" /> : null}
+        return <div key={stage} role="listitem" aria-current={active ? 'step' : undefined} aria-label={`${t(`board.stepper.${stage}`)}: ${complete ? t('board.stepComplete') : active ? t('board.stepCurrent') : t('board.stepUpcoming')}`} className="relative flex min-w-0 flex-1 basis-0 flex-col items-center">
+          {index < stages.length - 1 ? <span aria-hidden="true" className={`absolute left-1/2 right-[-50%] top-[5px] h-px ${index < current ? 'bg-slate-600' : 'bg-slate-200'}`} /> : null}
+          <span aria-hidden="true" title={`${t(`board.stepper.${stage}`)} · ${t(`statuses.lifecycle.${row.status}`)}`} className={`relative z-10 flex size-[10px] items-center justify-center rounded-full transition-colors motion-reduce:transition-none ${complete ? 'bg-slate-600 text-white' : active ? 'border-2 border-blue-400 bg-white ring-2 ring-blue-50' : 'border border-slate-300 bg-white'}`}>
+            {complete ? <Check className="size-2" strokeWidth={3} /> : active ? <span className="size-1 rounded-full bg-blue-500" /> : null}
             {showIssue ? <span className="absolute -right-1 -top-1 size-1.5 rounded-full bg-rose-500 ring-2 ring-white" /> : null}
           </span>
-          <span className={`mt-1.5 max-w-full truncate text-center text-[9px] leading-tight ${active ? 'font-semibold text-blue-700' : complete ? 'text-emerald-700' : 'text-muted-foreground'}`}>{t(`board.stepper.${stage}`)}</span>
+          <span className={`mt-1.5 whitespace-nowrap text-center text-[9px] leading-tight ${active ? 'font-medium text-blue-600' : complete ? 'text-slate-500' : 'text-slate-400'}`}>{t(`board.stepper.${stage}`)}</span>
         </div>
       })}
     </div>
@@ -274,7 +305,7 @@ function LifecycleProgressStepper({ row }: { row: ProcurementRow }) {
 function ProcurementContext({ row }: { row: ProcurementRow }) {
   const { t } = useTranslation('procurements')
   const values = row.stage === 'purchase'
-    ? [formatMoney(row.purchasePrice ?? row.unitPrice, row.purchasePrice == null ? row.itemCurrencyCode as ProcurementCurrencyCode | null : row.purchaseCurrencyCode), row.shopName || row.productSource]
+    ? [row.shopName]
     : row.stage === 'originWarehouse'
       ? [row.warehouseTrackingNumber, row.warehouseReceivedAt]
       : row.stage === 'transit'
@@ -287,7 +318,7 @@ function ProcurementContext({ row }: { row: ProcurementRow }) {
   return <p className="mt-2 flex min-w-0 gap-1 truncate text-[11px] text-muted-foreground" title={details.join(' · ')}><span className="truncate">{details.join(' · ')}</span><span className="sr-only">{t(`board.stages.${row.stage}`)}</span></p>
 }
 
-function LifecycleActions({ row, onTransition }: { row: ProcurementRow; onTransition: TransitionAction }) {
+function LifecycleActions({ row, onTransition, compactPrimary = false, onOpenComment }: { row: ProcurementRow; onTransition: TransitionAction; compactPrimary?: boolean; onOpenComment?: () => void }) {
   const { t } = useTranslation('procurements')
   const queryClient = useQueryClient()
   const [showErrorForm, setShowErrorForm] = useState(false)
@@ -301,7 +332,7 @@ function LifecycleActions({ row, onTransition }: { row: ProcurementRow; onTransi
     return () => window.clearTimeout(timer)
   }, [issueSaved])
   const report = useMutation({
-    mutationFn: () => procurementsApi.createProcurementError(row.id, errorText, true),
+    mutationFn: () => procurementsApi.createProcurementError(row.id, errorText, false),
     onSuccess: () => {
       setErrorText('')
       setError('')
@@ -311,48 +342,212 @@ function LifecycleActions({ row, onTransition }: { row: ProcurementRow; onTransi
     },
     onError: (value) => setError(value instanceof ApiError ? value.message : t('board.errorCreateFailed')),
   })
-  const blocked = row.hasBlockingErrors
   const transition = (status: ProcurementStatus) => {
     const operation = onTransition(row, status)
     if (!operation) return
     setTransitioning(true)
     void operation.then(() => setTransitioning(false), () => setTransitioning(false))
   }
-  return <div className="mt-3 space-y-2" onClick={(event) => event.stopPropagation()}>
-    {row.nextStatus ? <div className="space-y-1.5"><p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{t('board.nextActionLabel')}</p><Button size="sm" className="h-9 w-full rounded-lg bg-slate-900 text-xs font-semibold text-white shadow-none transition-colors hover:bg-slate-700" disabled={blocked || transitioning} title={blocked ? t('board.actionBlocked') : undefined} onClick={() => transition(row.nextStatus!)}>{transitioning ? <><LoaderCircle className="animate-spin motion-reduce:animate-none" />{t('board.updating')}</> : <>{t(`actions.${row.nextStatus}`)}<ArrowRight /></>}</Button>{blocked ? <p className="text-[10px] text-rose-700">{t('board.actionBlocked')}</p> : null}</div> : null}
-    {row.status === 'Purchased' ? <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground" disabled={transitioning} onClick={() => transition('RequiredPurchase')}><RotateCcw />{t('actions.undoPurchase')}</Button> : null}
-    {row.status !== 'Delivered' ? <div className="flex items-center justify-between gap-2"><Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-[11px] text-muted-foreground" onClick={() => setShowErrorForm((value) => !value)}><CircleAlert className="size-3.5" />{t('board.reportError')}</Button>{row.openErrorCount > 0 ? <Badge variant="destructive" className="h-6 gap-1 rounded-lg px-2 text-[10px]"><CircleAlert className="size-3" />{t('board.openErrors', { count: row.openErrorCount })}</Badge> : null}</div> : null}
+  return <div className={`${compactPrimary ? 'mt-auto' : 'mt-1'} space-y-0`} onClick={(event) => event.stopPropagation()}>
+    {row.status !== 'Delivered' ? <div className="flex items-center justify-between gap-2"><button type="button" className={`flex w-fit shrink-0 flex-nowrap items-center justify-start gap-1.5 whitespace-nowrap bg-transparent px-0 font-medium text-[#667085] hover:bg-[#F3F4F6] hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${compactPrimary ? 'h-[22px] rounded-[5px] text-[9px]' : 'h-8 rounded-lg text-[10px]'}`} onClick={() => onOpenComment ? onOpenComment() : setShowErrorForm((value) => !value)}><span className="relative flex size-[14px] shrink-0 items-center justify-center"><MessageSquare className="size-[14px]" /><Plus className="absolute size-[6px] stroke-[3]" /></span>{t('board.reportError')}</button>{row.openErrorCount > 0 ? <span role="status" className="shrink-0 rounded-full bg-[#F3F4F6] px-2 py-0.5 text-[10px] font-medium text-amber-700" title={t('board.openIssues', { count: row.openErrorCount })} aria-label={t('board.openIssues', { count: row.openErrorCount })}>{row.openErrorCount}</span> : null}</div> : null}
+    {row.nextStatus ? <div className="space-y-1.5"><Button size="sm" className={`${compactPrimary ? 'h-[22px] min-w-0 w-full overflow-hidden rounded-[5px] whitespace-nowrap' : 'h-11 w-full rounded-[10px]'} gap-[10px] bg-[#111827] text-[9px] font-semibold text-white shadow-none transition-colors hover:bg-slate-700 active:bg-slate-800`} disabled={transitioning} title={t(`actions.${row.nextStatus}`)} onClick={() => transition(row.nextStatus!)}>{transitioning ? <><LoaderCircle className="animate-spin motion-reduce:animate-none" />{t('board.updating')}</> : t(`actions.${row.nextStatus}`)}</Button></div> : null}
     {issueSaved ? <p role="status" className="text-[11px] text-emerald-700">{t('board.errorSaved')}</p> : null}
-    {showErrorForm ? <div className="animate-in fade-in-0 slide-in-from-top-1 space-y-2 rounded-lg bg-muted/50 p-2 duration-200"><textarea value={errorText} onChange={(event) => setErrorText(event.target.value)} maxLength={2000} rows={2} placeholder={t('board.errorPlaceholder')} className="w-full resize-y rounded-md border bg-background p-2 text-sm" />{error ? <p className="text-xs text-destructive">{error}</p> : null}<div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setShowErrorForm(false)}>{t('cancel')}</Button><Button size="sm" disabled={!errorText.trim() || report.isPending} onClick={() => report.mutate()}>{t('board.sendError')}</Button></div></div> : null}
+    {showErrorForm && !onOpenComment ? <div className="animate-in fade-in-0 slide-in-from-top-1 space-y-2 rounded-lg bg-muted/50 p-2 duration-200"><textarea value={errorText} onChange={(event) => setErrorText(event.target.value)} maxLength={2000} rows={2} placeholder={t('board.errorPlaceholder')} className="w-full resize-y rounded-md border bg-background p-2 text-sm" />{error ? <p className="text-xs text-destructive">{error}</p> : null}<div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setShowErrorForm(false)}>{t('cancel')}</Button><Button size="sm" disabled={!errorText.trim() || report.isPending} onClick={() => report.mutate()}>{t('board.sendError')}</Button></div></div> : null}
   </div>
 }
 
 function PurchaseItemCard({ group, row, position, onDragStart, onDragEnd, onTransition }: { group: OrderGroup; row: ProcurementRow; position: number; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
+  const queryClient = useQueryClient()
+  const [undoingPurchase, setUndoingPurchase] = useState(false)
+  const [commentOpen, setCommentOpen] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [commentError, setCommentError] = useState('')
+  const commentInputRef = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    const input = commentInputRef.current
+    if (!input) return
+    input.style.height = '28px'
+    const maxHeight = 136
+    input.style.height = `${Math.min(input.scrollHeight, maxHeight)}px`
+    input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden'
+  }, [commentText, commentOpen])
+  const url = safeProductUrl(row.productUrl)
+  const meta = [formatMoney(row.purchasePrice ?? row.unitPrice, row.purchasePrice == null ? row.itemCurrencyCode as ProcurementCurrencyCode | null : row.purchaseCurrencyCode)].filter(Boolean)
+  const commentsQuery = useQuery({
+    queryKey: ['procurement-errors', row.id],
+    queryFn: ({ signal }) => procurementsApi.getProcurementErrors(row.id, signal),
+    enabled: commentOpen,
+  })
+  const commentMutation = useMutation({
+    mutationFn: () => procurementsApi.createProcurementError(row.id, commentText, false),
+    onSuccess: () => {
+      setCommentText('')
+      setCommentError('')
+      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
+      void queryClient.invalidateQueries({ queryKey: ['procurement-errors', row.id] })
+    },
+    onError: (error) => setCommentError(error instanceof ApiError ? error.message : t('board.errorCreateFailed')),
+  })
+  const deleteCommentMutation = useMutation({
+    mutationFn: procurementsApi.deleteProcurementError,
+    onSuccess: () => {
+      setCommentError('')
+      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
+      void queryClient.invalidateQueries({ queryKey: ['procurement-errors', row.id] })
+    },
+    onError: (error) => setCommentError(error instanceof ApiError ? error.message : t('board.errorDeleteFailed')),
+  })
+  const undoPurchase = () => {
+    if (undoingPurchase) return
+    const operation = onTransition(row, 'RequiredPurchase')
+    if (!operation) return
+    setUndoingPurchase(true)
+    void operation.then(() => setUndoingPurchase(false), () => setUndoingPurchase(false))
+  }
+  useEffect(() => {
+    if (commentOpen) commentInputRef.current?.focus()
+  }, [commentOpen])
   return (
-    <article data-procurement-item className="rounded-[15px] border bg-card p-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition-shadow hover:shadow-[0_3px_10px_rgba(15,23,42,0.08)] lg:p-3">
-      <Link to={`/admin/procurements/items/${row.id}`} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <div className="flex min-w-0 items-center justify-between gap-2"><OrderBadge group={group} /><Badge variant="outline" className={`max-w-[65%] truncate rounded-full px-2 py-0.5 text-[10px] ${lifecycleStatusClasses(row.status)}`}>{t(`statuses.lifecycle.${row.status}`)}</Badge><span draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} onClick={(event) => event.preventDefault()} title={t('board.dragHandle')} aria-label={t('board.dragHandle')} className="flex shrink-0 cursor-grab touch-none text-muted-foreground active:cursor-grabbing"><GripVertical className="size-3.5" /></span></div>
-        <div className="mt-3 flex min-w-0 gap-2.5"><ProductImage row={row} className="size-12 rounded-lg" /><div className="min-w-0 flex-1"><p className="line-clamp-2 text-[13px] font-semibold leading-snug" title={row.itemName}>{row.itemName}</p>{row.itemDescription ? <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">{row.itemDescription}</p> : null}<p className="mt-1 text-[10px] text-muted-foreground">{t('board.positionShort', { current: position, total: group.rows.length })}</p></div></div>
-        <ProcurementContext row={row} />
-      </Link>
-      <LifecycleActions row={row} onTransition={onTransition} />
+    <article data-procurement-item draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} className="cursor-grab overflow-hidden rounded-2xl border border-[#E5E7EB] bg-[#FAFAFB] px-2 py-[14px] shadow-[0_2px_8px_rgba(16,24,40,0.06)] transition-[box-shadow,border-color] duration-150 hover:border-slate-300 hover:shadow-[0_3px_10px_rgba(16,24,40,0.09)] active:cursor-grabbing motion-reduce:transition-none">
+      <div className="relative">
+      <div inert={commentOpen} className={`transition-transform duration-300 ease-in-out motion-reduce:transition-none ${commentOpen ? '-translate-x-[150%] pointer-events-none' : 'translate-x-0'}`}>
+      <div className="flex min-w-0 items-start gap-2">
+        <div className="min-w-0 flex-1"><div className="flex min-w-0 items-center gap-2"><OrderBadge group={group} /><span className="shrink-0 text-[10px] text-[#9CA3AF]">{t('board.positionShort', { current: position, total: group.rows.length })}</span></div><div className="mt-[3px] flex items-center gap-2"><p className={`min-w-0 break-words leading-4 ${row.status === 'RequiredPurchase' || row.status === 'Purchased' || row.status === 'AwaitingWarehouse' || row.status === 'AwaitingTransitShipment' || row.status === 'AwaitingMoscowShipment' ? 'text-[9px]' : 'text-[12px]'} ${row.status === 'RequiredPurchase' ? 'text-[#6B7280]' : 'text-[#9CA3AF]'}`} title={t(`statuses.lifecycle.${row.status}`)}>{t(`statuses.lifecycle.${row.status}`)}</p>{row.status === 'Purchased' ? <button type="button" className="shrink-0 text-[9px] text-muted-foreground underline-offset-2 hover:text-slate-900 hover:underline disabled:opacity-50" disabled={undoingPurchase} onClick={(event) => { event.stopPropagation(); undoPurchase() }}>{t('actions.undoPurchaseShort')}</button> : null}</div></div>
+        <div className="ml-auto shrink-0 [&_button]:size-9"><CardMenu row={row} group={group} /></div>
+      </div>
+      <div className="mt-3 flex min-w-0 items-stretch gap-1.5">
+        <Link to={`/admin/procurements/items/${row.id}`} aria-label={t('board.openItem')} className="shrink-0 rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><ProductImage row={row} className="size-[94px]" /></Link>
+        <div className="flex min-h-[94px] min-w-0 flex-1 flex-col">
+          <Link to={`/admin/procurements/items/${row.id}`} className="block rounded-sm text-[10px] font-semibold leading-3 text-[#111827] line-clamp-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title={productTitle(row)}>{productTitle(row)}</Link>
+          {url ? <a href={url.href} target="_blank" rel="noopener noreferrer" title={row.productUrl ?? undefined} className="mt-0.5 flex min-w-0 items-center gap-1 text-[12px] text-[#667085] hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="truncate">{compactProductUrl(row.productUrl!)}</span><ExternalLink className="size-3 shrink-0" /></a> : null}
+          <div className="mt-1 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[11px] text-[#6B7280]" title={meta.join(' · ')}>{meta.map((value, index) => <span key={`${row.id}-meta-${index}`} className="min-w-0 truncate">{value}</span>)}</div>
+          <LifecycleActions row={row} onTransition={onTransition} compactPrimary onOpenComment={() => { setCommentError(''); setCommentOpen(true) }} />
+        </div>
+      </div>
+      <ProcurementContext row={row} />
       <LifecycleProgressStepper row={row} />
+      </div>
+      <section data-no-drag aria-label={t('board.commentTitle')} aria-hidden={!commentOpen} inert={!commentOpen} className={`absolute -inset-x-2 top-[-14px] z-20 bg-[#E5E7EB] transition-[transform,opacity] duration-300 ease-in-out motion-reduce:transition-none ${commentOpen ? 'bottom-[-14px] translate-x-0 pointer-events-auto opacity-100' : 'bottom-0 translate-x-[150%] pointer-events-none opacity-0'}`}>
+        <button type="button" aria-label={t('board.backToCard')} title={t('board.backToCard')} className="absolute left-2 top-2 z-30 flex size-5 items-center justify-center rounded-full bg-white/95 text-[#667085] shadow-sm hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setCommentOpen(false)}><ArrowLeft className="size-3" /></button>
+        {commentError ? <p role="alert" className="absolute bottom-[42px] left-2 right-2 z-30 text-xs text-destructive">{commentError}</p> : null}
+        <div aria-live="polite" className="procurement-comment-scrollbar absolute inset-0 flex flex-col gap-2 overflow-y-auto px-2 pb-[152px]">
+          {commentsQuery.isLoading ? <Skeleton className="ml-auto h-10 w-3/4 rounded-2xl" /> : commentsQuery.isError ? <p role="alert" className="text-[10px] text-destructive">{t('board.errorsLoadFailed')}</p> : commentsQuery.data?.length ? commentsQuery.data.map((comment) => <ContextMenuPrimitive.Root key={comment.id}>
+            <ContextMenuPrimitive.Trigger asChild><div className="ml-auto flex max-w-[90%] cursor-context-menu flex-col rounded-2xl rounded-br-sm bg-[#111827] px-2.5 py-1.5 text-white"><p className="whitespace-pre-wrap break-words text-[10px] leading-4">{comment.text}</p><time className="mt-0.5 self-end text-[8px] text-slate-300" dateTime={comment.createdAt}>{new Date(comment.createdAt).toLocaleString()}</time></div></ContextMenuPrimitive.Trigger>
+            <ContextMenuPrimitive.Portal><ContextMenuPrimitive.Content className="z-[100] min-w-36 rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none"><ContextMenuPrimitive.Item disabled={deleteCommentMutation.isPending} onSelect={() => deleteCommentMutation.mutate(comment.id)} className="flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-destructive outline-none focus:bg-destructive/10 data-[disabled]:pointer-events-none data-[disabled]:opacity-50"><Trash2 className="size-3.5" />{t('board.deleteComment')}</ContextMenuPrimitive.Item></ContextMenuPrimitive.Content></ContextMenuPrimitive.Portal>
+          </ContextMenuPrimitive.Root>) : <p className="my-auto text-center text-[10px] text-[#9CA3AF]">{t('board.noComments')}</p>}
+        </div>
+        <div className="absolute inset-x-2 bottom-[6px] z-20 w-auto overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
+          <textarea ref={commentInputRef} value={commentText} onChange={(event) => { setCommentText(event.target.value); setCommentError('') }} maxLength={2000} rows={1} placeholder={t('board.commentPlaceholder')} className="procurement-comment-scrollbar block max-h-[136px] min-h-7 w-[calc(100%-28px)] resize-none rounded-l-xl border-0 bg-transparent px-2 py-[7px] pr-0 text-left text-[10px] leading-3 outline-none focus-visible:ring-0 focus-visible:ring-offset-0" />
+          <Button type="button" size="icon" aria-label={t('board.saveComment')} title={t('board.saveComment')} className="pointer-events-auto absolute right-1 top-1/2 z-10 size-5 -translate-y-1/2 rounded-full bg-[#111827] p-0 text-white hover:bg-slate-700" disabled={!commentText.trim() || commentMutation.isPending} onClick={() => commentMutation.mutate()}>{commentMutation.isPending ? <LoaderCircle className="size-3 animate-spin motion-reduce:animate-none" /> : <ArrowUp className="size-3" />}</Button>
+        </div>
+      </section>
+      </div>
     </article>
   )
 }
 
-function OrderItemPreview({ row, position, total, canDrag = true, onDragStart, onDragEnd }: { row: ProcurementRow; position: number; total: number; canDrag?: boolean; onDragStart?: (drag: ActiveProcurementDrag) => void; onDragEnd?: () => void }) {
+function OrderItemPreview({ row, position, total, compactAction = false, hidePosition = false, hideStatus = false, onTransition, onOpenComment }: { row: ProcurementRow; position: number; total: number; compactAction?: boolean; hidePosition?: boolean; hideStatus?: boolean; onTransition?: TransitionAction; onOpenComment?: () => void }) {
   const { t } = useTranslation('procurements')
-  return <div className="flex min-w-0 items-center gap-2 rounded-md"><ProductImage row={row} className="size-12 rounded-lg" /><div className="min-w-0 flex-1"><p className="line-clamp-2 text-[13px] font-semibold leading-snug" title={row.itemName}>{row.itemName}</p>{row.itemDescription ? <p className="truncate text-[11px] text-muted-foreground">{row.itemDescription}</p> : null}<p className="mt-1 truncate text-[10px] text-muted-foreground">{t('board.positionShort', { current: position, total })}</p></div><Badge variant="outline" className={`max-w-[42%] truncate rounded-full px-2 py-0.5 text-[10px] ${lifecycleStatusClasses(row.status)}`}>{t(`statuses.lifecycle.${row.status}`)}</Badge>{canDrag && onDragStart ? <span draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} onClick={(event) => event.preventDefault()} title={t('board.dragHandle')} aria-label={t('board.dragHandle')} className="flex shrink-0 cursor-grab touch-none text-muted-foreground active:cursor-grabbing"><GripVertical className="size-3.5" /></span> : null}</div>
+  const url = safeProductUrl(row.productUrl)
+  const meta = [hidePosition ? null : t('board.positionShort', { current: position, total }), formatMoney(row.purchasePrice ?? row.unitPrice, row.purchasePrice == null ? row.itemCurrencyCode as ProcurementCurrencyCode | null : row.purchaseCurrencyCode)].filter(Boolean)
+  return <div className="flex min-w-0 items-start gap-1.5">
+    <Link to={`/admin/procurements/items/${row.id}`} aria-label={t('board.openItem')} className="shrink-0 rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><ProductImage row={row} className="size-[94px]" /></Link>
+    <div className={`${compactAction ? 'flex min-h-[94px] flex-col' : ''} min-w-0 flex-1`}>
+      <Link to={`/admin/procurements/items/${row.id}`} className="block line-clamp-2 rounded-sm text-[10px] font-semibold leading-3 text-[#111827] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title={productTitle(row)}>{productTitle(row)}</Link>
+      {url ? <a href={url.href} target="_blank" rel="noopener noreferrer" title={row.productUrl ?? undefined} className="mt-0.5 flex min-w-0 items-center gap-1 text-[12px] text-[#667085] hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="truncate">{compactProductUrl(row.productUrl!)}</span><ExternalLink className="size-3 shrink-0" /></a> : null}
+      <div className="mt-1 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[11px] text-[#6B7280]" title={meta.join(' · ')}>{meta.map((value, index) => <span key={`${row.id}-meta-${index}`} className="min-w-0 truncate">{value}</span>)}</div>
+      {compactAction && onTransition ? <LifecycleActions row={row} onTransition={onTransition} compactPrimary onOpenComment={onOpenComment} /> : null}
+    </div>
+    {!hideStatus && row.status !== 'AwaitingWarehouse' ? <span className="max-w-[38%] shrink-0 truncate whitespace-nowrap text-right text-[11px] font-medium text-[#9CA3AF]" title={t(`statuses.lifecycle.${row.status}`)}>{t(`statuses.lifecycle.${row.status}`)}</span> : null}
+  </div>
+}
+
+function CommentableOrderItem({ group, row, position, stage, onDragStart, onDragEnd, onTransition, onCommentOpenChange }: { group: OrderGroup; row: ProcurementRow; position: number; stage: 'originWarehouse' | 'transit' | 'moscow'; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction; onCommentOpenChange: (rowId: string, open: boolean) => void }) {
+  const { t } = useTranslation('procurements')
+  const queryClient = useQueryClient()
+  const [commentOpen, setCommentOpen] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [commentError, setCommentError] = useState('')
+  const commentInputRef = useRef<HTMLTextAreaElement>(null)
+  const compactAction = row.nextStatus === 'AtOriginWarehouse' || row.nextStatus === 'AwaitingTransitShipment' || row.nextStatus === 'SentToTransit' || row.nextStatus === 'SentToMoscow'
+  const commentsQuery = useQuery({
+    queryKey: ['procurement-errors', row.id],
+    queryFn: ({ signal }) => procurementsApi.getProcurementErrors(row.id, signal),
+    enabled: commentOpen,
+  })
+  const createComment = useMutation({
+    mutationFn: () => procurementsApi.createProcurementError(row.id, commentText, false),
+    onSuccess: () => {
+      setCommentText('')
+      setCommentError('')
+      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
+      void queryClient.invalidateQueries({ queryKey: ['procurement-errors', row.id] })
+    },
+    onError: (error) => setCommentError(error instanceof ApiError ? error.message : t('board.errorCreateFailed')),
+  })
+  const deleteComment = useMutation({
+    mutationFn: procurementsApi.deleteProcurementError,
+    onSuccess: () => {
+      setCommentError('')
+      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
+      void queryClient.invalidateQueries({ queryKey: ['procurement-errors', row.id] })
+    },
+    onError: (error) => setCommentError(error instanceof ApiError ? error.message : t('board.errorDeleteFailed')),
+  })
+  useEffect(() => {
+    const input = commentInputRef.current
+    if (!input) return
+    input.style.height = '28px'
+    const maxHeight = 136
+    input.style.height = `${Math.min(input.scrollHeight, maxHeight)}px`
+    input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden'
+  }, [commentText, commentOpen])
+  useEffect(() => {
+    if (commentOpen) commentInputRef.current?.focus()
+  }, [commentOpen])
+  return <div data-procurement-item draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} className={`cursor-grab active:cursor-grabbing ${position > 1 ? 'pt-3' : ''}`}>
+    <div className="relative">
+      <div inert={commentOpen} className={`transition-transform duration-300 ease-in-out motion-reduce:transition-none ${commentOpen ? '-translate-x-[150%] pointer-events-none' : 'translate-x-0'}`}>
+        <OrderItemPreview row={row} position={position} total={group.rows.length} compactAction={compactAction} hidePosition={stage === 'originWarehouse'} hideStatus onTransition={onTransition} onOpenComment={() => { setCommentError(''); setCommentOpen(true); onCommentOpenChange(row.id, true) }} />
+        <ProcurementContext row={row} />
+        <LifecycleProgressStepper row={row} />
+        {!compactAction ? <LifecycleActions row={row} onTransition={onTransition} onOpenComment={() => { setCommentError(''); setCommentOpen(true); onCommentOpenChange(row.id, true) }} /> : null}
+      </div>
+      <section data-no-drag aria-label={t('board.commentTitle')} aria-hidden={!commentOpen} inert={!commentOpen} className={`absolute -inset-x-2 top-[-14px] z-20 bg-[#E5E7EB] transition-[transform,opacity] duration-300 ease-in-out motion-reduce:transition-none ${commentOpen ? 'bottom-[-14px] translate-x-0 pointer-events-auto opacity-100' : 'bottom-0 translate-x-[150%] pointer-events-none opacity-0'}`}>
+        <button type="button" aria-label={t('board.backToCard')} title={t('board.backToCard')} className="absolute left-2 top-2 z-30 flex size-5 items-center justify-center rounded-full bg-white/95 text-[#667085] shadow-sm hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => { setCommentOpen(false); onCommentOpenChange(row.id, false) }}><ArrowLeft className="size-3" /></button>
+        {commentError ? <p role="alert" className="absolute bottom-[42px] left-2 right-2 z-30 text-xs text-destructive">{commentError}</p> : null}
+        <div aria-live="polite" className="procurement-comment-scrollbar absolute inset-0 flex flex-col gap-2 overflow-y-auto px-2 pb-[152px]">
+          {commentsQuery.isLoading ? <Skeleton className="ml-auto h-10 w-3/4 rounded-2xl" /> : commentsQuery.isError ? <p role="alert" className="text-[10px] text-destructive">{t('board.errorsLoadFailed')}</p> : commentsQuery.data?.length ? commentsQuery.data.map((comment) => <ContextMenuPrimitive.Root key={comment.id}>
+            <ContextMenuPrimitive.Trigger asChild><div className="ml-auto flex max-w-[90%] cursor-context-menu flex-col rounded-2xl rounded-br-sm bg-[#111827] px-2.5 py-1.5 text-white"><p className="whitespace-pre-wrap break-words text-[10px] leading-4">{comment.text}</p><time className="mt-0.5 self-end text-[8px] text-slate-300" dateTime={comment.createdAt}>{new Date(comment.createdAt).toLocaleString()}</time></div></ContextMenuPrimitive.Trigger>
+            <ContextMenuPrimitive.Portal><ContextMenuPrimitive.Content className="z-[100] min-w-36 rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none"><ContextMenuPrimitive.Item disabled={deleteComment.isPending} onSelect={() => deleteComment.mutate(comment.id)} className="flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-destructive outline-none focus:bg-destructive/10 data-[disabled]:pointer-events-none data-[disabled]:opacity-50"><Trash2 className="size-3.5" />{t('board.deleteComment')}</ContextMenuPrimitive.Item></ContextMenuPrimitive.Content></ContextMenuPrimitive.Portal>
+          </ContextMenuPrimitive.Root>) : <p className="my-auto text-center text-[10px] text-[#9CA3AF]">{t('board.noComments')}</p>}
+        </div>
+        <div className="absolute inset-x-2 bottom-[6px] z-20 w-auto overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
+          <textarea ref={commentInputRef} value={commentText} onChange={(event) => { setCommentText(event.target.value); setCommentError('') }} maxLength={2000} rows={1} placeholder={t('board.commentPlaceholder')} className="procurement-comment-scrollbar block max-h-[136px] min-h-7 w-[calc(100%-28px)] resize-none rounded-l-xl border-0 bg-transparent px-2 py-[7px] pr-0 text-left text-[10px] leading-3 outline-none focus-visible:ring-0 focus-visible:ring-offset-0" />
+          <Button type="button" size="icon" aria-label={t('board.saveComment')} title={t('board.saveComment')} className="pointer-events-auto absolute right-1 top-1/2 z-10 size-5 -translate-y-1/2 rounded-full bg-[#111827] p-0 text-white hover:bg-slate-700" disabled={!commentText.trim() || createComment.isPending} onClick={() => createComment.mutate()}>{createComment.isPending ? <LoaderCircle className="size-3 animate-spin motion-reduce:animate-none" /> : <ArrowUp className="size-3" />}</Button>
+        </div>
+      </section>
+    </div>
+  </div>
 }
 
 function OrderCard({ group, stage, onDragStart, onDragEnd, onTransition }: { group: OrderGroup; stage: Exclude<BoardStage, 'purchase'>; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
+  const [activeCommentRowId, setActiveCommentRowId] = useState<string | null>(null)
   const total = orderTotal(group.rows)
-  return <article className="rounded-[15px] border bg-card p-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition-shadow hover:shadow-[0_3px_10px_rgba(15,23,42,0.08)]">
-    <Link to={`/admin/procurements/orders/${group.orderId}/${stage}`} className="flex items-center justify-between gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><OrderBadge group={group} /><span className="shrink-0 text-[10px] text-muted-foreground">{t('board.itemCount', { count: group.rows.length })}</span></Link>
-    <div className="mt-3 divide-y">{group.rows.map((row, index) => <div key={row.id} data-procurement-item className={index ? 'pt-3' : ''}><Link to={`/admin/procurements/items/${row.id}`} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><OrderItemPreview row={row} position={index + 1} total={group.rows.length} onDragStart={onDragStart} onDragEnd={onDragEnd} /><ProcurementContext row={row} /></Link><LifecycleActions row={row} onTransition={onTransition} /><LifecycleProgressStepper row={row} /></div>)}</div>
+  return <article className="rounded-2xl border border-[#E5E7EB] bg-[#FAFAFB] px-2 py-[14px] shadow-[0_2px_8px_rgba(16,24,40,0.06)] transition-[box-shadow,border-color] duration-150 hover:border-slate-300 hover:shadow-[0_3px_10px_rgba(16,24,40,0.09)] motion-reduce:transition-none">
+    <div className="overflow-hidden"><div inert={activeCommentRowId !== null} className={`flex items-start gap-2 transition-transform duration-300 ease-in-out motion-reduce:transition-none ${activeCommentRowId !== null ? '-translate-x-[150%] pointer-events-none' : 'translate-x-0'}`}><Link to={`/admin/procurements/orders/${group.orderId}/${stage}`} className="flex min-w-0 flex-1 flex-col rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><OrderBadge group={group} /><span className={`mt-[3px] break-words leading-4 ${stage === 'originWarehouse' ? 'text-[9px]' : group.rows[0]?.status === 'RequiredPurchase' || group.rows[0]?.status === 'Purchased' || group.rows[0]?.status === 'AwaitingWarehouse' || group.rows[0]?.status === 'AwaitingTransitShipment' || group.rows[0]?.status === 'AwaitingMoscowShipment' ? 'text-[9px]' : 'text-[12px]'} ${group.rows[0]?.status === 'RequiredPurchase' ? 'text-[#6B7280]' : 'text-[#9CA3AF]'}`}>{group.rows[0] ? t(`statuses.lifecycle.${group.rows[0].status}`) : ''}</span></Link>{group.rows[0] ? <div className="ml-auto shrink-0 [&_button]:size-9"><CardMenu row={group.rows[0]} group={group} /></div> : null}</div></div>
+    <div className={`mt-3 ${stage === 'originWarehouse' ? '' : 'divide-y divide-[#EAECF0]'}`}>{group.rows.map((row, index) => {
+      const compactAction = row.nextStatus === 'AtOriginWarehouse' || row.nextStatus === 'AwaitingTransitShipment' || row.nextStatus === 'SentToTransit' || row.nextStatus === 'SentToMoscow'
+      if (stage === 'originWarehouse' || stage === 'transit' || stage === 'moscow') return <CommentableOrderItem key={row.id} group={group} row={row} position={index + 1} stage={stage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} onCommentOpenChange={(rowId, open) => setActiveCommentRowId((current) => open ? rowId : current === rowId ? null : current)} />
+      return <div key={row.id} data-procurement-item draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} className={`cursor-grab active:cursor-grabbing ${index ? 'pt-3' : ''}`}>
+        <OrderItemPreview row={row} position={index + 1} total={group.rows.length} compactAction={compactAction} hidePosition={stage === 'originWarehouse'} hideStatus={stage === 'transit'} onTransition={onTransition} />
+        <ProcurementContext row={row} />
+        <LifecycleProgressStepper row={row} />
+        {!compactAction ? <LifecycleActions row={row} onTransition={onTransition} /> : null}
+      </div>
+    })}</div>
     {stage === 'moscow' && total ? <p className="mt-3 border-t pt-2 text-xs font-semibold">{t('board.total')}: {total}</p> : null}
   </article>
 }
@@ -371,7 +566,7 @@ function MoscowGroups({ groups, onDragStart, onDragEnd, onTransition }: { groups
     if (!tracking) ungrouped.push(group)
     else shipments.set(tracking, [...(shipments.get(tracking) ?? []), group])
   })
-  const section = (key: string, title: string, orders: OrderGroup[]) => <div key={key} className="space-y-2"><div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-xs font-medium"><Truck className="size-3.5" /><span className="truncate">{title}</span><span className="ml-auto shrink-0 text-muted-foreground">{t('board.orderCount', { count: orders.length })}</span></div><div className="space-y-3">{orders.map((group) => <OrderCard key={group.orderId} group={group} stage="moscow" onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />)}</div></div>
+  const section = (key: string, title: string, orders: OrderGroup[]) => <div key={key} className="space-y-2"><div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-xs font-medium"><Truck className="size-3.5" /><span className="truncate">{title}</span><span className="ml-auto shrink-0 text-muted-foreground">{t('board.orderCount', { count: orders.length })}</span></div><div className="space-y-1">{orders.map((group) => <OrderCard key={group.orderId} group={group} stage="moscow" onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />)}</div></div>
   return <div className="space-y-4">{ungrouped.length ? section('ungrouped', t('board.ungrouped'), ungrouped) : null}{Array.from(shipments, ([tracking, orders]) => section(tracking, `MSK SHIP · ${tracking}`, orders))}</div>
 }
 
@@ -382,10 +577,10 @@ function BoardLane({ stage, groups, mobile = false, dropStage, onDragStart, onDr
   return (
     <section
       data-procurement-stage={stage}
-      className={`min-h-[50dvh] min-w-0 rounded-2xl p-2 transition-colors ${dropStage === stage ? 'bg-muted/70 ring-2 ring-muted-foreground/10' : ''}`}
+      className={`min-h-[50dvh] min-w-0 rounded-2xl px-0 py-2 transition-colors ${dropStage === stage ? 'bg-muted/70 ring-2 ring-muted-foreground/10' : ''}`}
     >
       <div className={`mb-3 flex items-center gap-2 ${mobile ? 'min-h-9 justify-between' : 'h-8 justify-start'}`}><h2 className={mobile ? 'text-xl font-semibold tracking-tight' : 'text-sm font-semibold'}>{t(`board.stages.${stage}`)}</h2><span className={mobile ? 'text-sm text-muted-foreground' : 'text-xs text-muted-foreground'}>{t('board.positionCount', { count })}</span></div>
-      {stage === 'moscow' ? <MoscowGroups groups={groups} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} /> : <div className="space-y-3">{stage === 'purchase' ? purchaseRows.map((item) => <PurchaseItemCard key={item.row.id} {...item} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />) : groups.map((group) => <OrderCard key={group.orderId} group={group} stage={stage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />)}</div>}
+      {stage === 'moscow' ? <MoscowGroups groups={groups} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} /> : <div className="space-y-1">{stage === 'purchase' ? purchaseRows.map((item) => <PurchaseItemCard key={item.row.id} {...item} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />) : groups.map((group) => <OrderCard key={group.orderId} group={group} stage={stage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />)}</div>}
       {!count ? <EmptyLane purchase={stage === 'purchase'} /> : null}
     </section>
   )
@@ -397,7 +592,7 @@ function BoardSkeleton() {
 
 function DesktopBoard({ groups, activeDrag, onMove, onDragStart, onDragEnd, onTransition }: { groups: OrderGroup[]; activeDrag: ActiveProcurementDrag | null; onMove: (rowId: string, stage: BoardStage) => void; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const drop = useColumnDropTarget(activeDrag, onMove)
-  return <div className="grid grid-cols-5 items-start gap-4 2xl:gap-5" onDragOver={drop.onDragOver} onDragLeave={drop.onDragLeave} onDrop={drop.onDrop}>{stages.map((stage) => <BoardLane key={stage} stage={stage} groups={groupsForStage(groups, stage)} dropStage={drop.dropStage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />)}</div>
+  return <div className="grid grid-cols-5 items-start gap-1" onDragOver={drop.onDragOver} onDragLeave={drop.onDragLeave} onDrop={drop.onDrop}>{stages.map((stage) => <BoardLane key={stage} stage={stage} groups={groupsForStage(groups, stage)} dropStage={drop.dropStage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />)}</div>
 }
 
 function MobileBoard({ groups, activeDrag, onMove, onDragStart, onDragEnd, onTransition }: { groups: OrderGroup[]; activeDrag: ActiveProcurementDrag | null; onMove: (rowId: string, stage: BoardStage) => void; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
@@ -487,7 +682,7 @@ export function ProcurementsArchivePage() {
   const queryClient = useQueryClient()
   const query = useQuery({ queryKey: ['procurements', 'archive'], queryFn: ({ signal }) => procurementsApi.getProcurementArchive(signal) })
   const restore = useMutation({ mutationFn: ({ id, status }: { id: string; status: ProcurementStatus }) => procurementsApi.transitionProcurement(id, { status }), onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['procurements'] }) } })
-  return <div className="space-y-5"><Button asChild variant="ghost" className="-ml-2"><Link to="/admin/procurements"><ArrowLeft />{t('board.back')}</Link></Button><h1 className="text-2xl font-bold">{t('board.archive')}</h1>{restore.isError ? <Alert variant="destructive"><AlertDescription>{t('board.moveError')}</AlertDescription></Alert> : null}<Card size="sm"><CardContent>{query.isLoading ? <Skeleton className="h-24 w-full" /> : query.isError ? <Alert variant="destructive"><AlertDescription>{t('mobile.loadError')}</AlertDescription></Alert> : <div className="space-y-3">{query.data?.length ? query.data.map((row) => <article key={row.id} className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3"><Link to={`/admin/procurements/items/${row.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><ProductImage row={row} className="size-12" /><div className="min-w-0 flex-1"><p className="truncate font-medium">{row.itemName}</p><p className="text-sm text-muted-foreground">{t('board.orderNumber', { code: row.trackingCode })}</p></div><Badge variant="outline" className={lifecycleStatusClasses(row.status)}>{t(`statuses.lifecycle.${row.status}`)}</Badge></Link>{row.previousStatus ? <Button size="sm" variant="outline" disabled={restore.isPending} onClick={() => restore.mutate({ id: row.id, status: row.previousStatus! })}>{t('board.restoreToDelivery')}</Button> : null}</article>) : <p className="py-8 text-center text-sm text-muted-foreground">{t('board.archiveEmpty')}</p>}</div>}</CardContent></Card></div>
+  return <div className="space-y-5"><Button asChild variant="ghost" className="-ml-2"><Link to="/admin/procurements"><ArrowLeft />{t('board.back')}</Link></Button><h1 className="text-2xl font-bold">{t('board.archive')}</h1>{restore.isError ? <Alert variant="destructive"><AlertDescription>{t('board.moveError')}</AlertDescription></Alert> : null}<Card size="sm"><CardContent>{query.isLoading ? <Skeleton className="h-24 w-full" /> : query.isError ? <Alert variant="destructive"><AlertDescription>{t('mobile.loadError')}</AlertDescription></Alert> : <div className="space-y-3">{query.data?.length ? query.data.map((row) => <article key={row.id} className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3"><Link to={`/admin/procurements/items/${row.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><ProductImage row={row} className="size-12" /><div className="min-w-0 flex-1"><p className="truncate font-medium">{productTitle(row)}</p><p className="text-sm text-muted-foreground">{t('board.orderNumber', { code: row.trackingCode })}</p></div><span className="text-sm text-[#667085]">{t(`statuses.lifecycle.${row.status}`)}</span></Link>{row.previousStatus ? <Button size="sm" variant="outline" disabled={restore.isPending} onClick={() => restore.mutate({ id: row.id, status: row.previousStatus! })}>{t('board.restoreToDelivery')}</Button> : null}</article>) : <p className="py-8 text-center text-sm text-muted-foreground">{t('board.archiveEmpty')}</p>}</div>}</CardContent></Card></div>
 }
 
 function emptyToNull(value: string) { return value === '' ? null : value }
@@ -684,7 +879,7 @@ function ItemPurchaseEditor({ row }: { row: ProcurementRow }) {
   const receipt = row.attachments.find((attachment) => attachment.kind === 'Receipt')
   const upload = useMutation({ mutationFn: (file: File) => procurementsApi.uploadReceipt(row.id, file), onSuccess: (attachment) => queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === row.id ? { ...value, attachments: [...value.attachments.filter((item) => item.kind !== 'Receipt'), attachment] } : value)), onError: () => setError(t('uploadError')) })
   const remove = useMutation({ mutationFn: (attachmentId: string) => procurementsApi.deleteAttachment(row.id, attachmentId), onSuccess: (_, attachmentId) => queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === row.id ? { ...value, attachments: value.attachments.filter((item) => item.id !== attachmentId) } : value)), onError: () => setError(t('uploadError')) })
-  return <div className="rounded-xl border bg-card p-4 sm:p-5"><div className="mb-5 min-w-0"><h2 className="text-lg font-semibold">{row.itemName}</h2>{row.itemDescription ? <p className="text-sm text-muted-foreground">{row.itemDescription}</p> : null}{row.productUrl ? <a href={row.productUrl} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 text-sm text-primary"><span className="truncate">{row.productUrl}</span><ExternalLink className="size-3.5" /></a> : null}<Badge variant="outline" className={`mt-2 ${lifecycleStatusClasses(row.status)}`}>{t(`statuses.lifecycle.${row.status}`)}</Badge></div>{error ? <Alert variant="destructive" className="mb-4"><AlertDescription>{error}</AlertDescription></Alert> : null}<ProductImageEditor row={row} onError={setError} /><div className="grid gap-4 sm:grid-cols-2"><Field label={t('fields.purchaseUrl')} id="purchase-url"><Input id="purchase-url" className="h-9 bg-white" value={form.purchaseUrl ?? ''} onChange={(event) => setForm((value) => ({ ...value, purchaseUrl: emptyToNull(event.target.value) }))} /></Field><Field label={t('fields.purchasePrice')} id="purchase-price"><MoneyField id="purchase-price" value={form.purchasePrice} currency={form.purchaseCurrencyCode} onValue={(purchasePrice) => setForm((value) => ({ ...value, purchasePrice }))} onCurrency={(purchaseCurrencyCode) => setForm((value) => ({ ...value, purchaseCurrencyCode }))} /></Field><div className="space-y-2"><Label className="text-sm text-muted-foreground">{t('fields.receipt')}</Label><div className="flex items-center gap-3">{receipt ? <AttachmentPreview attachment={receipt} onDelete={() => remove.mutate(receipt.id)} /> : null}<Button asChild variant="outline" size="sm"><label className="cursor-pointer"><ImagePlus />{receipt ? t('replaceReceipt') : t('addReceipt')}<input type="file" className="sr-only" accept="image/*,application/pdf" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) upload.mutate(file) }} /></label></Button></div></div></div><div className="mt-5 flex flex-wrap items-center justify-between gap-3"><SaveStateLabel state={saveState} /><Button type="button" variant="destructive" disabled={removeProcurement.isPending || isDirty || saveState === 'saving'} onClick={() => { if (window.confirm(t('removeConfirm'))) removeProcurement.mutate() }}><Trash2 />{removeProcurement.isPending ? t('removing') : t('removeFromProcurement')}</Button></div></div>
+  return <div className="rounded-xl border bg-card p-4 sm:p-5"><div className="mb-5 min-w-0"><h2 className="text-lg font-semibold">{productTitle(row)}</h2>{row.itemDescription && row.itemName !== productTitle(row) ? <p className="text-sm text-muted-foreground">{row.itemDescription}</p> : null}{row.productUrl ? <a href={row.productUrl} target="_blank" rel="noopener noreferrer" className="mt-1 flex items-center gap-1 text-sm text-primary"><span className="truncate">{compactProductUrl(row.productUrl)}</span><ExternalLink className="size-3.5" /></a> : null}<p className="mt-2 text-sm text-[#667085]">{t(`statuses.lifecycle.${row.status}`)}</p></div>{error ? <Alert variant="destructive" className="mb-4"><AlertDescription>{error}</AlertDescription></Alert> : null}<ProductImageEditor row={row} onError={setError} /><div className="grid gap-4 sm:grid-cols-2"><Field label={t('fields.purchaseUrl')} id="purchase-url"><Input id="purchase-url" className="h-9 bg-white" value={form.purchaseUrl ?? ''} onChange={(event) => setForm((value) => ({ ...value, purchaseUrl: emptyToNull(event.target.value) }))} /></Field><Field label={t('fields.purchasePrice')} id="purchase-price"><MoneyField id="purchase-price" value={form.purchasePrice} currency={form.purchaseCurrencyCode} onValue={(purchasePrice) => setForm((value) => ({ ...value, purchasePrice }))} onCurrency={(purchaseCurrencyCode) => setForm((value) => ({ ...value, purchaseCurrencyCode }))} /></Field><div className="space-y-2"><Label className="text-sm text-muted-foreground">{t('fields.receipt')}</Label><div className="flex items-center gap-3">{receipt ? <AttachmentPreview attachment={receipt} onDelete={() => remove.mutate(receipt.id)} /> : null}<Button asChild variant="outline" size="sm"><label className="cursor-pointer"><ImagePlus />{receipt ? t('replaceReceipt') : t('addReceipt')}<input type="file" className="sr-only" accept="image/*,application/pdf" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) upload.mutate(file) }} /></label></Button></div></div></div><div className="mt-5 flex flex-wrap items-center justify-between gap-3"><SaveStateLabel state={saveState} /><Button type="button" variant="destructive" disabled={removeProcurement.isPending || isDirty || saveState === 'saving'} onClick={() => { if (window.confirm(t('removeConfirm'))) removeProcurement.mutate() }}><Trash2 />{removeProcurement.isPending ? t('removing') : t('removeFromProcurement')}</Button></div></div>
 }
 
 function WarehouseEditor({ row }: { row: ProcurementRow }) {
@@ -711,7 +906,7 @@ function StageEditorCard({ row, error, state, children }: { row: ProcurementRow;
 
 function CompletedSummary({ group }: { group: OrderGroup }) {
   const { t } = useTranslation('procurements')
-  return <div className="rounded-xl border bg-card p-4"><div className="space-y-3">{group.rows.map((row, index) => <OrderItemPreview key={row.id} row={row} position={index + 1} total={group.rows.length} canDrag={false} />)}</div><div className="mt-4 grid gap-2 border-t pt-4 text-sm sm:grid-cols-2"><p><span className="text-muted-foreground">{t('fields.shippingMethod')}:</span> {group.rows.find((row) => row.shippingMethod)?.shippingMethod ?? '—'}</p><p><span className="text-muted-foreground">{t('fields.shippingTrackingNumber')}:</span> {group.rows.find((row) => row.shippingTrackingNumber)?.shippingTrackingNumber ?? '—'}</p><p><span className="text-muted-foreground">{t('board.delivered')}:</span> {group.rows.find((row) => row.shippedAt)?.shippedAt ?? '—'}</p></div></div>
+  return <div className="rounded-xl border bg-card p-4"><div className="space-y-3">{group.rows.map((row, index) => <OrderItemPreview key={row.id} row={row} position={index + 1} total={group.rows.length} />)}</div><div className="mt-4 grid gap-2 border-t pt-4 text-sm sm:grid-cols-2"><p><span className="text-muted-foreground">{t('fields.shippingMethod')}:</span> {group.rows.find((row) => row.shippingMethod)?.shippingMethod ?? '—'}</p><p><span className="text-muted-foreground">{t('fields.shippingTrackingNumber')}:</span> {group.rows.find((row) => row.shippingTrackingNumber)?.shippingTrackingNumber ?? '—'}</p><p><span className="text-muted-foreground">{t('board.delivered')}:</span> {group.rows.find((row) => row.shippedAt)?.shippedAt ?? '—'}</p></div></div>
 }
 
 function ProcurementErrorHistory({ procurementId }: { procurementId: string }) {
@@ -764,3 +959,4 @@ export function ProcurementOrderDetailPage() {
   const currentStage = stages.includes(stage as BoardStage) ? stage as BoardStage : group.stage
   return <DetailShell title={t('board.orderCard')} group={group}>{currentStage === 'originWarehouse' || currentStage === 'transit' || currentStage === 'moscow' ? <div className="space-y-4">{group.rows.map((row) => <WarehouseEditor key={row.id} row={row} />)}</div> : currentStage === 'customerDelivery' ? <div className="space-y-4">{group.rows.map((row) => <ShippingEditor key={row.id} row={row} />)}</div> : <CompletedSummary group={group} />}</DetailShell>
 }
+

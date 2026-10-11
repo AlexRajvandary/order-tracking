@@ -127,10 +127,6 @@ public sealed class ProcurementsController(
         if (targetStatus is null || !ProcurementLifecycle.CanTransition(row.CurrentStatus, targetStatus.Value))
             return BadRequest(new { detail = "Недопустимый переход статуса товара." });
 
-        var isForward = ProcurementLifecycle.Next(row.CurrentStatus) == targetStatus;
-        if (isForward && row.Errors.Any(value => value.IsBlocking && !value.IsResolved))
-            return Conflict(new { detail = "Сначала разрешите блокирующие ошибки товара." });
-
         var previous = row.CurrentStatus;
         row.CurrentStatus = targetStatus.Value;
         row.UpdatedAt = DateTimeOffset.UtcNow;
@@ -201,6 +197,16 @@ public sealed class ProcurementsController(
             await db.SaveChangesAsync(cancellationToken);
         }
         return Ok(ToErrorDto(error));
+    }
+
+    [HttpDelete("errors/{errorId:guid}")]
+    public async Task<IActionResult> DeleteError(Guid errorId, CancellationToken cancellationToken)
+    {
+        var error = await db.OrderItemProcurementErrors.FirstOrDefaultAsync(value => value.Id == errorId, cancellationToken);
+        if (error is null) return NotFound();
+        db.OrderItemProcurementErrors.Remove(error);
+        await db.SaveChangesAsync(cancellationToken);
+        return NoContent();
     }
 
     [HttpPut("{id:guid}")]

@@ -135,6 +135,30 @@
   }
 }
 
+.procurement-comment-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(107 114 128 / 10%) transparent;
+}
+
+.procurement-comment-scrollbar::-webkit-scrollbar {
+  width: 1px;
+}
+
+.procurement-comment-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.procurement-comment-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(107 114 128 / 10%);
+}
+
+.procurement-comment-scrollbar::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 html.telegram-mini-app,
 html.telegram-mini-app body,
 html.telegram-mini-app #root {
