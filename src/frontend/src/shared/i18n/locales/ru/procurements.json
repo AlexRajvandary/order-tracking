@@ -42,6 +42,7 @@
   "delete": "Удалить строку",
   "deleteConfirm": "Удалить эту строку из вспомогательной таблицы? Позиция заявки останется без изменений.",
   "updateError": "Не удалось сохранить строку",
+  "notSpecified": "Не указано",
   "deleteError": "Не удалось удалить строку",
   "removeFromProcurement": "Убрать из выкупа",
   "removeConfirm": "Убрать товар из выкупа? Сам заказ и товар в заказе сохранятся. Заказ можно будет снова отправить на выкуп.",
@@ -52,7 +53,7 @@
   "convertSuccess": "Заказ сформирован",
   "convertError": "Не удалось сформировать заказ",
   "fields": {
-    "purchaseUrl": "Ссылка на выкуп",
+    "purchaseUrl": "Ссылка",
     "purchaseStatus": "Статус выкупа",
     "purchasePrice": "Фактическая цена",
     "sellerOrderNumber": "Номер заказа продавца",
@@ -147,6 +148,15 @@
     "HandedToDelivery": "Передан в доставку",
     "Delivered": "Доставлен"
   },
+  "purchaseTodo": {
+    "purchase": "Выкупить",
+    "receiveOrigin": "Получить в стране выкупа",
+    "sendTransit": "Отправить в транзит",
+    "receiveTransit": "Получить в стране транзита",
+    "sendMoscow": "Отправить в Москву",
+    "receiveMoscow": "Получить в Москве",
+    "sendCustomer": "Отправить клиенту"
+  },
   "statusesLegacy": {
     "purchase": {
       "Pending": "Ожидает выкупа",
@@ -196,7 +206,6 @@
     "openItem": "Открыть карточку товара",
     "openProduct": "Открыть товар у продавца",
     "nextActionLabel": "Следующее действие",
-    "actionBlocked": "Сначала разрешите открытые блокирующие ошибки.",
     "statusUpdated": "Статус товара обновлён",
     "updating": "Обновляем…",
     "errorSaved": "Проблема зарегистрирована",
@@ -231,6 +240,7 @@
     "commentPlaceholder": "Напишите комментарий...",
     "noComments": "Комментариев пока нет",
     "backToCard": "Вернуться к карточке",
+    "openPurchaseUrl": "Открыть ссылку на выкуп",
     "saveComment": "Сохранить",
     "deleteComment": "Удалить комментарий",
     "errorDeleteFailed": "Не удалось удалить комментарий",
@@ -239,7 +249,6 @@
     "errorCreateFailed": "Не удалось зарегистрировать проблему",
     "issueHistory": "Проблемы товара",
     "errorsLoadFailed": "Не удалось загрузить проблемы",
-    "blockingIssue": "Блокирует переход",
     "resolved": "Решена",
     "resolveIssue": "Разрешить",
     "noIssues": "Проблем нет",

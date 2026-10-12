@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:5280'
+const productsApiProxyTarget = process.env.VITE_PRODUCTS_API_PROXY_TARGET ?? apiProxyTarget
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -14,19 +17,19 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api/products': {
-        target: 'http://localhost:5281',
+        target: productsApiProxyTarget,
         changeOrigin: true,
       },
       '/api': {
-        target: 'http://localhost:5280',
+        target: apiProxyTarget,
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://localhost:5280',
+        target: apiProxyTarget,
         changeOrigin: true,
       },
       '/hubs': {
-        target: 'http://localhost:5280',
+        target: apiProxyTarget,
         changeOrigin: true,
         ws: true,
       },

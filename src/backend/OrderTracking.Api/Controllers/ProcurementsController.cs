@@ -163,7 +163,7 @@ public sealed class ProcurementsController(
         if (!await db.OrderItemProcurements.AnyAsync(value => value.Id == id, cancellationToken)) return NotFound();
         return Ok(await db.OrderItemProcurementErrors.AsNoTracking().Where(value => value.ProcurementId == id)
             .OrderBy(value => value.CreatedAt)
-            .Select(value => new ProcurementErrorDto(value.Id, value.ProcurementId, value.Text, value.StatusAtCreation, value.StageAtCreation, value.CreatedAt, value.AuthorId, value.IsBlocking, value.IsResolved, value.ResolvedAt, value.ResolvedByAdminId))
+            .Select(value => new ProcurementErrorDto(value.Id, value.ProcurementId, value.Text, value.StatusAtCreation, value.StageAtCreation, value.CreatedAt, value.AuthorId, false, value.IsResolved, value.ResolvedAt, value.ResolvedByAdminId))
             .ToListAsync(cancellationToken));
     }
 
@@ -177,7 +177,7 @@ public sealed class ProcurementsController(
         {
             Id = Guid.NewGuid(), ProcurementId = id, Text = request.Text.Trim(), StatusAtCreation = row.CurrentStatus,
             StageAtCreation = ProcurementLifecycle.Stage(row.CurrentStatus), CreatedAt = DateTimeOffset.UtcNow,
-            AuthorId = GetAuthorId(), IsBlocking = request.IsBlocking,
+            AuthorId = GetAuthorId(), IsBlocking = false,
         };
         db.OrderItemProcurementErrors.Add(error);
         await db.SaveChangesAsync(cancellationToken);
@@ -370,7 +370,7 @@ public sealed class ProcurementsController(
                     $"/api/v1/procurements/attachments/{attachment.Id}"))
                 .ToList(),
             value.Errors.Count(error => !error.IsResolved),
-            value.Errors.Any(error => error.IsBlocking && !error.IsResolved),
+            false,
             string.Empty,
             null,
             null,
@@ -398,7 +398,7 @@ public sealed class ProcurementsController(
 
     private static ProcurementErrorDto ToErrorDto(OrderItemProcurementError value) => new(
         value.Id, value.ProcurementId, value.Text, value.StatusAtCreation, value.StageAtCreation,
-        value.CreatedAt, value.AuthorId, value.IsBlocking, value.IsResolved, value.ResolvedAt, value.ResolvedByAdminId);
+        value.CreatedAt, value.AuthorId, false, value.IsResolved, value.ResolvedAt, value.ResolvedByAdminId);
 
     private static string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

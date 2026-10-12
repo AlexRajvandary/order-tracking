@@ -42,6 +42,7 @@
   "delete": "Delete row",
   "deleteConfirm": "Delete this row from the auxiliary table? The request item will remain unchanged.",
   "updateError": "Could not save the row",
+  "notSpecified": "Not specified",
   "deleteError": "Could not delete the row",
   "removeFromProcurement": "Remove from procurement",
   "removeConfirm": "Remove this product from procurement? The order and its product will remain. You can send the order to procurement again later.",
@@ -52,7 +53,7 @@
   "convertSuccess": "Order formed",
   "convertError": "Could not form the order",
   "fields": {
-    "purchaseUrl": "Purchase link",
+    "purchaseUrl": "Link",
     "purchaseStatus": "Purchase status",
     "purchasePrice": "Actual purchase price",
     "sellerOrderNumber": "Seller order number",
@@ -147,6 +148,15 @@
     "HandedToDelivery": "Handed to delivery",
     "Delivered": "Delivered"
   },
+  "purchaseTodo": {
+    "purchase": "Purchase",
+    "receiveOrigin": "Receive in purchase country",
+    "sendTransit": "Send to transit",
+    "receiveTransit": "Receive in transit country",
+    "sendMoscow": "Send to Moscow",
+    "receiveMoscow": "Receive in Moscow",
+    "sendCustomer": "Send to customer"
+  },
   "statusesLegacy": {
     "purchase": {
       "Pending": "Awaiting purchase",
@@ -196,7 +206,6 @@
     "openItem": "Open product details",
     "openProduct": "Open seller product page",
     "nextActionLabel": "Next action",
-    "actionBlocked": "Resolve open blocking issues first.",
     "statusUpdated": "Product status updated",
     "updating": "Updating…",
     "errorSaved": "Issue reported",
@@ -221,10 +230,11 @@
     "restoreToDelivery": "Return to delivery",
     "archiveEmpty": "No completed products yet",
     "reportError": "Report issue",
-    "commentTitle": "Product comment",
+    "commentTitle": "Comments",
     "commentPlaceholder": "Write a comment...",
     "noComments": "No comments yet",
     "backToCard": "Back to card",
+    "openPurchaseUrl": "Open purchase link",
     "saveComment": "Save",
     "deleteComment": "Delete comment",
     "errorDeleteFailed": "Could not delete the comment",
@@ -233,7 +243,6 @@
     "errorCreateFailed": "Could not report the issue",
     "issueHistory": "Product issues",
     "errorsLoadFailed": "Could not load issues",
-    "blockingIssue": "Blocks progress",
     "resolved": "Resolved",
     "resolveIssue": "Resolve issue",
     "noIssues": "No issues",

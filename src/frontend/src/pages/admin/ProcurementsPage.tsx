@@ -1,17 +1,17 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   type DragEvent as ReactDragEvent,
+  type FocusEvent as ReactFocusEvent,
   type ReactNode,
 } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ContextMenu as ContextMenuPrimitive } from 'radix-ui'
 import {
   ArrowLeft,
   Archive,
-  ArrowUp,
   Check,
   Copy,
   ExternalLink,
@@ -21,8 +21,8 @@ import {
   LoaderCircle,
   MessageSquare,
   MoreHorizontal,
+  Pencil,
   Plus,
-  RotateCcw,
   Search,
   Trash2,
   Truck,
@@ -32,6 +32,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import * as ordersApi from '@/features/orders/api/ordersApi'
 import * as procurementsApi from '@/features/procurements/api/procurementsApi'
+import { ProcurementCommentsChat } from '@/features/procurements/ui/ProcurementCommentsChat'
 import type {
   ProcurementAttachment,
   ProcurementCurrencyCode,
@@ -43,7 +44,6 @@ import type {
 import { ApiError } from '@/shared/api/client'
 import { authorizedRequest } from '@/shared/api/authorizedClient'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
-import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
@@ -170,8 +170,8 @@ function matchesSearch(group: OrderGroup, search: string) {
   ].some((value) => value?.toLocaleLowerCase().includes(search)))
 }
 
-function OrderBadge({ group }: { group: Pick<OrderGroup, 'orderId' | 'trackingCode'> }) {
-  return <span className="block max-w-full truncate text-[11px] font-semibold text-[#111827]" title={group.trackingCode}>{group.trackingCode}</span>
+function OrderBadge({ group, className }: { group: Pick<OrderGroup, 'orderId' | 'trackingCode'>; className?: string }) {
+  return <span className={`block max-w-full truncate text-[11px] font-semibold text-[#111827] ${className ?? ''}`} title={group.trackingCode}>{group.trackingCode}</span>
 }
 
 function safeProductUrl(value: string | null) {
@@ -280,10 +280,26 @@ const statusProgressIndex: Record<ProcurementStatus, number> = {
   AwaitingCustomerShipment: 4, HandedToDelivery: 4, Delivered: stages.length,
 }
 
-function LifecycleProgressStepper({ row }: { row: ProcurementRow }) {
+const completedTodoCount: Record<ProcurementStatus, number> = {
+  RequiredPurchase: 0,
+  Purchased: 1,
+  AwaitingWarehouse: 1,
+  AtOriginWarehouse: 2,
+  AwaitingTransitShipment: 2,
+  SentToTransit: 3,
+  ArrivedTransitCountry: 4,
+  AwaitingMoscowShipment: 4,
+  SentToMoscow: 5,
+  ArrivedMoscow: 6,
+  AwaitingCustomerShipment: 6,
+  HandedToDelivery: 7,
+  Delivered: 7,
+}
+
+function LifecycleProgressStepper({ row, compact = false }: { row: ProcurementRow; compact?: boolean }) {
   const { t } = useTranslation('procurements')
   const current = statusProgressIndex[row.status]
-  return <div className="mx-[-8px] mt-2 pt-2 pb-1.5">
+  return <div className={compact ? 'min-w-0' : 'mx-[-8px] mt-2 pt-2 pb-1.5'}>
     <div role="list" aria-label={t('board.progressLabel')} className="flex items-start">
       {stages.map((stage, index) => {
         const complete = index < current
@@ -295,7 +311,7 @@ function LifecycleProgressStepper({ row }: { row: ProcurementRow }) {
             {complete ? <Check className="size-2" strokeWidth={3} /> : active ? <span className="size-1 rounded-full bg-blue-500" /> : null}
             {showIssue ? <span className="absolute -right-1 -top-1 size-1.5 rounded-full bg-rose-500 ring-2 ring-white" /> : null}
           </span>
-          <span className={`mt-1.5 whitespace-nowrap text-center text-[9px] leading-tight ${active ? 'font-medium text-blue-600' : complete ? 'text-slate-500' : 'text-slate-400'}`}>{t(`board.stepper.${stage}`)}</span>
+          <span className={`mt-1.5 whitespace-nowrap text-center ${compact ? 'text-[11px]' : 'text-[9px]'} leading-tight ${active ? 'font-medium text-blue-600' : complete ? 'text-slate-500' : 'text-slate-400'}`}>{t(`board.stepper.${stage}`)}</span>
         </div>
       })}
     </div>
@@ -332,7 +348,7 @@ function LifecycleActions({ row, onTransition, compactPrimary = false, onOpenCom
     return () => window.clearTimeout(timer)
   }, [issueSaved])
   const report = useMutation({
-    mutationFn: () => procurementsApi.createProcurementError(row.id, errorText, false),
+    mutationFn: () => procurementsApi.createProcurementError(row.id, errorText),
     onSuccess: () => {
       setErrorText('')
       setError('')
@@ -358,46 +374,10 @@ function LifecycleActions({ row, onTransition, compactPrimary = false, onOpenCom
 
 function PurchaseItemCard({ group, row, position, onDragStart, onDragEnd, onTransition }: { group: OrderGroup; row: ProcurementRow; position: number; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
-  const queryClient = useQueryClient()
   const [undoingPurchase, setUndoingPurchase] = useState(false)
   const [commentOpen, setCommentOpen] = useState(false)
-  const [commentText, setCommentText] = useState('')
-  const [commentError, setCommentError] = useState('')
-  const commentInputRef = useRef<HTMLTextAreaElement>(null)
-  useEffect(() => {
-    const input = commentInputRef.current
-    if (!input) return
-    input.style.height = '28px'
-    const maxHeight = 136
-    input.style.height = `${Math.min(input.scrollHeight, maxHeight)}px`
-    input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden'
-  }, [commentText, commentOpen])
   const url = safeProductUrl(row.productUrl)
   const meta = [formatMoney(row.purchasePrice ?? row.unitPrice, row.purchasePrice == null ? row.itemCurrencyCode as ProcurementCurrencyCode | null : row.purchaseCurrencyCode)].filter(Boolean)
-  const commentsQuery = useQuery({
-    queryKey: ['procurement-errors', row.id],
-    queryFn: ({ signal }) => procurementsApi.getProcurementErrors(row.id, signal),
-    enabled: commentOpen,
-  })
-  const commentMutation = useMutation({
-    mutationFn: () => procurementsApi.createProcurementError(row.id, commentText, false),
-    onSuccess: () => {
-      setCommentText('')
-      setCommentError('')
-      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
-      void queryClient.invalidateQueries({ queryKey: ['procurement-errors', row.id] })
-    },
-    onError: (error) => setCommentError(error instanceof ApiError ? error.message : t('board.errorCreateFailed')),
-  })
-  const deleteCommentMutation = useMutation({
-    mutationFn: procurementsApi.deleteProcurementError,
-    onSuccess: () => {
-      setCommentError('')
-      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
-      void queryClient.invalidateQueries({ queryKey: ['procurement-errors', row.id] })
-    },
-    onError: (error) => setCommentError(error instanceof ApiError ? error.message : t('board.errorDeleteFailed')),
-  })
   const undoPurchase = () => {
     if (undoingPurchase) return
     const operation = onTransition(row, 'RequiredPurchase')
@@ -405,9 +385,6 @@ function PurchaseItemCard({ group, row, position, onDragStart, onDragEnd, onTran
     setUndoingPurchase(true)
     void operation.then(() => setUndoingPurchase(false), () => setUndoingPurchase(false))
   }
-  useEffect(() => {
-    if (commentOpen) commentInputRef.current?.focus()
-  }, [commentOpen])
   return (
     <article data-procurement-item draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} className="cursor-grab overflow-hidden rounded-2xl border border-[#E5E7EB] bg-[#FAFAFB] px-2 py-[14px] shadow-[0_2px_8px_rgba(16,24,40,0.06)] transition-[box-shadow,border-color] duration-150 hover:border-slate-300 hover:shadow-[0_3px_10px_rgba(16,24,40,0.09)] active:cursor-grabbing motion-reduce:transition-none">
       <div className="relative">
@@ -422,26 +399,13 @@ function PurchaseItemCard({ group, row, position, onDragStart, onDragEnd, onTran
           <Link to={`/admin/procurements/items/${row.id}`} className="block rounded-sm text-[10px] font-semibold leading-3 text-[#111827] line-clamp-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title={productTitle(row)}>{productTitle(row)}</Link>
           {url ? <a href={url.href} target="_blank" rel="noopener noreferrer" title={row.productUrl ?? undefined} className="mt-0.5 flex min-w-0 items-center gap-1 text-[12px] text-[#667085] hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="truncate">{compactProductUrl(row.productUrl!)}</span><ExternalLink className="size-3 shrink-0" /></a> : null}
           <div className="mt-1 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[11px] text-[#6B7280]" title={meta.join(' · ')}>{meta.map((value, index) => <span key={`${row.id}-meta-${index}`} className="min-w-0 truncate">{value}</span>)}</div>
-          <LifecycleActions row={row} onTransition={onTransition} compactPrimary onOpenComment={() => { setCommentError(''); setCommentOpen(true) }} />
+          <LifecycleActions row={row} onTransition={onTransition} compactPrimary onOpenComment={() => setCommentOpen(true)} />
         </div>
       </div>
       <ProcurementContext row={row} />
       <LifecycleProgressStepper row={row} />
       </div>
-      <section data-no-drag aria-label={t('board.commentTitle')} aria-hidden={!commentOpen} inert={!commentOpen} className={`absolute -inset-x-2 top-[-14px] z-20 bg-[#E5E7EB] transition-[transform,opacity] duration-300 ease-in-out motion-reduce:transition-none ${commentOpen ? 'bottom-[-14px] translate-x-0 pointer-events-auto opacity-100' : 'bottom-0 translate-x-[150%] pointer-events-none opacity-0'}`}>
-        <button type="button" aria-label={t('board.backToCard')} title={t('board.backToCard')} className="absolute left-2 top-2 z-30 flex size-5 items-center justify-center rounded-full bg-white/95 text-[#667085] shadow-sm hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setCommentOpen(false)}><ArrowLeft className="size-3" /></button>
-        {commentError ? <p role="alert" className="absolute bottom-[42px] left-2 right-2 z-30 text-xs text-destructive">{commentError}</p> : null}
-        <div aria-live="polite" className="procurement-comment-scrollbar absolute inset-0 flex flex-col gap-2 overflow-y-auto px-2 pb-[152px]">
-          {commentsQuery.isLoading ? <Skeleton className="ml-auto h-10 w-3/4 rounded-2xl" /> : commentsQuery.isError ? <p role="alert" className="text-[10px] text-destructive">{t('board.errorsLoadFailed')}</p> : commentsQuery.data?.length ? commentsQuery.data.map((comment) => <ContextMenuPrimitive.Root key={comment.id}>
-            <ContextMenuPrimitive.Trigger asChild><div className="ml-auto flex max-w-[90%] cursor-context-menu flex-col rounded-2xl rounded-br-sm bg-[#111827] px-2.5 py-1.5 text-white"><p className="whitespace-pre-wrap break-words text-[10px] leading-4">{comment.text}</p><time className="mt-0.5 self-end text-[8px] text-slate-300" dateTime={comment.createdAt}>{new Date(comment.createdAt).toLocaleString()}</time></div></ContextMenuPrimitive.Trigger>
-            <ContextMenuPrimitive.Portal><ContextMenuPrimitive.Content className="z-[100] min-w-36 rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none"><ContextMenuPrimitive.Item disabled={deleteCommentMutation.isPending} onSelect={() => deleteCommentMutation.mutate(comment.id)} className="flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-destructive outline-none focus:bg-destructive/10 data-[disabled]:pointer-events-none data-[disabled]:opacity-50"><Trash2 className="size-3.5" />{t('board.deleteComment')}</ContextMenuPrimitive.Item></ContextMenuPrimitive.Content></ContextMenuPrimitive.Portal>
-          </ContextMenuPrimitive.Root>) : <p className="my-auto text-center text-[10px] text-[#9CA3AF]">{t('board.noComments')}</p>}
-        </div>
-        <div className="absolute inset-x-2 bottom-[6px] z-20 w-auto overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
-          <textarea ref={commentInputRef} value={commentText} onChange={(event) => { setCommentText(event.target.value); setCommentError('') }} maxLength={2000} rows={1} placeholder={t('board.commentPlaceholder')} className="procurement-comment-scrollbar block max-h-[136px] min-h-7 w-[calc(100%-28px)] resize-none rounded-l-xl border-0 bg-transparent px-2 py-[7px] pr-0 text-left text-[10px] leading-3 outline-none focus-visible:ring-0 focus-visible:ring-offset-0" />
-          <Button type="button" size="icon" aria-label={t('board.saveComment')} title={t('board.saveComment')} className="pointer-events-auto absolute right-1 top-1/2 z-10 size-5 -translate-y-1/2 rounded-full bg-[#111827] p-0 text-white hover:bg-slate-700" disabled={!commentText.trim() || commentMutation.isPending} onClick={() => commentMutation.mutate()}>{commentMutation.isPending ? <LoaderCircle className="size-3 animate-spin motion-reduce:animate-none" /> : <ArrowUp className="size-3" />}</Button>
-        </div>
-      </section>
+      <ProcurementCommentsChat procurementId={row.id} variant="popover" open={commentOpen} onClose={() => setCommentOpen(false)} />
       </div>
     </article>
   )
@@ -464,70 +428,17 @@ function OrderItemPreview({ row, position, total, compactAction = false, hidePos
 }
 
 function CommentableOrderItem({ group, row, position, stage, onDragStart, onDragEnd, onTransition, onCommentOpenChange }: { group: OrderGroup; row: ProcurementRow; position: number; stage: 'originWarehouse' | 'transit' | 'moscow'; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction; onCommentOpenChange: (rowId: string, open: boolean) => void }) {
-  const { t } = useTranslation('procurements')
-  const queryClient = useQueryClient()
   const [commentOpen, setCommentOpen] = useState(false)
-  const [commentText, setCommentText] = useState('')
-  const [commentError, setCommentError] = useState('')
-  const commentInputRef = useRef<HTMLTextAreaElement>(null)
   const compactAction = row.nextStatus === 'AtOriginWarehouse' || row.nextStatus === 'AwaitingTransitShipment' || row.nextStatus === 'SentToTransit' || row.nextStatus === 'SentToMoscow'
-  const commentsQuery = useQuery({
-    queryKey: ['procurement-errors', row.id],
-    queryFn: ({ signal }) => procurementsApi.getProcurementErrors(row.id, signal),
-    enabled: commentOpen,
-  })
-  const createComment = useMutation({
-    mutationFn: () => procurementsApi.createProcurementError(row.id, commentText, false),
-    onSuccess: () => {
-      setCommentText('')
-      setCommentError('')
-      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
-      void queryClient.invalidateQueries({ queryKey: ['procurement-errors', row.id] })
-    },
-    onError: (error) => setCommentError(error instanceof ApiError ? error.message : t('board.errorCreateFailed')),
-  })
-  const deleteComment = useMutation({
-    mutationFn: procurementsApi.deleteProcurementError,
-    onSuccess: () => {
-      setCommentError('')
-      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
-      void queryClient.invalidateQueries({ queryKey: ['procurement-errors', row.id] })
-    },
-    onError: (error) => setCommentError(error instanceof ApiError ? error.message : t('board.errorDeleteFailed')),
-  })
-  useEffect(() => {
-    const input = commentInputRef.current
-    if (!input) return
-    input.style.height = '28px'
-    const maxHeight = 136
-    input.style.height = `${Math.min(input.scrollHeight, maxHeight)}px`
-    input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden'
-  }, [commentText, commentOpen])
-  useEffect(() => {
-    if (commentOpen) commentInputRef.current?.focus()
-  }, [commentOpen])
   return <div data-procurement-item draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} className={`cursor-grab active:cursor-grabbing ${position > 1 ? 'pt-3' : ''}`}>
     <div className="relative">
       <div inert={commentOpen} className={`transition-transform duration-300 ease-in-out motion-reduce:transition-none ${commentOpen ? '-translate-x-[150%] pointer-events-none' : 'translate-x-0'}`}>
-        <OrderItemPreview row={row} position={position} total={group.rows.length} compactAction={compactAction} hidePosition={stage === 'originWarehouse'} hideStatus onTransition={onTransition} onOpenComment={() => { setCommentError(''); setCommentOpen(true); onCommentOpenChange(row.id, true) }} />
+        <OrderItemPreview row={row} position={position} total={group.rows.length} compactAction={compactAction} hidePosition={stage === 'originWarehouse'} hideStatus onTransition={onTransition} onOpenComment={() => { setCommentOpen(true); onCommentOpenChange(row.id, true) }} />
         <ProcurementContext row={row} />
         <LifecycleProgressStepper row={row} />
-        {!compactAction ? <LifecycleActions row={row} onTransition={onTransition} onOpenComment={() => { setCommentError(''); setCommentOpen(true); onCommentOpenChange(row.id, true) }} /> : null}
+        {!compactAction ? <LifecycleActions row={row} onTransition={onTransition} onOpenComment={() => { setCommentOpen(true); onCommentOpenChange(row.id, true) }} /> : null}
       </div>
-      <section data-no-drag aria-label={t('board.commentTitle')} aria-hidden={!commentOpen} inert={!commentOpen} className={`absolute -inset-x-2 top-[-14px] z-20 bg-[#E5E7EB] transition-[transform,opacity] duration-300 ease-in-out motion-reduce:transition-none ${commentOpen ? 'bottom-[-14px] translate-x-0 pointer-events-auto opacity-100' : 'bottom-0 translate-x-[150%] pointer-events-none opacity-0'}`}>
-        <button type="button" aria-label={t('board.backToCard')} title={t('board.backToCard')} className="absolute left-2 top-2 z-30 flex size-5 items-center justify-center rounded-full bg-white/95 text-[#667085] shadow-sm hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => { setCommentOpen(false); onCommentOpenChange(row.id, false) }}><ArrowLeft className="size-3" /></button>
-        {commentError ? <p role="alert" className="absolute bottom-[42px] left-2 right-2 z-30 text-xs text-destructive">{commentError}</p> : null}
-        <div aria-live="polite" className="procurement-comment-scrollbar absolute inset-0 flex flex-col gap-2 overflow-y-auto px-2 pb-[152px]">
-          {commentsQuery.isLoading ? <Skeleton className="ml-auto h-10 w-3/4 rounded-2xl" /> : commentsQuery.isError ? <p role="alert" className="text-[10px] text-destructive">{t('board.errorsLoadFailed')}</p> : commentsQuery.data?.length ? commentsQuery.data.map((comment) => <ContextMenuPrimitive.Root key={comment.id}>
-            <ContextMenuPrimitive.Trigger asChild><div className="ml-auto flex max-w-[90%] cursor-context-menu flex-col rounded-2xl rounded-br-sm bg-[#111827] px-2.5 py-1.5 text-white"><p className="whitespace-pre-wrap break-words text-[10px] leading-4">{comment.text}</p><time className="mt-0.5 self-end text-[8px] text-slate-300" dateTime={comment.createdAt}>{new Date(comment.createdAt).toLocaleString()}</time></div></ContextMenuPrimitive.Trigger>
-            <ContextMenuPrimitive.Portal><ContextMenuPrimitive.Content className="z-[100] min-w-36 rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none"><ContextMenuPrimitive.Item disabled={deleteComment.isPending} onSelect={() => deleteComment.mutate(comment.id)} className="flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-destructive outline-none focus:bg-destructive/10 data-[disabled]:pointer-events-none data-[disabled]:opacity-50"><Trash2 className="size-3.5" />{t('board.deleteComment')}</ContextMenuPrimitive.Item></ContextMenuPrimitive.Content></ContextMenuPrimitive.Portal>
-          </ContextMenuPrimitive.Root>) : <p className="my-auto text-center text-[10px] text-[#9CA3AF]">{t('board.noComments')}</p>}
-        </div>
-        <div className="absolute inset-x-2 bottom-[6px] z-20 w-auto overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
-          <textarea ref={commentInputRef} value={commentText} onChange={(event) => { setCommentText(event.target.value); setCommentError('') }} maxLength={2000} rows={1} placeholder={t('board.commentPlaceholder')} className="procurement-comment-scrollbar block max-h-[136px] min-h-7 w-[calc(100%-28px)] resize-none rounded-l-xl border-0 bg-transparent px-2 py-[7px] pr-0 text-left text-[10px] leading-3 outline-none focus-visible:ring-0 focus-visible:ring-offset-0" />
-          <Button type="button" size="icon" aria-label={t('board.saveComment')} title={t('board.saveComment')} className="pointer-events-auto absolute right-1 top-1/2 z-10 size-5 -translate-y-1/2 rounded-full bg-[#111827] p-0 text-white hover:bg-slate-700" disabled={!commentText.trim() || createComment.isPending} onClick={() => createComment.mutate()}>{createComment.isPending ? <LoaderCircle className="size-3 animate-spin motion-reduce:animate-none" /> : <ArrowUp className="size-3" />}</Button>
-        </div>
-      </section>
+      <ProcurementCommentsChat procurementId={row.id} variant="popover" open={commentOpen} onClose={() => { setCommentOpen(false); onCommentOpenChange(row.id, false) }} />
     </div>
   </div>
 }
@@ -692,6 +603,119 @@ function Field({ label, id, children }: { label: string; id: string; children: R
   return <div className="min-w-0 space-y-1.5"><Label htmlFor={id} className="text-sm text-muted-foreground">{label}</Label>{children}</div>
 }
 
+function InlinePurchaseUrl({ value, disabled, onSave, onEditStart }: { value: string | null; disabled: boolean; onSave: (value: string | null) => Promise<boolean>; onEditStart: () => void }) {
+  const { t } = useTranslation('procurements')
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value ?? '')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const committingRef = useRef(false)
+  const skipBlurRef = useRef(false)
+  const url = safeProductUrl(value)
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }
+  }, [editing])
+
+  const beginEditing = () => {
+    setDraft(value ?? '')
+    onEditStart()
+    setEditing(true)
+  }
+  const commit = async () => {
+    if (!editing || disabled || committingRef.current) return
+    committingRef.current = true
+    if (await onSave(emptyToNull(draft.trim()))) setEditing(false)
+    committingRef.current = false
+  }
+  const cancel = () => {
+    skipBlurRef.current = true
+    setDraft(value ?? '')
+    setEditing(false)
+  }
+
+  return <div className="flex min-w-0 items-center gap-1">
+    {editing
+      ? <Input ref={inputRef} id="purchase-url-inline" className="h-9 min-w-0 bg-white" value={draft} disabled={disabled} onChange={(event) => setDraft(event.target.value)} onBlur={() => { if (skipBlurRef.current) { skipBlurRef.current = false; return } void commit() }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void commit() } if (event.key === 'Escape') { event.preventDefault(); cancel() } }} />
+      : <>
+        {url
+          ? <a href={url.href} target="_blank" rel="noopener noreferrer" className="min-w-0 break-all text-sm text-blue-600 hover:underline" title={value ?? undefined}>{value}</a>
+          : <span className="min-w-0 break-all text-sm text-[#9CA3AF]">{value || t('notSpecified')}</span>}
+        <Button type="button" variant="ghost" size="icon-xs" disabled={disabled} aria-label={t('edit')} className="size-6 shrink-0 text-[#667085]" onClick={beginEditing}><Pencil className="size-3" /></Button>
+      </>}
+  </div>
+}
+
+function InlinePurchasePrice({ value, currency, disabled, onSave, onEditStart }: { value: number | null; currency: ProcurementCurrencyCode; disabled: boolean; onSave: (value: number | null, currency: ProcurementCurrencyCode) => Promise<boolean>; onEditStart: () => void }) {
+  const { t } = useTranslation('procurements')
+  const [editing, setEditing] = useState(false)
+  const [draftValue, setDraftValue] = useState(value?.toString() ?? '')
+  const [draftCurrency, setDraftCurrency] = useState(currency)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const committingRef = useRef(false)
+  const skipBlurRef = useRef(false)
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }
+  }, [editing])
+
+  const beginEditing = () => {
+    setDraftValue(value?.toString() ?? '')
+    setDraftCurrency(currency)
+    onEditStart()
+    setEditing(true)
+  }
+  const commit = async () => {
+    if (!editing || disabled || committingRef.current) return
+    committingRef.current = true
+    const parsed = numberOrNull(draftValue.trim())
+    if (await onSave(parsed, draftCurrency)) setEditing(false)
+    committingRef.current = false
+  }
+  const cancel = () => {
+    skipBlurRef.current = true
+    setDraftValue(value?.toString() ?? '')
+    setDraftCurrency(currency)
+    setEditing(false)
+  }
+  const handleBlur = (event: ReactFocusEvent<HTMLDivElement>) => {
+    if (skipBlurRef.current) {
+      skipBlurRef.current = false
+      return
+    }
+    const next = event.relatedTarget
+    if (next instanceof Element && (rootRef.current?.contains(next) || next.closest('[data-slot="select-content"]'))) return
+    window.setTimeout(() => {
+      const active = document.activeElement
+      if (active instanceof Element && (rootRef.current?.contains(active) || active.closest('[data-slot="select-content"]'))) return
+      void commit()
+    }, 0)
+  }
+
+  return <div ref={rootRef} className="flex min-w-0 items-center gap-1" onBlurCapture={editing ? handleBlur : undefined}>
+    {editing
+      ? <div className="flex min-w-0 items-center gap-1.5">
+        <Input ref={inputRef} id="purchase-price-inline" type="number" step="any" className="h-9 w-28 bg-white" inputMode="decimal" value={draftValue} disabled={disabled} onChange={(event) => setDraftValue(event.target.value)} onKeyDown={(event) => { if (event.target instanceof HTMLInputElement && event.key === 'Enter') { event.preventDefault(); void commit() } if (event.target instanceof HTMLInputElement && event.key === 'Escape') { event.preventDefault(); cancel() } }} />
+        <Select value={draftCurrency} disabled={disabled} onValueChange={(next) => setDraftCurrency(next as ProcurementCurrencyCode)}>
+          <SelectTrigger aria-label={t('fields.purchasePrice')} className="h-9 w-[92px] bg-white"><SelectValue /></SelectTrigger>
+          <SelectContent>{currencies.map((code) => <SelectItem key={code} value={code}>{currencySymbols[code]} {code}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      : <>
+        {value == null
+          ? <span className="text-sm text-[#9CA3AF]">{t('notSpecified')}</span>
+          : <span className="inline-flex items-baseline gap-1.5"><span className="text-base font-medium text-[#111827]">{value.toLocaleString('ru-RU')}</span><span className="text-sm text-[#667085]">{currencySymbols[currency]} {currency}</span></span>}
+        <Button type="button" variant="ghost" size="icon-xs" disabled={disabled} aria-label={t('edit')} className="size-6 shrink-0 text-[#667085]" onClick={beginEditing}><Pencil className="size-3" /></Button>
+      </>}
+  </div>
+}
+
 function MoneyField({ id, value, currency, onValue, onCurrency }: { id: string; value: number | null; currency: ProcurementCurrencyCode; onValue: (value: number | null) => void; onCurrency: (value: ProcurementCurrencyCode) => void }) {
   return <div className="flex min-w-0"><Input id={id} className="h-9 min-w-0 rounded-r-none bg-white" inputMode="decimal" value={value ?? ''} onChange={(event) => onValue(numberOrNull(event.target.value))} /><Select value={currency} onValueChange={(value) => onCurrency(value as ProcurementCurrencyCode)}><SelectTrigger aria-label="Валюта" className="w-[92px] shrink-0 rounded-l-none border-l-0 bg-white data-[size=default]:h-9"><SelectValue /></SelectTrigger><SelectContent>{currencies.map((code) => <SelectItem key={code} value={code}>{currencySymbols[code]} {code}</SelectItem>)}</SelectContent></Select></div>
 }
@@ -708,8 +732,11 @@ function useRowForm(row: ProcurementRow, onError: (message: string) => void) {
   const initial = createForm(row)
   const [form, setForm] = useState(initial)
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  const saveStateRef = useRef(saveState)
   const savedRef = useRef(initial)
   const formRef = useRef(initial)
+  const saveTimerRef = useRef<number | null>(null)
+  const savePromiseRef = useRef<Promise<boolean> | null>(null)
 
   useEffect(() => {
     const next = createForm(row)
@@ -720,12 +747,18 @@ function useRowForm(row: ProcurementRow, onError: (message: string) => void) {
   }, [row])
 
   useEffect(() => { formRef.current = form }, [form])
+  useEffect(() => { saveStateRef.current = saveState }, [saveState])
 
-  useEffect(() => {
-    if (JSON.stringify(form) === JSON.stringify(savedRef.current)) return
-    const timer = window.setTimeout(async () => {
-      const snapshot = form
-      setSaveState('saving')
+  const saveNow = useCallback(async (snapshot = formRef.current) => {
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    if (JSON.stringify(snapshot) === JSON.stringify(savedRef.current)) return true
+    if (savePromiseRef.current) return savePromiseRef.current
+
+    setSaveState('saving')
+    const request = (async () => {
       try {
         const updated = await procurementsApi.updateProcurement(row.id, snapshot)
         const saved = createForm(updated)
@@ -737,20 +770,47 @@ function useRowForm(row: ProcurementRow, onError: (message: string) => void) {
         queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === updated.id ? updated : value))
         void queryClient.invalidateQueries({ queryKey: ['procurements'] })
         setSaveState('saved')
+        return true
       } catch (error) {
         setSaveState('error')
         onError(error instanceof ApiError ? error.message : t('updateError'))
+        return false
       }
+    })()
+    savePromiseRef.current = request
+    const succeeded = await request
+    if (savePromiseRef.current === request) savePromiseRef.current = null
+    return succeeded
+  }, [onError, queryClient, row.id, t])
+
+  const savePatch = useCallback((patch: Partial<UpdateProcurementRequest>) => {
+    const next = { ...formRef.current, ...patch }
+    formRef.current = next
+    setForm(next)
+    return saveNow(next)
+  }, [saveNow])
+
+  useEffect(() => {
+    if (JSON.stringify(form) === JSON.stringify(savedRef.current)) return
+    saveTimerRef.current = window.setTimeout(() => {
+      saveTimerRef.current = null
+      void saveNow()
     }, autoSaveDelayMs)
-    return () => window.clearTimeout(timer)
-  }, [form, onError, queryClient, row.id, t])
+    return () => {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+    }
+  }, [form, saveNow])
 
   useEffect(() => () => {
+    if (savePromiseRef.current || saveStateRef.current === 'error') return
     const snapshot = formRef.current
     if (JSON.stringify(snapshot) !== JSON.stringify(savedRef.current)) void procurementsApi.updateProcurement(row.id, snapshot)
   }, [row.id])
 
-  return { form, setForm, saveState, isDirty: JSON.stringify(form) !== JSON.stringify(savedRef.current) }
+  return { form, setForm, saveState, isDirty: JSON.stringify(form) !== JSON.stringify(savedRef.current), savePatch }
 }
 
 function SaveStateLabel({ state }: { state: SaveState }) {
@@ -764,9 +824,9 @@ function useAttachmentUrl(attachment: ProcurementAttachment) {
   return src
 }
 
-function AttachmentPreview({ attachment, onDelete }: { attachment: ProcurementAttachment; onDelete: () => void }) {
+function AttachmentPreview({ attachment, onDelete, sizeClass = 'size-16', hoverContent }: { attachment: ProcurementAttachment; onDelete: () => void; sizeClass?: string; hoverContent?: ReactNode }) {
   const src = useAttachmentUrl(attachment)
-  return <div className="relative size-16 shrink-0">{src && attachment.contentType.startsWith('image/') ? <a href={src} target="_blank" rel="noreferrer"><img src={src} alt="" className="size-16 rounded-lg border object-cover" /></a> : <div className="flex size-16 items-center justify-center rounded-lg border bg-muted"><FileText className="size-5 text-muted-foreground" /></div>}<Button type="button" variant="destructive" size="icon-xs" className="absolute -right-2 -top-2 size-6 rounded-full" onClick={onDelete}><X /></Button></div>
+  return <div className={`group relative ${sizeClass} shrink-0`}>{src && attachment.contentType.startsWith('image/') ? <a href={src} target="_blank" rel="noreferrer"><img src={src} alt="" className={`${sizeClass} rounded-lg border object-cover`} /></a> : <div className={`flex ${sizeClass} items-center justify-center rounded-lg border bg-muted`}><FileText className="size-5 text-muted-foreground" /></div>}{hoverContent ? <div className="pointer-events-none absolute inset-0 flex items-end justify-center rounded-lg bg-black/0 opacity-0 transition-[opacity,background-color] duration-150 group-hover:pointer-events-auto group-hover:bg-black/35 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:bg-black/35 group-focus-within:opacity-100">{hoverContent}</div> : null}<Button type="button" variant="ghost" size="icon-xs" className="absolute -right-2 -top-2 z-10 size-6 rounded-full bg-[#E5E7EB] text-[#667085] hover:bg-[#D1D5DB] hover:text-[#111827]" onClick={onDelete}><X /></Button></div>
 }
 
 function DetailShell({ title, group, children }: { title: string; group: OrderGroup; children: ReactNode }) {
@@ -811,23 +871,20 @@ function ProductImageEditor({ row, onError }: { row: ProcurementRow; onError: (m
     onSuccess: updateRow,
     onError: (error) => onError(error instanceof ApiError ? error.message : t('productImage.deleteError')),
   })
-  const clearSelection = () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
-    setPreviewUrl(null)
-    setFile(null)
-  }
   return (
-    <div className="mb-5 space-y-2">
-      <Label className="text-sm text-muted-foreground">{t('productImage.label')}</Label>
-      <div className="flex flex-wrap items-center gap-3">
-        {previewUrl
-          ? <img src={previewUrl} alt={t('productImage.previewAlt')} className="size-24 rounded-xl border bg-muted object-cover" />
-          : <ProductImage row={row} className="size-24" />}
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm">
+    <div className="group relative size-[220px] shrink-0">
+      <Label className="sr-only">{t('productImage.label')}</Label>
+      {previewUrl
+        ? <img src={previewUrl} alt={t('productImage.previewAlt')} className="size-[220px] rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] object-cover" />
+        : <ProductImage row={row} className="size-[220px] rounded-lg" />}
+      {!file && row.hasManualImage ? <Button type="button" variant="ghost" size="icon-xs" aria-label={t('productImage.delete')} title={t('productImage.delete')} className="absolute -right-2 -top-2 z-20 size-6 rounded-full bg-[#E5E7EB] text-[#667085] hover:bg-[#D1D5DB] hover:text-[#111827]" onClick={() => remove.mutate()} disabled={remove.isPending}>{remove.isPending ? <LoaderCircle className="size-3 animate-spin" /> : <X />}</Button> : null}
+      <div className={`absolute inset-0 flex items-end justify-center rounded-lg bg-black/0 opacity-0 transition-[opacity,background-color] duration-150 group-hover:bg-black/35 group-hover:opacity-100 group-focus-within:bg-black/35 group-focus-within:opacity-100 max-sm:bg-black/35 max-sm:opacity-100 ${upload.isPending ? 'pointer-events-auto bg-black/35 opacity-100' : 'pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto'}`}>
+        {upload.isPending
+          ? <span className="mb-2 flex h-8 items-center gap-1.5 text-xs text-white"><LoaderCircle className="size-3.5 animate-spin" />{t('uploading')}</span>
+          : <Button asChild type="button" variant="ghost" size="sm" className="mb-1 h-8 rounded-lg border-0 bg-transparent px-2 text-xs text-white shadow-none transition-[transform,background-color,color] duration-150 hover:scale-105 hover:bg-white hover:text-[#111827]">
             <label className="cursor-pointer">
               <ImagePlus />
-              {row.hasManualImage || file ? t('productImage.replace') : t('productImage.add')}
+              {row.hasManualImage ? t('productImage.replace') : t('productImage.add')}
               <input
                 type="file"
                 className="sr-only"
@@ -847,16 +904,12 @@ function ProductImageEditor({ row, onError }: { row: ProcurementRow; onError: (m
                   if (previewUrl) URL.revokeObjectURL(previewUrl)
                   setFile(selected)
                   setPreviewUrl(URL.createObjectURL(selected))
+                  upload.mutate(selected)
                 }}
               />
             </label>
-          </Button>
-          {file ? <Button size="sm" onClick={() => upload.mutate(file)} disabled={upload.isPending}>{upload.isPending ? t('uploading') : t('productImage.upload')}</Button> : null}
-          {file ? <Button variant="ghost" size="sm" onClick={clearSelection}>{t('cancel')}</Button> : null}
-          {!file && row.hasManualImage ? <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => remove.mutate()} disabled={remove.isPending}>{t('productImage.delete')}</Button> : null}
-        </div>
+          </Button>}
       </div>
-      <p className="text-xs text-muted-foreground">{t('productImage.hint')}</p>
     </div>
   )
 }
@@ -866,7 +919,7 @@ function ItemPurchaseEditor({ row }: { row: ProcurementRow }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [error, setError] = useState('')
-  const { form, setForm, saveState, isDirty } = useRowForm(row, setError)
+  const { saveState, isDirty, savePatch } = useRowForm(row, setError)
   const removeProcurement = useMutation({
     mutationFn: () => procurementsApi.deleteProcurement(row.id),
     onSuccess: () => {
@@ -876,10 +929,66 @@ function ItemPurchaseEditor({ row }: { row: ProcurementRow }) {
     },
     onError: () => setError(t('removeError')),
   })
+  const statusAction = useMutation({
+    mutationFn: (status: ProcurementStatus) => procurementsApi.transitionProcurement(row.id, { status }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === updated.id ? updated : value))
+      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
+      void queryClient.invalidateQueries({ queryKey: ['sales-orders'] })
+    },
+    onError: (mutationError) => setError(mutationError instanceof ApiError ? mutationError.message : t('board.moveError')),
+  })
   const receipt = row.attachments.find((attachment) => attachment.kind === 'Receipt')
+  const productUrl = safeProductUrl(row.productUrl)
   const upload = useMutation({ mutationFn: (file: File) => procurementsApi.uploadReceipt(row.id, file), onSuccess: (attachment) => queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === row.id ? { ...value, attachments: [...value.attachments.filter((item) => item.kind !== 'Receipt'), attachment] } : value)), onError: () => setError(t('uploadError')) })
   const remove = useMutation({ mutationFn: (attachmentId: string) => procurementsApi.deleteAttachment(row.id, attachmentId), onSuccess: (_, attachmentId) => queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === row.id ? { ...value, attachments: value.attachments.filter((item) => item.id !== attachmentId) } : value)), onError: () => setError(t('uploadError')) })
-  return <div className="rounded-xl border bg-card p-4 sm:p-5"><div className="mb-5 min-w-0"><h2 className="text-lg font-semibold">{productTitle(row)}</h2>{row.itemDescription && row.itemName !== productTitle(row) ? <p className="text-sm text-muted-foreground">{row.itemDescription}</p> : null}{row.productUrl ? <a href={row.productUrl} target="_blank" rel="noopener noreferrer" className="mt-1 flex items-center gap-1 text-sm text-primary"><span className="truncate">{compactProductUrl(row.productUrl)}</span><ExternalLink className="size-3.5" /></a> : null}<p className="mt-2 text-sm text-[#667085]">{t(`statuses.lifecycle.${row.status}`)}</p></div>{error ? <Alert variant="destructive" className="mb-4"><AlertDescription>{error}</AlertDescription></Alert> : null}<ProductImageEditor row={row} onError={setError} /><div className="grid gap-4 sm:grid-cols-2"><Field label={t('fields.purchaseUrl')} id="purchase-url"><Input id="purchase-url" className="h-9 bg-white" value={form.purchaseUrl ?? ''} onChange={(event) => setForm((value) => ({ ...value, purchaseUrl: emptyToNull(event.target.value) }))} /></Field><Field label={t('fields.purchasePrice')} id="purchase-price"><MoneyField id="purchase-price" value={form.purchasePrice} currency={form.purchaseCurrencyCode} onValue={(purchasePrice) => setForm((value) => ({ ...value, purchasePrice }))} onCurrency={(purchaseCurrencyCode) => setForm((value) => ({ ...value, purchaseCurrencyCode }))} /></Field><div className="space-y-2"><Label className="text-sm text-muted-foreground">{t('fields.receipt')}</Label><div className="flex items-center gap-3">{receipt ? <AttachmentPreview attachment={receipt} onDelete={() => remove.mutate(receipt.id)} /> : null}<Button asChild variant="outline" size="sm"><label className="cursor-pointer"><ImagePlus />{receipt ? t('replaceReceipt') : t('addReceipt')}<input type="file" className="sr-only" accept="image/*,application/pdf" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) upload.mutate(file) }} /></label></Button></div></div></div><div className="mt-5 flex flex-wrap items-center justify-between gap-3"><SaveStateLabel state={saveState} /><Button type="button" variant="destructive" disabled={removeProcurement.isPending || isDirty || saveState === 'saving'} onClick={() => { if (window.confirm(t('removeConfirm'))) removeProcurement.mutate() }}><Trash2 />{removeProcurement.isPending ? t('removing') : t('removeFromProcurement')}</Button></div></div>
+  return <section className="relative flex min-w-0 flex-col rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-[0_1px_2px_rgba(16,24,40,0.03)]">
+    <Button type="button" variant="ghost" size="icon" aria-label={t('removeFromProcurement')} title={removeProcurement.isPending ? t('removing') : t('removeFromProcurement')} className="absolute right-3 top-3 z-10 size-8 rounded-lg text-[#667085] hover:bg-red-50 hover:text-red-600 sm:right-4 sm:top-4" disabled={removeProcurement.isPending || isDirty || saveState === 'saving'} onClick={() => { if (window.confirm(t('removeConfirm'))) removeProcurement.mutate() }}>
+      {removeProcurement.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+    </Button>
+    <div className="flex min-w-0 flex-col items-start gap-4 sm:flex-row">
+      <ProductImageEditor row={row} onError={setError} />
+      <div className="grid min-w-0 flex-1 gap-4 pt-1 pr-9">
+        <div className="min-w-0 space-y-1.5">
+          <Label className="text-sm text-muted-foreground">{t('fields.purchaseUrl')}</Label>
+          <InlinePurchaseUrl value={row.purchaseUrl} disabled={saveState === 'saving'} onSave={(purchaseUrl) => savePatch({ purchaseUrl })} onEditStart={() => setError('')} />
+        </div>
+        <div className="min-w-0 space-y-1.5">
+          <Label className="text-sm text-muted-foreground">{t('fields.purchasePrice')}</Label>
+          <InlinePurchasePrice value={row.purchasePrice} currency={row.purchaseCurrencyCode ?? 'JPY'} disabled={saveState === 'saving'} onSave={(purchasePrice, purchaseCurrencyCode) => savePatch({ purchasePrice, purchaseCurrencyCode })} onEditStart={() => setError('')} />
+        </div>
+        <div className="min-w-0 space-y-2">
+          <div className="flex min-w-0 items-center gap-3">
+            {receipt ? <AttachmentPreview attachment={receipt} sizeClass="size-20" onDelete={() => remove.mutate(receipt.id)} hoverContent={<Button asChild type="button" variant="ghost" size="sm" className="h-8 rounded-lg border-0 bg-transparent px-2 text-xs text-white shadow-none transition-[transform,background-color,color] duration-150 hover:scale-105 hover:bg-white hover:text-[#111827]"><label className="cursor-pointer"><ImagePlus />{t('replaceReceipt')}<input type="file" className="sr-only" accept="image/*,application/pdf" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) upload.mutate(file) }} /></label></Button>} /> : <Button asChild type="button" variant="ghost" size="sm" className="h-8 rounded-lg border-0 bg-transparent px-2 text-xs shadow-none hover:bg-transparent"><label className="cursor-pointer"><ImagePlus />{t('addReceipt')}<input type="file" className="sr-only" accept="image/*,application/pdf" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) upload.mutate(file) }} /></label></Button>}
+          </div>
+        </div>
+        {row.itemDescription && row.itemName !== productTitle(row) ? <p className="mt-1 break-words text-sm leading-5 text-[#667085]">{row.itemDescription}</p> : null}
+        {productUrl ? <a href={productUrl.href} target="_blank" rel="noopener noreferrer" title={row.productUrl ?? undefined} className="mt-2 flex min-w-0 items-center gap-1 text-xs text-[#667085] hover:text-[#111827] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="truncate">{compactProductUrl(row.productUrl!)}</span><ExternalLink className="size-3 shrink-0" /></a> : null}
+      </div>
+    </div>
+    <div className="mt-12">
+      <LifecycleProgressStepper row={row} compact />
+    </div>
+    {error ? <Alert variant="destructive" className="mt-4"><AlertDescription>{error}</AlertDescription></Alert> : null}
+    <div className="mt-auto pt-4">
+      <div className="space-y-2">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#667085]">Этапы</h3>
+        <ul className="space-y-1.5">
+          {['purchase', 'receiveOrigin', 'sendTransit', 'receiveTransit', 'sendMoscow', 'receiveMoscow', 'sendCustomer'].map((task, index) => {
+            const completedCount = completedTodoCount[row.status]
+            const complete = index < completedCount
+            const active = index === completedCount && completedCount < 7
+            return <li key={task} aria-current={active ? 'step' : undefined} className={`flex min-w-0 items-center gap-2 text-xs ${active ? 'font-medium text-[#344054]' : complete ? 'text-[#9CA3AF]' : 'text-[#B8BEC8]'}`}>
+              <span aria-hidden="true" className={`flex size-4 shrink-0 items-center justify-center rounded-full ${complete ? 'bg-emerald-600 text-white' : active ? 'border-2 border-blue-500 bg-blue-50' : 'border border-[#E5E7EB]'}`}>{complete ? <Check className="size-2.5" strokeWidth={3} /> : active ? <span className="size-1.5 rounded-full bg-blue-600" /> : null}</span>
+              <span className="min-w-0 flex-1">{t(`purchaseTodo.${task}`)}</span>
+              {task === 'purchase' && row.status === 'Purchased' ? <button type="button" className="shrink-0 whitespace-nowrap bg-transparent px-0 text-[10px] font-medium text-[#111827] hover:underline disabled:opacity-50" disabled={statusAction.isPending} onClick={() => statusAction.mutate('RequiredPurchase')}>{t('actions.undoPurchase')}</button> : null}
+            </li>
+          })}
+        </ul>
+        {row.nextStatus ? <div className="flex justify-end pt-2"><Button type="button" className="h-10 rounded-lg bg-[#111827] px-3 text-xs font-medium text-white hover:bg-slate-700" disabled={statusAction.isPending} onClick={() => statusAction.mutate(row.nextStatus!)}>{statusAction.isPending ? <LoaderCircle className="size-3.5 animate-spin" /> : null}{statusAction.isPending ? t('board.updating') : row.nextStatus === 'Purchased' ? t('purchaseTodo.purchase') : t(`actions.${row.nextStatus}`)}</Button></div> : null}
+      </div>
+    </div>
+  </section>
 }
 
 function WarehouseEditor({ row }: { row: ProcurementRow }) {
@@ -909,20 +1018,6 @@ function CompletedSummary({ group }: { group: OrderGroup }) {
   return <div className="rounded-xl border bg-card p-4"><div className="space-y-3">{group.rows.map((row, index) => <OrderItemPreview key={row.id} row={row} position={index + 1} total={group.rows.length} />)}</div><div className="mt-4 grid gap-2 border-t pt-4 text-sm sm:grid-cols-2"><p><span className="text-muted-foreground">{t('fields.shippingMethod')}:</span> {group.rows.find((row) => row.shippingMethod)?.shippingMethod ?? '—'}</p><p><span className="text-muted-foreground">{t('fields.shippingTrackingNumber')}:</span> {group.rows.find((row) => row.shippingTrackingNumber)?.shippingTrackingNumber ?? '—'}</p><p><span className="text-muted-foreground">{t('board.delivered')}:</span> {group.rows.find((row) => row.shippedAt)?.shippedAt ?? '—'}</p></div></div>
 }
 
-function ProcurementErrorHistory({ procurementId }: { procurementId: string }) {
-  const { t } = useTranslation('procurements')
-  const queryClient = useQueryClient()
-  const query = useQuery({ queryKey: ['procurement-errors', procurementId], queryFn: ({ signal }) => procurementsApi.getProcurementErrors(procurementId, signal) })
-  const resolve = useMutation({
-    mutationFn: procurementsApi.resolveProcurementError,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['procurement-errors', procurementId] })
-      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
-    },
-  })
-  return <section className="rounded-xl border bg-card p-4"><h2 className="mb-3 font-semibold">{t('board.issueHistory')}</h2>{query.isLoading ? <Skeleton className="h-16 w-full" /> : query.isError ? <Alert variant="destructive"><AlertDescription>{t('board.errorsLoadFailed')}</AlertDescription></Alert> : query.data?.length ? <div className="space-y-3">{query.data.map((issue) => <div key={issue.id} className="flex flex-col gap-2 rounded-lg bg-muted/40 p-3 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><p className="whitespace-pre-wrap text-sm">{issue.text}</p><p className="mt-1 text-xs text-muted-foreground">{t(`statuses.lifecycle.${issue.statusAtCreation}`)} · {new Date(issue.createdAt).toLocaleString()}</p>{issue.isResolved ? <Badge variant="outline" className="mt-2">{t('board.resolved')}</Badge> : issue.isBlocking ? <Badge variant="destructive" className="mt-2">{t('board.blockingIssue')}</Badge> : null}</div>{!issue.isResolved ? <Button size="sm" variant="outline" disabled={resolve.isPending} onClick={() => resolve.mutate(issue.id)}>{t('board.resolveIssue')}</Button> : null}</div>)}</div> : <p className="text-sm text-muted-foreground">{t('board.noIssues')}</p>}</section>
-}
-
 export function ProcurementItemDetailPage() {
   const { t } = useTranslation('procurements')
   const { procurementId } = useParams()
@@ -931,22 +1026,21 @@ export function ProcurementItemDetailPage() {
   const group = query.data ? groupOrders(query.data).find((value) => value.orderId === row?.orderId) : undefined
   if (query.isLoading) return <Skeleton className="h-96 w-full rounded-xl" />
   if (!row || !group) return <Alert variant="destructive"><AlertDescription>{t('board.notFound')}</AlertDescription></Alert>
-  return <DetailShell title={t('board.itemCard')} group={group}><p className="text-sm text-muted-foreground">{t('board.position', { current: group.rows.findIndex((value) => value.id === row.id) + 1, total: group.rows.length })}</p><ItemPurchaseEditor row={row} /><UndoPurchaseAction row={row} /><ProcurementErrorHistory procurementId={row.id} /></DetailShell>
-}
-
-function UndoPurchaseAction({ row }: { row: ProcurementRow }) {
-  const { t } = useTranslation('procurements')
-  const queryClient = useQueryClient()
-  const undo = useMutation({
-    mutationFn: () => procurementsApi.transitionProcurement(row.id, { status: 'RequiredPurchase' }),
-    onSuccess: (updated) => {
-      queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === updated.id ? updated : value))
-      void queryClient.invalidateQueries({ queryKey: ['procurements'] })
-      void queryClient.invalidateQueries({ queryKey: ['sales-orders'] })
-    },
-  })
-  if (row.status !== 'Purchased') return null
-  return <div className="flex flex-wrap items-center justify-end gap-2">{undo.isError ? <p role="alert" className="text-sm text-destructive">{undo.error instanceof ApiError ? undo.error.message : t('board.moveError')}</p> : null}<Button variant="outline" disabled={undo.isPending} onClick={() => undo.mutate()}><RotateCcw />{t('actions.undoPurchase')}</Button></div>
+  return <div className="mx-auto w-full max-w-7xl space-y-5">
+    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+      <Button asChild variant="ghost" className="-ml-2 h-9 shrink-0 rounded-lg px-2 text-sm text-[#667085] hover:text-[#111827]"><Link to="/admin/procurements"><ArrowLeft />{t('board.back')}</Link></Button>
+      <header className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+        <OrderBadge group={group} className="text-[25px] font-thin leading-8" />
+        <h1 className="min-w-0 break-words text-2xl font-medium tracking-tight text-[#111827]">{productTitle(row)}</h1>
+      </header>
+    </div>
+    <div className="grid min-w-0 items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="min-w-0 space-y-4">
+        <ItemPurchaseEditor row={row} />
+      </div>
+      <ProcurementCommentsChat procurementId={row.id} variant="embedded" composerSize="comfortable" />
+    </div>
+  </div>
 }
 
 export function ProcurementOrderDetailPage() {
