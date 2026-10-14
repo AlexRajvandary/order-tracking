@@ -13,6 +13,7 @@ namespace Products.Api.Controllers;
 public sealed class CatalogStateController : ControllerBase
 {
     private const string VisitorHeader = "X-Catalog-Visitor";
+    private const string VisitorKeyIsRequiredMessage = "A visitor key is required.";
     private readonly ProductsDbContext _db;
     private readonly IRakutenCatalogClient _rakuten;
 
@@ -27,12 +28,19 @@ public sealed class CatalogStateController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<CartItemDto>>> Cart(CancellationToken cancellationToken)
     {
         var owner = ResolveOwner();
-        if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
+
+        if (owner is null)
+        {
+            return BadRequest(new ProblemDetails { Detail = VisitorKeyIsRequiredMessage });
+        }
+
         var rows = await OwnedBy(_db.CatalogCartItems.AsNoTracking()
             .Include(x => x.Product), owner.Value)
             .OrderByDescending(x => x.UpdatedAt).ToListAsync(cancellationToken);
+
         var external = await OwnedBy(_db.ExternalProductCartItems.AsNoTracking(), owner.Value)
             .OrderByDescending(x => x.UpdatedAt).ToListAsync(cancellationToken);
+
         return Ok(rows.Select(MapCart).Concat(external.Select(MapExternalCart)).OrderByDescending(x => x.UpdatedAt).ToList());
     }
 
@@ -41,7 +49,7 @@ public sealed class CatalogStateController : ControllerBase
     public async Task<ActionResult<CartItemDto>> SetCart(Guid productId, SetCartItemRequest request, CancellationToken cancellationToken)
     {
         var owner = ResolveOwner();
-        if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
+        if (owner is null) return BadRequest(new ProblemDetails { Detail = VisitorKeyIsRequiredMessage });
         var product = await _db.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Id == productId && x.IsActive, cancellationToken);
         if (product is null) return NotFound();
         var selectedColor = NormalizeOption(request.SelectedColor, 200);
@@ -82,7 +90,7 @@ public sealed class CatalogStateController : ControllerBase
     public async Task<ActionResult<CartItemDto>> SetRakutenCart(SetExternalCartItemRequest request, CancellationToken cancellationToken)
     {
         var owner = ResolveOwner();
-        if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
+        if (owner is null) return BadRequest(new ProblemDetails { Detail = VisitorKeyIsRequiredMessage });
         if (string.IsNullOrWhiteSpace(request.ExternalId)) return BadRequest(new ProblemDetails { Detail = "externalId is required." });
         var row = await OwnedBy(_db.ExternalProductCartItems.Where(x => x.Source == "Rakuten"
             && x.ExternalId == request.ExternalId), owner.Value).SingleOrDefaultAsync(cancellationToken);
@@ -124,7 +132,7 @@ public sealed class CatalogStateController : ControllerBase
     public async Task<IActionResult> ClearCart(CancellationToken cancellationToken)
     {
         var owner = ResolveOwner();
-        if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
+        if (owner is null) return BadRequest(new ProblemDetails { Detail = VisitorKeyIsRequiredMessage });
         await OwnedBy(_db.CatalogCartItems, owner.Value).ExecuteDeleteAsync(cancellationToken);
         await OwnedBy(_db.ExternalProductCartItems, owner.Value).ExecuteDeleteAsync(cancellationToken);
         return NoContent();
@@ -135,7 +143,7 @@ public sealed class CatalogStateController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<Guid>>> Favorites(CancellationToken cancellationToken)
     {
         var owner = ResolveOwner();
-        if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
+        if (owner is null) return BadRequest(new ProblemDetails { Detail = VisitorKeyIsRequiredMessage });
         return Ok(await OwnedBy(_db.CatalogFavorites.AsNoTracking(), owner.Value)
             .Select(x => x.ProductId).ToListAsync(cancellationToken));
     }
@@ -145,7 +153,7 @@ public sealed class CatalogStateController : ControllerBase
     public async Task<IActionResult> ClearFavorites(CancellationToken cancellationToken)
     {
         var owner = ResolveOwner();
-        if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
+        if (owner is null) return BadRequest(new ProblemDetails { Detail = VisitorKeyIsRequiredMessage });
         await OwnedBy(_db.CatalogFavorites, owner.Value)
             .ExecuteDeleteAsync(cancellationToken);
         return NoContent();
@@ -156,7 +164,7 @@ public sealed class CatalogStateController : ControllerBase
     public async Task<IActionResult> SetFavorite(Guid productId, SetFavoriteRequest request, CancellationToken cancellationToken)
     {
         var owner = ResolveOwner();
-        if (owner is null) return BadRequest(new ProblemDetails { Detail = "A visitor key is required." });
+        if (owner is null) return BadRequest(new ProblemDetails { Detail = VisitorKeyIsRequiredMessage });
         if (request.Favorite && !await _db.Products.AnyAsync(x => x.Id == productId && x.IsActive, cancellationToken))
             return NotFound();
         var row = await OwnedBy(_db.CatalogFavorites.Where(x => x.ProductId == productId), owner.Value)

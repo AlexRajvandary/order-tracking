@@ -4,19 +4,17 @@ using Products.Domain.Entities;
 
 namespace Products.Infrastructure.Persistence.Repositories;
 
-public sealed class ShopRepository : IShopRepository
+public sealed class ShopRepository(ProductsDbContext db) : IShopRepository
 {
-    private readonly ProductsDbContext _db;
+    public void Add(Shop shop) => db.Shops.Add(shop);
 
-    public ShopRepository(ProductsDbContext db) => _db = db;
-
-    public async Task<IReadOnlyList<Shop>> ListAsync(
-        bool activeOnly,
-        CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Shop>> ListAsync(bool activeOnly, CancellationToken cancellationToken = default)
     {
-        var query = _db.Shops.AsQueryable();
+        var query = db.Shops.AsQueryable();
         if (activeOnly)
+        {
             query = query.Where(s => s.IsActive);
+        }
 
         return await query
             .OrderBy(s => s.SortOrder)
@@ -25,10 +23,8 @@ public sealed class ShopRepository : IShopRepository
     }
 
     public Task<Shop?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
-        _db.Shops.FirstOrDefaultAsync(s => s.Slug == slug, cancellationToken);
+        db.Shops.FirstOrDefaultAsync(s => s.Slug == slug, cancellationToken);
 
     public Task<Shop?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _db.Shops.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
-
-    public void Add(Shop shop) => _db.Shops.Add(shop);
+        db.Shops.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 }

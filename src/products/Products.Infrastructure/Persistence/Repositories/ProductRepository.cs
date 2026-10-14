@@ -7,7 +7,7 @@ using Products.Application.Products.Models;
 
 namespace Products.Infrastructure.Persistence.Repositories;
 
-public sealed class ProductRepository : IProductRepository
+public sealed class ProductRepository(ProductsDbContext db, IMemoryCache cache) : IProductRepository
 {
     private static readonly TimeSpan MixedCandidatesCacheDuration = TimeSpan.FromMinutes(5);
 
@@ -15,21 +15,14 @@ public sealed class ProductRepository : IProductRepository
 
     private static long _mixedCandidatesCacheVersion;
 
-    private readonly ProductsDbContext _db;
+    private readonly ProductsDbContext _db = db;
 
-    private readonly IMemoryCache _cache;
+    private readonly IMemoryCache _cache = cache;
 
-    public ProductRepository(ProductsDbContext db, IMemoryCache cache)
-    {
-        _db = db;
-        _cache = cache;
-    }
-
-    public async Task<(IReadOnlyDictionary<Guid, int> ByCategory, int Total)> CountByCategoryAsync(
-        bool? activeOnly,
-        CancellationToken cancellationToken = default)
+    public async Task<(IReadOnlyDictionary<Guid, int> ByCategory, int Total)> CountByCategoryAsync(bool? activeOnly, CancellationToken cancellationToken = default)
     {
         var query = _db.Products.AsNoTracking().AsQueryable();
+
         if (activeOnly.HasValue)
         {
             query = query.Where(product => product.IsActive == activeOnly.Value);
@@ -48,52 +41,24 @@ public sealed class ProductRepository : IProductRepository
     }
 
     public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _db.Products
-            .Include(p => p.Shop)
-            .Include(p => p.BrandEntity)
-            .Include(p => p.Category)
-            .Include(p => p.LaptopSpecification)
-            .Include(p => p.TcgCardSpecification)!
-                .ThenInclude(x => x!.Characters)
-                    .ThenInclude(x => x.Character)
-                        .ThenInclude(x => x.OnePieceSpecification)
-            .Include(p => p.TcgCardSpecification)!
-                .ThenInclude(x => x!.YuGiOhSpecification)
-                    .ThenInclude(x => x!.Set)
-            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+        WithDetails().FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
     public Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
-        _db.Products
-            .Include(p => p.Shop)
-            .Include(p => p.BrandEntity)
-            .Include(p => p.Category)
-            .Include(p => p.LaptopSpecification)
-            .Include(p => p.TcgCardSpecification)!
-                .ThenInclude(x => x!.Characters)
-                    .ThenInclude(x => x.Character)
-                        .ThenInclude(x => x.OnePieceSpecification)
-            .Include(p => p.TcgCardSpecification)!
-                .ThenInclude(x => x!.YuGiOhSpecification)
-                    .ThenInclude(x => x!.Set)
-            .FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
+        WithDetails().FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
 
-    public Task<bool> IsSlugTakenAsync(
-        string slug,
-        Guid? excludeId = null,
-        CancellationToken cancellationToken = default)
+    public Task<bool> IsSlugTakenAsync(string slug, Guid? excludeId = null, CancellationToken cancellationToken = default)
     {
-        var query = _db.Products.Where(p => p.Slug == slug);
+        var query = _db.Products.Where(product => product.Slug == slug);
+
         if (excludeId is not null)
         {
-            query = query.Where(p => p.Id != excludeId);
+            query = query.Where(product => product.Id != excludeId);
         }
 
         return query.AnyAsync(cancellationToken);
     }
 
-    public Task<bool> IsSkuTakenAsync(
-        string sku,
-        CancellationToken cancellationToken = default) =>
+    public Task<bool> IsSkuTakenAsync(string sku, CancellationToken cancellationToken = default) =>
         _db.Products.AnyAsync(p => p.Sku == sku, cancellationToken);
 
     public async Task<(IReadOnlyList<Product> Items, int Total)> SearchAsync(
@@ -138,7 +103,9 @@ public sealed class ProductRepository : IProductRepository
             cancellationToken);
 
         if (genders is { Count: > 0 })
+        {
             query = query.Where(product => product.Gender.HasValue && genders.Contains(product.Gender.Value));
+        }
 
         query = ApplyLaptopFilters(query, laptopFilters);
         query = ApplyTcgFilters(query, tcgCharacters, tcgSets, tcgRarities, tcgCrews);
@@ -996,6 +963,20 @@ public sealed class ProductRepository : IProductRepository
         }
         return ids.ToList();
     }
+
+    private IQueryable<Product> WithDetails() =>
+   _db.Products
+       .Include(p => p.Shop)
+       .Include(p => p.BrandEntity)
+       .Include(p => p.Category)
+       .Include(p => p.LaptopSpecification)
+       .Include(p => p.TcgCardSpecification)!
+           .ThenInclude(x => x!.Characters)
+               .ThenInclude(x => x.Character)
+                   .ThenInclude(x => x.OnePieceSpecification)
+       .Include(p => p.TcgCardSpecification)!
+           .ThenInclude(x => x!.YuGiOhSpecification)
+               .ThenInclude(x => x!.Set);
 
     private static void InvalidateMixedCandidatesCache() =>
         Interlocked.Increment(ref _mixedCandidatesCacheVersion);

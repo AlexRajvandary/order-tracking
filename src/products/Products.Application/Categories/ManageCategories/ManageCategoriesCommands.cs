@@ -135,7 +135,7 @@ public sealed class DeleteCategoryCommandHandler : IRequestHandler<DeleteCategor
             ?? throw new NotFoundException($"Category {request.Id} was not found.");
         var subtree = await _categories.ListSubtreeAsync(request.Id, cancellationToken);
         var movedProducts = await _products.ReassignCategoryAsync(
-            subtree.Select(x => x.Id).ToList(),
+            subtree.Select(category => category.Id).ToList(),
             category.ParentId,
             cancellationToken);
         foreach (var subtreeCategory in subtree)

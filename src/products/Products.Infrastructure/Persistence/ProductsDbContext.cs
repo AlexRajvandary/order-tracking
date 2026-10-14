@@ -3,71 +3,67 @@ using Products.Domain.Entities;
 
 namespace Products.Infrastructure.Persistence;
 
-public sealed class ProductsDbContext : DbContext
+public sealed class ProductsDbContext(DbContextOptions<ProductsDbContext> options) : DbContext(options)
 {
-    public ProductsDbContext(DbContextOptions<ProductsDbContext> options) : base(options)
-    {
-    }
-
-    public DbSet<Product> Products => Set<Product>();
+    public DbSet<Brand> Brands => Set<Brand>();
 
     public DbSet<CatalogAnalyticsSnapshot> CatalogAnalyticsSnapshots => Set<CatalogAnalyticsSnapshot>();
 
-    public DbSet<ProductAuditLog> ProductAuditLogs => Set<ProductAuditLog>();
-
-    public DbSet<Category> Categories => Set<Category>();
-
-    public DbSet<Brand> Brands => Set<Brand>();
-
-    public DbSet<Shop> Shops => Set<Shop>();
-
-    public DbSet<CrawlerJob> CrawlerJobs => Set<CrawlerJob>();
-
-    public DbSet<CrawlerJobLog> CrawlerJobLogs => Set<CrawlerJobLog>();
-
-    public DbSet<StorefrontAnnouncement> StorefrontAnnouncements => Set<StorefrontAnnouncement>();
-
     public DbSet<CatalogCartItem> CatalogCartItems => Set<CatalogCartItem>();
-
-    public DbSet<ExternalProductCartItem> ExternalProductCartItems => Set<ExternalProductCartItem>();
 
     public DbSet<CatalogFavorite> CatalogFavorites => Set<CatalogFavorite>();
 
-    public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+    public DbSet<Category> Categories => Set<Category>();
 
-    public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+    public DbSet<CrawlerJobLog> CrawlerJobLogs => Set<CrawlerJobLog>();
+
+    public DbSet<CrawlerJob> CrawlerJobs => Set<CrawlerJob>();
+
+    public DbSet<ExternalProductCartItem> ExternalProductCartItems => Set<ExternalProductCartItem>();
+
+    public DbSet<ImageImportJobItem> ImageImportJobItems => Set<ImageImportJobItem>();
+
+    public DbSet<ImageImportJob> ImageImportJobs => Set<ImageImportJob>();
+
+    public DbSet<LaptopSpecification> LaptopSpecifications => Set<LaptopSpecification>();
+
+    public DbSet<OnePieceCharacterSpecification> OnePieceCharacterSpecifications => Set<OnePieceCharacterSpecification>();
+
+    public DbSet<ProductAuditLog> ProductAuditLogs => Set<ProductAuditLog>();
 
     public DbSet<ProductColor> ProductColors => Set<ProductColor>();
 
-    public DbSet<ProductSize> ProductSizes => Set<ProductSize>();
+    public DbSet<ProductImage> ProductImages => Set<ProductImage>();
 
     public DbSet<ProductMedia> ProductMedia => Set<ProductMedia>();
 
+    public DbSet<Product> Products => Set<Product>();
+
+    public DbSet<ProductSize> ProductSizes => Set<ProductSize>();
+
     public DbSet<ProductSourceDetail> ProductSourceDetails => Set<ProductSourceDetail>();
 
-    public DbSet<LaptopSpecification> LaptopSpecifications => Set<LaptopSpecification>();
+    public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+
+    public DbSet<Shop> Shops => Set<Shop>();
+
+    public DbSet<StorefrontAnnouncement> StorefrontAnnouncements => Set<StorefrontAnnouncement>();
+
+    public DbSet<TcgCardCharacter> TcgCardCharacters => Set<TcgCardCharacter>();
 
     public DbSet<TcgCardSpecification> TcgCardSpecifications => Set<TcgCardSpecification>();
 
     public DbSet<TcgCharacter> TcgCharacters => Set<TcgCharacter>();
 
-    public DbSet<TcgCardCharacter> TcgCardCharacters => Set<TcgCardCharacter>();
+    public DbSet<TranslationJobBatch> TranslationJobBatches => Set<TranslationJobBatch>();
 
-    public DbSet<OnePieceCharacterSpecification> OnePieceCharacterSpecifications => Set<OnePieceCharacterSpecification>();
+    public DbSet<TranslationJobItem> TranslationJobItems => Set<TranslationJobItem>();
+
+    public DbSet<TranslationJob> TranslationJobs => Set<TranslationJob>();
 
     public DbSet<YuGiOhCardSpecification> YuGiOhCardSpecifications => Set<YuGiOhCardSpecification>();
 
     public DbSet<YuGiOhSet> YuGiOhSets => Set<YuGiOhSet>();
-
-    public DbSet<ImageImportJob> ImageImportJobs => Set<ImageImportJob>();
-
-    public DbSet<ImageImportJobItem> ImageImportJobItems => Set<ImageImportJobItem>();
-
-    public DbSet<TranslationJob> TranslationJobs => Set<TranslationJob>();
-
-    public DbSet<TranslationJobItem> TranslationJobItems => Set<TranslationJobItem>();
-
-    public DbSet<TranslationJobBatch> TranslationJobBatches => Set<TranslationJobBatch>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

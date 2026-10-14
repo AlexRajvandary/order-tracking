@@ -4,31 +4,28 @@ using Products.Domain.Entities;
 
 namespace Products.Infrastructure.Persistence.Repositories;
 
-public sealed class BrandRepository : IBrandRepository
+public sealed class BrandRepository(ProductsDbContext db) : IBrandRepository
 {
-    private readonly ProductsDbContext _db;
+    public void Add(Brand brand) => db.Brands.Add(brand);
 
-    public BrandRepository(ProductsDbContext db) => _db = db;
-
-    public async Task<IReadOnlyList<Brand>> ListAsync(
-        bool activeOnly,
-        CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Brand>> ListAsync(bool activeOnly, CancellationToken cancellationToken = default)
     {
-        var query = _db.Brands.AsQueryable();
+        var query = db.Brands.AsQueryable();
+
         if (activeOnly)
-            query = query.Where(b => b.IsActive);
+        {
+            query = query.Where(brand => brand.IsActive);
+        }
 
         return await query
-            .OrderBy(b => b.SortOrder)
-            .ThenBy(b => b.Name)
+            .OrderBy(brand => brand.SortOrder)
+            .ThenBy(brand => brand.Name)
             .ToListAsync(cancellationToken);
     }
 
-    public Task<Brand?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
-        _db.Brands.FirstOrDefaultAsync(b => b.Slug == slug, cancellationToken);
-
     public Task<Brand?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _db.Brands.FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
+       db.Brands.FirstOrDefaultAsync(brand => brand.Id == id, cancellationToken);
 
-    public void Add(Brand brand) => _db.Brands.Add(brand);
+    public Task<Brand?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
+        db.Brands.FirstOrDefaultAsync(brand => brand.Slug == slug, cancellationToken);
 }
