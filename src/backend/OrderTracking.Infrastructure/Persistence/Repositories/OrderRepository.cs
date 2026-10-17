@@ -39,7 +39,7 @@ public sealed class OrderRepository : IOrderRepository
         _db.Orders.AnyAsync(o => o.Id == id, cancellationToken);
 
     public Task<bool> ExistsByTrackingCodeAsync(string trackingCode, CancellationToken cancellationToken = default) =>
-        _db.Orders.AnyAsync(o => o.TrackingCode == trackingCode, cancellationToken);
+        _db.Orders.AnyAsync(o => o.TrackingCode == trackingCode && !o.IsSalesOrderWorkspace, cancellationToken);
 
     public Task<Order?> GetByIdTrackedAsync(Guid id, CancellationToken cancellationToken = default) =>
         _db.Orders.FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
@@ -86,7 +86,7 @@ public sealed class OrderRepository : IOrderRepository
     public Task<bool> IsActiveTrackingCodeTakenAsync(
         string trackingCode,
         CancellationToken cancellationToken = default) =>
-        _db.Orders.AnyAsync(o => o.TrackingCode == trackingCode, cancellationToken);
+        _db.Orders.AnyAsync(o => o.TrackingCode == trackingCode && !o.IsSalesOrderWorkspace, cancellationToken);
 
     public Task<OrderDetailsRow?> GetDetailsByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         _db.Orders

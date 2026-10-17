@@ -537,7 +537,7 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TrackingCode")
                         .IsUnique()
-                        .HasFilter("\"IsDeleted\" = false");
+                        .HasFilter("\"IsDeleted\" = false AND \"IsSalesOrderWorkspace\" = false");
 
                     b.HasIndex("UpdatedAt")
                         .HasFilter("\"IsDeleted\" = false");

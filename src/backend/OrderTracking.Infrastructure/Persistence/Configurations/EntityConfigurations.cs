@@ -175,7 +175,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         builder.HasIndex(e => e.TrackingCode)
             .IsUnique()
-            .HasFilter("\"IsDeleted\" = false");
+            .HasFilter("\"IsDeleted\" = false AND \"IsSalesOrderWorkspace\" = false");
 
         builder.HasIndex(e => e.CustomerId)
             .HasFilter("\"IsDeleted\" = false");

@@ -15,7 +15,6 @@ namespace OrderTracking.Api.Controllers;
 [Authorize(Roles = "Moderator,Admin,SuperAdmin")]
 public sealed class SalesOrdersController(
     ApplicationDbContext db,
-    ITrackingCodeGenerator trackingCodes,
     IObjectStorage objectStorage) : ControllerBase
 {
     [HttpGet]
@@ -93,15 +92,12 @@ public sealed class SalesOrdersController(
 
         var orderId = Guid.NewGuid();
         var now = DateTimeOffset.UtcNow;
-        // Keep a private tracking code for the editable workspace row. The public order uses the
-        // original request code, which remains stable for customer tracking after conversion.
-        var trackingCode = await GenerateTrackingCodeAsync(cancellationToken);
         var workspaceId = Guid.NewGuid();
         var copiedObjectKeys = new List<string>();
         var workspace = new Order
         {
             Id = workspaceId,
-            TrackingCode = trackingCode,
+            TrackingCode = source.TrackingCode,
             CustomerId = source.CustomerId,
             DeliveryAddressId = source.DeliveryAddressId,
             DeliveryCity = source.DeliveryCity,
@@ -283,17 +279,6 @@ public sealed class SalesOrdersController(
             catch { /* The soft-deleted order remains recoverable if object cleanup needs retrying. */ }
         }
         return NoContent();
-    }
-
-    private async Task<string> GenerateTrackingCodeAsync(CancellationToken cancellationToken)
-    {
-        for (var attempt = 0; attempt < 10; attempt++)
-        {
-            var code = trackingCodes.Generate();
-            var exists = await db.Orders.IgnoreQueryFilters().AnyAsync(value => value.TrackingCode == code, cancellationToken);
-            if (!exists) return code;
-        }
-        throw new InvalidOperationException("Could not generate a unique tracking code for the order.");
     }
 
     private Guid? GetAuthorId()
