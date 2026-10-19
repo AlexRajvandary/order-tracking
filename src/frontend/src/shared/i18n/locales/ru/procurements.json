@@ -139,13 +139,13 @@
     "AwaitingWarehouse": "На склад",
     "AtOriginWarehouse": "Поступил",
     "AwaitingTransitShipment": "Транзит",
-    "SentToTransit": "Отправить",
-    "ArrivedTransitCountry": "Подтвердить прибытие",
+    "SentToTransit": "Отправлен",
+    "ArrivedTransitCountry": "Получен",
     "AwaitingMoscowShipment": "Подготовить отправку в Москву",
-    "SentToMoscow": "Отправлен в Москву",
-    "ArrivedMoscow": "Прибыл в Москву",
+    "SentToMoscow": "Отправлен",
+    "ArrivedMoscow": "Получен в Москве",
     "AwaitingCustomerShipment": "Подготовить доставку клиенту",
-    "HandedToDelivery": "Передан в доставку",
+    "HandedToDelivery": "Отправлен клиенту",
     "Delivered": "Доставлен"
   },
   "purchaseTodo": {

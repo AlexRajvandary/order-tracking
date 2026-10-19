@@ -139,13 +139,13 @@
     "AwaitingWarehouse": "Send to warehouse",
     "AtOriginWarehouse": "Received at warehouse",
     "AwaitingTransitShipment": "Prepare transit shipment",
-    "SentToTransit": "Shipped to transit country",
-    "ArrivedTransitCountry": "Confirm arrival",
+    "SentToTransit": "Shipped",
+    "ArrivedTransitCountry": "Received",
     "AwaitingMoscowShipment": "Prepare shipment to Moscow",
-    "SentToMoscow": "Shipped to Moscow",
-    "ArrivedMoscow": "Arrived in Moscow",
+    "SentToMoscow": "Shipped",
+    "ArrivedMoscow": "Received in Moscow",
     "AwaitingCustomerShipment": "Prepare customer delivery",
-    "HandedToDelivery": "Handed to delivery",
+    "HandedToDelivery": "Sent to customer",
     "Delivered": "Delivered"
   },
   "purchaseTodo": {

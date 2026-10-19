@@ -77,6 +77,7 @@ public sealed class ProcurementsController(
             {
                 Id = Guid.NewGuid(),
                 OrderItemId = item.Id,
+                PurchaseUrl = item.SourceUrl,
                 CurrentStatus = ProcurementLifecycleStatus.RequiredPurchase,
                 StatusHistory =
                 {
@@ -124,7 +125,7 @@ public sealed class ProcurementsController(
             .FirstOrDefaultAsync(value => value.Id == id, cancellationToken);
         if (row is null) return NotFound();
         var targetStatus = request.Status ?? ProcurementLifecycle.TargetForStage(row.CurrentStatus, request.TargetStage ?? string.Empty);
-        if (targetStatus is null || !ProcurementLifecycle.CanTransition(row.CurrentStatus, targetStatus.Value))
+        if (targetStatus is null || (request.Status is not null && !ProcurementLifecycle.CanTransition(row.CurrentStatus, targetStatus.Value)))
             return BadRequest(new { detail = "Недопустимый переход статуса товара." });
 
         var previous = row.CurrentStatus;

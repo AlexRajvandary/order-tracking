@@ -227,6 +227,7 @@ public sealed class SalesOrdersController(
             {
                 Id = Guid.NewGuid(),
                 OrderItemId = item.Id,
+                PurchaseUrl = item.SourceUrl,
                 CurrentStatus = ProcurementLifecycleStatus.RequiredPurchase,
                 CreatedAt = DateTimeOffset.UtcNow,
                 StatusHistory =

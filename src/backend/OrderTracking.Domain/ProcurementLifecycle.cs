@@ -4,6 +4,17 @@ namespace OrderTracking.Domain;
 
 public static class ProcurementLifecycle
 {
+    private static readonly string[] StageSequence = ["purchase", "originWarehouse", "transit", "moscow", "customerDelivery", "archive"];
+    private static readonly IReadOnlyDictionary<string, ProcurementLifecycleStatus[]> StageStatuses =
+        new Dictionary<string, ProcurementLifecycleStatus[]>
+        {
+            ["purchase"] = [ProcurementLifecycleStatus.RequiredPurchase, ProcurementLifecycleStatus.Purchased],
+            ["originWarehouse"] = [ProcurementLifecycleStatus.AwaitingWarehouse, ProcurementLifecycleStatus.AtOriginWarehouse],
+            ["transit"] = [ProcurementLifecycleStatus.AwaitingTransitShipment, ProcurementLifecycleStatus.SentToTransit, ProcurementLifecycleStatus.ArrivedTransitCountry],
+            ["moscow"] = [ProcurementLifecycleStatus.AwaitingMoscowShipment, ProcurementLifecycleStatus.SentToMoscow, ProcurementLifecycleStatus.ArrivedMoscow],
+            ["customerDelivery"] = [ProcurementLifecycleStatus.AwaitingCustomerShipment, ProcurementLifecycleStatus.HandedToDelivery],
+        };
+
     private static readonly ProcurementLifecycleStatus[] Sequence =
     [
         ProcurementLifecycleStatus.RequiredPurchase,
@@ -34,7 +45,20 @@ public static class ProcurementLifecycle
     }
 
     public static bool CanTransition(ProcurementLifecycleStatus current, ProcurementLifecycleStatus next) =>
-        Next(current) == next || Previous(current) == next;
+        Next(current) == next || Previous(current) == next || NextAction(current) == next;
+
+    public static ProcurementLifecycleStatus? NextAction(ProcurementLifecycleStatus status) => status switch
+    {
+        ProcurementLifecycleStatus.RequiredPurchase => ProcurementLifecycleStatus.Purchased,
+        ProcurementLifecycleStatus.Purchased or ProcurementLifecycleStatus.AwaitingWarehouse => ProcurementLifecycleStatus.AtOriginWarehouse,
+        ProcurementLifecycleStatus.AtOriginWarehouse or ProcurementLifecycleStatus.AwaitingTransitShipment => ProcurementLifecycleStatus.SentToTransit,
+        ProcurementLifecycleStatus.SentToTransit => ProcurementLifecycleStatus.ArrivedTransitCountry,
+        ProcurementLifecycleStatus.ArrivedTransitCountry or ProcurementLifecycleStatus.AwaitingMoscowShipment => ProcurementLifecycleStatus.SentToMoscow,
+        ProcurementLifecycleStatus.SentToMoscow => ProcurementLifecycleStatus.ArrivedMoscow,
+        ProcurementLifecycleStatus.ArrivedMoscow or ProcurementLifecycleStatus.AwaitingCustomerShipment => ProcurementLifecycleStatus.HandedToDelivery,
+        ProcurementLifecycleStatus.HandedToDelivery => ProcurementLifecycleStatus.Delivered,
+        _ => null,
+    };
 
     public static string Stage(ProcurementLifecycleStatus status) => status switch
     {
@@ -49,11 +73,15 @@ public static class ProcurementLifecycle
 
     public static ProcurementLifecycleStatus? TargetForStage(ProcurementLifecycleStatus current, string targetStage)
     {
-        var next = Next(current);
-        if (next is not null && Stage(next.Value) == targetStage) return next;
-        var previous = Previous(current);
-        if (previous is not null && Stage(previous.Value) == targetStage) return previous;
-        return null;
+        if (!StageStatuses.TryGetValue(targetStage, out var targetStatuses)) return null;
+
+        var currentStageIndex = Array.IndexOf(StageSequence, Stage(current));
+        var targetStageIndex = Array.IndexOf(StageSequence, targetStage);
+        if (currentStageIndex < 0 || targetStageIndex < 0 || currentStageIndex == targetStageIndex) return null;
+
+        // Moving forward enters the target stage; moving backward returns the item
+        // to the last state it had reached within that stage.
+        return targetStageIndex > currentStageIndex ? targetStatuses[0] : targetStatuses[^1];
     }
 
 }

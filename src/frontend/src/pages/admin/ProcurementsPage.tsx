@@ -32,6 +32,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import * as ordersApi from '@/features/orders/api/ordersApi'
 import * as procurementsApi from '@/features/procurements/api/procurementsApi'
+import { getNextProcurementActionStatus } from '@/features/procurements/lib/lifecycleActions'
 import { ProcurementCommentsChat } from '@/features/procurements/ui/ProcurementCommentsChat'
 import type {
   ProcurementAttachment,
@@ -61,7 +62,7 @@ const autoSaveDelayMs = 650
 type BoardStage = typeof stages[number]
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 type OrderGroup = { orderId: string; trackingCode: string; rows: ProcurementRow[]; stage: BoardStage }
-type ActiveProcurementDrag = { rowId: string; sourceStage: BoardStage; allowedStages: ProcurementStage[]; width: number; offsetX: number }
+type ActiveProcurementDrag = { rowId: string; sourceStage: BoardStage; allowedStages: BoardStage[]; width: number; offsetX: number }
 type TransitionAction = (row: ProcurementRow, status?: ProcurementStatus, stage?: string) => Promise<ProcurementRow> | undefined
 
 function createForm(row: ProcurementRow): UpdateProcurementRequest {
@@ -102,7 +103,7 @@ function startItemDrag(
   event.dataTransfer.setData('text/plain', row.id)
   event.dataTransfer.effectAllowed = 'move'
   event.dataTransfer.setDragImage(dragImage, offsetX, offsetY)
-  onDragStart({ rowId: row.id, sourceStage: deriveItemStage(row), allowedStages: [row.nextStage, row.previousStage].filter((stage): stage is ProcurementStage => Boolean(stage)), width: rect.width, offsetX })
+  onDragStart({ rowId: row.id, sourceStage: deriveItemStage(row), allowedStages: [...stages], width: rect.width, offsetX })
 }
 
 function useColumnDropTarget(activeDrag: ActiveProcurementDrag | null, onMove: (rowId: string, stage: BoardStage) => void) {
@@ -342,6 +343,7 @@ function LifecycleActions({ row, onTransition, compactPrimary = false, onOpenCom
   const [error, setError] = useState('')
   const [transitioning, setTransitioning] = useState(false)
   const [issueSaved, setIssueSaved] = useState(false)
+  const actionStatus = getNextProcurementActionStatus(row.status)
   useEffect(() => {
     if (!issueSaved) return
     const timer = window.setTimeout(() => setIssueSaved(false), 3000)
@@ -366,16 +368,15 @@ function LifecycleActions({ row, onTransition, compactPrimary = false, onOpenCom
   }
   return <div className={`${compactPrimary ? 'mt-auto' : 'mt-1'} space-y-0`} onClick={(event) => event.stopPropagation()}>
     {row.status !== 'Delivered' ? <div className="flex items-center justify-between gap-2"><button type="button" className={`flex w-fit shrink-0 flex-nowrap items-center justify-start gap-1.5 whitespace-nowrap bg-transparent px-0 font-medium text-[#667085] hover:bg-[#F3F4F6] hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${compactPrimary ? 'h-[22px] rounded-[5px] text-[9px]' : 'h-8 rounded-lg text-[10px]'}`} onClick={() => onOpenComment ? onOpenComment() : setShowErrorForm((value) => !value)}><span className="relative flex size-[14px] shrink-0 items-center justify-center"><MessageSquare className="size-[14px]" /><Plus className="absolute size-[6px] stroke-[3]" /></span>{t('board.reportError')}</button>{row.openErrorCount > 0 ? <span role="status" className="shrink-0 rounded-full bg-[#F3F4F6] px-2 py-0.5 text-[10px] font-medium text-amber-700" title={t('board.openIssues', { count: row.openErrorCount })} aria-label={t('board.openIssues', { count: row.openErrorCount })}>{row.openErrorCount}</span> : null}</div> : null}
-    {row.nextStatus ? <div className="space-y-1.5"><Button size="sm" className={`${compactPrimary ? 'h-[22px] min-w-0 w-full overflow-hidden rounded-[5px] whitespace-nowrap' : 'h-11 w-full rounded-[10px]'} gap-[10px] bg-[#111827] text-[9px] font-semibold text-white shadow-none transition-colors hover:bg-slate-700 active:bg-slate-800`} disabled={transitioning} title={t(`actions.${row.nextStatus}`)} onClick={() => transition(row.nextStatus!)}>{transitioning ? <><LoaderCircle className="animate-spin motion-reduce:animate-none" />{t('board.updating')}</> : t(`actions.${row.nextStatus}`)}</Button></div> : null}
+    {actionStatus ? <div className="space-y-1.5"><Button size="sm" className={`${compactPrimary ? 'h-[22px] min-w-0 w-full overflow-hidden rounded-[5px] whitespace-nowrap' : 'h-11 w-full rounded-[10px]'} gap-[10px] bg-[#111827] text-[9px] font-semibold text-white shadow-none transition-colors hover:bg-slate-700 active:bg-slate-800`} disabled={transitioning} title={t(`actions.${actionStatus}`)} onClick={() => transition(actionStatus)}>{transitioning ? <><LoaderCircle className="animate-spin motion-reduce:animate-none" />{t('board.updating')}</> : t(`actions.${actionStatus}`)}</Button></div> : null}
     {issueSaved ? <p role="status" className="text-[11px] text-emerald-700">{t('board.errorSaved')}</p> : null}
     {showErrorForm && !onOpenComment ? <div className="animate-in fade-in-0 slide-in-from-top-1 space-y-2 rounded-lg bg-muted/50 p-2 duration-200"><textarea value={errorText} onChange={(event) => setErrorText(event.target.value)} maxLength={2000} rows={2} placeholder={t('board.errorPlaceholder')} className="w-full resize-y rounded-md border bg-background p-2 text-sm" />{error ? <p className="text-xs text-destructive">{error}</p> : null}<div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setShowErrorForm(false)}>{t('cancel')}</Button><Button size="sm" disabled={!errorText.trim() || report.isPending} onClick={() => report.mutate()}>{t('board.sendError')}</Button></div></div> : null}
   </div>
 }
 
-function PurchaseItemCard({ group, row, position, onDragStart, onDragEnd, onTransition }: { group: OrderGroup; row: ProcurementRow; position: number; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
+function PurchaseOrderItem({ group, row, position, commentOpen, onCommentOpenChange, onDragStart, onDragEnd, onTransition }: { group: OrderGroup; row: ProcurementRow; position: number; commentOpen: boolean; onCommentOpenChange: (rowId: string, open: boolean) => void; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
   const [undoingPurchase, setUndoingPurchase] = useState(false)
-  const [commentOpen, setCommentOpen] = useState(false)
   const url = safeProductUrl(row.productUrl)
   const meta = [formatMoney(row.purchasePrice ?? row.unitPrice, row.purchasePrice == null ? row.itemCurrencyCode as ProcurementCurrencyCode | null : row.purchaseCurrencyCode)].filter(Boolean)
   const undoPurchase = () => {
@@ -386,28 +387,25 @@ function PurchaseItemCard({ group, row, position, onDragStart, onDragEnd, onTran
     void operation.then(() => setUndoingPurchase(false), () => setUndoingPurchase(false))
   }
   return (
-    <article data-procurement-item draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} className="cursor-grab overflow-hidden rounded-2xl border border-[#E5E7EB] bg-[#FAFAFB] px-2 py-[14px] shadow-[0_2px_8px_rgba(16,24,40,0.06)] transition-[box-shadow,border-color] duration-150 hover:border-slate-300 hover:shadow-[0_3px_10px_rgba(16,24,40,0.09)] active:cursor-grabbing motion-reduce:transition-none">
-      <div className="relative">
+    <div data-procurement-item draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} className={`cursor-grab active:cursor-grabbing ${position > 1 ? 'pt-3' : ''}`}>
+      <div className="relative overflow-hidden">
       <div inert={commentOpen} className={`transition-transform duration-300 ease-in-out motion-reduce:transition-none ${commentOpen ? '-translate-x-[150%] pointer-events-none' : 'translate-x-0'}`}>
-      <div className="flex min-w-0 items-start gap-2">
-        <div className="min-w-0 flex-1"><div className="flex min-w-0 items-center gap-2"><OrderBadge group={group} /><span className="shrink-0 text-[10px] text-[#9CA3AF]">{t('board.positionShort', { current: position, total: group.rows.length })}</span></div><div className="mt-[3px] flex items-center gap-2"><p className={`min-w-0 break-words leading-4 ${row.status === 'RequiredPurchase' || row.status === 'Purchased' || row.status === 'AwaitingWarehouse' || row.status === 'AwaitingTransitShipment' || row.status === 'AwaitingMoscowShipment' ? 'text-[9px]' : 'text-[12px]'} ${row.status === 'RequiredPurchase' ? 'text-[#6B7280]' : 'text-[#9CA3AF]'}`} title={t(`statuses.lifecycle.${row.status}`)}>{t(`statuses.lifecycle.${row.status}`)}</p>{row.status === 'Purchased' ? <button type="button" className="shrink-0 text-[9px] text-muted-foreground underline-offset-2 hover:text-slate-900 hover:underline disabled:opacity-50" disabled={undoingPurchase} onClick={(event) => { event.stopPropagation(); undoPurchase() }}>{t('actions.undoPurchaseShort')}</button> : null}</div></div>
-        <div className="ml-auto shrink-0 [&_button]:size-9"><CardMenu row={row} group={group} /></div>
-      </div>
+      <div className="mb-1 flex min-w-0 items-center gap-2"><span className="shrink-0 text-[10px] text-[#9CA3AF]">{t('board.positionShort', { current: position, total: group.rows.length })}</span><p className={`min-w-0 break-words leading-4 ${row.status === 'RequiredPurchase' || row.status === 'Purchased' ? 'text-[9px]' : 'text-[12px]'} ${row.status === 'RequiredPurchase' ? 'text-[#6B7280]' : 'text-[#9CA3AF]'}`} title={t(`statuses.lifecycle.${row.status}`)}>{t(`statuses.lifecycle.${row.status}`)}</p>{row.status === 'Purchased' ? <button type="button" className="shrink-0 text-[9px] text-muted-foreground underline-offset-2 hover:text-slate-900 hover:underline disabled:opacity-50" disabled={undoingPurchase} onClick={(event) => { event.stopPropagation(); undoPurchase() }}>{t('actions.undoPurchaseShort')}</button> : null}</div>
       <div className="mt-3 flex min-w-0 items-stretch gap-1.5">
         <Link to={`/admin/procurements/items/${row.id}`} aria-label={t('board.openItem')} className="shrink-0 rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><ProductImage row={row} className="size-[94px]" /></Link>
         <div className="flex min-h-[94px] min-w-0 flex-1 flex-col">
           <Link to={`/admin/procurements/items/${row.id}`} className="block rounded-sm text-[10px] font-semibold leading-3 text-[#111827] line-clamp-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title={productTitle(row)}>{productTitle(row)}</Link>
           {url ? <a href={url.href} target="_blank" rel="noopener noreferrer" title={row.productUrl ?? undefined} className="mt-0.5 flex min-w-0 items-center gap-1 text-[12px] text-[#667085] hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="truncate">{compactProductUrl(row.productUrl!)}</span><ExternalLink className="size-3 shrink-0" /></a> : null}
           <div className="mt-1 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[11px] text-[#6B7280]" title={meta.join(' · ')}>{meta.map((value, index) => <span key={`${row.id}-meta-${index}`} className="min-w-0 truncate">{value}</span>)}</div>
-          <LifecycleActions row={row} onTransition={onTransition} compactPrimary onOpenComment={() => setCommentOpen(true)} />
+          <LifecycleActions row={row} onTransition={onTransition} compactPrimary onOpenComment={() => onCommentOpenChange(row.id, true)} />
         </div>
       </div>
       <ProcurementContext row={row} />
       <LifecycleProgressStepper row={row} />
       </div>
-      <ProcurementCommentsChat procurementId={row.id} variant="popover" open={commentOpen} onClose={() => setCommentOpen(false)} />
+      <ProcurementCommentsChat procurementId={row.id} variant="popover" open={commentOpen} onClose={() => onCommentOpenChange(row.id, false)} />
       </div>
-    </article>
+    </div>
   )
 }
 
@@ -443,14 +441,15 @@ function CommentableOrderItem({ group, row, position, stage, onDragStart, onDrag
   </div>
 }
 
-function OrderCard({ group, stage, onDragStart, onDragEnd, onTransition }: { group: OrderGroup; stage: Exclude<BoardStage, 'purchase'>; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
+function OrderCard({ group, stage, onDragStart, onDragEnd, onTransition }: { group: OrderGroup; stage: BoardStage; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
   const [activeCommentRowId, setActiveCommentRowId] = useState<string | null>(null)
   const total = orderTotal(group.rows)
   return <article className="rounded-2xl border border-[#E5E7EB] bg-[#FAFAFB] px-2 py-[14px] shadow-[0_2px_8px_rgba(16,24,40,0.06)] transition-[box-shadow,border-color] duration-150 hover:border-slate-300 hover:shadow-[0_3px_10px_rgba(16,24,40,0.09)] motion-reduce:transition-none">
-    <div className="overflow-hidden"><div inert={activeCommentRowId !== null} className={`flex items-start gap-2 transition-transform duration-300 ease-in-out motion-reduce:transition-none ${activeCommentRowId !== null ? '-translate-x-[150%] pointer-events-none' : 'translate-x-0'}`}><Link to={`/admin/procurements/orders/${group.orderId}/${stage}`} className="flex min-w-0 flex-1 flex-col rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><OrderBadge group={group} /><span className={`mt-[3px] break-words leading-4 ${stage === 'originWarehouse' ? 'text-[9px]' : group.rows[0]?.status === 'RequiredPurchase' || group.rows[0]?.status === 'Purchased' || group.rows[0]?.status === 'AwaitingWarehouse' || group.rows[0]?.status === 'AwaitingTransitShipment' || group.rows[0]?.status === 'AwaitingMoscowShipment' ? 'text-[9px]' : 'text-[12px]'} ${group.rows[0]?.status === 'RequiredPurchase' ? 'text-[#6B7280]' : 'text-[#9CA3AF]'}`}>{group.rows[0] ? t(`statuses.lifecycle.${group.rows[0].status}`) : ''}</span></Link>{group.rows[0] ? <div className="ml-auto shrink-0 [&_button]:size-9"><CardMenu row={group.rows[0]} group={group} /></div> : null}</div></div>
+    <div className="overflow-hidden"><div inert={activeCommentRowId !== null} className={`flex items-start gap-2 transition-transform duration-300 ease-in-out motion-reduce:transition-none ${activeCommentRowId !== null ? '-translate-x-[150%] pointer-events-none' : 'translate-x-0'}`}><Link to={`/admin/procurements/orders/${group.orderId}/${stage}`} className="flex min-w-0 flex-1 flex-col rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><OrderBadge group={group} />{stage !== 'purchase' ? <span className={`mt-[3px] break-words leading-4 ${stage === 'originWarehouse' ? 'text-[9px]' : group.rows[0]?.status === 'RequiredPurchase' || group.rows[0]?.status === 'Purchased' || group.rows[0]?.status === 'AwaitingWarehouse' || group.rows[0]?.status === 'AwaitingTransitShipment' || group.rows[0]?.status === 'AwaitingMoscowShipment' ? 'text-[9px]' : 'text-[12px]'} ${group.rows[0]?.status === 'RequiredPurchase' ? 'text-[#6B7280]' : 'text-[#9CA3AF]'}`}>{group.rows[0] ? t(`statuses.lifecycle.${group.rows[0].status}`) : ''}</span> : null}</Link>{group.rows[0] ? <div className="ml-auto shrink-0 [&_button]:size-9"><CardMenu row={group.rows[0]} group={group} /></div> : null}</div></div>
     <div className={`mt-3 ${stage === 'originWarehouse' ? '' : 'divide-y divide-[#EAECF0]'}`}>{group.rows.map((row, index) => {
       const compactAction = row.nextStatus === 'AtOriginWarehouse' || row.nextStatus === 'AwaitingTransitShipment' || row.nextStatus === 'SentToTransit' || row.nextStatus === 'SentToMoscow'
+      if (stage === 'purchase') return <PurchaseOrderItem key={row.id} group={group} row={row} position={index + 1} commentOpen={activeCommentRowId === row.id} onCommentOpenChange={(rowId, open) => setActiveCommentRowId((current) => open ? rowId : current === rowId ? null : current)} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />
       if (stage === 'originWarehouse' || stage === 'transit' || stage === 'moscow') return <CommentableOrderItem key={row.id} group={group} row={row} position={index + 1} stage={stage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} onCommentOpenChange={(rowId, open) => setActiveCommentRowId((current) => open ? rowId : current === rowId ? null : current)} />
       return <div key={row.id} data-procurement-item draggable onDragStart={(event) => startItemDrag(event, row, onDragStart)} onDragEnd={onDragEnd} className={`cursor-grab active:cursor-grabbing ${index ? 'pt-3' : ''}`}>
         <OrderItemPreview row={row} position={index + 1} total={group.rows.length} compactAction={compactAction} onTransition={onTransition} />
@@ -483,7 +482,6 @@ function MoscowGroups({ groups, onDragStart, onDragEnd, onTransition }: { groups
 
 function BoardLane({ stage, groups, mobile = false, dropStage, onDragStart, onDragEnd, onTransition }: { stage: BoardStage; groups: OrderGroup[]; mobile?: boolean; dropStage: BoardStage | null; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
-  const purchaseRows = stage === 'purchase' ? groups.flatMap((group) => group.rows.map((row, index) => ({ group, row, position: index + 1 }))) : []
   const count = groups.reduce((sum, group) => sum + group.rows.length, 0)
   return (
     <section
@@ -491,7 +489,7 @@ function BoardLane({ stage, groups, mobile = false, dropStage, onDragStart, onDr
       className={`min-h-[50dvh] min-w-0 rounded-2xl px-0 py-2 transition-colors ${dropStage === stage ? 'bg-muted/70 ring-2 ring-muted-foreground/10' : ''}`}
     >
       <div className={`mb-3 flex items-center gap-2 ${mobile ? 'min-h-9 justify-between' : 'h-8 justify-start'}`}><h2 className={mobile ? 'text-xl font-semibold tracking-tight' : 'text-sm font-semibold'}>{t(`board.stages.${stage}`)}</h2><span className={mobile ? 'text-sm text-muted-foreground' : 'text-xs text-muted-foreground'}>{t('board.positionCount', { count })}</span></div>
-      {stage === 'moscow' ? <MoscowGroups groups={groups} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} /> : <div className="space-y-1">{stage === 'purchase' ? purchaseRows.map((item) => <PurchaseItemCard key={item.row.id} {...item} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />) : groups.map((group) => <OrderCard key={group.orderId} group={group} stage={stage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />)}</div>}
+      {stage === 'moscow' ? <MoscowGroups groups={groups} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} /> : <div className="space-y-1">{groups.map((group) => <OrderCard key={group.orderId} group={group} stage={stage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />)}</div>}
       {!count ? <EmptyLane purchase={stage === 'purchase'} /> : null}
     </section>
   )
@@ -585,7 +583,7 @@ export function ProcurementsPage() {
     return moveMutation.mutateAsync({ row, status, stage })
   }
   const dragProps = { activeDrag, onMove: moveItem, onDragStart: setActiveDrag, onDragEnd: () => setActiveDrag(null), onTransition: transitionItem }
-  return <div className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><h1 className="text-[29px] font-bold leading-tight tracking-tight lg:text-2xl">{t('title')}</h1><Button asChild size="sm" variant="outline"><Link to="/admin/procurements/archive"><Archive />{t('board.archive')}</Link></Button></div><div className="relative w-full sm:max-w-sm"><Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground lg:left-3" /><Input aria-label={t('mobile.searchPlaceholder')} className="h-12 rounded-2xl bg-white pl-11 lg:h-9 lg:rounded-md lg:pl-9" value={search} placeholder={t('mobile.searchPlaceholder')} onChange={(event) => setSearch(event.target.value)} /></div></div>{moveError ? <Alert variant="destructive"><AlertDescription>{moveError}</AlertDescription></Alert> : moveSuccess ? <p role="status" className="text-sm text-emerald-700">{t('board.statusUpdated')}</p> : null}{query.isLoading ? <BoardSkeleton /> : query.isError ? <div className="rounded-xl border p-6 text-center"><p className="font-medium">{t('mobile.loadError')}</p><Button variant="outline" className="mt-3" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : isMobile ? <MobileBoard groups={groups} {...dragProps} /> : <DesktopBoard groups={groups} {...dragProps} />}</div>
+  return <div className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h1 className="text-[29px] font-bold leading-tight tracking-tight lg:text-2xl">{t('title')}</h1><div className="flex w-full min-w-0 items-center gap-2 sm:w-auto"><div className="relative min-w-0 flex-1 sm:w-72 sm:flex-none sm:max-w-sm"><Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground lg:left-3" /><Input aria-label={t('mobile.searchPlaceholder')} className="h-12 rounded-2xl bg-white pl-11 lg:h-9 lg:rounded-md lg:pl-9" value={search} placeholder={t('mobile.searchPlaceholder')} onChange={(event) => setSearch(event.target.value)} /></div><Button asChild size="icon" variant="outline" className="h-12 w-12 shrink-0 lg:h-9 lg:w-9" aria-label={t('board.archive')} title={t('board.archive')}><Link to="/admin/procurements/archive"><Archive /></Link></Button></div></div>{moveError ? <Alert variant="destructive"><AlertDescription>{moveError}</AlertDescription></Alert> : moveSuccess ? <p role="status" className="text-sm text-emerald-700">{t('board.statusUpdated')}</p> : null}{query.isLoading ? <BoardSkeleton /> : query.isError ? <div className="rounded-xl border p-6 text-center"><p className="font-medium">{t('mobile.loadError')}</p><Button variant="outline" className="mt-3" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : isMobile ? <MobileBoard groups={groups} {...dragProps} /> : <DesktopBoard groups={groups} {...dragProps} />}</div>
 }
 
 export function ProcurementsArchivePage() {
@@ -939,6 +937,7 @@ function ItemPurchaseEditor({ row }: { row: ProcurementRow }) {
     onError: (mutationError) => setError(mutationError instanceof ApiError ? mutationError.message : t('board.moveError')),
   })
   const receipt = row.attachments.find((attachment) => attachment.kind === 'Receipt')
+  const nextActionStatus = getNextProcurementActionStatus(row.status)
   const productUrl = safeProductUrl(row.productUrl)
   const upload = useMutation({ mutationFn: (file: File) => procurementsApi.uploadReceipt(row.id, file), onSuccess: (attachment) => queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === row.id ? { ...value, attachments: [...value.attachments.filter((item) => item.kind !== 'Receipt'), attachment] } : value)), onError: () => setError(t('uploadError')) })
   const remove = useMutation({ mutationFn: (attachmentId: string) => procurementsApi.deleteAttachment(row.id, attachmentId), onSuccess: (_, attachmentId) => queryClient.setQueryData<ProcurementRow[]>(['procurements'], (rows) => rows?.map((value) => value.id === row.id ? { ...value, attachments: value.attachments.filter((item) => item.id !== attachmentId) } : value)), onError: () => setError(t('uploadError')) })
@@ -985,7 +984,7 @@ function ItemPurchaseEditor({ row }: { row: ProcurementRow }) {
             </li>
           })}
         </ul>
-        {row.nextStatus ? <div className="flex justify-end pt-2"><Button type="button" className="h-10 rounded-lg bg-[#111827] px-3 text-xs font-medium text-white hover:bg-slate-700" disabled={statusAction.isPending} onClick={() => statusAction.mutate(row.nextStatus!)}>{statusAction.isPending ? <LoaderCircle className="size-3.5 animate-spin" /> : null}{statusAction.isPending ? t('board.updating') : row.nextStatus === 'Purchased' ? t('purchaseTodo.purchase') : t(`actions.${row.nextStatus}`)}</Button></div> : null}
+        {nextActionStatus ? <div className="flex justify-end pt-2"><Button type="button" className="h-10 rounded-lg bg-[#111827] px-3 text-xs font-medium text-white hover:bg-slate-700" disabled={statusAction.isPending} onClick={() => statusAction.mutate(nextActionStatus)}>{statusAction.isPending ? <LoaderCircle className="size-3.5 animate-spin" /> : null}{statusAction.isPending ? t('board.updating') : t(`actions.${nextActionStatus}`)}</Button></div> : null}
       </div>
     </div>
   </section>

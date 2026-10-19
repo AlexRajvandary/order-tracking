@@ -5,6 +5,7 @@
     "columns": {
       "number": "Номер заказа",
       "request": "Исходная заявка",
+      "progress": "Этапы",
       "productStatuses": "Статусы товаров"
     },
     "notSentToProcurement": "Не отправлен на выкуп",

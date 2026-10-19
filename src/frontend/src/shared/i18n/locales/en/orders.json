@@ -5,6 +5,7 @@
     "columns": {
       "number": "Order number",
       "request": "Source request",
+      "progress": "Progress",
       "productStatuses": "Product statuses"
     },
     "notSentToProcurement": "Not sent to purchasing",
