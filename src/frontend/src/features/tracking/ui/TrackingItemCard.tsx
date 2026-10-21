@@ -141,17 +141,34 @@ export function TrackingItemCard({
 }) {
   const { t } = useTranslation('tracking')
   const [historyOpen, setHistoryOpen] = useState(true)
+  const [imageFailed, setImageFailed] = useState(false)
+  const imageUrl = item.imageUrl
+    ? /^https?:\/\//i.test(item.imageUrl)
+      ? item.imageUrl
+      : attachmentUrl(item.imageUrl)
+    : null
 
   return (
     <Card>
       <CardContent className="space-y-3">
-        <div>
-          <h3 className="font-semibold">{item.name}</h3>
-          {item.type === 'Product' ? (
-            <p className="text-xs text-muted-foreground">
-              {t('quantity')}: {item.quantity}
-            </p>
+        <div className="flex min-w-0 items-start gap-3">
+          {item.type === 'Product' && imageUrl && !imageFailed ? (
+            <img
+              src={imageUrl}
+              alt={item.name}
+              className="size-20 shrink-0 rounded-lg border object-contain bg-white"
+              loading="lazy"
+              onError={() => setImageFailed(true)}
+            />
           ) : null}
+          <div className="min-w-0">
+            <h3 className="font-semibold">{item.name}</h3>
+            {item.type === 'Product' ? (
+              <p className="text-xs text-muted-foreground">
+                {t('quantity')}: {item.quantity}
+              </p>
+            ) : null}
+          </div>
         </div>
 
         <div>

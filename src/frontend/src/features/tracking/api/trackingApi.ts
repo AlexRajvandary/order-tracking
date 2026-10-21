@@ -20,9 +20,11 @@ export type PublicStatusHistory = {
 }
 
 export type PublicTrackingItem = {
+  id: string
   name: string
   type: string
   quantity: number
+  imageUrl: string | null
   currentStatus: string | null
   statusColor: string | null
   history: PublicStatusHistory[]

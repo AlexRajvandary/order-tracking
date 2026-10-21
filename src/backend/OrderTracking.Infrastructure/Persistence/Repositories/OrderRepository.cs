@@ -177,9 +177,13 @@ public sealed class OrderRepository : IOrderRepository
                 o.Items
                     .OrderBy(i => i.SortOrder)
                     .Select(i => new PublicTrackingItemRow(
+                        i.Id,
                         i.Name,
                         i.ItemType.ToString(),
                         i.Quantity,
+                        i.ManualImageObjectKey != null || i.PreviewImageObjectKey != null
+                            ? $"/api/v1/track/{trackingCode}/items/{i.Id}/image"
+                            : i.ImageUrl,
                         i.CurrentStatusText,
                         i.CurrentStatus != null ? i.CurrentStatus.Color : null,
                         i.StatusHistory

@@ -10,9 +10,11 @@ public sealed record PublicTrackingOrderRow(
     IReadOnlyList<PublicTrackingItemRow> Items);
 
 public sealed record PublicTrackingItemRow(
+    Guid Id,
     string Name,
     string Type,
     int Quantity,
+    string? ImageUrl,
     string? CurrentStatus,
     string? StatusColor,
     IReadOnlyList<PublicStatusHistoryRow> History);

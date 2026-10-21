@@ -8,9 +8,11 @@ public sealed record PublicTrackingDto(
     IReadOnlyList<PublicTrackingItemDto> Items);
 
 public sealed record PublicTrackingItemDto(
+    Guid Id,
     string Name,
     string Type,
     int Quantity,
+    string? ImageUrl,
     string? CurrentStatus,
     string? StatusColor,
     IReadOnlyList<PublicStatusHistoryDto> History);

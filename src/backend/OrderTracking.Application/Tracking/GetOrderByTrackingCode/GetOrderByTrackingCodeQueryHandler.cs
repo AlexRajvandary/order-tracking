@@ -29,9 +29,11 @@ public sealed class GetOrderByTrackingCodeQueryHandler
             order.ExpectedDeliveryAt,
             order.Status,
             order.Items.Select(i => new PublicTrackingItemDto(
+                i.Id,
                 i.Name,
                 i.Type,
                 i.Quantity,
+                i.ImageUrl,
                 i.CurrentStatus,
                 i.StatusColor,
                 i.History.Select(h => new PublicStatusHistoryDto(
