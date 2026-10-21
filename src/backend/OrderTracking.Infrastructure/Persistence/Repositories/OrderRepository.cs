@@ -182,7 +182,7 @@ public sealed class OrderRepository : IOrderRepository
                         i.ItemType.ToString(),
                         i.Quantity,
                         i.ManualImageObjectKey != null || i.PreviewImageObjectKey != null
-                            ? $"/api/v1/track/{trackingCode}/items/{i.Id}/image"
+                            ? $"/track/{trackingCode}/items/{i.Id}/image"
                             : i.ImageUrl,
                         i.CurrentStatusText,
                         i.CurrentStatus != null ? i.CurrentStatus.Color : null,

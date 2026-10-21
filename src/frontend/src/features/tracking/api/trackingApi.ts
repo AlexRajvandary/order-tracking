@@ -43,5 +43,18 @@ export function getPublicOrder(trackingCode: string) {
 }
 
 export function attachmentUrl(path: string) {
-  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`
+  if (/^https?:\/\//i.test(path)) return path
+
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  const apiBase = API_BASE_URL.replace(/\/+$/, '')
+  const apiBaseUrl = /^https?:\/\//i.test(apiBase) ? new URL(apiBase) : null
+  const apiBasePath = apiBaseUrl?.pathname.replace(/\/+$/, '') || apiBase
+  const alreadyIncludesApiBase = apiBasePath
+    && (normalizedPath === apiBasePath || normalizedPath.startsWith(`${apiBasePath}/`))
+
+  if (alreadyIncludesApiBase) {
+    return apiBaseUrl ? `${apiBaseUrl.origin}${normalizedPath}` : normalizedPath
+  }
+
+  return `${apiBase}${normalizedPath}`
 }
