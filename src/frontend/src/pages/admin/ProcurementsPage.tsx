@@ -764,8 +764,8 @@ function InlinePurchaseUrl({ value, disabled, onSave, onEditStart }: { value: st
       ? <Input ref={inputRef} id="purchase-url-inline" className="h-9 min-w-0 bg-white" value={draft} disabled={disabled} onChange={(event) => setDraft(event.target.value)} onBlur={() => { if (skipBlurRef.current) { skipBlurRef.current = false; return } void commit() }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void commit() } if (event.key === 'Escape') { event.preventDefault(); cancel() } }} />
       : <>
         {url
-          ? <a href={url.href} target="_blank" rel="noopener noreferrer" className="min-w-0 break-all text-sm text-blue-600 hover:underline" title={value ?? undefined}>{value}</a>
-          : <span className="min-w-0 break-all text-sm text-[#9CA3AF]">{value || t('notSpecified')}</span>}
+          ? <a href={url.href} target="_blank" rel="noopener noreferrer" className="min-w-0 overflow-hidden whitespace-nowrap text-clip text-sm text-blue-600 hover:underline" title={value ?? undefined}>{value}</a>
+          : <span className="min-w-0 overflow-hidden whitespace-nowrap text-clip text-sm text-[#9CA3AF]">{value || t('notSpecified')}</span>}
         <Button type="button" variant="ghost" size="icon-xs" disabled={disabled} aria-label={t('edit')} className="size-6 shrink-0 text-[#667085]" onClick={beginEditing}><Pencil className="size-3" /></Button>
       </>}
   </div>
