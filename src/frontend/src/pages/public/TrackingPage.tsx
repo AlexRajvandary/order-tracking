@@ -107,14 +107,14 @@ export function TrackingPage() {
                       {formatDate(data.createdAt, i18n.language)}
                     </span>
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    {t('expectedDeliveryAt')}:{' '}
-                    <span className="font-medium text-foreground">
-                      {data.expectedDeliveryAt
-                        ? formatDateOnly(data.expectedDeliveryAt, i18n.language)
-                        : t('notSpecified')}
-                    </span>
-                  </p>
+                  {data.expectedDeliveryAt ? (
+                    <p className="text-sm text-muted-foreground">
+                      {t('expectedDeliveryAt')}:{' '}
+                      <span className="font-medium text-foreground">
+                        {formatDateOnly(data.expectedDeliveryAt, i18n.language)}
+                      </span>
+                    </p>
+                  ) : null}
                   {isOrderStatus(data.status) ? (
                     <div className="pt-2">
                       <OrderStatusBadge
