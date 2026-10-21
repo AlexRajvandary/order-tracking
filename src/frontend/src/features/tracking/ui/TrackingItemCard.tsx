@@ -7,17 +7,20 @@ import { Card, CardContent } from '@/shared/ui/card'
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog'
 import { Check } from 'lucide-react'
 
+const PUBLIC_PROGRESS_STAGES = ['purchase', 'originWarehouse', 'transit', 'customerDelivery'] as const
+
 function TrackingProgress({ progress }: { progress: number }) {
   const { t } = useTranslation('tracking')
+  const visibleProgress = progress < 3 ? progress : progress < 5 ? 3 : 4
   return (
     <div className="min-w-0 w-full pt-3" role="list" aria-label={t('progressLabel')}>
       <div className="flex items-start">
-        {TRACKING_STAGES.map((stage, index) => {
-          const complete = index < progress
-          const active = index === progress
+        {PUBLIC_PROGRESS_STAGES.map((stage, index) => {
+          const complete = index < visibleProgress
+          const active = index === visibleProgress
           return (
             <div key={stage} role="listitem" aria-current={active ? 'step' : undefined} className="relative flex min-w-0 flex-1 basis-0 flex-col items-center">
-              {index < TRACKING_STAGES.length - 1 ? (
+              {index < PUBLIC_PROGRESS_STAGES.length - 1 ? (
                 <span aria-hidden="true" className={`absolute left-1/2 right-[-50%] top-[6px] h-px ${complete ? 'bg-slate-500' : 'bg-slate-200'}`} />
               ) : null}
               <span aria-hidden="true" className={`relative z-10 flex size-3 items-center justify-center rounded-full ${complete ? 'bg-slate-600 text-white' : active ? 'border-2 border-blue-500 bg-white' : 'border border-slate-300 bg-white'}`}>
