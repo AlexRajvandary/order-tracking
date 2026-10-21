@@ -12,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   Archive,
+  CalendarDays,
   Check,
   Copy,
   ExternalLink,
@@ -28,10 +29,14 @@ import {
   Truck,
   X,
 } from 'lucide-react'
+import { enUS, ru } from 'date-fns/locale'
+import { endOfDay, startOfDay, subDays, subMonths } from 'date-fns'
+import type { DateRange } from 'react-day-picker'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import * as ordersApi from '@/features/orders/api/ordersApi'
 import * as procurementsApi from '@/features/procurements/api/procurementsApi'
+import { countOrdersByCreatedDate, countProductsAndDistinctOrders, filterByCreatedAt } from '@/features/procurements/lib/dateFiltering'
 import { getNextProcurementActionStatus } from '@/features/procurements/lib/lifecycleActions'
 import { ProcurementCommentsChat } from '@/features/procurements/ui/ProcurementCommentsChat'
 import type {
@@ -53,6 +58,8 @@ import { Skeleton } from '@/shared/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import { Card, CardContent } from '@/shared/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/ui/dropdown-menu'
+import { Calendar } from '@/shared/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
 
 const currencies: ProcurementCurrencyCode[] = ['JPY', 'RUB', 'USD', 'EUR']
 const currencySymbols: Record<ProcurementCurrencyCode, string> = { JPY: '¥', RUB: '₽', USD: '$', EUR: '€' }
@@ -156,6 +163,12 @@ function groupOrders(rows: ProcurementRow[], stageOverride?: BoardStage) {
 
 function groupsForStage(groups: OrderGroup[], stage: BoardStage): OrderGroup[] {
   return groupOrders(groups.flatMap((group) => group.rows.filter((row) => row.stage === stage)), stage)
+}
+
+function filterGroupsByCreatedDate(groups: OrderGroup[], range: DateRange | undefined, stage: BoardStage): OrderGroup[] {
+  if (!range?.from && !range?.to) return groups
+  const matchingRows = filterByCreatedAt(groups.flatMap((group) => group.rows), range)
+  return groupOrders(matchingRows, stage)
 }
 
 function matchesSearch(group: OrderGroup, search: string) {
@@ -467,6 +480,109 @@ function EmptyLane({ purchase }: { purchase: boolean }) {
   return <p className="py-8 text-center text-sm text-muted-foreground">{t(purchase ? 'board.noItems' : 'board.noOrders')}</p>
 }
 
+function EmptyFilteredLane() {
+  const { t } = useTranslation('procurements')
+  return <p className="py-8 text-center text-sm text-muted-foreground">{t('board.noDateMatches')}</p>
+}
+
+function BoardColumnHeader({
+  stage,
+  groups,
+  allGroups,
+  dateRange,
+  mobile,
+  onDateRangeChange,
+}: {
+  stage: BoardStage
+  groups: OrderGroup[]
+  allGroups: OrderGroup[]
+  dateRange: DateRange | undefined
+  mobile: boolean
+  onDateRangeChange: (range: DateRange | undefined) => void
+}) {
+  const { t, i18n } = useTranslation('procurements')
+  const [open, setOpen] = useState(false)
+  const title = t(`board.stages.${stage}`)
+  const counts = countProductsAndDistinctOrders(groups.flatMap((group) => group.rows))
+  const productCount = counts.products
+  const orderCount = counts.orders
+  const filterActive = Boolean(dateRange?.from || dateRange?.to)
+  const locale = i18n.language?.startsWith('en') ? enUS : ru
+  const calendarOrderCounts = countOrdersByCreatedDate(allGroups.flatMap((group) => group.rows))
+  const applyPreset = (preset: 'week' | 'month') => {
+    const today = endOfDay(new Date())
+    const from = startOfDay(preset === 'week' ? subDays(today, 6) : subMonths(today, 1))
+    onDateRangeChange({ from, to: today })
+    setOpen(false)
+  }
+
+  return (
+    <div className={`mb-3 flex flex-col justify-between ${mobile ? 'h-[60px]' : 'h-12'}`}>
+      <h2 className={`truncate ${mobile ? 'text-xl font-semibold tracking-tight' : 'text-sm font-semibold'}`}>
+        {title}
+      </h2>
+      <div className="flex h-7 min-w-0 items-center justify-between gap-1">
+        <span className={`min-w-0 truncate text-muted-foreground ${mobile ? 'text-xs' : 'text-[10px]'}`}>
+          {t('board.itemsAndOrders', {
+            items: t('board.itemCount', { count: productCount }),
+            orders: t('board.orderCount', { count: orderCount }),
+          })}
+        </span>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t('board.filterByDate', { stage: title })}
+              aria-pressed={filterActive}
+              title={t('board.filterByDate', { stage: title })}
+              className={`size-7 shrink-0 rounded-md text-muted-foreground hover:bg-muted/70 ${filterActive ? 'text-blue-600' : ''}`}
+            >
+              <CalendarDays className="size-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-auto p-2" onOpenAutoFocus={(event) => event.preventDefault()}>
+            <Calendar
+              mode="range"
+              className="[--cell-size:2.25rem] sm:[--cell-size:2.75rem]"
+              captionLayout="dropdown"
+              numberOfMonths={1}
+              dayCounts={calendarOrderCounts}
+              selected={dateRange}
+              defaultMonth={dateRange?.from ?? dateRange?.to}
+              onSelect={(nextRange) => {
+                onDateRangeChange(nextRange?.from || nextRange?.to ? nextRange : undefined)
+                if (nextRange?.from && nextRange.to) setOpen(false)
+              }}
+              locale={locale}
+            />
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => applyPreset('week')}>
+                {t('board.datePresetWeek')}
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => applyPreset('month')}>
+                {t('board.datePresetMonth')}
+              </Button>
+            </div>
+            {filterActive ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => onDateRangeChange(undefined)}
+              >
+                {t('board.clearDateFilter')}
+              </Button>
+            ) : null}
+          </PopoverContent>
+        </Popover>
+      </div>
+    </div>
+  )
+}
+
 function MoscowGroups({ groups, onDragStart, onDragEnd, onTransition }: { groups: OrderGroup[]; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
   const shipments = new Map<string, OrderGroup[]>()
@@ -480,17 +596,17 @@ function MoscowGroups({ groups, onDragStart, onDragEnd, onTransition }: { groups
   return <div className="space-y-4">{ungrouped.length ? section('ungrouped', t('board.ungrouped'), ungrouped) : null}{Array.from(shipments, ([tracking, orders]) => section(tracking, `MSK SHIP · ${tracking}`, orders))}</div>
 }
 
-function BoardLane({ stage, groups, mobile = false, dropStage, onDragStart, onDragEnd, onTransition }: { stage: BoardStage; groups: OrderGroup[]; mobile?: boolean; dropStage: BoardStage | null; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
-  const { t } = useTranslation('procurements')
-  const count = groups.reduce((sum, group) => sum + group.rows.length, 0)
+function BoardLane({ stage, groups, mobile = false, dropStage, dateRange, onDateRangeChange, onDragStart, onDragEnd, onTransition }: { stage: BoardStage; groups: OrderGroup[]; mobile?: boolean; dropStage: BoardStage | null; dateRange: DateRange | undefined; onDateRangeChange: (range: DateRange | undefined) => void; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
+  const visibleGroups = filterGroupsByCreatedDate(groups, dateRange, stage)
+  const count = visibleGroups.reduce((sum, group) => sum + group.rows.length, 0)
   return (
     <section
       data-procurement-stage={stage}
       className={`min-h-[50dvh] min-w-0 rounded-2xl px-0 py-2 transition-colors ${dropStage === stage ? 'bg-muted/70 ring-2 ring-muted-foreground/10' : ''}`}
     >
-      <div className={`mb-3 flex items-center gap-2 ${mobile ? 'min-h-9 justify-between' : 'h-8 justify-start'}`}><h2 className={mobile ? 'text-xl font-semibold tracking-tight' : 'text-sm font-semibold'}>{t(`board.stages.${stage}`)}</h2><span className={mobile ? 'text-sm text-muted-foreground' : 'text-xs text-muted-foreground'}>{t('board.positionCount', { count })}</span></div>
-      {stage === 'moscow' ? <MoscowGroups groups={groups} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} /> : <div className="space-y-1">{groups.map((group) => <OrderCard key={group.orderId} group={group} stage={stage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />)}</div>}
-      {!count ? <EmptyLane purchase={stage === 'purchase'} /> : null}
+      <BoardColumnHeader stage={stage} groups={visibleGroups} allGroups={groups} dateRange={dateRange} mobile={mobile} onDateRangeChange={onDateRangeChange} />
+      {stage === 'moscow' ? <MoscowGroups groups={visibleGroups} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} /> : <div className="space-y-1">{visibleGroups.map((group) => <OrderCard key={group.orderId} group={group} stage={stage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />)}</div>}
+      {!count ? (dateRange?.from || dateRange?.to ? <EmptyFilteredLane /> : <EmptyLane purchase={stage === 'purchase'} />) : null}
     </section>
   )
 }
@@ -499,25 +615,25 @@ function BoardSkeleton() {
   return <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">{stages.map((stage) => <div key={stage}><Skeleton className="mb-3 h-8 w-36" /><div className="space-y-3"><Skeleton className="h-44 rounded-xl" /><Skeleton className="h-52 rounded-xl" /></div></div>)}</div>
 }
 
-function DesktopBoard({ groups, activeDrag, onMove, onDragStart, onDragEnd, onTransition }: { groups: OrderGroup[]; activeDrag: ActiveProcurementDrag | null; onMove: (rowId: string, stage: BoardStage) => void; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
+function DesktopBoard({ groups, activeDrag, dateRanges, onDateRangeChange, onMove, onDragStart, onDragEnd, onTransition }: { groups: OrderGroup[]; activeDrag: ActiveProcurementDrag | null; dateRanges: Partial<Record<BoardStage, DateRange>>; onDateRangeChange: (stage: BoardStage, range: DateRange | undefined) => void; onMove: (rowId: string, stage: BoardStage) => void; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const drop = useColumnDropTarget(activeDrag, onMove)
-  return <div className="grid grid-cols-5 items-start gap-1" onDragOver={drop.onDragOver} onDragLeave={drop.onDragLeave} onDrop={drop.onDrop}>{stages.map((stage) => <BoardLane key={stage} stage={stage} groups={groupsForStage(groups, stage)} dropStage={drop.dropStage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />)}</div>
+  return <div className="grid grid-cols-5 items-start gap-1" onDragOver={drop.onDragOver} onDragLeave={drop.onDragLeave} onDrop={drop.onDrop}>{stages.map((stage) => <BoardLane key={stage} stage={stage} groups={groupsForStage(groups, stage)} dateRange={dateRanges[stage]} onDateRangeChange={(range) => onDateRangeChange(stage, range)} dropStage={drop.dropStage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} />)}</div>
 }
 
-function MobileBoard({ groups, activeDrag, onMove, onDragStart, onDragEnd, onTransition }: { groups: OrderGroup[]; activeDrag: ActiveProcurementDrag | null; onMove: (rowId: string, stage: BoardStage) => void; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
+function MobileBoard({ groups, activeDrag, dateRanges, onDateRangeChange, onMove, onDragStart, onDragEnd, onTransition }: { groups: OrderGroup[]; activeDrag: ActiveProcurementDrag | null; dateRanges: Partial<Record<BoardStage, DateRange>>; onDateRangeChange: (stage: BoardStage, range: DateRange | undefined) => void; onMove: (rowId: string, stage: BoardStage) => void; onDragStart: (drag: ActiveProcurementDrag) => void; onDragEnd: () => void; onTransition: TransitionAction }) {
   const { t } = useTranslation('procurements')
   const [active, setActive] = useState<BoardStage>('purchase')
   const scrollerRef = useRef<HTMLDivElement>(null)
   const animationRef = useRef<number | null>(null)
   const activate = (stage: BoardStage) => { setActive(stage); const index = stages.indexOf(stage); scrollerRef.current?.scrollTo({ left: index * scrollerRef.current.clientWidth, behavior: 'smooth' }) }
   const syncFromScroll = () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); animationRef.current = requestAnimationFrame(() => { const scroller = scrollerRef.current; if (!scroller?.clientWidth) return; setActive(stages[Math.max(0, Math.min(stages.length - 1, Math.round(scroller.scrollLeft / scroller.clientWidth)))]) }) }
-  const countFor = (stage: BoardStage) => groupsForStage(groups, stage).reduce((sum, group) => sum + group.rows.length, 0)
+  const countFor = (stage: BoardStage) => filterGroupsByCreatedDate(groupsForStage(groups, stage), dateRanges[stage], stage).reduce((sum, group) => sum + group.rows.length, 0)
   const drop = useColumnDropTarget(activeDrag, onMove)
   return (
     <Tabs value={active} onValueChange={(value) => activate(value as BoardStage)} className="min-w-0 gap-4">
       <TabsList className="grid h-12 w-full grid-cols-5 rounded-2xl p-1">{stages.map((stage) => <TabsTrigger key={stage} value={stage} className="group min-w-0 gap-1 rounded-xl px-1 text-[10px] sm:text-xs"><span className="truncate">{t(`board.mobileStages.${stage}`)}</span><span className="rounded-full bg-background/70 px-1.5 text-[10px] tabular-nums group-data-[state=active]:bg-blue-50 group-data-[state=active]:text-blue-700">{countFor(stage)}</span></TabsTrigger>)}</TabsList>
       <div ref={scrollerRef} data-procurement-scroll className="flex min-h-[calc(100dvh-13rem)] w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain touch-pan-x touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" onScroll={syncFromScroll} onDragOver={drop.onDragOver} onDragLeave={drop.onDragLeave} onDrop={drop.onDrop}>
-        {stages.map((stage, index) => <TabsContent key={stage} value={stage} forceMount className={`mt-0 block min-h-full w-full min-w-full shrink-0 snap-start snap-always data-[state=inactive]:block ${index < stages.length - 1 ? 'pr-5' : ''}`}><BoardLane mobile stage={stage} groups={groupsForStage(groups, stage)} dropStage={drop.dropStage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} /></TabsContent>)}
+        {stages.map((stage, index) => <TabsContent key={stage} value={stage} forceMount className={`mt-0 block min-h-full w-full min-w-full shrink-0 snap-start snap-always data-[state=inactive]:block ${index < stages.length - 1 ? 'pr-5' : ''}`}><BoardLane mobile stage={stage} groups={groupsForStage(groups, stage)} dateRange={dateRanges[stage]} onDateRangeChange={(range) => onDateRangeChange(stage, range)} dropStage={drop.dropStage} onDragStart={onDragStart} onDragEnd={onDragEnd} onTransition={onTransition} /></TabsContent>)}
       </div>
     </Tabs>
   )
@@ -545,6 +661,7 @@ export function ProcurementsPage() {
   const isMobile = useMediaQuery('(max-width: 1023px)')
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [dateRanges, setDateRanges] = useState<Partial<Record<BoardStage, DateRange>>>({})
   const [moveError, setMoveError] = useState<string | null>(null)
   const [moveSuccess, setMoveSuccess] = useState(false)
   const [activeDrag, setActiveDrag] = useState<ActiveProcurementDrag | null>(null)
@@ -556,6 +673,14 @@ export function ProcurementsPage() {
   const query = useProcurements()
   const normalizedSearch = search.trim().toLocaleLowerCase()
   const groups = useMemo(() => groupOrders(query.data ?? []).filter((group) => matchesSearch(group, normalizedSearch)), [normalizedSearch, query.data])
+  const updateDateRange = (stage: BoardStage, range: DateRange | undefined) => {
+    setDateRanges((current) => {
+      const next = { ...current }
+      if (range?.from || range?.to) next[stage] = range
+      else delete next[stage]
+      return next
+    })
+  }
   const moveMutation = useMutation({
     mutationFn: async ({ row, status, stage }: { row: ProcurementRow; status?: ProcurementStatus; stage?: string }) => {
       return procurementsApi.transitionProcurement(row.id, { status, targetStage: stage })
@@ -583,7 +708,7 @@ export function ProcurementsPage() {
     return moveMutation.mutateAsync({ row, status, stage })
   }
   const dragProps = { activeDrag, onMove: moveItem, onDragStart: setActiveDrag, onDragEnd: () => setActiveDrag(null), onTransition: transitionItem }
-  return <div className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h1 className="text-[29px] font-bold leading-tight tracking-tight lg:text-2xl">{t('title')}</h1><div className="flex w-full min-w-0 items-center gap-2 sm:w-auto"><div className="relative min-w-0 flex-1 sm:w-72 sm:flex-none sm:max-w-sm"><Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground lg:left-3" /><Input aria-label={t('mobile.searchPlaceholder')} className="h-12 rounded-2xl bg-white pl-11 lg:h-9 lg:rounded-md lg:pl-9" value={search} placeholder={t('mobile.searchPlaceholder')} onChange={(event) => setSearch(event.target.value)} /></div><Button asChild size="icon" variant="outline" className="h-12 w-12 shrink-0 lg:h-9 lg:w-9" aria-label={t('board.archive')} title={t('board.archive')}><Link to="/admin/procurements/archive"><Archive /></Link></Button></div></div>{moveError ? <Alert variant="destructive"><AlertDescription>{moveError}</AlertDescription></Alert> : moveSuccess ? <p role="status" className="text-sm text-emerald-700">{t('board.statusUpdated')}</p> : null}{query.isLoading ? <BoardSkeleton /> : query.isError ? <div className="rounded-xl border p-6 text-center"><p className="font-medium">{t('mobile.loadError')}</p><Button variant="outline" className="mt-3" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : isMobile ? <MobileBoard groups={groups} {...dragProps} /> : <DesktopBoard groups={groups} {...dragProps} />}</div>
+  return <div className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h1 className="text-[29px] font-bold leading-tight tracking-tight lg:text-2xl">{t('title')}</h1><div className="flex w-full min-w-0 items-center gap-2 sm:w-auto"><div className="relative min-w-0 flex-1 sm:w-72 sm:flex-none sm:max-w-sm"><Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground lg:left-3" /><Input aria-label={t('mobile.searchPlaceholder')} className="h-12 rounded-2xl bg-white pl-11 lg:h-9 lg:rounded-md lg:pl-9" value={search} placeholder={t('mobile.searchPlaceholder')} onChange={(event) => setSearch(event.target.value)} /></div><Button asChild size="icon" variant="outline" className="h-12 w-12 shrink-0 lg:h-9 lg:w-9" aria-label={t('board.archive')} title={t('board.archive')}><Link to="/admin/procurements/archive"><Archive /></Link></Button></div></div>{moveError ? <Alert variant="destructive"><AlertDescription>{moveError}</AlertDescription></Alert> : moveSuccess ? <p role="status" className="text-sm text-emerald-700">{t('board.statusUpdated')}</p> : null}{query.isLoading ? <BoardSkeleton /> : query.isError ? <div className="rounded-xl border p-6 text-center"><p className="font-medium">{t('mobile.loadError')}</p><Button variant="outline" className="mt-3" onClick={() => void query.refetch()}>{t('retry', { ns: 'common' })}</Button></div> : isMobile ? <MobileBoard groups={groups} dateRanges={dateRanges} onDateRangeChange={updateDateRange} {...dragProps} /> : <DesktopBoard groups={groups} dateRanges={dateRanges} onDateRangeChange={updateDateRange} {...dragProps} />}</div>
 }
 
 export function ProcurementsArchivePage() {
