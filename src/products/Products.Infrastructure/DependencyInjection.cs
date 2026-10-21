@@ -38,7 +38,11 @@ public static class DependencyInjection
                 sp.GetRequiredService<AuditableEntityInterceptor>());
         });
 
-        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<ProductRepository>();
+        services.AddScoped<IProductRepository>(sp => sp.GetRequiredService<ProductRepository>());
+        services.AddScoped<ICatalogProductRepository>(sp => sp.GetRequiredService<ProductRepository>());
+        services.AddScoped<ICartRepository, CartRepository>();
+        services.AddScoped<IFavoriteRepository, FavoriteRepository>();
         services.AddScoped<ISitemapDataSource, SitemapDataSource>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IBrandRepository, BrandRepository>();

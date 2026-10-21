@@ -1,270 +1,152 @@
-using System.Text.RegularExpressions;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Products.Domain.Entities;
-using Products.Infrastructure.Persistence;
-using Products.Application.ExternalProducts;
+using Products.Application.Cart.ClearCart;
+using Products.Application.Cart;
+using Products.Application.Cart.GetCart;
+using Products.Application.Cart.MergeVisitorState;
+using Products.Application.Cart.SetCart;
+using Products.Application.Cart.SetRakutenCartItem;
+using Products.Application.Favorites.ClearFavorites;
+using Products.Application.Favorites.GetFavorites;
+using Products.Application.Favorites.SetFavorite;
 
 namespace Products.Api.Controllers;
 
 [ApiController]
 [Route("api/catalog")]
-public sealed class CatalogStateController : ControllerBase
+public sealed class CatalogStateController(
+    IMediator mediator) : ControllerBase
 {
-    private const string VisitorHeader = "X-Catalog-Visitor";
     private const string VisitorKeyIsRequiredMessage = "A visitor key is required.";
-    private readonly ProductsDbContext _db;
-    private readonly IRakutenCatalogClient _rakuten;
-
-    public CatalogStateController(ProductsDbContext db, IRakutenCatalogClient rakuten)
-    {
-        _db = db;
-        _rakuten = rakuten;
-    }
 
     [HttpGet("cart")]
     [AllowAnonymous]
-    public async Task<ActionResult<IReadOnlyList<CartItemDto>>> Cart(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<CartItemDto>>> GetCartItems(CancellationToken cancellationToken)
     {
-        var owner = ResolveOwner();
-
-        if (owner is null)
+        var result = await mediator.Send(new GetCartQuery(), cancellationToken);
+        return result switch
         {
-            return BadRequest(new ProblemDetails { Detail = VisitorKeyIsRequiredMessage });
-        }
-
-        var rows = await OwnedBy(_db.CatalogCartItems.AsNoTracking()
-            .Include(x => x.Product), owner.Value)
-            .OrderByDescending(x => x.UpdatedAt).ToListAsync(cancellationToken);
-
-        var external = await OwnedBy(_db.ExternalProductCartItems.AsNoTracking(), owner.Value)
-            .OrderByDescending(x => x.UpdatedAt).ToListAsync(cancellationToken);
-
-        return Ok(rows.Select(MapCart).Concat(external.Select(MapExternalCart)).OrderByDescending(x => x.UpdatedAt).ToList());
+            GetCartResult.Success success => Ok(success.Items),
+            GetCartResult.OwnerRequired => BadRequest(OwnerRequiredProblem()),
+            _ => throw new InvalidOperationException("Unknown cart query result."),
+        };
     }
 
     [HttpPut("cart/items/{productId:guid}")]
     [AllowAnonymous]
-    public async Task<ActionResult<CartItemDto>> SetCart(Guid productId, SetCartItemRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<CartItemDto>> SetCart(
+        Guid productId,
+        [FromBody] SetCartItemRequest request,
+        CancellationToken cancellationToken)
     {
-        var owner = ResolveOwner();
-        if (owner is null) return BadRequest(new ProblemDetails { Detail = VisitorKeyIsRequiredMessage });
-        var product = await _db.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Id == productId && x.IsActive, cancellationToken);
-        if (product is null) return NotFound();
-        var selectedColor = NormalizeOption(request.SelectedColor, 200);
-        var selectedSize = NormalizeOption(request.SelectedSize, 100);
-        if (selectedColor.Length > 0 && !await _db.ProductColors.AnyAsync(
-                x => x.ProductId == productId && x.Name == selectedColor, cancellationToken))
-            return BadRequest(new ProblemDetails { Detail = "Выбранный цвет недоступен для товара." });
-        if (selectedSize.Length > 0 && !await _db.ProductSizes.AnyAsync(
-                x => x.ProductId == productId && x.Name == selectedSize, cancellationToken))
-            return BadRequest(new ProblemDetails { Detail = "Выбранный размер недоступен для товара." });
-        var row = await OwnedBy(_db.CatalogCartItems.Where(x => x.ProductId == productId
-                && x.SelectedColor == selectedColor && x.SelectedSize == selectedSize), owner.Value)
-            .SingleOrDefaultAsync(cancellationToken);
-        if (request.Quantity <= 0)
+        var result = await mediator.Send(
+            new SetCartItemCommand(productId, request.Quantity, request.SelectedColor, request.SelectedSize),
+            cancellationToken);
+
+        return result switch
         {
-            if (row is not null) { _db.CatalogCartItems.Remove(row); await _db.SaveChangesAsync(cancellationToken); }
-            return NoContent();
-        }
-        if (row is null)
-        {
-            row = new CatalogCartItem
-            {
-                Id = Guid.NewGuid(), ProductId = productId, UserId = owner.Value.UserId,
-                VisitorKey = owner.Value.VisitorKey, SelectedColor = selectedColor, SelectedSize = selectedSize,
-            };
-            _db.CatalogCartItems.Add(row);
-        }
-        row.Quantity = Math.Min(request.Quantity, 999);
-        row.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync(cancellationToken);
-        return Ok(new CartItemDto("Internal", product.Id.ToString(), product.Id, null, product.Slug, product.Name,
-            product.Price, product.CurrencyCode, product.LocalImageUrl ?? product.ImageUrl, product.SourceUrl, null,
-            product.Shop?.Name, true, row.Quantity, row.UpdatedAt, EmptyToNull(row.SelectedColor), EmptyToNull(row.SelectedSize)));
+            SetCartItemResult.Updated updated => Ok(updated.Item),
+            SetCartItemResult.Deleted => NoContent(),
+            SetCartItemResult.ProductNotFound => NotFound(),
+            SetCartItemResult.InvalidOption invalid => BadRequest(new ProblemDetails { Detail = invalid.Message }),
+            SetCartItemResult.OwnerRequired => BadRequest(OwnerRequiredProblem()),
+            _ => throw new InvalidOperationException("Unknown cart update result."),
+        };
     }
 
     [HttpPut("cart/external/rakuten")]
     [AllowAnonymous]
-    public async Task<ActionResult<CartItemDto>> SetRakutenCart(SetExternalCartItemRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<CartItemDto>> SetRakutenCart(
+        [FromBody] SetExternalCartItemRequest request,
+        CancellationToken cancellationToken)
     {
-        var owner = ResolveOwner();
-        if (owner is null) return BadRequest(new ProblemDetails { Detail = VisitorKeyIsRequiredMessage });
-        if (string.IsNullOrWhiteSpace(request.ExternalId)) return BadRequest(new ProblemDetails { Detail = "externalId is required." });
-        var row = await OwnedBy(_db.ExternalProductCartItems.Where(x => x.Source == "Rakuten"
-            && x.ExternalId == request.ExternalId), owner.Value).SingleOrDefaultAsync(cancellationToken);
-        if (request.Quantity <= 0)
+        var result = await mediator.Send(new SetRakutenCartItemCommand(request.ExternalId, request.Quantity), cancellationToken);
+        return result switch
         {
-            if (row is not null) { _db.ExternalProductCartItems.Remove(row); await _db.SaveChangesAsync(cancellationToken); }
-            return NoContent();
-        }
-        ExternalCatalogProductDto item;
-        try
-        {
-            item = await _rakuten.GetByItemCodeAsync(request.ExternalId, cancellationToken)
-                ?? throw new KeyNotFoundException();
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
-        catch (ExternalCatalogUnavailableException ex)
-        {
-            return StatusCode(503, new ProblemDetails { Detail = ex.Message });
-        }
-        if (!item.Available) return Conflict(new ProblemDetails { Detail = "Товар Rakuten недоступен." });
-        var now = DateTimeOffset.UtcNow;
-        row ??= new ExternalProductCartItem
-        {
-            Id = Guid.NewGuid(), Source = "Rakuten", ExternalId = request.ExternalId.Trim(),
-            UserId = owner.Value.UserId, VisitorKey = owner.Value.VisitorKey, AddedAt = now,
+            SetRakutenCartItemResult.Updated updated => Ok(updated.Item),
+            SetRakutenCartItemResult.Deleted => NoContent(),
+            SetRakutenCartItemResult.NotFound => NotFound(),
+            SetRakutenCartItemResult.InvalidRequest invalid => BadRequest(new ProblemDetails { Detail = invalid.Message }),
+            SetRakutenCartItemResult.OwnerRequired => BadRequest(OwnerRequiredProblem()),
+            SetRakutenCartItemResult.Unavailable unavailable => StatusCode(503, new ProblemDetails { Detail = unavailable.Message }),
+            SetRakutenCartItemResult.ProductUnavailable => Conflict(new ProblemDetails { Detail = "Товар Rakuten недоступен." }),
+            _ => throw new InvalidOperationException("Unknown Rakuten cart update result."),
         };
-        if (_db.Entry(row).State == EntityState.Detached) _db.ExternalProductCartItems.Add(row);
-        row.Name = item.Name; row.Description = item.Description; row.UnitPrice = item.Price;
-        row.CurrencyCode = item.CurrencyCode; row.ImageUrl = item.ImageUrl; row.SourceUrl = item.SourceUrl;
-        row.AffiliateUrl = item.AffiliateUrl; row.ShopCode = item.ShopCode; row.ShopName = item.ShopName;
-        row.Available = item.Available; row.Quantity = Math.Min(request.Quantity, 100);
-        row.LastValidatedAt = now; row.UpdatedAt = now;
-        await _db.SaveChangesAsync(cancellationToken);
-        return Ok(MapExternalCart(row));
     }
 
     [HttpDelete("cart")]
     [AllowAnonymous]
     public async Task<IActionResult> ClearCart(CancellationToken cancellationToken)
     {
-        var owner = ResolveOwner();
-        if (owner is null) return BadRequest(new ProblemDetails { Detail = VisitorKeyIsRequiredMessage });
-        await OwnedBy(_db.CatalogCartItems, owner.Value).ExecuteDeleteAsync(cancellationToken);
-        await OwnedBy(_db.ExternalProductCartItems, owner.Value).ExecuteDeleteAsync(cancellationToken);
-        return NoContent();
+        var result = await mediator.Send(new ClearCartCommand(), cancellationToken);
+        return result switch
+        {
+            ClearCartResult.Cleared => NoContent(),
+            ClearCartResult.OwnerRequired => BadRequest(OwnerRequiredProblem()),
+            _ => throw new InvalidOperationException("Unknown clear cart result."),
+        };
     }
 
     [HttpGet("favorites")]
     [AllowAnonymous]
     public async Task<ActionResult<IReadOnlyList<Guid>>> Favorites(CancellationToken cancellationToken)
     {
-        var owner = ResolveOwner();
-        if (owner is null) return BadRequest(new ProblemDetails { Detail = VisitorKeyIsRequiredMessage });
-        return Ok(await OwnedBy(_db.CatalogFavorites.AsNoTracking(), owner.Value)
-            .Select(x => x.ProductId).ToListAsync(cancellationToken));
+        var result = await mediator.Send(new GetFavoritesQuery(), cancellationToken);
+        return result switch
+        {
+            GetFavoritesResult.Success success => Ok(success.ProductIds),
+            GetFavoritesResult.OwnerRequired => BadRequest(OwnerRequiredProblem()),
+            _ => throw new InvalidOperationException("Unknown favorites query result."),
+        };
     }
 
     [HttpDelete("favorites")]
     [AllowAnonymous]
     public async Task<IActionResult> ClearFavorites(CancellationToken cancellationToken)
     {
-        var owner = ResolveOwner();
-        if (owner is null) return BadRequest(new ProblemDetails { Detail = VisitorKeyIsRequiredMessage });
-        await OwnedBy(_db.CatalogFavorites, owner.Value)
-            .ExecuteDeleteAsync(cancellationToken);
-        return NoContent();
+        var result = await mediator.Send(new ClearFavoritesCommand(), cancellationToken);
+        return result switch
+        {
+            ClearFavoritesResult.Cleared => NoContent(),
+            ClearFavoritesResult.OwnerRequired => BadRequest(OwnerRequiredProblem()),
+            _ => throw new InvalidOperationException("Unknown clear favorites result."),
+        };
     }
 
     [HttpPut("favorites/{productId:guid}")]
     [AllowAnonymous]
-    public async Task<IActionResult> SetFavorite(Guid productId, SetFavoriteRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> SetFavorite(
+        Guid productId,
+        [FromBody] SetFavoriteRequest request,
+        CancellationToken cancellationToken)
     {
-        var owner = ResolveOwner();
-        if (owner is null) return BadRequest(new ProblemDetails { Detail = VisitorKeyIsRequiredMessage });
-        if (request.Favorite && !await _db.Products.AnyAsync(x => x.Id == productId && x.IsActive, cancellationToken))
-            return NotFound();
-        var row = await OwnedBy(_db.CatalogFavorites.Where(x => x.ProductId == productId), owner.Value)
-            .SingleOrDefaultAsync(cancellationToken);
-        if (request.Favorite && row is null)
-            _db.CatalogFavorites.Add(new CatalogFavorite { Id = Guid.NewGuid(), ProductId = productId, UserId = owner.Value.UserId, VisitorKey = owner.Value.VisitorKey, CreatedAt = DateTimeOffset.UtcNow });
-        else if (!request.Favorite && row is not null) _db.CatalogFavorites.Remove(row);
-        await _db.SaveChangesAsync(cancellationToken);
-        return NoContent();
+        var result = await mediator.Send(new SetFavoriteCommand(productId, request.Favorite), cancellationToken);
+        return result switch
+        {
+            SetFavoriteResult.Updated => NoContent(),
+            SetFavoriteResult.ProductNotFound => NotFound(),
+            SetFavoriteResult.OwnerRequired => BadRequest(OwnerRequiredProblem()),
+            _ => throw new InvalidOperationException("Unknown favorite update result."),
+        };
     }
 
     [HttpPost("merge")]
     [Authorize]
     public async Task<IActionResult> MergeVisitorState(CancellationToken cancellationToken)
     {
-        var userId = User.FindFirst("sub")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        var visitor = Request.Headers[VisitorHeader].FirstOrDefault()?.Trim();
-        if (!Guid.TryParse(userId, out var accountId) || !IsValidVisitorKey(visitor))
-            return BadRequest(new ProblemDetails { Detail = "An authenticated account and visitor key are required." });
-
-        var guestCart = await _db.CatalogCartItems.Where(x => x.VisitorKey == visitor).ToListAsync(cancellationToken);
-        var accountCart = await _db.CatalogCartItems.Where(x => x.UserId == accountId)
-            .ToDictionaryAsync(x => CartKey(x.ProductId, x.SelectedColor, x.SelectedSize), cancellationToken);
-        foreach (var item in guestCart)
+        var result = await mediator.Send(new MergeVisitorStateCommand(), cancellationToken);
+        return result switch
         {
-            var key = CartKey(item.ProductId, item.SelectedColor, item.SelectedSize);
-            if (accountCart.TryGetValue(key, out var existing)) existing.Quantity = Math.Min(999, existing.Quantity + item.Quantity);
-            else { item.UserId = accountId; item.VisitorKey = null; accountCart[key] = item; }
-        }
-        var guestExternal = await _db.ExternalProductCartItems.Where(x => x.VisitorKey == visitor).ToListAsync(cancellationToken);
-        var accountExternal = await _db.ExternalProductCartItems.Where(x => x.UserId == accountId)
-            .ToDictionaryAsync(x => $"{x.Source}:{x.ExternalId}", cancellationToken);
-        foreach (var item in guestExternal)
-        {
-            var key = $"{item.Source}:{item.ExternalId}";
-            if (accountExternal.TryGetValue(key, out var existing))
-            {
-                existing.Quantity = Math.Min(100, existing.Quantity + item.Quantity);
-                _db.ExternalProductCartItems.Remove(item);
-            }
-            else { item.UserId = accountId; item.VisitorKey = null; accountExternal[key] = item; }
-        }
-        var guestFavorites = await _db.CatalogFavorites.Where(x => x.VisitorKey == visitor).ToListAsync(cancellationToken);
-        var accountFavoriteIds = await _db.CatalogFavorites.Where(x => x.UserId == accountId).Select(x => x.ProductId).ToHashSetAsync(cancellationToken);
-        foreach (var favorite in guestFavorites)
-        {
-            if (accountFavoriteIds.Contains(favorite.ProductId)) _db.CatalogFavorites.Remove(favorite);
-            else { favorite.UserId = accountId; favorite.VisitorKey = null; accountFavoriteIds.Add(favorite.ProductId); }
-        }
-        await _db.SaveChangesAsync(cancellationToken);
-        return NoContent();
+            MergeVisitorStateResult.Merged => NoContent(),
+            MergeVisitorStateResult.InvalidOwner => BadRequest(new ProblemDetails { Detail = "An authenticated account and visitor key are required." }),
+            _ => throw new InvalidOperationException("Unknown visitor state merge result."),
+        };
     }
 
-    private Owner? ResolveOwner()
-    {
-        var userId = User.FindFirst("sub")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (User.Identity?.IsAuthenticated == true && Guid.TryParse(userId, out var id)) return new Owner(id, null);
-        var key = Request.Headers[VisitorHeader].FirstOrDefault()?.Trim();
-        return IsValidVisitorKey(key) ? new Owner(null, key) : null;
-    }
-
-    private static bool IsValidVisitorKey(string? value) => value is not null && value.Length <= 64 && Regex.IsMatch(value, "^[A-Za-z0-9_-]+$");
-    private static IQueryable<CatalogCartItem> OwnedBy(IQueryable<CatalogCartItem> query, Owner owner) =>
-        owner.UserId is Guid userId
-            ? query.Where(x => x.UserId == userId)
-            : query.Where(x => x.VisitorKey == owner.VisitorKey);
-
-    private static IQueryable<ExternalProductCartItem> OwnedBy(IQueryable<ExternalProductCartItem> query, Owner owner) =>
-        owner.UserId is Guid userId
-            ? query.Where(x => x.UserId == userId)
-            : query.Where(x => x.VisitorKey == owner.VisitorKey);
-
-    private static string NormalizeOption(string? value, int maxLength)
-    {
-        var normalized = value?.Trim() ?? string.Empty;
-        return normalized.Length <= maxLength ? normalized : normalized[..maxLength];
-    }
-
-    private static string? EmptyToNull(string value) => value.Length == 0 ? null : value;
-
-    private static string CartKey(Guid productId, string color, string size) => $"{productId:N}\u001f{color}\u001f{size}";
-
-    private static IQueryable<CatalogFavorite> OwnedBy(IQueryable<CatalogFavorite> query, Owner owner) =>
-        owner.UserId is Guid userId
-            ? query.Where(x => x.UserId == userId)
-            : query.Where(x => x.VisitorKey == owner.VisitorKey);
-    private static CartItemDto MapCart(CatalogCartItem item) => new("Internal", item.ProductId.ToString(), item.ProductId, null,
-        item.Product.Slug, item.Product.NameRu ?? item.Product.Name, item.Product.Price, item.Product.CurrencyCode,
-        item.Product.LocalImageUrl ?? item.Product.ImageUrl, item.Product.SourceUrl, null, item.Product.Shop?.Name,
-        item.Product.IsActive, item.Quantity, item.UpdatedAt, EmptyToNull(item.SelectedColor), EmptyToNull(item.SelectedSize));
-    private static CartItemDto MapExternalCart(ExternalProductCartItem item) => new(item.Source,
-        "rakuten:" + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(item.ExternalId)).TrimEnd('=').Replace('+', '-').Replace('/', '_'),
-        null, item.ExternalId, item.ExternalId, item.Name, item.UnitPrice, item.CurrencyCode, item.ImageUrl,
-        item.SourceUrl, item.AffiliateUrl, item.ShopName, item.Available, item.Quantity, item.UpdatedAt, null, null);
-    private readonly record struct Owner(Guid? UserId, string? VisitorKey);
+    private static ProblemDetails OwnerRequiredProblem() => new() { Detail = VisitorKeyIsRequiredMessage };
 }
 
 public sealed record SetCartItemRequest(int Quantity, string? SelectedColor = null, string? SelectedSize = null);
-public sealed record SetExternalCartItemRequest(string ExternalId, int Quantity);
+public sealed record SetExternalCartItemRequest(string? ExternalId, int Quantity);
 public sealed record SetFavoriteRequest(bool Favorite);
-public sealed record CartItemDto(string Source, string Id, Guid? ProductId, string? ExternalId, string Slug, string Name,
-    decimal Price, string CurrencyCode, string? ImageUrl, string? SourceUrl, string? AffiliateUrl, string? ShopName,
-    bool Available, int Quantity, DateTimeOffset UpdatedAt, string? SelectedColor, string? SelectedSize);

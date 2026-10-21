@@ -29,6 +29,7 @@ try
 
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddScoped<Products.Application.Common.Interfaces.ICatalogOwnerProvider, CatalogOwnerProvider>();
     builder.Services.AddProductsAuth(builder.Configuration);
     builder.Services.AddScoped<CatalogAnalyticsCacheService>();
     builder.Services.AddHostedService<CatalogAnalyticsRefreshService>();

@@ -7,7 +7,7 @@ using Products.Application.Products.Models;
 
 namespace Products.Infrastructure.Persistence.Repositories;
 
-public sealed class ProductRepository(ProductsDbContext db, IMemoryCache cache) : IProductRepository
+public sealed class ProductRepository(ProductsDbContext db, IMemoryCache cache) : IProductRepository, ICatalogProductRepository
 {
     private static readonly TimeSpan MixedCandidatesCacheDuration = TimeSpan.FromMinutes(5);
 
@@ -42,6 +42,18 @@ public sealed class ProductRepository(ProductsDbContext db, IMemoryCache cache) 
 
     public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         WithDetails().FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+
+    public Task<Product?> GetActiveForCartAsync(Guid id, CancellationToken cancellationToken = default) =>
+        _db.Products.AsNoTracking().Include(product => product.Shop)
+            .FirstOrDefaultAsync(product => product.Id == id && product.IsActive, cancellationToken);
+
+    public Task<bool> HasColorAsync(Guid productId, string color, CancellationToken cancellationToken = default) =>
+        _db.ProductColors.AsNoTracking().AnyAsync(
+            option => option.ProductId == productId && option.Name == color, cancellationToken);
+
+    public Task<bool> HasSizeAsync(Guid productId, string size, CancellationToken cancellationToken = default) =>
+        _db.ProductSizes.AsNoTracking().AnyAsync(
+            option => option.ProductId == productId && option.Name == size, cancellationToken);
 
     public Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
         WithDetails().FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
