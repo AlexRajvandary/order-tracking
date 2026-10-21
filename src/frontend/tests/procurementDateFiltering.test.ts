@@ -5,6 +5,7 @@ import {
   filterByCreatedAt,
   isCreatedAtInDateRange,
 } from '../src/features/procurements/lib/dateFiltering.ts'
+import { groupTrackingItemsByStage } from '../src/features/tracking/lib/trackingProgress.ts'
 
 const dayOne = new Date(2026, 9, 21)
 const dayTwo = new Date(2026, 9, 22)
@@ -40,4 +41,33 @@ test('clearing a date filter returns every row and independent ranges stay isola
 test('counts products and distinct order IDs', () => {
   const visible = filterByCreatedAt(rows, { from: dayOne })
   assert.deepEqual(countProductsAndDistinctOrders(visible), { products: 2, orders: 1 })
+})
+
+test('groups tracking products by lifecycle stage and keeps item order within groups', () => {
+  const groups = groupTrackingItemsByStage([
+    { id: 'warehouse-b', currentStatus: null, procurementStatus: 'AtOriginWarehouse' },
+    { id: 'purchase', currentStatus: null, procurementStatus: 'Purchased' },
+    { id: 'warehouse-a', currentStatus: null, procurementStatus: 'AwaitingWarehouse' },
+  ])
+
+  assert.deepEqual(groups.map((group) => group.stageIndex), [0, 1])
+  assert.deepEqual(groups.map((group) => group.items.map((item) => item.id)), [
+    ['purchase'],
+    ['warehouse-b', 'warehouse-a'],
+  ])
+})
+
+test('keeps completed and unknown tracking stages visible', () => {
+  const groups = groupTrackingItemsByStage([
+    { id: 'unknown-a', currentStatus: 'Special status', procurementStatus: 'CustomStatusA' },
+    { id: 'delivered', currentStatus: null, procurementStatus: 'Delivered' },
+    { id: 'unknown-b', currentStatus: 'Other status', procurementStatus: 'CustomStatusB' },
+  ])
+
+  assert.deepEqual(groups.map((group) => group.stageIndex), [4, null, null])
+  assert.deepEqual(groups.map((group) => group.items.map((item) => item.id)), [
+    ['delivered'],
+    ['unknown-a'],
+    ['unknown-b'],
+  ])
 })

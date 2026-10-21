@@ -15,6 +15,7 @@ public sealed record PublicTrackingItemDto(
     string? ImageUrl,
     string? CurrentStatus,
     string? StatusColor,
+    string? ProcurementStatus,
     IReadOnlyList<PublicStatusHistoryDto> History);
 
 public sealed record PublicStatusHistoryDto(

@@ -24,5 +24,15 @@
   "noItems": "В заявке пока нет позиций",
   "notFound": "Заявка не найдена",
   "invalidCode": "Код должен состоять из 5 символов",
-  "quantity": "Кол-во"
+  "quantity": "Кол-во",
+  "progressLabel": "Прогресс доставки",
+  "expandPhoto": "Увеличить фото товара",
+  "customerStages": {
+    "purchase": "Выкуплен",
+    "originWarehouse": "На складе",
+    "transit": "В пути",
+    "moscow": "Прибыл в Москву",
+    "customerDelivery": "Доставлен"
+  },
+  "unknownStage": "Статус уточняется"
 }

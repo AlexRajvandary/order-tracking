@@ -24,5 +24,15 @@
   "noItems": "This request has no items yet",
   "notFound": "Request not found",
   "invalidCode": "Code must be 5 characters",
-  "quantity": "Qty"
+  "quantity": "Qty",
+  "progressLabel": "Delivery progress",
+  "expandPhoto": "Enlarge product image",
+  "customerStages": {
+    "purchase": "Purchased",
+    "originWarehouse": "At warehouse",
+    "transit": "In transit",
+    "moscow": "Arrived in Moscow",
+    "customerDelivery": "Delivered"
+  },
+  "unknownStage": "Status pending"
 }

@@ -94,7 +94,7 @@ export function Globe({
     const onResize = () => {
       const parent = canvas.parentElement
       if (!parent) return
-      const side = Math.max(180, Math.min(parent.clientWidth, parent.clientHeight, size))
+      const side = Math.max(1, Math.min(parent.clientWidth, parent.clientHeight, size))
       applySize(side)
     }
 

@@ -186,6 +186,7 @@ public sealed class OrderRepository : IOrderRepository
                             : i.ImageUrl,
                         i.CurrentStatusText,
                         i.CurrentStatus != null ? i.CurrentStatus.Color : null,
+                        i.Procurement != null ? i.Procurement.CurrentStatus.ToString() : null,
                         i.StatusHistory
                             .Where(h => h.IsPublished)
                             .OrderByDescending(h => h.ChangedAt)

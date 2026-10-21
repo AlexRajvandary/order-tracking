@@ -36,6 +36,7 @@ public sealed class GetOrderByTrackingCodeQueryHandler
                 i.ImageUrl,
                 i.CurrentStatus,
                 i.StatusColor,
+                i.ProcurementStatus,
                 i.History.Select(h => new PublicStatusHistoryDto(
                     h.StatusText,
                     h.Comment,

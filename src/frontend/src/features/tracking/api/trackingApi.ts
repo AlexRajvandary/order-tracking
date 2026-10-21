@@ -27,6 +27,7 @@ export type PublicTrackingItem = {
   imageUrl: string | null
   currentStatus: string | null
   statusColor: string | null
+  procurementStatus: string | null
   history: PublicStatusHistory[]
 }
 
