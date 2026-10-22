@@ -168,6 +168,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
             _orderRepository.AddItem(item);
         }
 
+        // Устаревший генератор истории статусов заказа; сохраняем его для совместимости с уже существующими заказами.
         await ScheduledStatusHistorySeeder.SeedForItemsAsync(
             _orderRepository,
             _statusDefinitionRepository,

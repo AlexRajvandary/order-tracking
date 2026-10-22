@@ -178,7 +178,7 @@ function mapAiItems(draft: AiOrderDraft): DraftItem[] {
         key: crypto.randomUUID(),
         itemType,
         name: (item.name?.trim() || url || item.description?.trim() || '').slice(0, 500),
-        description: item.description?.trim() || null,
+        description: itemType === 'Product' ? null : item.description?.trim() || null,
         sourceUrl: url || null,
         skipPreviewExtraction: false,
         quantity,
@@ -725,22 +725,6 @@ export function CreateOrderPage() {
                     )
                   }
                 />
-                <Textarea
-                  className={uncertainClass(
-                    isUncertain(uncertainPaths, `items[${index}].description`) ||
-                      isUncertain(uncertainPaths, `items[${index}].url`),
-                  )}
-                  rows={2}
-                  placeholder={t('form.itemDescription')}
-                  value={item.description ?? ''}
-                  onChange={(e) =>
-                    setItems((prev) =>
-                      prev.map((it, i) =>
-                        i === index ? { ...it, description: e.target.value } : it,
-                      ),
-                    )
-                  }
-                />
                 {item.itemType === 'Product' ? (
                   <div className="space-y-1.5">
                     <Label htmlFor={`source-url-${item.key}`}>{t('form.sourceUrl')}</Label>
@@ -748,6 +732,10 @@ export function CreateOrderPage() {
                       id={`source-url-${item.key}`}
                       type="url"
                       placeholder="https://"
+                      className={uncertainClass(
+                        isUncertain(uncertainPaths, `items[${index}].url`) ||
+                          isUncertain(uncertainPaths, `items[${index}].description`),
+                      )}
                       value={item.sourceUrl ?? ''}
                       onChange={(event) =>
                         setItems((prev) =>
@@ -758,7 +746,23 @@ export function CreateOrderPage() {
                       }
                     />
                   </div>
-                ) : null}
+                ) : (
+                  <Textarea
+                    className={uncertainClass(
+                      isUncertain(uncertainPaths, `items[${index}].description`),
+                    )}
+                    rows={2}
+                    placeholder={t('form.itemDescription')}
+                    value={item.description ?? ''}
+                    onChange={(e) =>
+                      setItems((prev) =>
+                        prev.map((it, i) =>
+                          i === index ? { ...it, description: e.target.value } : it,
+                        ),
+                      )
+                    }
+                  />
+                )}
                 {item.itemType === 'Product' ? (
                   <div className="space-y-2">
                     <Label>{t('form.productImage')}</Label>
@@ -943,7 +947,7 @@ export function CreateOrderPage() {
                   return {
                     itemType,
                     name: name.trim(),
-                    description: description?.trim() || null,
+                    description: itemType === 'Product' ? null : description?.trim() || null,
                     quantity:
                       Number.isFinite(parsedQuantity) && parsedQuantity >= 1
                         ? parsedQuantity

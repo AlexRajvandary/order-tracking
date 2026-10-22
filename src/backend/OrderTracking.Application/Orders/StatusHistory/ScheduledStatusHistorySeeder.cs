@@ -4,6 +4,7 @@ using OrderTracking.Domain.Enums;
 
 namespace OrderTracking.Application.Orders.StatusHistory;
 
+// Устаревшее автосоздание запланированной истории статусов заказа; оставлено для чтения старых данных и совместимости.
 public static class ScheduledStatusHistorySeeder
 {
     public static async Task SeedForItemsAsync(

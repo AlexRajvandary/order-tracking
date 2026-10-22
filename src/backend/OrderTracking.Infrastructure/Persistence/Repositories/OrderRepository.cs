@@ -23,6 +23,7 @@ public sealed class OrderRepository : IOrderRepository
 
     public void RemoveItem(OrderItem item) => _db.OrderItems.Remove(item);
 
+    // Устаревшее persistence API ручной истории статусов заказа; используется для совместимости со старыми данными.
     public void AddStatusHistory(OrderItemStatusHistory history) =>
         _db.OrderItemStatusHistories.Add(history);
 
@@ -132,7 +133,10 @@ public sealed class OrderRepository : IOrderRepository
                         i.CurrentStatusText,
                         i.CurrentStatusUpdatedAt,
                         i.SourceUrl, i.ProductSource, i.CatalogProductId, i.ExternalProductId,
-                        i.ImageUrl, i.AffiliateUrl, i.ShopCode, i.ShopName))
+                        i.ManualImageObjectKey != null || i.PreviewImageObjectKey != null
+                            ? $"/track/{o.TrackingCode}/items/{i.Id}/image"
+                            : i.ImageUrl,
+                        i.AffiliateUrl, i.ShopCode, i.ShopName))
                     .ToList(),
                 o.ConvertedToSalesOrderId))
             .FirstOrDefaultAsync(cancellationToken);

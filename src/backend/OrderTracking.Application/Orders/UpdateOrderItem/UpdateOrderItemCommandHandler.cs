@@ -35,6 +35,7 @@ public sealed class UpdateOrderItemCommandHandler : IRequestHandler<UpdateOrderI
         item.ItemType = request.ItemType;
         item.Name = request.Name.Trim();
         item.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+        item.SourceUrl = string.IsNullOrWhiteSpace(request.SourceUrl) ? null : request.SourceUrl.Trim();
         item.Quantity = request.Quantity <= 0 ? 1 : request.Quantity;
         item.UnitPrice = request.UnitPrice;
         item.CurrencyCode = request.UnitPrice.HasValue

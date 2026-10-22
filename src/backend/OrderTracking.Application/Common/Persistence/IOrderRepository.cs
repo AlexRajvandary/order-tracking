@@ -14,6 +14,7 @@ public interface IOrderRepository
 
     void RemoveItem(OrderItem item);
 
+    // Устаревшее хранилище ручной истории статусов заказа; требуется для чтения и поддержки существующих данных.
     void AddStatusHistory(OrderItemStatusHistory history);
 
     void RemoveStatusHistory(OrderItemStatusHistory history);

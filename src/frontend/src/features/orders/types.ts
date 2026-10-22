@@ -95,6 +95,7 @@ export type UpsertOrderItemRequest = {
   itemType: 'Product' | 'Service'
   name: string
   description?: string | null
+  sourceUrl?: string | null
   quantity?: number
   unitPrice?: number | null
   currencyCode?: CurrencyCode | null

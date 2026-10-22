@@ -8,6 +8,7 @@ using OrderTracking.Application.Orders.StatusHistory;
 
 namespace OrderTracking.Infrastructure.Background;
 
+// Устаревшая публикация запланированной истории статусов заказа; поддерживается для существующих записей.
 public sealed class StatusPublishBackgroundService : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(1);

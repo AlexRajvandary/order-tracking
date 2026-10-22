@@ -3,6 +3,7 @@ using OrderTracking.Domain.Entities;
 
 namespace OrderTracking.Application.Orders.StatusHistory;
 
+// Устаревшая привязка даты создания заказа к ручной истории статусов; сохранена для обработки старого сценария.
 /// <summary>
 /// Keeps <see cref="Order.CreatedAt"/> aligned with the earliest status history date.
 /// If there are no statuses (or only future-dated ones), CreatedAt stays as set on create.

@@ -7,6 +7,7 @@ using OrderTracking.Application.Statuses.Models;
 
 namespace OrderTracking.Application.Orders.UpdateOrderItemStatusHistory;
 
+// Устаревший сценарий редактирования записей истории статусов заказа; существующие записи и API сохраняются.
 public sealed class UpdateOrderItemStatusHistoryCommandHandler
     : IRequestHandler<UpdateOrderItemStatusHistoryCommand, StatusHistoryEntryDto>
 {

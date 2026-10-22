@@ -2,6 +2,7 @@ using OrderTracking.Domain.Common;
 
 namespace OrderTracking.Domain.Entities;
 
+/// <summary>Вложение устаревшей ручной истории статусов заказа.</summary>
 public class OrderItemStatusAttachment : BaseEntity
 {
     public Guid StatusHistoryId { get; set; }

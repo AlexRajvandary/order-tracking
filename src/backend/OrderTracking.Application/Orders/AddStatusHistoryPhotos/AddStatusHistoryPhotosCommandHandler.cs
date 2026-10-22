@@ -6,6 +6,7 @@ using OrderTracking.Application.Statuses.Models;
 
 namespace OrderTracking.Application.Orders.AddStatusHistoryPhotos;
 
+// Устаревшая загрузка фото к записям ручной истории статусов заказа.
 public sealed class AddStatusHistoryPhotosCommandHandler
     : IRequestHandler<AddStatusHistoryPhotosCommand, IReadOnlyList<StatusHistoryAttachmentDto>>
 {

@@ -10,6 +10,7 @@ using OrderTracking.Domain.Entities;
 
 namespace OrderTracking.Application.Orders.UpdateOrderItemStatus;
 
+// Устаревший ручной сценарий добавления статусов в заказ; оставлен для совместимости с существующей историей.
 public sealed class UpdateOrderItemStatusCommandHandler
     : IRequestHandler<UpdateOrderItemStatusCommand, OrderItemDto>
 {

@@ -11,6 +11,7 @@ public sealed class AddOrderItemCommandValidator : AbstractValidator<AddOrderIte
         RuleFor(x => x.ItemType).IsInEnum();
         RuleFor(x => x.Name).NotEmpty().MaximumLength(500);
         RuleFor(x => x.Description).MaximumLength(4000);
+        RuleFor(x => x.SourceUrl).MaximumLength(2000);
         RuleFor(x => x.Quantity).GreaterThanOrEqualTo(1).LessThanOrEqualTo(10_000);
         RuleFor(x => x.UnitPrice).GreaterThanOrEqualTo(0).When(x => x.UnitPrice.HasValue);
         RuleFor(x => x.CurrencyCode)

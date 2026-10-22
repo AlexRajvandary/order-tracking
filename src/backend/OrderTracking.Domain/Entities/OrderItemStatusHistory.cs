@@ -2,6 +2,9 @@ using OrderTracking.Domain.Common;
 
 namespace OrderTracking.Domain.Entities;
 
+/// <summary>
+/// Устаревшая модель ручной истории статусов заказа. Сохранена для совместимости и отображения ранее созданных данных.
+/// </summary>
 public class OrderItemStatusHistory : BaseEntity, ISoftDeletable
 {
     public Guid OrderItemId { get; set; }

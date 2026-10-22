@@ -50,6 +50,7 @@ public sealed class AddOrderItemCommandHandler : IRequestHandler<AddOrderItemCom
             ItemType = request.ItemType,
             Name = request.Name.Trim(),
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+            SourceUrl = string.IsNullOrWhiteSpace(request.SourceUrl) ? null : request.SourceUrl.Trim(),
             Quantity = request.Quantity <= 0 ? 1 : request.Quantity,
             UnitPrice = request.UnitPrice,
             CurrencyCode = request.UnitPrice.HasValue
@@ -62,6 +63,7 @@ public sealed class AddOrderItemCommandHandler : IRequestHandler<AddOrderItemCom
         order.UpdatedAt = now;
         _orderRepository.AddItem(item);
 
+        // Устаревший генератор истории статусов заказа; сохраняем его для совместимости со старыми сценариями.
         await ScheduledStatusHistorySeeder.SeedForItemsAsync(
             _orderRepository,
             _statusDefinitionRepository,

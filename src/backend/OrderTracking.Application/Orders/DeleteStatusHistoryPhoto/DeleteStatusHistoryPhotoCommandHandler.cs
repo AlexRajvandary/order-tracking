@@ -4,6 +4,7 @@ using OrderTracking.Application.Common.Persistence;
 
 namespace OrderTracking.Application.Orders.DeleteStatusHistoryPhoto;
 
+// Устаревшее удаление фото из записей ручной истории статусов заказа.
 public sealed class DeleteStatusHistoryPhotoCommandHandler
     : IRequestHandler<DeleteStatusHistoryPhotoCommand>
 {

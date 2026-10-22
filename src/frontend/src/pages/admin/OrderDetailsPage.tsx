@@ -2,23 +2,22 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   Check,
-  ChevronDown,
   Copy,
   Download,
-  ImagePlus,
+  ExternalLink,
+  ImageOff,
   PackageCheck,
   Pencil,
   Plus,
   RefreshCw,
   Trash2,
-  X,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as ordersApi from '@/features/orders/api/ordersApi'
 import * as customersApi from '@/features/customers/api/customersApi'
-import * as statusesApi from '@/features/statuses/api/statusesApi'
 import * as salesOrdersApi from '@/features/orders/api/salesOrdersApi'
+import { attachmentUrl } from '@/features/tracking/api/trackingApi'
 import type {
   CurrencyCode,
   OrderItem,
@@ -26,28 +25,15 @@ import type {
   UpsertOrderItemRequest,
 } from '@/features/orders/types'
 import type { UpsertCustomerRequest } from '@/features/customers/types'
-import type { UpdateOrderItemStatusRequest } from '@/features/statuses/types'
-import { CountrySelect } from '@/features/statuses/ui/CountrySelect'
 import { orderStatusStyles } from '@/features/orders/ui/OrderStatusBadge'
-import { ItemStatusTimeline } from '@/features/orders/ui/order-timeline'
 import { ApiError } from '@/shared/api/client'
 import { capitalizeNamePart } from '@/shared/lib/capitalizeNamePart'
 import { currencies, formatMoney, isFiniteMoney } from '@/shared/lib/currency'
 import { formatTelegram, telegramHref } from '@/shared/lib/telegram'
-import { compressImagesToWebp } from '@/shared/lib/compressImageToWebp'
 import { cn } from '@/shared/lib/utils'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
-import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
-import {
-  type CarouselApi,
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from '@/shared/ui/carousel'
 import {
   Dialog,
   DialogContent,
@@ -62,7 +48,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { DatePicker, DateTimePicker, STATUS_HISTORY_DAY_PRESETS, formatYmd, parseYmdLocal } from '@/shared/ui/date-picker'
@@ -74,8 +59,6 @@ import {
   SelectValue,
 } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
-
-const NO_STATUS = '__none__'
 
 const ORDER_STATUSES: OrderStatus[] = [
   'AwaitingPayment',
@@ -268,9 +251,9 @@ function CustomerField({
 }) {
   const trimmed = value?.trim() || null
   return (
-    <div className="flex items-baseline gap-3 text-sm">
-      <span className="shrink-0 text-muted-foreground">{label}:</span>
-      <span className="min-w-0 flex-1 text-right">
+    <div className="min-w-0 space-y-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="min-w-0 text-base">
         {trimmed ? (
           href ? (
             <a
@@ -287,7 +270,7 @@ function CustomerField({
         ) : (
           <span className="text-muted-foreground">{emptyLabel}</span>
         )}
-      </span>
+      </div>
     </div>
   )
 }
@@ -296,6 +279,7 @@ type ItemFormState = {
   itemType: 'Product' | 'Service'
   name: string
   description: string
+  sourceUrl: string
   quantity: string
   unitPrice: string
   currencyCode: CurrencyCode
@@ -344,7 +328,8 @@ function ItemFormDialog({
             onSubmit({
               itemType: form.itemType,
               name: form.name.trim(),
-              description: form.description.trim() || null,
+              description: form.itemType === 'Product' ? null : form.description.trim() || null,
+              sourceUrl: form.itemType === 'Product' ? form.sourceUrl.trim() || null : null,
               quantity: Number.isFinite(quantity) && quantity >= 1 ? quantity : 1,
               unitPrice:
                 form.unitPrice.trim() === '' ? null : Number(form.unitPrice),
@@ -381,14 +366,26 @@ function ItemFormDialog({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label>{t('form.itemDescription')}</Label>
-            <Textarea
-              rows={3}
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            />
-          </div>
+          {form.itemType === 'Product' ? (
+            <div className="space-y-1.5">
+              <Label>{t('form.sourceUrl')}</Label>
+              <Input
+                type="url"
+                placeholder="https://"
+                value={form.sourceUrl}
+                onChange={(e) => setForm((f) => ({ ...f, sourceUrl: e.target.value }))}
+              />
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label>{t('form.itemDescription')}</Label>
+              <Textarea
+                rows={3}
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              />
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>{t('form.unitPrice')}</Label>
@@ -470,289 +467,6 @@ function ItemFormDialog({
   )
 }
 
-function StatusUpdateDialog({
-  open,
-  item,
-  orderCreatedAt,
-  error,
-  submitting,
-  onOpenChange,
-  onSubmit,
-}: {
-  open: boolean
-  item: OrderItem
-  orderCreatedAt: string
-  error: string | null
-  submitting: boolean
-  onOpenChange: (open: boolean) => void
-  onSubmit: (data: UpdateOrderItemStatusRequest) => void
-}) {
-  const { t } = useTranslation('statuses')
-  const [mode, setMode] = useState<'preset' | 'custom'>('preset')
-  const [statusId, setStatusId] = useState(NO_STATUS)
-  const [customText, setCustomText] = useState('')
-  const [comment, setComment] = useState('')
-  const [country, setCountry] = useState('')
-  const [location, setLocation] = useState('')
-  const [publishAt, setPublishAt] = useState('')
-  const [photos, setPhotos] = useState<{ id: string; file: File; previewUrl: string }[]>([])
-  const [photosCarouselApi, setPhotosCarouselApi] = useState<CarouselApi>()
-
-  const { data: statuses } = useQuery({
-    queryKey: ['statuses', item.itemType],
-    queryFn: () => statusesApi.getStatuses({ itemType: item.itemType }),
-  })
-
-  useEffect(() => {
-    if (!photosCarouselApi || photos.length === 0) return
-    photosCarouselApi.scrollTo(photos.length - 1)
-  }, [photosCarouselApi, photos.length])
-
-  useEffect(() => {
-    if (mode !== 'preset' || statusId === NO_STATUS) return
-    const selected = statuses?.find((s) => s.id === statusId)
-    if (!selected) return
-    if (selected.defaultCountry) setCountry(selected.defaultCountry)
-    if (selected.defaultLocation) setLocation(selected.defaultLocation)
-  }, [mode, statusId, statuses])
-
-  function clearPhotos(list: { previewUrl: string }[]) {
-    list.forEach((item) => URL.revokeObjectURL(item.previewUrl))
-  }
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) {
-          setPhotos((prev) => {
-            clearPhotos(prev)
-            return []
-          })
-        } else {
-          setMode('preset')
-          setStatusId(NO_STATUS)
-          setCustomText('')
-          setComment('')
-          setCountry('')
-          setLocation('')
-          setPublishAt('')
-          setPhotos((prev) => {
-            clearPhotos(prev)
-            return []
-          })
-        }
-        onOpenChange(next)
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t('update.title')}</DialogTitle>
-        </DialogHeader>
-
-        <Tabs
-          value={mode}
-          onValueChange={(value) => setMode(value as 'preset' | 'custom')}
-          className="w-full gap-4"
-        >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="preset">{t('update.preset')}</TabsTrigger>
-            <TabsTrigger value="custom">{t('update.custom')}</TabsTrigger>
-          </TabsList>
-
-          <form
-            className="space-y-3"
-            onSubmit={(e) => {
-              e.preventDefault()
-              const photoFiles = photos.map((p) => p.file)
-              const publishAtIso = publishAt.trim() || null
-              if (mode === 'preset') {
-                if (statusId === NO_STATUS) return
-                onSubmit({
-                  statusDefinitionId: statusId,
-                  customStatusText: null,
-                  comment,
-                  country: country.trim() || null,
-                  location: location.trim() || null,
-                  publishAt: publishAtIso,
-                  photos: photoFiles,
-                })
-              } else {
-                if (!customText.trim()) return
-                onSubmit({
-                  statusDefinitionId: null,
-                  customStatusText: customText.trim(),
-                  comment,
-                  country: country.trim() || null,
-                  location: location.trim() || null,
-                  publishAt: publishAtIso,
-                  photos: photoFiles,
-                })
-              }
-            }}
-          >
-            <TabsContent value="preset" className="mt-0">
-              <Select value={statusId} onValueChange={setStatusId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_STATUS}>—</SelectItem>
-                  {statuses?.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </TabsContent>
-            <TabsContent value="custom" className="mt-0">
-              <Input
-                placeholder={t('update.customPlaceholder')}
-                value={customText}
-                onChange={(e) => setCustomText(e.target.value)}
-                required={mode === 'custom'}
-              />
-            </TabsContent>
-
-          <div className="space-y-1.5">
-            <Label>{t('update.comment')}</Label>
-            <Textarea
-              rows={3}
-              placeholder={t('update.commentPlaceholder')}
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t('update.country')}</Label>
-            <CountrySelect value={country} onValueChange={setCountry} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t('update.location')}</Label>
-            <Input
-              placeholder={t('update.locationPlaceholder')}
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t('update.publishAt')}</Label>
-            <DateTimePicker
-              value={publishAt || null}
-              onChange={(iso) => setPublishAt(iso ?? '')}
-              orderCreatedAt={orderCreatedAt}
-              dayPresets={STATUS_HISTORY_DAY_PRESETS}
-              align="start"
-              className="h-9 w-full justify-start"
-            />
-            <p className="text-xs text-muted-foreground">{t('update.publishAtHint')}</p>
-          </div>
-
-          <div className="min-w-0 w-full space-y-1.5">
-            <Label>{t('update.photos')}</Label>
-            <label className="inline-flex cursor-pointer">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  const selected = Array.from(e.target.files ?? []).slice(0, 5)
-                  e.target.value = ''
-                  if (!selected.length) return
-                  void compressImagesToWebp(selected).then((compressed) => {
-                    setPhotos((prev) =>
-                      [
-                        ...prev,
-                        ...compressed.map((file) => ({
-                          id: `${file.name}-${file.lastModified}-${Math.random()}`,
-                          file,
-                          previewUrl: URL.createObjectURL(file),
-                        })),
-                      ].slice(0, 5),
-                    )
-                  })
-                }}
-              />
-              <Button type="button" variant="outline" size="sm" asChild>
-                <span>
-                  <ImagePlus />
-                  {t('update.addPhotos')}
-                </span>
-              </Button>
-            </label>
-            {photos.length > 0 ? (
-              <Carousel
-                opts={{ align: 'start', containScroll: 'trimSnaps' }}
-                setApi={setPhotosCarouselApi}
-                className="w-full min-w-0"
-              >
-                <CarouselContent className="-ml-0">
-                  {photos.map((photo) => (
-                    <CarouselItem key={photo.id} className="basis-full pl-0">
-                      <div className="relative w-full overflow-hidden rounded-xl border border-dashed bg-muted">
-                        <img
-                          src={photo.previewUrl}
-                          alt=""
-                          className="h-96 w-full object-cover"
-                        />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="icon-sm"
-                          className="absolute top-2 right-2 size-7 shadow-sm"
-                          aria-label={t('update.removePhoto')}
-                          onClick={() =>
-                            setPhotos((prev) => {
-                              const target = prev.find((p) => p.id === photo.id)
-                              if (target) URL.revokeObjectURL(target.previewUrl)
-                              return prev.filter((p) => p.id !== photo.id)
-                            })
-                          }
-                        >
-                          <X />
-                        </Button>
-                      </div>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                <CarouselPrevious
-                  type="button"
-                  className="left-1 size-7 border bg-background/90 shadow-sm disabled:hidden"
-                />
-                <CarouselNext
-                  type="button"
-                  className="right-1 size-7 border bg-background/90 shadow-sm disabled:hidden"
-                />
-              </Carousel>
-            ) : null}
-          </div>
-
-          {error ? (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                {t('cancel', { ns: 'common' })}
-              </Button>
-              <Button type="submit" disabled={submitting}>
-                {t('update.submit')}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 export function OrderDetailsPage({
   requestId,
   salesOrderId,
@@ -767,17 +481,13 @@ export function OrderDetailsPage({
   const isSalesOrder = Boolean(salesOrderId)
   const navigate = useNavigate()
   const { t, i18n } = useTranslation('orders')
-  const { t: ts } = useTranslation('statuses')
   const { t: tp } = useTranslation('procurements')
   const queryClient = useQueryClient()
   const [copied, setCopied] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
   const [itemError, setItemError] = useState<string | null>(null)
-  const [statusError, setStatusError] = useState<string | null>(null)
   const [itemModal, setItemModal] = useState<'create' | 'edit' | null>(null)
   const [editingItem, setEditingItem] = useState<OrderItem | null>(null)
-  const [statusItem, setStatusItem] = useState<OrderItem | null>(null)
-  const [expandedHistory, setExpandedHistory] = useState<Record<string, boolean>>({})
   const [customerEditOpen, setCustomerEditOpen] = useState(false)
   const [customerError, setCustomerError] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -787,7 +497,6 @@ export function OrderDetailsPage({
   const invalidateOrder = () => {
     void queryClient.invalidateQueries({ queryKey: ['order', id] })
     void queryClient.invalidateQueries({ queryKey: ['orders'] })
-    void queryClient.invalidateQueries({ queryKey: ['order-status-history', id] })
     void queryClient.invalidateQueries({ queryKey: ['customers'] })
   }
 
@@ -795,6 +504,12 @@ export function OrderDetailsPage({
     queryKey: ['order', id],
     queryFn: () => ordersApi.getOrder(id),
     enabled: Boolean(id),
+    refetchInterval: (query) => {
+      const previewPending = query.state.data?.items.some(
+        (item) => item.itemType === 'Product' && item.sourceUrl && !item.imageUrl,
+      )
+      return previewPending && query.state.dataUpdateCount < 12 ? 2000 : false
+    },
   })
   const visibleTrackingCode = displayTrackingCode ?? order?.trackingCode ?? ''
 
@@ -830,12 +545,6 @@ export function OrderDetailsPage({
       URL.revokeObjectURL(url)
     }
   }, [qrBlob])
-
-  const { data: history } = useQuery({
-    queryKey: ['order-status-history', id],
-    queryFn: () => statusesApi.getOrderStatusHistory(id),
-    enabled: Boolean(id),
-  })
 
   const addItemMutation = useMutation({
     mutationFn: (payload: UpsertOrderItemRequest) => ordersApi.addOrderItem(id, payload),
@@ -965,19 +674,6 @@ export function OrderDetailsPage({
     },
   })
 
-  const statusMutation = useMutation({
-    mutationFn: ({ itemId, payload }: { itemId: string; payload: UpdateOrderItemStatusRequest }) =>
-      statusesApi.updateOrderItemStatus(id, itemId, payload),
-    onSuccess: () => {
-      invalidateOrder()
-      setStatusItem(null)
-      setStatusError(null)
-    },
-    onError: (err: unknown) => {
-      setStatusError(err instanceof ApiError ? err.message : t('error', { ns: 'common' }))
-    },
-  })
-
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">{t('loading', { ns: 'common' })}</p>
   }
@@ -989,6 +685,19 @@ export function OrderDetailsPage({
       </Alert>
     )
   }
+
+  const dateLocale = i18n.language.startsWith('ru') ? 'ru-RU' : 'en-US'
+  const createdAtDate = new Date(order.createdAt)
+  const createdAtLabel = new Intl.DateTimeFormat(dateLocale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(createdAtDate)
+  const expectedDeliveryDate = order.expectedDeliveryAt
+    ? parseYmdLocal(formatYmd(new Date(order.expectedDeliveryAt)))
+    : undefined
+  const expectedDeliveryLabel = expectedDeliveryDate
+    ? expectedDeliveryDate.toLocaleDateString(dateLocale, { dateStyle: 'medium' })
+    : t('details.expectedDeliveryPlaceholder')
 
   return (
     <div className="space-y-6">
@@ -1067,199 +776,256 @@ export function OrderDetailsPage({
         </Alert>
       ) : null}
 
-      <Card>
-        <CardContent className="flex flex-col gap-8 min-[600px]:flex-row min-[600px]:items-stretch min-[600px]:justify-between min-[600px]:gap-8 lg:gap-16">
-          <div className="flex min-w-0 w-full max-w-xs shrink-0 flex-col self-center min-[600px]:self-start">
-            <div className="mb-1.5 flex items-center justify-between gap-2">
-              <p className="text-sm font-medium text-muted-foreground">{t('details.customer')}</p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                title={t('details.editCustomer')}
-                aria-label={t('details.editCustomer')}
-                onClick={() => {
-                  setCustomerError(null)
-                  setCustomerEditOpen(true)
-                }}
-              >
-                <Pencil className="size-3.5" />
-              </Button>
-            </div>
-            <div className="space-y-1.5">
-              <CustomerField
-                label={t('details.customerFullName')}
-                value={order.customerName}
-                emptyLabel={t('details.emptyValue')}
-              />
-              <CustomerField
-                label={t('details.customerPhone')}
-                value={order.customerPhone}
-                emptyLabel={t('details.emptyValue')}
-              />
-              <CustomerField
-                label={t('details.customerTelegram')}
-                value={formatTelegram(order.customerTelegram)}
-                emptyLabel={t('details.emptyValue')}
-                href={telegramHref(order.customerTelegram)}
-              />
-              <CustomerField
-                label="WhatsApp"
-                value={order.customerWhatsApp}
-                emptyLabel={t('details.emptyValue')}
-              />
-              <CustomerField
-                label="VK"
-                value={order.customerVk}
-                emptyLabel={t('details.emptyValue')}
-                href={order.customerVk?.startsWith('http') ? order.customerVk : null}
-              />
-              <CustomerField
-                label={t('details.customerEmail')}
-                value={order.customerEmail}
-                emptyLabel={t('details.emptyValue')}
-                href={
-                  order.customerEmail?.trim()
-                    ? `mailto:${order.customerEmail.trim()}`
-                    : null
-                }
-              />
-              <div className="flex items-baseline gap-3 text-sm">
-                <span className="shrink-0 text-muted-foreground">
-                  {t('details.createdAt')}:
-                </span>
-                <DateTimePicker
-                  value={order.createdAt}
-                  disabled={updateOrderMutation.isPending}
-                  dayPresets={STATUS_HISTORY_DAY_PRESETS}
-                  className="h-8 min-w-0 flex-1"
-                  onChange={(iso) => {
-                    if (!iso) return
-                    updateOrderMutation.mutate({ createdAt: iso })
-                  }}
-                />
-              </div>
-              <div className="flex items-baseline gap-3 text-sm">
-                <span className="shrink-0 text-muted-foreground">
-                  {t('details.expectedDeliveryAt')}:
-                </span>
-                <DatePicker
-                  value={
-                    order.expectedDeliveryAt
-                      ? formatYmd(new Date(order.expectedDeliveryAt))
-                      : undefined
-                  }
-                  disabled={updateOrderMutation.isPending}
-                  placeholder={t('details.expectedDeliveryPlaceholder')}
-                  align="end"
-                  className="h-8 min-w-0 flex-1 justify-end"
-                  onChange={(ymd) => {
-                    if (!ymd) {
-                      updateOrderMutation.mutate({ expectedDeliveryAt: null })
-                      return
-                    }
-                    const date = parseYmdLocal(ymd)
-                    updateOrderMutation.mutate({
-                      expectedDeliveryAt: date ? date.toISOString() : null,
-                    })
-                  }}
-                />
-              </div>
-            </div>
-            <div className="mt-6 sm:mt-auto sm:pt-6">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    disabled={orderStatusMutation.isPending}
-                    title={t('details.changeStatus')}
-                    className={cn(
-                      'inline-flex h-7 w-fit max-w-full items-center gap-1.5 rounded-md px-2 text-left text-sm font-semibold tracking-tight text-foreground transition-opacity hover:opacity-80 disabled:opacity-50',
-                      (orderStatusStyles[order.status] ?? orderStatusStyles.AwaitingPayment)
-                        .chipSoft,
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'size-1.5 shrink-0 rounded-full',
-                        (orderStatusStyles[order.status] ?? orderStatusStyles.AwaitingPayment).dot,
-                      )}
-                    />
-                    <span className="min-w-0 leading-none">
-                      {t(`details.orderStatus.${order.status}`)}
-                    </span>
-                    <RefreshCw className="size-3 shrink-0 opacity-70" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-48">
-                  {ORDER_STATUSES.map((status) => (
-                    <DropdownMenuItem
-                      key={status}
-                      disabled={orderStatusMutation.isPending}
-                      onSelect={() => {
-                        if (status === order.status) return
-                        orderStatusMutation.mutate(status)
-                      }}
-                    >
-                      <Check
+      <div className="flex flex-col items-start gap-4 min-[600px]:flex-row min-[600px]:items-stretch min-[600px]:gap-8">
+        <Card className="min-w-0 flex-1 gap-0 pt-[30px] pb-1">
+          <CardContent className="min-w-0">
+            <div className="grid min-w-0 flex-1 grid-cols-1 gap-6 min-[900px]:grid-cols-2">
+              <div className="min-w-0">
+                <div className="space-y-1.5">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      {t('details.customerFullName')}
+                    </p>
+                    <div className="flex min-w-0 items-center gap-1 text-base">
+                      <span
                         className={cn(
-                          'size-4',
-                          status === order.status ? 'opacity-100' : 'opacity-0',
+                          'min-w-0 flex-1 truncate font-medium',
+                          order.customerName?.trim() ? 'text-foreground' : 'text-muted-foreground',
                         )}
+                      >
+                        {order.customerName?.trim() || t('details.emptyValue')}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        title={t('details.editCustomer')}
+                        aria-label={t('details.editCustomer')}
+                        onClick={() => {
+                          setCustomerError(null)
+                          setCustomerEditOpen(true)
+                        }}
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      {t('details.createdAt')}
+                    </p>
+                    <div className="flex min-w-0 items-center gap-1 text-base">
+                      <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                        {createdAtLabel}
+                      </span>
+                      <DateTimePicker
+                        value={order.createdAt}
+                        disabled={updateOrderMutation.isPending}
+                        dayPresets={STATUS_HISTORY_DAY_PRESETS}
+                        iconOnly
+                        triggerLabel={t('details.createdAt')}
+                        className="size-7"
+                        onChange={(iso) => {
+                          if (!iso) return
+                          updateOrderMutation.mutate({ createdAt: iso })
+                        }}
                       />
-                      {t(`details.orderStatus.${status}`)}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      {t('details.expectedDeliveryAt')}
+                    </p>
+                    <div className="flex min-w-0 items-center gap-1 text-base">
+                      <span
+                        className={cn(
+                          'min-w-0 flex-1 truncate font-medium',
+                          order.expectedDeliveryAt ? 'text-foreground' : 'text-muted-foreground',
+                        )}
+                      >
+                        {expectedDeliveryLabel}
+                      </span>
+                      <DatePicker
+                        value={
+                          order.expectedDeliveryAt
+                            ? formatYmd(new Date(order.expectedDeliveryAt))
+                            : undefined
+                        }
+                        disabled={updateOrderMutation.isPending}
+                        placeholder={t('details.expectedDeliveryPlaceholder')}
+                        iconOnly
+                        triggerLabel={t('details.expectedDeliveryAt')}
+                        align="end"
+                        className="size-7"
+                        onChange={(ymd) => {
+                          if (!ymd) {
+                            updateOrderMutation.mutate({ expectedDeliveryAt: null })
+                            return
+                          }
+                          const date = parseYmdLocal(ymd)
+                          updateOrderMutation.mutate({
+                            expectedDeliveryAt: date ? date.toISOString() : null,
+                          })
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={orderStatusMutation.isPending}
+                        title={t('details.changeStatus')}
+                        className={cn(
+                          'inline-flex h-7 w-fit max-w-full items-center gap-1.5 rounded-md px-2 text-left text-sm font-semibold tracking-tight text-foreground transition-opacity hover:opacity-80 disabled:opacity-50',
+                          (orderStatusStyles[order.status] ?? orderStatusStyles.AwaitingPayment)
+                            .chipSoft,
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'size-1.5 shrink-0 rounded-full',
+                            (orderStatusStyles[order.status] ?? orderStatusStyles.AwaitingPayment).dot,
+                          )}
+                        />
+                        <span className="min-w-0 leading-none">
+                          {t(`details.orderStatus.${order.status}`)}
+                        </span>
+                        <RefreshCw className="size-3 shrink-0 opacity-70" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="min-w-48">
+                      {ORDER_STATUSES.map((status) => (
+                        <DropdownMenuItem
+                          key={status}
+                          disabled={orderStatusMutation.isPending}
+                          onSelect={() => {
+                            if (status === order.status) return
+                            orderStatusMutation.mutate(status)
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              'size-4',
+                              status === order.status ? 'opacity-100' : 'opacity-0',
+                            )}
+                          />
+                          {t(`details.orderStatus.${status}`)}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+              <div className="min-w-0 space-y-1.5">
+                {order.customerPhone?.trim() ? (
+                  <CustomerField
+                    label={t('details.customerPhone')}
+                    value={order.customerPhone}
+                    emptyLabel={t('details.emptyValue')}
+                  />
+                ) : null}
+                {order.customerTelegram?.trim() ? (
+                  <CustomerField
+                    label={t('details.customerTelegram')}
+                    value={formatTelegram(order.customerTelegram)}
+                    emptyLabel={t('details.emptyValue')}
+                    href={telegramHref(order.customerTelegram)}
+                  />
+                ) : null}
+                {order.customerWhatsApp?.trim() ? (
+                  <CustomerField
+                    label="WhatsApp"
+                    value={order.customerWhatsApp}
+                    emptyLabel={t('details.emptyValue')}
+                  />
+                ) : null}
+                {order.customerVk?.trim() ? (
+                  <CustomerField
+                    label="VK"
+                    value={order.customerVk}
+                    emptyLabel={t('details.emptyValue')}
+                    href={order.customerVk?.startsWith('http') ? order.customerVk : null}
+                  />
+                ) : null}
+                {order.customerEmail?.trim() ? (
+                  <CustomerField
+                    label={t('details.customerEmail')}
+                    value={order.customerEmail}
+                    emptyLabel={t('details.emptyValue')}
+                    href={`mailto:${order.customerEmail?.trim()}`}
+                  />
+                ) : null}
+              </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          {trackingLink ? (
-            <div className="flex w-44 shrink-0 flex-col gap-2 self-center min-[600px]:self-start">
+        {trackingLink ? (
+          <Card className="w-64 max-w-full shrink-0 gap-0 py-1 self-center min-[600px]:self-stretch">
+            <CardContent className="flex min-h-0 flex-1 flex-col gap-2 px-2 pt-2 pb-0">
               {qrLoading ? (
-                <p className="text-xs text-muted-foreground">{t('details.qrLoading')}</p>
+                <p className="flex aspect-square w-full items-center justify-center text-xs text-muted-foreground min-[600px]:min-h-0 min-[600px]:flex-1 min-[600px]:aspect-auto">
+                  {t('details.qrLoading')}
+                </p>
               ) : qrObjectUrl ? (
                 <img
                   src={qrObjectUrl}
                   alt={t('details.qrAlt', { code: visibleTrackingCode })}
-                  className="h-44 w-44 rounded-lg border bg-card p-2"
+                  className="aspect-square w-full object-contain min-[600px]:min-h-0 min-[600px]:flex-1 min-[600px]:aspect-auto"
                 />
               ) : qrError ? (
                 <button
                   type="button"
-                  className="h-44 w-44 rounded-lg border border-dashed text-xs text-muted-foreground hover:bg-muted/50"
+                  className="flex aspect-square w-full items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground hover:bg-muted/50 min-[600px]:min-h-0 min-[600px]:flex-1 min-[600px]:aspect-auto"
                   onClick={() => void refetchQr()}
                 >
                   {t('details.qrRetry')}
                 </button>
               ) : null}
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => void ordersApi.downloadOrderQr(id, visibleTrackingCode)}
-              >
-                <Download />
-                {t('details.downloadQr')}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={async () => {
-                  await navigator.clipboard.writeText(trackingLink.trackingUrl)
-                  setCopied(true)
-                  window.setTimeout(() => setCopied(false), 2000)
-                }}
-              >
-                <Copy />
-                {copied ? t('linkCopied') : t('copyLink')}
-              </Button>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+              <div className="grid w-full grid-cols-3 gap-1">
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="h-9 w-full min-w-0 border-0 p-0 shadow-none hover:bg-muted"
+                  title={t('details.openTracking')}
+                  aria-label={t('details.openTracking')}
+                >
+                  <a href={trackingLink.trackingUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink />
+                  </a>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-9 w-full min-w-0 border-0 p-0 shadow-none hover:bg-muted"
+                  title={t('details.downloadQr')}
+                  aria-label={t('details.downloadQr')}
+                  onClick={() => void ordersApi.downloadOrderQr(id, visibleTrackingCode)}
+                >
+                  <Download />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-9 w-full min-w-0 border-0 p-0 shadow-none hover:bg-muted"
+                  title={copied ? t('linkCopied') : t('copyLink')}
+                  aria-label={copied ? t('linkCopied') : t('copyLink')}
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(trackingLink.trackingUrl)
+                    setCopied(true)
+                    window.setTimeout(() => setCopied(false), 2000)
+                  }}
+                >
+                  <Copy />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
 
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between space-y-0">
@@ -1283,59 +1049,73 @@ export function OrderDetailsPage({
           ) : (
             <ul className="divide-y">
               {order.items.map((item) => {
-                const itemHistory = (history ?? []).filter(
-                  (entry) => entry.orderItemId === item.id,
-                )
-                const historyOpen = Boolean(expandedHistory[item.id])
-
                 return (
                   <li key={item.id} className="py-3">
                     <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium">
-                          {item.name}
-                          {item.itemType === 'Product' ? (
-                            <span className="font-normal text-muted-foreground">
-                              {' '}
-                              · ×{item.quantity}
-                            </span>
-                          ) : null}
-                          {isFiniteMoney(item.unitPrice) ? (
-                            <span className="font-normal text-muted-foreground">
-                              {' '}
-                              ·{' '}
-                              {formatMoney(
-                                item.unitPrice *
-                                  (item.itemType === 'Product' ? item.quantity : 1),
-                                item.currencyCode ?? 'RUB',
-                                i18n.language === 'ru' ? 'ru-RU' : 'en-US',
-                              )}
-                            </span>
-                          ) : null}
-                        </p>
-                        {item.description ? (
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {item.description}
+                      <div className="flex min-w-0 items-start gap-3">
+                        {item.itemType === 'Product' ? (
+                          <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted/50 text-muted-foreground">
+                            <ImageOff className="size-5" />
+                            {item.imageUrl ? (
+                              <img
+                                src={
+                                  /^https?:\/\//i.test(item.imageUrl)
+                                    ? item.imageUrl
+                                    : attachmentUrl(item.imageUrl)
+                                }
+                                alt={item.name}
+                                loading="lazy"
+                                className="absolute inset-0 size-full bg-white object-contain"
+                                onError={(event) => {
+                                  event.currentTarget.style.display = 'none'
+                                }}
+                              />
+                            ) : null}
+                          </div>
+                        ) : null}
+                        <div className="min-w-0">
+                          <p className="font-medium">
+                            {item.name}
+                            {item.itemType === 'Product' ? (
+                              <span className="font-normal text-muted-foreground">
+                                {' '}
+                                · ×{item.quantity}
+                              </span>
+                            ) : null}
+                            {isFiniteMoney(item.unitPrice) ? (
+                              <span className="font-normal text-muted-foreground">
+                                {' '}
+                                ·{' '}
+                                {formatMoney(
+                                  item.unitPrice *
+                                    (item.itemType === 'Product' ? item.quantity : 1),
+                                  item.currencyCode ?? 'RUB',
+                                  i18n.language === 'ru' ? 'ru-RU' : 'en-US',
+                                )}
+                              </span>
+                            ) : null}
                           </p>
-                        ) : null}
-                        {item.productSource === 'Rakuten' ? (
-                          <p className="mt-1 text-xs font-medium text-[#bf0000]">
-                            Rakuten{item.shopName ? ` · ${item.shopName}` : ''}
-                          </p>
-                        ) : null}
-                        {item.sourceUrl ? (
-                          <a
-                            className="mt-1 block text-sm text-primary hover:underline"
-                            href={item.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Открыть товар в магазине
-                          </a>
-                        ) : null}
-                        <Badge className="mt-2" variant="secondary">
-                          {item.currentStatusText ?? '—'}
-                        </Badge>
+                          {item.description ? (
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {item.description}
+                            </p>
+                          ) : null}
+                          {item.productSource === 'Rakuten' ? (
+                            <p className="mt-1 text-xs font-medium text-[#bf0000]">
+                              Rakuten{item.shopName ? ` · ${item.shopName}` : ''}
+                            </p>
+                          ) : null}
+                          {item.sourceUrl ? (
+                            <a
+                              className="mt-1 block text-sm text-primary hover:underline"
+                              href={item.sourceUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Открыть товар в магазине
+                            </a>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="flex gap-1">
                         <Button
@@ -1363,53 +1143,6 @@ export function OrderDetailsPage({
                       </div>
                     </div>
 
-                    <div className="mt-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1.5 text-base font-medium text-foreground transition-opacity hover:opacity-70"
-                          onClick={() =>
-                            setExpandedHistory((prev) => ({
-                              ...prev,
-                              [item.id]: !prev[item.id],
-                            }))
-                          }
-                        >
-                          <ChevronDown
-                            className={cn(
-                              'size-4 transition-transform',
-                              historyOpen && 'rotate-180',
-                            )}
-                          />
-                          {ts('update.history')}
-                          {itemHistory.length > 0 ? (
-                            <span className="tabular-nums">({itemHistory.length})</span>
-                          ) : null}
-                        </button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="bg-neutral-900 text-white hover:bg-neutral-800"
-                          onClick={() => {
-                            setStatusItem(item)
-                            setStatusError(null)
-                          }}
-                        >
-                          <Plus />
-                          {ts('update.addStatus')}
-                        </Button>
-                      </div>
-                      {historyOpen ? (
-                        <div className="mt-3">
-                          <ItemStatusTimeline
-                            orderId={id}
-                            orderCreatedAt={order.createdAt}
-                            history={itemHistory}
-                            onPhotosUploaded={invalidateOrder}
-                          />
-                        </div>
-                      ) : null}
-                    </div>
                   </li>
                 )
               })}
@@ -1426,6 +1159,7 @@ export function OrderDetailsPage({
           itemType: 'Product',
           name: '',
           description: '',
+          sourceUrl: '',
           quantity: '1',
           unitPrice: '',
           currencyCode: 'RUB',
@@ -1478,6 +1212,7 @@ export function OrderDetailsPage({
           itemType: editingItem?.itemType === 'Service' ? 'Service' : 'Product',
           name: editingItem?.name ?? '',
           description: editingItem?.description ?? '',
+          sourceUrl: editingItem?.sourceUrl ?? '',
           quantity: String(editingItem?.quantity ?? 1),
           unitPrice: editingItem?.unitPrice?.toString() ?? '',
           currencyCode: editingItem?.currencyCode ?? 'RUB',
@@ -1495,22 +1230,6 @@ export function OrderDetailsPage({
           updateItemMutation.mutate({ itemId: editingItem.id, payload })
         }}
       />
-
-      {statusItem ? (
-        <StatusUpdateDialog
-          open={Boolean(statusItem)}
-          item={statusItem}
-          orderCreatedAt={order.createdAt}
-          error={statusError}
-          submitting={statusMutation.isPending}
-          onOpenChange={(open) => {
-            if (!open) setStatusItem(null)
-          }}
-          onSubmit={(payload) =>
-            statusMutation.mutate({ itemId: statusItem.id, payload })
-          }
-        />
-      ) : null}
 
       <Dialog
         open={deleteOpen}

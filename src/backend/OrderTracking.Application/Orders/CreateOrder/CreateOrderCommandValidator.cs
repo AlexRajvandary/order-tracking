@@ -47,6 +47,7 @@ public sealed class CreateOrderCommandValidator : AbstractValidator<CreateOrderC
         {
             item.RuleFor(i => i.Name).NotEmpty().MaximumLength(500);
             item.RuleFor(i => i.Description).MaximumLength(4000);
+            item.RuleFor(i => i.SourceUrl).MaximumLength(2000);
             item.RuleFor(i => i.Quantity).GreaterThanOrEqualTo(1).LessThanOrEqualTo(10_000);
             item.RuleFor(i => i.UnitPrice).GreaterThanOrEqualTo(0).When(i => i.UnitPrice.HasValue);
             item.RuleFor(i => i.CurrencyCode)

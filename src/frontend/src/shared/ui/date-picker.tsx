@@ -52,6 +52,8 @@ type DatePickerProps = {
   disabled?: boolean
   id?: string
   className?: string
+  iconOnly?: boolean
+  triggerLabel?: string
   align?: 'start' | 'center' | 'end'
 }
 
@@ -62,6 +64,8 @@ export function DatePicker({
   disabled,
   id,
   className,
+  iconOnly = false,
+  triggerLabel,
   align = 'start',
 }: DatePickerProps) {
   const { t } = useTranslation('common')
@@ -74,20 +78,30 @@ export function DatePicker({
         <Button
           id={id}
           type="button"
-          variant="outline"
+          variant={iconOnly ? 'ghost' : 'outline'}
           disabled={disabled}
           data-empty={!selected}
+          aria-label={iconOnly ? (triggerLabel ?? placeholder ?? t('table.pickDate')) : undefined}
+          title={iconOnly ? (triggerLabel ?? placeholder ?? t('table.pickDate')) : undefined}
           className={cn(
-            'w-full justify-start gap-2 text-left font-normal data-[empty=true]:text-muted-foreground',
+            iconOnly
+              ? 'size-8 shrink-0 justify-center p-0'
+              : 'w-full justify-start gap-2 text-left font-normal data-[empty=true]:text-muted-foreground',
             className,
           )}
         >
-          <CalendarIcon className="size-4 shrink-0 opacity-70" />
-          <span className="truncate">
-            {selected
-              ? format(selected, 'd MMM yyyy', { locale })
-              : (placeholder ?? t('table.pickDate'))}
-          </span>
+          {iconOnly ? (
+            <CalendarIcon className="size-4" />
+          ) : (
+            <>
+              <CalendarIcon className="size-4 shrink-0 opacity-70" />
+              <span className="truncate">
+                {selected
+                  ? format(selected, 'd MMM yyyy', { locale })
+                  : (placeholder ?? t('table.pickDate'))}
+              </span>
+            </>
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align={align}>
@@ -124,6 +138,8 @@ type DateTimePickerProps = {
   placeholder?: string
   disabled?: boolean
   className?: string
+  iconOnly?: boolean
+  triggerLabel?: string
   align?: 'start' | 'center' | 'end'
   /** Relative day shortcuts. Empty disables them. */
   dayPresets?: readonly number[]
@@ -156,6 +172,8 @@ export function DateTimePicker({
   placeholder,
   disabled,
   className,
+  iconOnly = false,
+  triggerLabel,
   align = 'end',
   dayPresets = DEFAULT_DAY_PRESETS,
   orderCreatedAt,
@@ -202,20 +220,30 @@ export function DateTimePicker({
       <PopoverTrigger asChild>
         <Button
           type="button"
-          variant="outline"
+          variant={iconOnly ? 'ghost' : 'outline'}
           disabled={disabled}
           data-empty={!valid}
+          aria-label={iconOnly ? (triggerLabel ?? placeholder ?? t('table.pickDateTime')) : undefined}
+          title={iconOnly ? (triggerLabel ?? placeholder ?? t('table.pickDateTime')) : undefined}
           className={cn(
-            'h-8 min-w-0 flex-1 justify-end gap-2 text-right font-normal data-[empty=true]:text-muted-foreground',
+            iconOnly
+              ? 'size-8 shrink-0 justify-center p-0'
+              : 'h-8 min-w-0 flex-1 justify-end gap-2 text-right font-normal data-[empty=true]:text-muted-foreground',
             className,
           )}
         >
-          <span className="min-w-0 flex-1 truncate">
-            {valid
-              ? format(valid, 'd MMM yyyy, HH:mm', { locale })
-              : (placeholder ?? t('table.pickDateTime'))}
-          </span>
-          <CalendarIcon className="size-4 shrink-0 opacity-70" />
+          {iconOnly ? (
+            <CalendarIcon className="size-4" />
+          ) : (
+            <>
+              <span className="min-w-0 flex-1 truncate">
+                {valid
+                  ? format(valid, 'd MMM yyyy, HH:mm', { locale })
+                  : (placeholder ?? t('table.pickDateTime'))}
+              </span>
+              <CalendarIcon className="size-4 shrink-0 opacity-70" />
+            </>
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[17.5rem] p-3" align={align}>

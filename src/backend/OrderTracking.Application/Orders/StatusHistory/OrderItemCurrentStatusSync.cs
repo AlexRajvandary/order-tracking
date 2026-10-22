@@ -3,6 +3,7 @@ using OrderTracking.Domain.Entities;
 
 namespace OrderTracking.Application.Orders.StatusHistory;
 
+// Синхронизация текущего статуса из устаревшей ручной истории заказа; оставлена для совместимости со старыми записями.
 public static class OrderItemCurrentStatusSync
 {
     public static async Task SyncFromPublishedHistoryAsync(

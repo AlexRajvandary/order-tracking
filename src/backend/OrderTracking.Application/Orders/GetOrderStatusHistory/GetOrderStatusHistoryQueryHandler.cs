@@ -4,6 +4,7 @@ using OrderTracking.Application.Statuses.Models;
 
 namespace OrderTracking.Application.Orders.GetOrderStatusHistory;
 
+// Устаревшая выдача истории ручных статусов для страницы заказа; оставлена для совместимости со старыми клиентами.
 public sealed class GetOrderStatusHistoryQueryHandler
     : IRequestHandler<GetOrderStatusHistoryQuery, IReadOnlyList<StatusHistoryEntryDto>>
 {

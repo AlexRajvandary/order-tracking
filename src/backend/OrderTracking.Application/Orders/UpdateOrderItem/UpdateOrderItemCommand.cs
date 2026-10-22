@@ -13,4 +13,5 @@ public sealed record UpdateOrderItemCommand(
     string? Description,
     int Quantity,
     decimal? UnitPrice,
-    string? CurrencyCode) : IRequest<OrderItemDto>, IAuditableCommand;
+    string? CurrencyCode,
+    string? SourceUrl = null) : IRequest<OrderItemDto>, IAuditableCommand;

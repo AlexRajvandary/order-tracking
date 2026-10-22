@@ -5,6 +5,7 @@ using OrderTracking.Application.Orders.StatusHistory;
 
 namespace OrderTracking.Application.Orders.CancelScheduledStatusHistory;
 
+// Устаревшее управление запланированными записями истории статусов заказа.
 public sealed class CancelScheduledStatusHistoryCommandHandler
     : IRequestHandler<CancelScheduledStatusHistoryCommand>
 {

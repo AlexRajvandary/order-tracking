@@ -1,6 +1,8 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using OrderTracking.Application.Common.Models;
 using OrderTracking.Application.Orders.AddOrderItem;
 using OrderTracking.Application.Orders.AiParse;
@@ -26,6 +28,8 @@ using OrderTracking.Application.Orders.UpdateOrderItemStatus;
 using OrderTracking.Application.Orders.UpdateOrderItemStatusHistory;
 using OrderTracking.Application.Statuses.Models;
 using OrderTracking.Domain.Enums;
+using OrderTracking.Domain.Entities;
+using OrderTracking.Infrastructure.Persistence;
 using OrderTracking.Infrastructure.ProductPreviews;
 
 namespace OrderTracking.Api.Controllers;
@@ -36,11 +40,13 @@ namespace OrderTracking.Api.Controllers;
 public sealed class OrdersController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ApplicationDbContext _db;
     private readonly ProductPreviewQueue? _previewQueue;
 
-    public OrdersController(IMediator mediator, ProductPreviewQueue? previewQueue = null)
+    public OrdersController(IMediator mediator, ApplicationDbContext db, ProductPreviewQueue? previewQueue = null)
     {
         _mediator = mediator;
+        _db = db;
         _previewQueue = previewQueue;
     }
 
@@ -219,10 +225,78 @@ public sealed class OrdersController : ControllerBase
                 request.Description,
                 request.Quantity,
                 request.UnitPrice,
-                request.CurrencyCode),
+                request.CurrencyCode,
+                request.SourceUrl),
             cancellationToken);
 
+        if (string.Equals(result.ItemType, nameof(OrderItemType.Product), StringComparison.Ordinal))
+        {
+            await AddProcurementForNewItemIfOrderWasSent(orderId, result.Id, result.SourceUrl, cancellationToken);
+        }
+
+        if (string.Equals(result.ItemType, nameof(OrderItemType.Product), StringComparison.Ordinal))
+        {
+            _previewQueue?.TryEnqueue(result.Id, result.SourceUrl);
+        }
+
         return CreatedAtAction(nameof(GetOrderById), new { id = orderId }, result);
+    }
+
+    private async Task AddProcurementForNewItemIfOrderWasSent(
+        Guid workspaceOrderId,
+        Guid orderItemId,
+        string? sourceUrl,
+        CancellationToken cancellationToken)
+    {
+        var salesOrder = await _db.SalesOrders
+            .Where(order => order.WorkspaceRequestId == workspaceOrderId)
+            .Select(order => new { order.WorkspaceRequest.Status, order.Id, order.UpdatedAt })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        // Conversion alone does not put the order on the procurement board. Sending it does.
+        if (salesOrder is null || salesOrder.Status != OrderStatus.InProgress)
+        {
+            return;
+        }
+
+        var existingStatuses = await _db.OrderItemProcurements
+            .Where(procurement => procurement.OrderItem.OrderId == workspaceOrderId)
+            .Select(procurement => procurement.CurrentStatus)
+            .ToListAsync(cancellationToken);
+        var initialStatus = existingStatuses.Count == 0
+            ? ProcurementLifecycleStatus.RequiredPurchase
+            : existingStatuses.Min();
+        var now = DateTimeOffset.UtcNow;
+        var procurementId = Guid.NewGuid();
+
+        _db.OrderItemProcurements.Add(new OrderItemProcurement
+        {
+            Id = procurementId,
+            OrderItemId = orderItemId,
+            PurchaseUrl = sourceUrl,
+            CurrentStatus = initialStatus,
+            CreatedAt = now,
+            StatusHistory =
+            {
+                new OrderItemProcurementStatusHistory
+                {
+                    Id = Guid.NewGuid(),
+                    ProcurementId = procurementId,
+                    Status = initialStatus,
+                    ChangedAt = now,
+                    ChangedByAdminId = GetAuthorId(),
+                    Comment = "Added to an order already in procurement",
+                },
+            },
+        });
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private Guid? GetAuthorId()
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        return Guid.TryParse(value, out var id) ? id : null;
     }
 
     [HttpPut("{orderId:guid}/items/{itemId:guid}")]
@@ -241,7 +315,8 @@ public sealed class OrdersController : ControllerBase
                 request.Description,
                 request.Quantity,
                 request.UnitPrice,
-                request.CurrencyCode),
+                request.CurrencyCode,
+                request.SourceUrl),
             cancellationToken);
 
         return Ok(result);
@@ -257,6 +332,7 @@ public sealed class OrdersController : ControllerBase
         return NoContent();
     }
 
+    // Устаревший ручной поток статусов и истории заказа. Оставлен для совместимости; актуальные этапы ведутся в выкупе и доставке.
     [HttpPatch("{orderId:guid}/items/{itemId:guid}/status")]
     [RequestSizeLimit(52_428_800)]
     [RequestFormLimits(MultipartBodyLengthLimit = 52_428_800)]
@@ -334,6 +410,7 @@ public sealed class OrdersController : ControllerBase
         return Ok(result);
     }
 
+    // Устаревшие endpoints ручного редактирования истории статусов заказа. Существующие записи сохраняются для совместимости.
     [HttpPatch("{orderId:guid}/status-history/{historyId:guid}")]
     public async Task<ActionResult<StatusHistoryEntryDto>> UpdateStatusHistory(
         Guid orderId,
@@ -447,7 +524,8 @@ public sealed record UpsertOrderItemRequest(
     string? Description,
     int Quantity = 1,
     decimal? UnitPrice = null,
-    string? CurrencyCode = null);
+    string? CurrencyCode = null,
+    string? SourceUrl = null);
 
 public sealed record UpdateOrderItemStatusRequest(
     Guid? StatusDefinitionId,

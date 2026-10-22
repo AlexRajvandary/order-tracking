@@ -4,6 +4,7 @@ using OrderTracking.Domain.Entities;
 
 namespace OrderTracking.Application.Orders.StatusPhotos;
 
+// Вспомогательный код устаревших вложений к ручной истории статусов заказа.
 public static class StatusPhotoUploadHelper
 {
     public const int MaxPhotosPerRequest = 5;
