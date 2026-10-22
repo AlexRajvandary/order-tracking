@@ -22,7 +22,6 @@ public sealed record AiOrderCustomerDraft(
     string? Email);
 
 public sealed record AiOrderItemDraft(
-    string? ItemType,
     string? Name,
     string? Url,
     string? Description,

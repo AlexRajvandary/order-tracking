@@ -20,13 +20,6 @@ import {
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/ui/select'
-import {
   Table,
   TableBody,
   TableCell,
@@ -37,7 +30,6 @@ import {
 
 type FormState = {
   name: string
-  itemType: '' | 'Product' | 'Service'
   color: string
   defaultCountry: string
   defaultLocation: string
@@ -48,7 +40,6 @@ type FormState = {
 
 const emptyForm: FormState = {
   name: '',
-  itemType: '',
   color: '#3B82F6',
   defaultCountry: '',
   defaultLocation: '',
@@ -56,8 +47,6 @@ const emptyForm: FormState = {
   isActive: true,
   isFinal: false,
 }
-
-const ANY_TYPE = '__any__'
 
 export function StatusManagementPage() {
   const { t } = useTranslation('statuses')
@@ -96,7 +85,6 @@ export function StatusManagementPage() {
     }) =>
       statusesApi.updateStatus(id, {
         name: request.name,
-        itemType: request.itemType || null,
         color: request.color || null,
         defaultCountry: request.defaultCountry.trim() || null,
         defaultLocation: request.defaultLocation.trim() || null,
@@ -172,7 +160,6 @@ export function StatusManagementPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('columns.name')}</TableHead>
-                  <TableHead>{t('columns.itemType')}</TableHead>
                   <TableHead>{t('columns.color')}</TableHead>
                   <TableHead>{t('columns.final')}</TableHead>
                   <TableHead>{t('columns.status')}</TableHead>
@@ -183,7 +170,6 @@ export function StatusManagementPage() {
                 {data.map((status) => (
                   <TableRow key={status.id}>
                     <TableCell className="font-medium">{status.name}</TableCell>
-                    <TableCell>{status.itemType ?? t('form.anyType')}</TableCell>
                     <TableCell>
                       {status.color ? (
                         <span
@@ -245,10 +231,6 @@ export function StatusManagementPage() {
           editing
             ? {
                 name: editing.name,
-                itemType:
-                  editing.itemType === 'Product' || editing.itemType === 'Service'
-                    ? editing.itemType
-                    : '',
                 color: editing.color ?? '#3B82F6',
                 defaultCountry: editing.defaultCountry ?? '',
                 defaultLocation: editing.defaultLocation ?? '',
@@ -272,7 +254,6 @@ export function StatusManagementPage() {
           if (modal === 'create') {
             createMutation.mutate({
               name: form.name,
-              itemType: form.itemType || null,
               color: form.color || null,
               defaultCountry: form.defaultCountry.trim() || null,
               defaultLocation: form.defaultLocation.trim() || null,
@@ -343,28 +324,6 @@ function StatusFormDialog({
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               required
             />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t('form.itemType')}</Label>
-            <Select
-              value={form.itemType || ANY_TYPE}
-              onValueChange={(value) =>
-                setForm((f) => ({
-                  ...f,
-                  itemType: value === ANY_TYPE ? '' : (value as 'Product' | 'Service'),
-                }))
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ANY_TYPE}>{t('form.anyType')}</SelectItem>
-                <SelectItem value="Product">{t('form.product', { ns: 'orders' })}</SelectItem>
-                <SelectItem value="Service">{t('form.service', { ns: 'orders' })}</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="space-y-1.5">

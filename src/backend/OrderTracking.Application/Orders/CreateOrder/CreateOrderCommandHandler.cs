@@ -140,7 +140,6 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
             {
                 Id = Guid.NewGuid(),
                 OrderId = order.Id,
-                ItemType = item.ItemType,
                 Name = item.Name.Trim(),
                 Description = Normalize(item.Description),
                 SourceUrl = Normalize(item.SourceUrl),
@@ -311,7 +310,6 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
     private static OrderItemDto MapItem(OrderItem item) =>
         new(
             item.Id,
-            item.ItemType.ToString(),
             item.Name,
             item.Description,
             item.Quantity,

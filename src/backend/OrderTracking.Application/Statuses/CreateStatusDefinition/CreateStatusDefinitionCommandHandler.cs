@@ -27,7 +27,6 @@ public sealed class CreateStatusDefinitionCommandHandler
         {
             Id = Guid.NewGuid(),
             Name = request.Name.Trim(),
-            ItemType = request.ItemType,
             Color = string.IsNullOrWhiteSpace(request.Color) ? null : request.Color.Trim(),
             DefaultCountry = string.IsNullOrWhiteSpace(request.DefaultCountry)
                 ? null
@@ -51,7 +50,6 @@ public sealed class CreateStatusDefinitionCommandHandler
         new(
             s.Id,
             s.Name,
-            s.ItemType?.ToString(),
             s.Color,
             s.DefaultCountry,
             s.DefaultLocation,

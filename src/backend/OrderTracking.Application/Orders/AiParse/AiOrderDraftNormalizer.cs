@@ -85,29 +85,17 @@ public static class AiOrderDraftNormalizer
             return null;
         }
 
-        var itemType = NormalizeItemType(item.ItemType);
         var quantity = item.Quantity is >= 1 and <= 10_000 ? item.Quantity : 1;
         var unitPrice = item.UnitPrice is >= 0 ? item.UnitPrice : null;
         var currency = unitPrice is null ? null : CurrencyCodes.Normalize(item.CurrencyCode);
 
         return new AiOrderItemDraft(
-            itemType,
             name ?? url ?? description,
             url,
             description,
             quantity,
             unitPrice,
             currency);
-    }
-
-    private static string NormalizeItemType(string? value)
-    {
-        if (string.Equals(value, nameof(OrderItemType.Service), StringComparison.OrdinalIgnoreCase))
-        {
-            return nameof(OrderItemType.Service);
-        }
-
-        return nameof(OrderItemType.Product);
     }
 
     private static string? NormalizePhone(string? phone)

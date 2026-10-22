@@ -28,7 +28,6 @@ public sealed class UpdateStatusDefinitionCommandHandler
             ?? throw new KeyNotFoundException($"Status '{request.Id}' was not found");
 
         status.Name = request.Name.Trim();
-        status.ItemType = request.ItemType;
         status.Color = string.IsNullOrWhiteSpace(request.Color) ? null : request.Color.Trim();
         status.DefaultCountry = string.IsNullOrWhiteSpace(request.DefaultCountry)
             ? null

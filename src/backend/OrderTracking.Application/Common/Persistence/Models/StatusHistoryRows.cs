@@ -4,7 +4,6 @@ public sealed record StatusHistoryListRow(
     Guid Id,
     Guid OrderItemId,
     string OrderItemName,
-    string OrderItemType,
     Guid? StatusDefinitionId,
     string StatusText,
     string? StatusColor,

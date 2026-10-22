@@ -56,7 +56,6 @@ public sealed class CreateOrderCommandValidator : AbstractValidator<CreateOrderC
                         ? CurrencyCodes.IsSupported(currency)
                         : string.IsNullOrWhiteSpace(currency))
                 .WithMessage("CurrencyCode must be RUB, USD, EUR, GBP or JPY when UnitPrice is set");
-            item.RuleFor(i => i.ItemType).IsInEnum();
         }).When(x => x.Items is { Count: > 0 });
     }
 

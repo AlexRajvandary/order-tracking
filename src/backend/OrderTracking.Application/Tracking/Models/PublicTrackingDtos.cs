@@ -10,7 +10,6 @@ public sealed record PublicTrackingDto(
 public sealed record PublicTrackingItemDto(
     Guid Id,
     string Name,
-    string Type,
     int Quantity,
     string? ImageUrl,
     string? CurrentStatus,

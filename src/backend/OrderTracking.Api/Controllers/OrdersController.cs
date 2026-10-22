@@ -220,7 +220,6 @@ public sealed class OrdersController : ControllerBase
         var result = await _mediator.Send(
             new AddOrderItemCommand(
                 orderId,
-                request.ItemType,
                 request.Name,
                 request.Description,
                 request.Quantity,
@@ -229,15 +228,8 @@ public sealed class OrdersController : ControllerBase
                 request.SourceUrl),
             cancellationToken);
 
-        if (string.Equals(result.ItemType, nameof(OrderItemType.Product), StringComparison.Ordinal))
-        {
-            await AddProcurementForNewItemIfOrderWasSent(orderId, result.Id, result.SourceUrl, cancellationToken);
-        }
-
-        if (string.Equals(result.ItemType, nameof(OrderItemType.Product), StringComparison.Ordinal))
-        {
-            _previewQueue?.TryEnqueue(result.Id, result.SourceUrl);
-        }
+        await AddProcurementForNewItemIfOrderWasSent(orderId, result.Id, result.SourceUrl, cancellationToken);
+        _previewQueue?.TryEnqueue(result.Id, result.SourceUrl);
 
         return CreatedAtAction(nameof(GetOrderById), new { id = orderId }, result);
     }
@@ -310,7 +302,6 @@ public sealed class OrdersController : ControllerBase
             new UpdateOrderItemCommand(
                 orderId,
                 itemId,
-                request.ItemType,
                 request.Name,
                 request.Description,
                 request.Quantity,
@@ -519,7 +510,6 @@ public sealed record UpdateOrderRequest(
 public sealed record UpdateOrderStatusRequest(OrderStatus Status);
 
 public sealed record UpsertOrderItemRequest(
-    OrderItemType ItemType,
     string Name,
     string? Description,
     int Quantity = 1,

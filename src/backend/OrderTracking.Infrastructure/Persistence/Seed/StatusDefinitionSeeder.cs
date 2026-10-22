@@ -43,7 +43,6 @@ public static class StatusDefinitionSeeder
         {
             Id = Guid.NewGuid(),
             Name = s.Name,
-            ItemType = null,
             Color = s.Color,
             SortOrder = s.SortOrder,
             IsActive = true,

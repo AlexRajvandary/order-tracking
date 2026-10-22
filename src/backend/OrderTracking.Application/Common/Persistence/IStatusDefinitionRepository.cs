@@ -1,6 +1,5 @@
 using OrderTracking.Application.Common.Persistence.Models;
 using OrderTracking.Domain.Entities;
-using OrderTracking.Domain.Enums;
 
 namespace OrderTracking.Application.Common.Persistence;
 
@@ -12,8 +11,7 @@ public interface IStatusDefinitionRepository
 
     Task<StatusDefinition?> GetActiveByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<StatusDefinition>> GetScheduledForItemTypesAsync(
-        IReadOnlyList<OrderItemType> itemTypes,
+    Task<IReadOnlyList<StatusDefinition>> GetScheduledAsync(
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<StatusDefinitionListRow>> ListAsync(

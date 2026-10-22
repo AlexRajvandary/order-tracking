@@ -47,7 +47,6 @@ public sealed class AddOrderItemCommandHandler : IRequestHandler<AddOrderItemCom
         {
             Id = Guid.NewGuid(),
             OrderId = order.Id,
-            ItemType = request.ItemType,
             Name = request.Name.Trim(),
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             SourceUrl = string.IsNullOrWhiteSpace(request.SourceUrl) ? null : request.SourceUrl.Trim(),
@@ -80,7 +79,6 @@ public sealed class AddOrderItemCommandHandler : IRequestHandler<AddOrderItemCom
     internal static OrderItemDto Map(OrderItem item) =>
         new(
             item.Id,
-            item.ItemType.ToString(),
             item.Name,
             item.Description,
             item.Quantity,

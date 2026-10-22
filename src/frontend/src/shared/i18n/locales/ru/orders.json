@@ -144,6 +144,20 @@
     "trackingCode": "Код отслеживания"
   },
   "details": {
+    "itemsTable": {
+      "photo": "Фото",
+      "name": "Название",
+      "link": "Ссылка",
+      "description": "Описание",
+      "quantity": "Кол-во",
+      "price": "Цена",
+      "total": "Стоимость",
+      "status": "Статус",
+      "actions": "Действия",
+      "notInProcurement": "Не отправлен на выкуп",
+      "statusError": "Не удалось загрузить статус",
+      "sentToTransit": "Отправлен в транзит"
+    },
     "title": "Заявка",
     "back": "К списку",
     "trackingLink": "Ссылка для клиента",
@@ -174,6 +188,7 @@
     "changeStatus": "Изменить статус",
     "items": "Состав заявки",
     "add": "Добавить",
+    "addProduct": "Добавить товар",
     "noItems": "Позиций пока нет",
     "editNotes": "Сохранить",
     "editItem": "Изменить",
@@ -181,7 +196,6 @@
     "deleteItemConfirm": "Удалить эту позицию?",
     "addItemTitle": "Новая позиция",
     "editItemTitle": "Редактирование позиции",
-    "itemType": "Тип",
     "saveItem": "Сохранить"
   },
   "timeline": {

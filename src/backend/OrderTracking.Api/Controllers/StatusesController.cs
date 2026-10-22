@@ -6,7 +6,6 @@ using OrderTracking.Application.Statuses.DeactivateStatusDefinition;
 using OrderTracking.Application.Statuses.GetStatusDefinitions;
 using OrderTracking.Application.Statuses.Models;
 using OrderTracking.Application.Statuses.UpdateStatusDefinition;
-using OrderTracking.Domain.Enums;
 
 namespace OrderTracking.Api.Controllers;
 
@@ -24,12 +23,11 @@ public sealed class StatusesController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<StatusDefinitionDto>>> GetStatuses(
-        [FromQuery] string? itemType,
         [FromQuery] bool includeInactive = false,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetStatusDefinitionsQuery(itemType, includeInactive),
+            new GetStatusDefinitionsQuery(includeInactive),
             cancellationToken);
 
         return Ok(result);
@@ -43,7 +41,6 @@ public sealed class StatusesController : ControllerBase
         var result = await _mediator.Send(
             new CreateStatusDefinitionCommand(
                 request.Name,
-                request.ItemType,
                 request.Color,
                 request.DefaultCountry,
                 request.DefaultLocation,
@@ -65,7 +62,6 @@ public sealed class StatusesController : ControllerBase
             new UpdateStatusDefinitionCommand(
                 id,
                 request.Name,
-                request.ItemType,
                 request.Color,
                 request.DefaultCountry,
                 request.DefaultLocation,
@@ -88,7 +84,6 @@ public sealed class StatusesController : ControllerBase
 
 public sealed record UpsertStatusRequest(
     string Name,
-    OrderItemType? ItemType,
     string? Color,
     string? DefaultCountry = null,
     string? DefaultLocation = null,
@@ -98,7 +93,6 @@ public sealed record UpsertStatusRequest(
 
 public sealed record UpdateStatusRequest(
     string Name,
-    OrderItemType? ItemType,
     string? Color,
     string? DefaultCountry,
     string? DefaultLocation,

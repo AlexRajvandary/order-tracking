@@ -6,7 +6,6 @@ namespace OrderTracking.Domain.Entities;
 public class OrderItem : AuditableEntity
 {
     public Guid OrderId { get; set; }
-    public OrderItemType ItemType { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
 

@@ -226,7 +226,6 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
 
         builder.HasKey(e => e.Id);
 
-        builder.Property(e => e.ItemType).HasConversion<string>().HasMaxLength(20);
         builder.Property(e => e.Name).HasMaxLength(500).IsRequired();
         builder.Property(e => e.Description).HasColumnType("text");
         builder.Property(e => e.SourceUrl).HasMaxLength(2000);
@@ -286,7 +285,6 @@ public class StatusDefinitionConfiguration : IEntityTypeConfiguration<StatusDefi
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Name).HasMaxLength(200).IsRequired();
-        builder.Property(e => e.ItemType).HasConversion<string>().HasMaxLength(20);
         builder.Property(e => e.Color).HasMaxLength(20);
         builder.Property(e => e.DefaultCountry).HasMaxLength(100);
         builder.Property(e => e.DefaultLocation).HasMaxLength(500);

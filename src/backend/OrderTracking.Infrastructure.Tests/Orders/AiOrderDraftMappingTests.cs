@@ -20,7 +20,6 @@ public sealed class AiOrderDraftMappingTests
             [
                 new OpenAiOrderParser.AiOrderItemRaw
                 {
-                    ItemType = "Product",
                     Name = "Sony WH-1000XM5",
                     Url = "https://example.jp/item/123",
                     Quantity = 2,
@@ -75,8 +74,8 @@ public sealed class AiOrderDraftMappingTests
         var draft = AiOrderDraftNormalizer.Normalize(new AiOrderDraft(
             null,
             [
-                new AiOrderItemDraft("Product", "Item", null, null, null, 100, "RUB"),
-                new AiOrderItemDraft(null, null, null, null, null, null, null),
+                new AiOrderItemDraft("Item", null, null, null, 100, "RUB"),
+                new AiOrderItemDraft(null, null, null, null, null, null),
             ],
             null,
             null,

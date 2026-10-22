@@ -32,7 +32,6 @@ public sealed class UpdateOrderItemCommandHandler : IRequestHandler<UpdateOrderI
             request.OrderId, request.ItemId, cancellationToken)
             ?? throw new KeyNotFoundException($"Order item '{request.ItemId}' was not found");
 
-        item.ItemType = request.ItemType;
         item.Name = request.Name.Trim();
         item.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
         item.SourceUrl = string.IsNullOrWhiteSpace(request.SourceUrl) ? null : request.SourceUrl.Trim();

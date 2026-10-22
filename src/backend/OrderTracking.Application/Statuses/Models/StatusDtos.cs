@@ -1,11 +1,9 @@
-using OrderTracking.Domain.Enums;
 
 namespace OrderTracking.Application.Statuses.Models;
 
 public sealed record StatusDefinitionDto(
     Guid Id,
     string Name,
-    string? ItemType,
     string? Color,
     string? DefaultCountry,
     string? DefaultLocation,
@@ -27,7 +25,6 @@ public sealed record StatusHistoryEntryDto(
     Guid Id,
     Guid OrderItemId,
     string OrderItemName,
-    string OrderItemType,
     Guid? StatusDefinitionId,
     string StatusText,
     string? StatusColor,

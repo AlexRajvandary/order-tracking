@@ -174,7 +174,6 @@ public sealed class CreatePublicServiceRequestCommandHandler
         return request.RequestType switch
         {
             PublicServiceRequestType.Auction => new CreateOrderItemDto(
-                OrderItemType.Product,
                 "Аукционный лот",
                 Normalize(request.Description),
                 1,
@@ -182,7 +181,6 @@ public sealed class CreatePublicServiceRequestCommandHandler
                 PositiveBudget(request.BudgetJpy).HasValue ? "JPY" : null,
                 Normalize(request.SourceUrl)),
             PublicServiceRequestType.Ticket => new CreateOrderItemDto(
-                OrderItemType.Service,
                 Normalize(request.EventName) ?? "Запрос на билеты",
                 BuildTicketDescription(request),
                 NormalizeQuantity(request.Quantity),
@@ -190,7 +188,6 @@ public sealed class CreatePublicServiceRequestCommandHandler
                 null,
                 Normalize(request.SourceUrl)),
             PublicServiceRequestType.FindProduct => new CreateOrderItemDto(
-                OrderItemType.Product,
                 "Подбор товара",
                 Normalize(request.Description),
                 1,
@@ -198,7 +195,6 @@ public sealed class CreatePublicServiceRequestCommandHandler
                 null,
                 Normalize(request.SourceUrl)),
             _ => new CreateOrderItemDto(
-                OrderItemType.Product,
                 "Индивидуальный запрос",
                 Normalize(request.Description),
                 1,

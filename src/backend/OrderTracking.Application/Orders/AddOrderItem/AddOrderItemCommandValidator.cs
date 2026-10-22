@@ -8,7 +8,6 @@ public sealed class AddOrderItemCommandValidator : AbstractValidator<AddOrderIte
     public AddOrderItemCommandValidator()
     {
         RuleFor(x => x.OrderId).NotEmpty();
-        RuleFor(x => x.ItemType).IsInEnum();
         RuleFor(x => x.Name).NotEmpty().MaximumLength(500);
         RuleFor(x => x.Description).MaximumLength(4000);
         RuleFor(x => x.SourceUrl).MaximumLength(2000);

@@ -6,17 +6,20 @@ import {
   Download,
   ExternalLink,
   ImageOff,
+  ImagePlus,
   PackageCheck,
   Pencil,
   Plus,
   RefreshCw,
   Trash2,
+  X,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as ordersApi from '@/features/orders/api/ordersApi'
 import * as customersApi from '@/features/customers/api/customersApi'
 import * as salesOrdersApi from '@/features/orders/api/salesOrdersApi'
+import { OrderItemsTable } from '@/features/orders/ui/OrderItemsTable'
 import { attachmentUrl } from '@/features/tracking/api/trackingApi'
 import type {
   CurrencyCode,
@@ -25,7 +28,6 @@ import type {
   UpsertOrderItemRequest,
 } from '@/features/orders/types'
 import type { UpsertCustomerRequest } from '@/features/customers/types'
-import { orderStatusStyles } from '@/features/orders/ui/OrderStatusBadge'
 import { ApiError } from '@/shared/api/client'
 import { capitalizeNamePart } from '@/shared/lib/capitalizeNamePart'
 import { currencies, formatMoney, isFiniteMoney } from '@/shared/lib/currency'
@@ -33,7 +35,6 @@ import { formatTelegram, telegramHref } from '@/shared/lib/telegram'
 import { cn } from '@/shared/lib/utils'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -276,20 +277,19 @@ function CustomerField({
 }
 
 type ItemFormState = {
-  itemType: 'Product' | 'Service'
   name: string
   description: string
   sourceUrl: string
   quantity: string
   unitPrice: string
   currencyCode: CurrencyCode
+  imageUrl: string | null
 }
 
 function ItemFormDialog({
   open,
   title,
   initial,
-  showItemType = true,
   error,
   submitting,
   onOpenChange,
@@ -298,20 +298,39 @@ function ItemFormDialog({
   open: boolean
   title: string
   initial: ItemFormState
-  showItemType?: boolean
   error: string | null
   submitting: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: UpsertOrderItemRequest) => void
+  onSubmit: (data: UpsertOrderItemRequest, image: File | null, removeImage: boolean) => void
 }) {
   const { t, i18n } = useTranslation('orders')
   const [form, setForm] = useState<ItemFormState>(initial)
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null)
+  const [removeImage, setRemoveImage] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!selectedImage) {
+      setSelectedImagePreview(null)
+      return
+    }
+
+    const previewUrl = URL.createObjectURL(selectedImage)
+    setSelectedImagePreview(previewUrl)
+    return () => URL.revokeObjectURL(previewUrl)
+  }, [selectedImage])
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (next) setForm(initial)
+        if (next) {
+          setForm(initial)
+          setSelectedImage(null)
+          setRemoveImage(false)
+          setImageError(null)
+        }
         onOpenChange(next)
       }}
     >
@@ -326,37 +345,16 @@ function ItemFormDialog({
             if (!form.name.trim()) return
             const quantity = Number(form.quantity)
             onSubmit({
-              itemType: form.itemType,
               name: form.name.trim(),
-              description: form.itemType === 'Product' ? null : form.description.trim() || null,
-              sourceUrl: form.itemType === 'Product' ? form.sourceUrl.trim() || null : null,
+              description: form.description.trim() || null,
+              sourceUrl: form.sourceUrl.trim() || null,
               quantity: Number.isFinite(quantity) && quantity >= 1 ? quantity : 1,
               unitPrice:
                 form.unitPrice.trim() === '' ? null : Number(form.unitPrice),
               currencyCode: form.unitPrice.trim() === '' ? null : form.currencyCode,
-            })
+            }, selectedImage, removeImage)
           }}
         >
-          {showItemType ? (
-            <div className="space-y-1.5">
-              <Label>{t('details.itemType')}</Label>
-              <Select
-                value={form.itemType}
-                onValueChange={(value) =>
-                  setForm((f) => ({ ...f, itemType: value as 'Product' | 'Service' }))
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Product">{t('form.product')}</SelectItem>
-                  <SelectItem value="Service">{t('form.service')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
-
           <div className="space-y-1.5">
             <Label>{t('form.itemName')}</Label>
             <Input
@@ -366,26 +364,81 @@ function ItemFormDialog({
             />
           </div>
 
-          {form.itemType === 'Product' ? (
-            <div className="space-y-1.5">
-              <Label>{t('form.sourceUrl')}</Label>
-              <Input
-                type="url"
-                placeholder="https://"
-                value={form.sourceUrl}
-                onChange={(e) => setForm((f) => ({ ...f, sourceUrl: e.target.value }))}
-              />
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              <Label>{t('form.itemDescription')}</Label>
-              <Textarea
-                rows={3}
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              />
-            </div>
-          )}
+          <div className="space-y-1.5">
+              <Label>{t('form.productImage')}</Label>
+              <div className="flex items-center gap-3">
+                {(selectedImagePreview ?? (!removeImage && form.imageUrl ? attachmentUrl(form.imageUrl) : null)) ? (
+                  <img
+                    src={selectedImagePreview ?? attachmentUrl(form.imageUrl!)}
+                    alt={t('form.productImagePreview')}
+                    className="size-20 rounded-lg border bg-muted object-contain"
+                  />
+                ) : null}
+                <Button type="button" variant="outline" size="sm" asChild>
+                  <label className="cursor-pointer">
+                    <ImagePlus />
+                    {selectedImage || form.imageUrl && !removeImage
+                      ? t('form.replaceProductImage')
+                      : t('form.addProductImage')}
+                    <input
+                      className="sr-only"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0]
+                        event.target.value = ''
+                        if (!file) return
+                        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                          setImageError(t('form.productImageUnsupported'))
+                          return
+                        }
+                        if (file.size > 10 * 1024 * 1024) {
+                          setImageError(t('form.productImageTooLarge'))
+                          return
+                        }
+                        setImageError(null)
+                        setSelectedImage(file)
+                        setRemoveImage(false)
+                      }}
+                    />
+                  </label>
+                </Button>
+                {selectedImage || (form.imageUrl && !removeImage) ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t('form.removeProductImage')}
+                    onClick={() => {
+                      setSelectedImage(null)
+                      setRemoveImage(Boolean(initial.imageUrl))
+                    }}
+                  >
+                    <X />
+                  </Button>
+                ) : null}
+              </div>
+              {imageError ? <p className="text-sm text-destructive">{imageError}</p> : null}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t('form.sourceUrl')}</Label>
+            <Input
+              type="url"
+              placeholder="https://"
+              value={form.sourceUrl}
+              onChange={(e) => setForm((f) => ({ ...f, sourceUrl: e.target.value }))}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t('form.itemDescription')}</Label>
+            <Textarea
+              rows={2}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </div>
 
           <div className="space-y-1.5">
             <Label>{t('form.unitPrice')}</Label>
@@ -417,8 +470,7 @@ function ItemFormDialog({
             </div>
           </div>
 
-          {form.itemType === 'Product' ? (
-            <div className="space-y-1.5">
+          <div className="space-y-1.5">
               <Label>{t('form.quantity')}</Label>
               <Input
                 type="number"
@@ -426,8 +478,7 @@ function ItemFormDialog({
                 value={form.quantity}
                 onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
               />
-            </div>
-          ) : null}
+          </div>
 
           {(() => {
             const unit = Number(form.unitPrice)
@@ -436,10 +487,7 @@ function ItemFormDialog({
             return (
               <p className="text-sm text-muted-foreground">
                 {formatMoney(
-                  unit *
-                    (form.itemType === 'Product' && Number.isFinite(quantity) && quantity >= 1
-                      ? quantity
-                      : 1),
+                  unit * (Number.isFinite(quantity) && quantity >= 1 ? quantity : 1),
                   form.currencyCode,
                   i18n.language === 'ru' ? 'ru-RU' : 'en-US',
                 )}
@@ -498,6 +546,7 @@ export function OrderDetailsPage({
     void queryClient.invalidateQueries({ queryKey: ['order', id] })
     void queryClient.invalidateQueries({ queryKey: ['orders'] })
     void queryClient.invalidateQueries({ queryKey: ['customers'] })
+    if (isSalesOrder) void queryClient.invalidateQueries({ queryKey: ['procurements'] })
   }
 
   const { data: order, isLoading, isError } = useQuery({
@@ -506,7 +555,7 @@ export function OrderDetailsPage({
     enabled: Boolean(id),
     refetchInterval: (query) => {
       const previewPending = query.state.data?.items.some(
-        (item) => item.itemType === 'Product' && item.sourceUrl && !item.imageUrl,
+        (item) => item.sourceUrl && !item.imageUrl,
       )
       return previewPending && query.state.dataUpdateCount < 12 ? 2000 : false
     },
@@ -547,7 +596,11 @@ export function OrderDetailsPage({
   }, [qrBlob])
 
   const addItemMutation = useMutation({
-    mutationFn: (payload: UpsertOrderItemRequest) => ordersApi.addOrderItem(id, payload),
+    mutationFn: async ({ payload, image }: { payload: UpsertOrderItemRequest; image: File | null }) => {
+      const item = await ordersApi.addOrderItem(id, payload)
+      if (image) await ordersApi.uploadOrderItemImage(item.id, image)
+      return item
+    },
     onSuccess: () => {
       invalidateOrder()
       setItemModal(null)
@@ -559,8 +612,22 @@ export function OrderDetailsPage({
   })
 
   const updateItemMutation = useMutation({
-    mutationFn: ({ itemId, payload }: { itemId: string; payload: UpsertOrderItemRequest }) =>
-      ordersApi.updateOrderItem(id, itemId, payload),
+    mutationFn: async ({
+      itemId,
+      payload,
+      image,
+      removeImage,
+    }: {
+      itemId: string
+      payload: UpsertOrderItemRequest
+      image: File | null
+      removeImage: boolean
+    }) => {
+      const item = await ordersApi.updateOrderItem(id, itemId, payload)
+      if (image) await ordersApi.uploadOrderItemImage(itemId, image)
+      else if (removeImage) await ordersApi.deleteOrderItemImage(itemId)
+      return item
+    },
     onSuccess: () => {
       invalidateOrder()
       setItemModal(null)
@@ -687,51 +754,260 @@ export function OrderDetailsPage({
   }
 
   const dateLocale = i18n.language.startsWith('ru') ? 'ru-RU' : 'en-US'
+  const currentYear = new Date().getFullYear()
+  const formatOrderDate = (date: Date) => new Intl.DateTimeFormat(dateLocale, {
+    day: 'numeric',
+    month: 'short',
+    year: date.getFullYear() === currentYear ? undefined : 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
   const createdAtDate = new Date(order.createdAt)
-  const createdAtLabel = new Intl.DateTimeFormat(dateLocale, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(createdAtDate)
+  const createdAtLabel = isSalesOrder
+    ? formatOrderDate(createdAtDate)
+    : new Intl.DateTimeFormat(dateLocale, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(createdAtDate)
   const expectedDeliveryDate = order.expectedDeliveryAt
-    ? parseYmdLocal(formatYmd(new Date(order.expectedDeliveryAt)))
+    ? new Date(order.expectedDeliveryAt)
     : undefined
   const expectedDeliveryLabel = expectedDeliveryDate
-    ? expectedDeliveryDate.toLocaleDateString(dateLocale, { dateStyle: 'medium' })
+    ? isSalesOrder
+      ? formatOrderDate(expectedDeliveryDate)
+      : expectedDeliveryDate.toLocaleDateString(dateLocale, { dateStyle: 'medium' })
     : t('details.expectedDeliveryPlaceholder')
 
+  const statusControl = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={isSalesOrder ? 'px-0 text-muted-foreground hover:bg-transparent hover:text-foreground' : undefined}
+          disabled={orderStatusMutation.isPending}
+        >
+          {t('details.changeStatus')}
+          <RefreshCw className="size-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align={isSalesOrder ? 'start' : 'end'} className="min-w-48">
+        {ORDER_STATUSES.map((status) => (
+          <DropdownMenuItem key={status} disabled={orderStatusMutation.isPending} onSelect={() => {
+            if (status !== order.status) orderStatusMutation.mutate(status)
+          }}>
+            <Check className={cn('size-4', status === order.status ? 'opacity-100' : 'opacity-0')} />
+            {t('details.orderStatus.' + status)}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
   return (
-    <div className="space-y-6">
-      <div>
-        <Link to={isSalesOrder ? '/admin/orders' : '/admin/requests'} className="text-sm text-primary hover:underline">
-          ← {isSalesOrder ? t('salesOrders.back') : t('details.back')}
-        </Link>
-        <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="flex flex-wrap items-center gap-2 text-2xl font-bold">
-              <span>{isSalesOrder ? t('salesOrders.detailTitle') : t('details.title')}</span>
+    <div className={cn('min-h-full', isSalesOrder ? 'space-y-10 sm:space-y-12' : 'space-y-6 bg-white')}>
+      <Link to={isSalesOrder ? '/admin/orders' : '/admin/requests'} className={cn('text-sm text-primary hover:underline', isSalesOrder && 'flex w-fit')}>
+        ← {isSalesOrder ? t('back', { ns: 'common' }) : t('details.back')}
+      </Link>
+
+      {conversionError ? (
+        <Alert variant="destructive">
+          <AlertDescription>{conversionError}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <section className={cn('grid min-w-0 grid-cols-1 gap-x-8 gap-y-6', isSalesOrder ? 'items-start min-[900px]:grid-cols-[minmax(0,calc(30%_-_5.1rem))_fit-content(18rem)_13rem]' : 'min-[900px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_16rem]')}>
+        <div className={cn('flex min-w-0 flex-col', !isSalesOrder && 'min-[900px]:min-h-[300px]')}>
+          <div className="flex min-h-9 flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold">
+              {isSalesOrder ? t('salesOrders.detailTitle') : t('details.title')}
+            </h1>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 font-mono text-sm font-semibold transition-colors hover:bg-primary/15"
+              title={copiedCode ? t('codeCopied') : t('copyCode')}
+              aria-label={copiedCode ? t('codeCopied') : t('copyCode')}
+              onClick={async () => {
+                await navigator.clipboard.writeText(visibleTrackingCode)
+                setCopiedCode(true)
+                window.setTimeout(() => setCopiedCode(false), 2000)
+              }}
+            >
+              <span className="text-foreground">№</span>
+              <span className="text-primary">{visibleTrackingCode}</span>
+              <Copy className={copiedCode ? 'size-3.5 shrink-0 text-primary' : 'size-3.5 shrink-0 text-muted-foreground'} />
+            </button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              title={t('delete')}
+              aria-label={t('delete')}
+              disabled={deleteOrderMutation.isPending}
+              onClick={() => {
+                setDeleteError(null)
+                setDeleteOpen(true)
+              }}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
+
+          <div className={cn('mt-4 flex flex-col gap-3', !isSalesOrder && 'flex-1 min-[900px]:justify-between')}>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">{t('details.customerFullName')}</p>
+              <div className="flex min-w-0 items-center gap-1 text-base">
+                <span className={cn(
+                  'min-w-0 flex-1 truncate font-medium',
+                  order.customerName?.trim() ? 'text-foreground' : 'text-muted-foreground',
+                )}>
+                  {order.customerName?.trim() || t('details.emptyValue')}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  title={t('details.editCustomer')}
+                  aria-label={t('details.editCustomer')}
+                  onClick={() => {
+                    setCustomerError(null)
+                    setCustomerEditOpen(true)
+                  }}
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">{t('details.createdAt')}</p>
+              <div className="flex min-w-0 items-center gap-1 text-base">
+                <span className="min-w-0 flex-1 truncate font-medium text-foreground">{createdAtLabel}</span>
+                <DateTimePicker
+                  value={order.createdAt}
+                  disabled={updateOrderMutation.isPending}
+                  dayPresets={STATUS_HISTORY_DAY_PRESETS}
+                  iconOnly
+                  triggerLabel={t('details.createdAt')}
+                  className="size-7"
+                  onChange={(iso) => {
+                    if (iso) updateOrderMutation.mutate({ createdAt: iso })
+                  }}
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">{t('details.expectedDeliveryAt')}</p>
+              <div className="flex min-w-0 items-center gap-1 text-base">
+                <span className={cn(
+                  'min-w-0 flex-1 truncate font-medium',
+                  order.expectedDeliveryAt ? 'text-foreground' : 'text-muted-foreground',
+                )}>
+                  {expectedDeliveryLabel}
+                </span>
+                <DatePicker
+                  value={order.expectedDeliveryAt ? formatYmd(new Date(order.expectedDeliveryAt)) : undefined}
+                  disabled={updateOrderMutation.isPending}
+                  placeholder={t('details.expectedDeliveryPlaceholder')}
+                  iconOnly
+                  triggerLabel={t('details.expectedDeliveryAt')}
+                  align="end"
+                  className="size-7"
+                  onChange={(ymd) => {
+                    if (!ymd) {
+                      updateOrderMutation.mutate({ expectedDeliveryAt: null })
+                      return
+                    }
+                    const date = parseYmdLocal(ymd)
+                    updateOrderMutation.mutate({ expectedDeliveryAt: date ? date.toISOString() : null })
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+          {isSalesOrder ? <div className="mt-2">{statusControl}</div> : null}
+        </div>
+
+        <div className={isSalesOrder ? 'grid min-w-0 auto-rows-[minmax(48px,auto)] gap-3 wrap-anywhere empty:hidden min-[900px]:pt-[52px]' : 'min-w-0 space-y-3 min-[900px]:flex min-[900px]:min-h-[300px] min-[900px]:flex-col min-[900px]:justify-between min-[900px]:pt-12'}>
+          {order.customerPhone?.trim() ? (
+            <CustomerField label={t('details.customerPhone')} value={order.customerPhone} emptyLabel={t('details.emptyValue')} />
+          ) : null}
+          {order.customerTelegram?.trim() ? (
+            <CustomerField label={t('details.customerTelegram')} value={formatTelegram(order.customerTelegram)} emptyLabel={t('details.emptyValue')} href={telegramHref(order.customerTelegram)} />
+          ) : null}
+          {order.customerWhatsApp?.trim() ? (
+            <CustomerField label="WhatsApp" value={order.customerWhatsApp} emptyLabel={t('details.emptyValue')} />
+          ) : null}
+          {order.customerVk?.trim() ? (
+            <CustomerField label="VK" value={order.customerVk} emptyLabel={t('details.emptyValue')} href={order.customerVk.startsWith('http') ? order.customerVk : null} />
+          ) : null}
+          {order.customerEmail?.trim() ? (
+            <CustomerField label={t('details.customerEmail')} value={order.customerEmail} emptyLabel={t('details.emptyValue')} href={'mailto:' + order.customerEmail.trim()} />
+          ) : null}
+        </div>
+
+        {trackingLink ? (
+          <div className={cn('flex w-full flex-col gap-2', isSalesOrder ? 'max-w-52 min-[900px]:col-start-3' : 'max-w-64 min-[900px]:w-64 min-[900px]:max-w-none min-[900px]:min-h-[300px]')}>
+            {qrLoading ? (
+              <p className={cn('flex aspect-square w-full items-center justify-center text-xs text-muted-foreground', !isSalesOrder && 'min-[900px]:min-h-0 min-[900px]:flex-1 min-[900px]:aspect-auto')}>
+                {t('details.qrLoading')}
+              </p>
+            ) : qrObjectUrl ? (
+              <img
+                src={qrObjectUrl}
+                alt={t('details.qrAlt', { code: visibleTrackingCode })}
+                className={cn('aspect-square w-full object-contain', !isSalesOrder && 'min-[900px]:min-h-0 min-[900px]:flex-1 min-[900px]:aspect-auto')}
+              />
+            ) : qrError ? (
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 font-mono text-base font-semibold transition-colors hover:bg-primary/15"
-                title={copiedCode ? t('codeCopied') : t('copyCode')}
-                onClick={async () => {
-                  await navigator.clipboard.writeText(visibleTrackingCode)
-                  setCopiedCode(true)
-                  window.setTimeout(() => setCopiedCode(false), 2000)
-                }}
+                className={cn('flex aspect-square w-full items-center justify-center text-xs text-muted-foreground hover:text-foreground', !isSalesOrder && 'min-[900px]:min-h-0 min-[900px]:flex-1 min-[900px]:aspect-auto')}
+                onClick={() => void refetchQr()}
               >
-                <span className="text-foreground">№</span>
-                <span className="text-primary">{visibleTrackingCode}</span>
-                <Copy
-                  className={
-                    copiedCode
-                      ? 'size-4 shrink-0 text-primary'
-                      : 'size-4 shrink-0 text-muted-foreground'
-                  }
-                />
+                {t('details.qrRetry')}
               </button>
-            </h1>
+            ) : null}
+            <div className="grid w-full grid-cols-3 gap-1">
+              <Button asChild variant="ghost" className="h-9 w-full min-w-0 border-0 p-0 shadow-none hover:bg-muted" title={t('details.openTracking')} aria-label={t('details.openTracking')}>
+                <a href={trackingLink.trackingUrl} target="_blank" rel="noopener noreferrer"><ExternalLink /></a>
+              </Button>
+              <Button type="button" variant="ghost" className="h-9 w-full min-w-0 border-0 p-0 shadow-none hover:bg-muted" title={t('details.downloadQr')} aria-label={t('details.downloadQr')} onClick={() => void ordersApi.downloadOrderQr(id, visibleTrackingCode)}>
+                <Download />
+              </Button>
+              <Button type="button" variant="ghost" className="h-9 w-full min-w-0 border-0 p-0 shadow-none hover:bg-muted" title={copied ? t('linkCopied') : t('copyLink')} aria-label={copied ? t('linkCopied') : t('copyLink')} onClick={async () => {
+                await navigator.clipboard.writeText(trackingLink.trackingUrl)
+                setCopied(true)
+                window.setTimeout(() => setCopied(false), 2000)
+              }}>
+                <Copy />
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+        ) : null}
+      </section>
+
+      <section>
+        {(!isSalesOrder || order.status === 'AwaitingPayment') ? <div className={cn('mb-3 flex flex-wrap items-center gap-3', isSalesOrder ? 'justify-end' : 'justify-between')}>
+          {!isSalesOrder ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-8 border-0 px-1.5 text-sm text-foreground shadow-none hover:bg-transparent hover:text-primary"
+              onClick={() => {
+                setEditingItem(null)
+                setItemError(null)
+                setItemModal('create')
+              }}
+            >
+              <Plus className="size-4" />
+              {t('details.addProduct')}
+            </Button>
+          ) : null}
+
+          <div className="flex flex-wrap items-center gap-2">
+            {!isSalesOrder ? statusControl : null}
+
             {isSalesOrder
               ? order.status === 'AwaitingPayment' ? (
                 <Button type="button" disabled={convertMutation.isPending} onClick={() => {
@@ -743,9 +1019,7 @@ export function OrderDetailsPage({
                 </Button>
               ) : null
               : order.convertedToSalesOrderId ? (
-                <Button asChild variant="outline">
-                  <Link to={`/admin/orders/${order.convertedToSalesOrderId}`}>{t('salesOrders.openConverted')}</Link>
-                </Button>
+                <Button asChild variant="outline"><Link to={'/admin/orders/' + order.convertedToSalesOrderId}>{t('salesOrders.openConverted')}</Link></Button>
               ) : (
                 <Button type="button" disabled={convertMutation.isPending} onClick={() => {
                   setConversionError(null)
@@ -755,421 +1029,117 @@ export function OrderDetailsPage({
                   {convertMutation.isPending ? t('salesOrders.converting') : t('salesOrders.convert')}
                 </Button>
               )}
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => {
-                setDeleteError(null)
-                setDeleteOpen(true)
-              }}
-            >
-              <Trash2 />
-              {t('delete')}
-            </Button>
           </div>
-        </div>
-      </div>
+        </div> : null}
 
-      {conversionError ? (
-        <Alert variant="destructive">
-          <AlertDescription>{conversionError}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="flex flex-col items-start gap-4 min-[600px]:flex-row min-[600px]:items-stretch min-[600px]:gap-8">
-        <Card className="min-w-0 flex-1 gap-0 pt-[30px] pb-1">
-          <CardContent className="min-w-0">
-            <div className="grid min-w-0 flex-1 grid-cols-1 gap-6 min-[900px]:grid-cols-2">
-              <div className="min-w-0">
-                <div className="space-y-1.5">
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">
-                      {t('details.customerFullName')}
-                    </p>
-                    <div className="flex min-w-0 items-center gap-1 text-base">
-                      <span
-                        className={cn(
-                          'min-w-0 flex-1 truncate font-medium',
-                          order.customerName?.trim() ? 'text-foreground' : 'text-muted-foreground',
-                        )}
-                      >
-                        {order.customerName?.trim() || t('details.emptyValue')}
-                      </span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        title={t('details.editCustomer')}
-                        aria-label={t('details.editCustomer')}
-                        onClick={() => {
-                          setCustomerError(null)
-                          setCustomerEditOpen(true)
-                        }}
-                      >
-                        <Pencil className="size-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">
-                      {t('details.createdAt')}
-                    </p>
-                    <div className="flex min-w-0 items-center gap-1 text-base">
-                      <span className="min-w-0 flex-1 truncate font-medium text-foreground">
-                        {createdAtLabel}
-                      </span>
-                      <DateTimePicker
-                        value={order.createdAt}
-                        disabled={updateOrderMutation.isPending}
-                        dayPresets={STATUS_HISTORY_DAY_PRESETS}
-                        iconOnly
-                        triggerLabel={t('details.createdAt')}
-                        className="size-7"
-                        onChange={(iso) => {
-                          if (!iso) return
-                          updateOrderMutation.mutate({ createdAt: iso })
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">
-                      {t('details.expectedDeliveryAt')}
-                    </p>
-                    <div className="flex min-w-0 items-center gap-1 text-base">
-                      <span
-                        className={cn(
-                          'min-w-0 flex-1 truncate font-medium',
-                          order.expectedDeliveryAt ? 'text-foreground' : 'text-muted-foreground',
-                        )}
-                      >
-                        {expectedDeliveryLabel}
-                      </span>
-                      <DatePicker
-                        value={
-                          order.expectedDeliveryAt
-                            ? formatYmd(new Date(order.expectedDeliveryAt))
-                            : undefined
-                        }
-                        disabled={updateOrderMutation.isPending}
-                        placeholder={t('details.expectedDeliveryPlaceholder')}
-                        iconOnly
-                        triggerLabel={t('details.expectedDeliveryAt')}
-                        align="end"
-                        className="size-7"
-                        onChange={(ymd) => {
-                          if (!ymd) {
-                            updateOrderMutation.mutate({ expectedDeliveryAt: null })
-                            return
-                          }
-                          const date = parseYmdLocal(ymd)
-                          updateOrderMutation.mutate({
-                            expectedDeliveryAt: date ? date.toISOString() : null,
-                          })
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        disabled={orderStatusMutation.isPending}
-                        title={t('details.changeStatus')}
-                        className={cn(
-                          'inline-flex h-7 w-fit max-w-full items-center gap-1.5 rounded-md px-2 text-left text-sm font-semibold tracking-tight text-foreground transition-opacity hover:opacity-80 disabled:opacity-50',
-                          (orderStatusStyles[order.status] ?? orderStatusStyles.AwaitingPayment)
-                            .chipSoft,
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'size-1.5 shrink-0 rounded-full',
-                            (orderStatusStyles[order.status] ?? orderStatusStyles.AwaitingPayment).dot,
-                          )}
-                        />
-                        <span className="min-w-0 leading-none">
-                          {t(`details.orderStatus.${order.status}`)}
-                        </span>
-                        <RefreshCw className="size-3 shrink-0 opacity-70" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-48">
-                      {ORDER_STATUSES.map((status) => (
-                        <DropdownMenuItem
-                          key={status}
-                          disabled={orderStatusMutation.isPending}
-                          onSelect={() => {
-                            if (status === order.status) return
-                            orderStatusMutation.mutate(status)
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              'size-4',
-                              status === order.status ? 'opacity-100' : 'opacity-0',
-                            )}
-                          />
-                          {t(`details.orderStatus.${status}`)}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-              <div className="min-w-0 space-y-1.5">
-                {order.customerPhone?.trim() ? (
-                  <CustomerField
-                    label={t('details.customerPhone')}
-                    value={order.customerPhone}
-                    emptyLabel={t('details.emptyValue')}
-                  />
-                ) : null}
-                {order.customerTelegram?.trim() ? (
-                  <CustomerField
-                    label={t('details.customerTelegram')}
-                    value={formatTelegram(order.customerTelegram)}
-                    emptyLabel={t('details.emptyValue')}
-                    href={telegramHref(order.customerTelegram)}
-                  />
-                ) : null}
-                {order.customerWhatsApp?.trim() ? (
-                  <CustomerField
-                    label="WhatsApp"
-                    value={order.customerWhatsApp}
-                    emptyLabel={t('details.emptyValue')}
-                  />
-                ) : null}
-                {order.customerVk?.trim() ? (
-                  <CustomerField
-                    label="VK"
-                    value={order.customerVk}
-                    emptyLabel={t('details.emptyValue')}
-                    href={order.customerVk?.startsWith('http') ? order.customerVk : null}
-                  />
-                ) : null}
-                {order.customerEmail?.trim() ? (
-                  <CustomerField
-                    label={t('details.customerEmail')}
-                    value={order.customerEmail}
-                    emptyLabel={t('details.emptyValue')}
-                    href={`mailto:${order.customerEmail?.trim()}`}
-                  />
-                ) : null}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {trackingLink ? (
-          <Card className="w-64 max-w-full shrink-0 gap-0 py-1 self-center min-[600px]:self-stretch">
-            <CardContent className="flex min-h-0 flex-1 flex-col gap-2 px-2 pt-2 pb-0">
-              {qrLoading ? (
-                <p className="flex aspect-square w-full items-center justify-center text-xs text-muted-foreground min-[600px]:min-h-0 min-[600px]:flex-1 min-[600px]:aspect-auto">
-                  {t('details.qrLoading')}
-                </p>
-              ) : qrObjectUrl ? (
-                <img
-                  src={qrObjectUrl}
-                  alt={t('details.qrAlt', { code: visibleTrackingCode })}
-                  className="aspect-square w-full object-contain min-[600px]:min-h-0 min-[600px]:flex-1 min-[600px]:aspect-auto"
-                />
-              ) : qrError ? (
-                <button
-                  type="button"
-                  className="flex aspect-square w-full items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground hover:bg-muted/50 min-[600px]:min-h-0 min-[600px]:flex-1 min-[600px]:aspect-auto"
-                  onClick={() => void refetchQr()}
-                >
-                  {t('details.qrRetry')}
-                </button>
-              ) : null}
-              <div className="grid w-full grid-cols-3 gap-1">
-                <Button
-                  asChild
-                  variant="ghost"
-                  className="h-9 w-full min-w-0 border-0 p-0 shadow-none hover:bg-muted"
-                  title={t('details.openTracking')}
-                  aria-label={t('details.openTracking')}
-                >
-                  <a href={trackingLink.trackingUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink />
-                  </a>
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-9 w-full min-w-0 border-0 p-0 shadow-none hover:bg-muted"
-                  title={t('details.downloadQr')}
-                  aria-label={t('details.downloadQr')}
-                  onClick={() => void ordersApi.downloadOrderQr(id, visibleTrackingCode)}
-                >
-                  <Download />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-9 w-full min-w-0 border-0 p-0 shadow-none hover:bg-muted"
-                  title={copied ? t('linkCopied') : t('copyLink')}
-                  aria-label={copied ? t('linkCopied') : t('copyLink')}
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(trackingLink.trackingUrl)
-                    setCopied(true)
-                    window.setTimeout(() => setCopied(false), 2000)
-                  }}
-                >
-                  <Copy />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : null}
-      </div>
-
-      <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between space-y-0">
-          <CardTitle>{t('details.items')}</CardTitle>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
+        {isSalesOrder ? (
+          <OrderItemsTable
+            items={order.items}
+            deleting={deleteItemMutation.isPending}
+            onAdd={() => {
               setEditingItem(null)
               setItemError(null)
               setItemModal('create')
             }}
-          >
-            <Plus />
-            {t('details.add')}
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {!order.items.length ? (
-            <p className="text-sm text-muted-foreground">{t('details.noItems')}</p>
-          ) : (
-            <ul className="divide-y">
-              {order.items.map((item) => {
-                return (
-                  <li key={item.id} className="py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex min-w-0 items-start gap-3">
-                        {item.itemType === 'Product' ? (
-                          <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted/50 text-muted-foreground">
-                            <ImageOff className="size-5" />
-                            {item.imageUrl ? (
-                              <img
-                                src={
-                                  /^https?:\/\//i.test(item.imageUrl)
-                                    ? item.imageUrl
-                                    : attachmentUrl(item.imageUrl)
-                                }
-                                alt={item.name}
-                                loading="lazy"
-                                className="absolute inset-0 size-full bg-white object-contain"
-                                onError={(event) => {
-                                  event.currentTarget.style.display = 'none'
-                                }}
-                              />
-                            ) : null}
-                          </div>
-                        ) : null}
-                        <div className="min-w-0">
-                          <p className="font-medium">
-                            {item.name}
-                            {item.itemType === 'Product' ? (
-                              <span className="font-normal text-muted-foreground">
-                                {' '}
-                                · ×{item.quantity}
-                              </span>
-                            ) : null}
-                            {isFiniteMoney(item.unitPrice) ? (
-                              <span className="font-normal text-muted-foreground">
-                                {' '}
-                                ·{' '}
-                                {formatMoney(
-                                  item.unitPrice *
-                                    (item.itemType === 'Product' ? item.quantity : 1),
-                                  item.currencyCode ?? 'RUB',
-                                  i18n.language === 'ru' ? 'ru-RU' : 'en-US',
-                                )}
-                              </span>
-                            ) : null}
-                          </p>
-                          {item.description ? (
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              {item.description}
-                            </p>
-                          ) : null}
-                          {item.productSource === 'Rakuten' ? (
-                            <p className="mt-1 text-xs font-medium text-[#bf0000]">
-                              Rakuten{item.shopName ? ` · ${item.shopName}` : ''}
-                            </p>
-                          ) : null}
-                          {item.sourceUrl ? (
-                            <a
-                              className="mt-1 block text-sm text-primary hover:underline"
-                              href={item.sourceUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              Открыть товар в магазине
-                            </a>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => {
-                            setEditingItem(item)
-                            setItemError(null)
-                            setItemModal('edit')
+            onEdit={(item) => {
+              setEditingItem(item)
+              setItemError(null)
+              setItemModal('edit')
+            }}
+            onDelete={(item) => {
+              if (window.confirm(t('details.deleteItemConfirm'))) deleteItemMutation.mutate(item.id)
+            }}
+          />
+        ) : !order.items.length ? (
+          <p className="text-sm text-muted-foreground">{t('details.noItems')}</p>
+        ) : (
+          <ul className="divide-y">
+            {order.items.map((item) => (
+              <li key={item.id} className="py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted/50 text-muted-foreground">
+                      <ImageOff className="size-5" />
+                      {item.imageUrl ? (
+                        <img
+                          src={/^https?:\/\//i.test(item.imageUrl) ? item.imageUrl : attachmentUrl(item.imageUrl)}
+                          alt={item.name}
+                          loading="lazy"
+                          className="absolute inset-0 size-full bg-white object-contain"
+                          onError={(event) => {
+                            event.currentTarget.style.display = 'none'
                           }}
-                        >
-                          <Pencil />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => {
-                            if (window.confirm(t('details.deleteItemConfirm'))) {
-                              deleteItemMutation.mutate(item.id)
-                            }
-                          }}
-                        >
-                          <Trash2 className="text-destructive" />
-                        </Button>
-                      </div>
+                        />
+                      ) : null}
                     </div>
-
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-
+                    <div className="min-w-0">
+                      <p className="font-medium">
+                        {item.name}
+                        <span className="font-normal text-muted-foreground"> · ×{item.quantity}</span>
+                        {isFiniteMoney(item.unitPrice) ? (
+                          <span className="font-normal text-muted-foreground">
+                            {' '}·{' '}
+                            {formatMoney(
+                              item.unitPrice * item.quantity,
+                              item.currencyCode ?? 'RUB',
+                              i18n.language === 'ru' ? 'ru-RU' : 'en-US',
+                            )}
+                          </span>
+                        ) : null}
+                      </p>
+                      {item.description ? (
+                        <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                      ) : null}
+                      {item.productSource === 'Rakuten' ? (
+                        <p className="mt-1 text-xs font-medium text-[#bf0000]">
+                          Rakuten{item.shopName ? ' · ' + item.shopName : ''}
+                        </p>
+                      ) : null}
+                      {item.sourceUrl ? (
+                        <a className="mt-1 block text-sm text-primary hover:underline" href={item.sourceUrl} target="_blank" rel="noreferrer">
+                          Открыть товар в магазине
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon-sm" title={t('details.editItem')} aria-label={t('details.editItem')} onClick={() => {
+                      setEditingItem(item)
+                      setItemError(null)
+                      setItemModal('edit')
+                    }}>
+                      <Pencil />
+                    </Button>
+                    <Button variant="ghost" size="icon-sm" title={t('details.deleteItem')} aria-label={t('details.deleteItem')} onClick={() => {
+                      if (window.confirm(t('details.deleteItemConfirm'))) deleteItemMutation.mutate(item.id)
+                    }}>
+                      <Trash2 className="text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <ItemFormDialog
         open={itemModal === 'create'}
         title={t('details.addItemTitle')}
-        showItemType={false}
         initial={{
-          itemType: 'Product',
           name: '',
           description: '',
           sourceUrl: '',
           quantity: '1',
           unitPrice: '',
           currencyCode: 'RUB',
+          imageUrl: null,
         }}
         error={itemError}
         submitting={addItemMutation.isPending}
         onOpenChange={(open) => {
           if (!open) setItemModal(null)
         }}
-        onSubmit={(payload) => addItemMutation.mutate(payload)}
+        onSubmit={(payload, image) => addItemMutation.mutate({ payload, image })}
       />
 
       <OrderCustomerEditDialog
@@ -1209,13 +1179,13 @@ export function OrderDetailsPage({
         open={itemModal === 'edit' && Boolean(editingItem)}
         title={t('details.editItemTitle')}
         initial={{
-          itemType: editingItem?.itemType === 'Service' ? 'Service' : 'Product',
           name: editingItem?.name ?? '',
           description: editingItem?.description ?? '',
           sourceUrl: editingItem?.sourceUrl ?? '',
           quantity: String(editingItem?.quantity ?? 1),
           unitPrice: editingItem?.unitPrice?.toString() ?? '',
           currencyCode: editingItem?.currencyCode ?? 'RUB',
+          imageUrl: editingItem?.imageUrl ?? null,
         }}
         error={itemError}
         submitting={updateItemMutation.isPending}
@@ -1225,9 +1195,9 @@ export function OrderDetailsPage({
             setEditingItem(null)
           }
         }}
-        onSubmit={(payload) => {
+        onSubmit={(payload, image, removeImage) => {
           if (!editingItem) return
-          updateItemMutation.mutate({ itemId: editingItem.id, payload })
+          updateItemMutation.mutate({ itemId: editingItem.id, payload, image, removeImage })
         }}
       />
 

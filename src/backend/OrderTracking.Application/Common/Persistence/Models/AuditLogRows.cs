@@ -38,7 +38,6 @@ public sealed record CustomerAuditSnapshotRow(
 
 public sealed record StatusDefinitionAuditSnapshotRow(
     string Name,
-    string? ItemType,
     string? Color,
     bool IsActive,
     bool IsFinal,

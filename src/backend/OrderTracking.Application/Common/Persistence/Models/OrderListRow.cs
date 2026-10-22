@@ -59,7 +59,6 @@ public sealed record OrderDetailsRow(
 
 public sealed record OrderItemRow(
     Guid Id,
-    string ItemType,
     string Name,
     string? Description,
     int Quantity,
@@ -95,7 +94,6 @@ public sealed record OrderAuditSnapshotRow(
 
 public sealed record OrderItemAuditSnapshotRow(
     string Name,
-    string ItemType,
     string? Description,
     int Quantity,
     decimal? UnitPrice,

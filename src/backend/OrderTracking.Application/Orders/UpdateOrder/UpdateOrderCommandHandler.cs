@@ -110,7 +110,6 @@ public sealed class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderComma
             order.DeliveryNote,
             items.Select(i => new OrderItemDto(
                 i.Id,
-                i.ItemType.ToString(),
                 i.Name,
                 i.Description,
                 i.Quantity,

@@ -122,7 +122,6 @@ public sealed class OrderRepository : IOrderRepository
                     .OrderBy(i => i.SortOrder)
                     .Select(i => new OrderItemRow(
                         i.Id,
-                        i.ItemType.ToString(),
                         i.Name,
                         i.Description,
                         i.Quantity,
@@ -183,7 +182,6 @@ public sealed class OrderRepository : IOrderRepository
                     .Select(i => new PublicTrackingItemRow(
                         i.Id,
                         i.Name,
-                        i.ItemType.ToString(),
                         i.Quantity,
                         i.ManualImageObjectKey != null || i.PreviewImageObjectKey != null
                             ? $"/track/{trackingCode}/items/{i.Id}/image"
@@ -411,7 +409,6 @@ public sealed class OrderRepository : IOrderRepository
             .Where(i => i.Id == itemId)
             .Select(i => new OrderItemAuditSnapshotRow(
                 i.Name,
-                i.ItemType.ToString(),
                 i.Description,
                 i.Quantity,
                 i.UnitPrice,
@@ -486,7 +483,6 @@ public sealed class OrderRepository : IOrderRepository
                 h.Id,
                 h.OrderItemId,
                 h.OrderItem.Name,
-                h.OrderItem.ItemType.ToString(),
                 h.StatusDefinitionId,
                 h.StatusText,
                 h.StatusDefinition != null ? h.StatusDefinition.Color : null,

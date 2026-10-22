@@ -61,7 +61,6 @@ public sealed class UpdateOrderStatusCommandHandler
             order.DeliveryNote,
             items.Select(i => new OrderItemDto(
                 i.Id,
-                i.ItemType.ToString(),
                 i.Name,
                 i.Description,
                 i.Quantity,

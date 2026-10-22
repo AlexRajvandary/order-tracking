@@ -77,7 +77,6 @@ public sealed class RestoreOrderCommandHandler : IRequestHandler<RestoreOrderCom
             order.DeliveryNote,
             items.Select(i => new OrderItemDto(
                 i.Id,
-                i.ItemType.ToString(),
                 i.Name,
                 i.Description,
                 i.Quantity,

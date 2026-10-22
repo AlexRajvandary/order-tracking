@@ -47,7 +47,7 @@ function TrackingItemContent({ item }: { item: PublicTrackingItem }) {
 
   return (
     <div className="flex min-w-0 items-start gap-3">
-      {item.type === 'Product' && imageUrl && !imageFailed ? (
+      {imageUrl && !imageFailed ? (
         <>
           <button
             type="button"
@@ -73,23 +73,11 @@ function TrackingItemContent({ item }: { item: PublicTrackingItem }) {
       ) : null}
       <div className="min-w-0 flex-1">
         <h3 className="font-semibold">{item.name}</h3>
-        {item.type === 'Product' ? (
-          <p className="text-xs text-muted-foreground">
-            {t('quantity')}: {item.quantity}
-          </p>
-        ) : null}
+        <p className="text-xs text-muted-foreground">
+          {t('quantity')}: {item.quantity}
+        </p>
       </div>
     </div>
-  )
-}
-
-export function TrackingItemCard({ item }: { item: PublicTrackingItem }) {
-  return (
-    <Card>
-      <CardContent>
-        <TrackingItemContent item={item} />
-      </CardContent>
-    </Card>
   )
 }
 

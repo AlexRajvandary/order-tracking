@@ -31,7 +31,7 @@ public sealed class GetOrderStatusHistoryQueryHandler
             cancellationToken);
 
         return histories.Select(h => new StatusHistoryEntryDto(
-            h.Id, h.OrderItemId, h.OrderItemName, h.OrderItemType, h.StatusDefinitionId,
+            h.Id, h.OrderItemId, h.OrderItemName, h.StatusDefinitionId,
             h.StatusText, h.StatusColor, h.Comment, h.Country, h.Location, h.PublishAt,
             h.IsPublished, h.ChangedByAdminId, h.ChangedByAdminName, h.ChangedAt,
             h.Attachments.Select(a => new StatusHistoryAttachmentDto(

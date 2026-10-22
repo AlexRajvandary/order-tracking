@@ -208,7 +208,6 @@ public sealed class OpenAiOrderParser : IAiOrderParser
                     raw.Customer.Email),
             (raw.Items ?? [])
                 .Select(i => new AiOrderItemDraft(
-                    i.ItemType,
                     i.Name,
                     i.Url,
                     i.Description,
@@ -277,7 +276,6 @@ public sealed class OpenAiOrderParser : IAiOrderParser
 
     public sealed class AiOrderItemRaw
     {
-        public string? ItemType { get; set; }
         public string? Name { get; set; }
         public string? Url { get; set; }
         public string? Description { get; set; }

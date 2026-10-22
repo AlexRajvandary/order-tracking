@@ -67,7 +67,6 @@ public sealed class StatusScheduleTests
         {
             Id = Guid.NewGuid(),
             Name = "In warehouse",
-            ItemType = OrderItemType.Product,
             DefaultCountry = "China",
             DefaultLocation = "Warehouse A",
             PublishAfterDays = 3,
@@ -87,7 +86,6 @@ public sealed class StatusScheduleTests
         {
             Id = Guid.NewGuid(),
             OrderId = order.Id,
-            ItemType = OrderItemType.Product,
             Name = "Item",
             Quantity = 1,
             SortOrder = 0,
@@ -143,7 +141,6 @@ public sealed class StatusScheduleTests
         {
             Id = Guid.NewGuid(),
             OrderId = order.Id,
-            ItemType = OrderItemType.Product,
             Name = "Item",
             Quantity = 1,
             SortOrder = 0,
@@ -286,7 +283,6 @@ public sealed class StatusScheduleTests
         {
             Id = itemId,
             OrderId = orderId,
-            ItemType = OrderItemType.Product,
             Name = "Item",
             Quantity = 1,
             SortOrder = 0,
@@ -336,7 +332,6 @@ public sealed class StatusScheduleTests
         {
             Id = itemId,
             OrderId = orderId,
-            ItemType = OrderItemType.Product,
             Name = "Item",
             Quantity = 1,
             SortOrder = 0,

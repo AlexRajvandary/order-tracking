@@ -593,11 +593,6 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("ItemType")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
                     b.Property<string>("ManualImageContentType")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -1118,10 +1113,6 @@ namespace OrderTracking.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("IsFinal")
                         .HasColumnType("boolean");
-
-                    b.Property<string>("ItemType")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Name")
                         .IsRequired()

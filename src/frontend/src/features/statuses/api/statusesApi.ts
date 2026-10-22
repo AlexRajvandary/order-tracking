@@ -10,9 +10,8 @@ import type {
   UpsertStatusRequest,
 } from '../types'
 
-export function getStatuses(params?: { itemType?: string; includeInactive?: boolean }) {
+export function getStatuses(params?: { includeInactive?: boolean }) {
   const search = new URLSearchParams()
-  if (params?.itemType) search.set('itemType', params.itemType)
   if (params?.includeInactive) search.set('includeInactive', 'true')
   const qs = search.toString()
   return authorizedJson<StatusDefinition[]>(`/statuses${qs ? `?${qs}` : ''}`)

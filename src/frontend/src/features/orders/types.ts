@@ -26,7 +26,6 @@ export type OrderListItem = {
 
 export type OrderItem = {
   id: string
-  itemType: string
   name: string
   description: string | null
   sourceUrl: string | null
@@ -74,7 +73,6 @@ export type OrderDetails = {
 }
 
 export type CreateOrderItemInput = {
-  itemType: 'Product' | 'Service'
   name: string
   description?: string | null
   sourceUrl?: string | null
@@ -92,7 +90,6 @@ export type OrderItemImage = {
 }
 
 export type UpsertOrderItemRequest = {
-  itemType: 'Product' | 'Service'
   name: string
   description?: string | null
   sourceUrl?: string | null
@@ -140,7 +137,6 @@ export type AiOrderCustomerDraft = {
 }
 
 export type AiOrderItemDraft = {
-  itemType?: string | null
   name?: string | null
   url?: string | null
   description?: string | null

@@ -31,7 +31,6 @@ public sealed class GetOrderByTrackingCodeQueryHandler
             order.Items.Select(i => new PublicTrackingItemDto(
                 i.Id,
                 i.Name,
-                i.Type,
                 i.Quantity,
                 i.ImageUrl,
                 i.CurrentStatus,

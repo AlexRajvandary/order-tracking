@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useLocation, useMatch, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   ChevronDown,
@@ -111,6 +111,7 @@ export function AdminShell() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
+  const isOrderDetails = Boolean(useMatch('/admin/orders/:id'))
   const { user, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
@@ -191,7 +192,7 @@ export function AdminShell() {
 
   return (
     <div
-      className={cn('min-h-screen bg-background', miniApp && 'telegram-mini-app-shell')}
+      className={cn('min-h-screen', isOrderDetails ? 'bg-white' : 'bg-background', miniApp && 'telegram-mini-app-shell')}
       style={miniApp ? { minHeight: 'var(--tg-viewport-height, 100dvh)' } : undefined}
     >
       <header

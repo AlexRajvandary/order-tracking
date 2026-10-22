@@ -12,7 +12,6 @@ public sealed record PublicTrackingOrderRow(
 public sealed record PublicTrackingItemRow(
     Guid Id,
     string Name,
-    string Type,
     int Quantity,
     string? ImageUrl,
     string? CurrentStatus,

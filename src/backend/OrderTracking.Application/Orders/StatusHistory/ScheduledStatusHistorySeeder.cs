@@ -20,11 +20,7 @@ public static class ScheduledStatusHistorySeeder
             return;
         }
 
-        var itemTypes = items.Select(i => i.ItemType).Distinct().ToList();
-
-        var definitions = await statusDefinitionRepository.GetScheduledForItemTypesAsync(
-            itemTypes,
-            cancellationToken);
+        var definitions = await statusDefinitionRepository.GetScheduledAsync(cancellationToken);
 
         if (definitions.Count == 0)
         {
@@ -33,7 +29,7 @@ public static class ScheduledStatusHistorySeeder
 
         foreach (var item in items)
         {
-            foreach (var definition in definitions.Where(d => MatchesItemType(d.ItemType, item.ItemType)))
+            foreach (var definition in definitions)
             {
                 var publishAt = order.CreatedAt.AddDays(definition.PublishAfterDays!.Value);
                 orderRepository.AddStatusHistory(new OrderItemStatusHistory
@@ -53,6 +49,4 @@ public static class ScheduledStatusHistorySeeder
         }
     }
 
-    private static bool MatchesItemType(OrderItemType? definitionType, OrderItemType itemType) =>
-        definitionType is null || definitionType == itemType;
 }

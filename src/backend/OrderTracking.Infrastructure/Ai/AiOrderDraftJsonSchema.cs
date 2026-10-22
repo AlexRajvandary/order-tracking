@@ -36,7 +36,6 @@ internal static class AiOrderDraftJsonSchema
                     "type": "object",
                     "additionalProperties": false,
                     "properties": {
-                      "itemType": { "type": ["string", "null"], "description": "Product or Service" },
                       "name": { "type": ["string", "null"] },
                       "url": { "type": ["string", "null"] },
                       "description": { "type": ["string", "null"] },
@@ -44,7 +43,7 @@ internal static class AiOrderDraftJsonSchema
                       "unitPrice": { "type": ["number", "null"] },
                       "currencyCode": { "type": ["string", "null"], "description": "ISO currency: RUB, JPY, USD, EUR, GBP" }
                     },
-                    "required": ["itemType", "name", "url", "description", "quantity", "unitPrice", "currencyCode"]
+                    "required": ["name", "url", "description", "quantity", "unitPrice", "currencyCode"]
                   }
                 },
                 "delivery": {

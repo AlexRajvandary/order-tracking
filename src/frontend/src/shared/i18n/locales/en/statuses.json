@@ -10,13 +10,11 @@
   "active": "Active",
   "inactive": "Inactive",
   "final": "Final",
-  "allTypes": "All types",
   "scheduled": "Scheduled",
   "cancelPublish": "Cancel publication",
   "cancelPublishConfirm": "Cancel this scheduled status publication?",
   "columns": {
     "name": "Name",
-    "itemType": "Type",
     "color": "Color",
     "final": "Final",
     "status": "State",
@@ -26,14 +24,12 @@
     "createTitle": "New status",
     "editTitle": "Edit status",
     "name": "Name",
-    "itemType": "Item type",
     "color": "Color",
     "defaultCountry": "Default country",
     "defaultLocation": "Default full address",
     "publishAfterDays": "Publish N days after request creation",
     "isActive": "Active",
-    "isFinal": "Final status",
-    "anyType": "For all"
+    "isFinal": "Final status"
   },
   "country": {
     "placeholder": "Select a country",

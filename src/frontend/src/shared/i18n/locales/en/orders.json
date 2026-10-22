@@ -144,6 +144,20 @@
     "trackingCode": "Tracking code"
   },
   "details": {
+    "itemsTable": {
+      "photo": "Photo",
+      "name": "Name",
+      "link": "Link",
+      "description": "Description",
+      "quantity": "Quantity",
+      "price": "Price",
+      "total": "Total",
+      "status": "Status",
+      "actions": "Actions",
+      "notInProcurement": "Not sent for purchase",
+      "statusError": "Failed to load status",
+      "sentToTransit": "Sent to transit"
+    },
     "title": "Request",
     "back": "Back to list",
     "trackingLink": "Customer link",
@@ -174,6 +188,7 @@
     "changeStatus": "Change status",
     "items": "Request items",
     "add": "Add",
+    "addProduct": "Add product",
     "noItems": "No items yet",
     "editNotes": "Save",
     "editItem": "Edit",
@@ -181,7 +196,6 @@
     "deleteItemConfirm": "Delete this item?",
     "addItemTitle": "New item",
     "editItemTitle": "Edit item",
-    "itemType": "Type",
     "saveItem": "Save"
   },
   "timeline": {

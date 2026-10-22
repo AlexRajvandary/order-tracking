@@ -167,8 +167,6 @@ function mapAiItems(draft: AiOrderDraft): DraftItem[] {
     .filter((item) => item.name?.trim() || item.url?.trim() || item.description?.trim())
     .map((item) => {
       const url = item.url?.trim() || ''
-      const itemType =
-        item.itemType?.toLowerCase() === 'service' ? ('Service' as const) : ('Product' as const)
       const quantity =
         item.quantity != null && Number.isFinite(item.quantity) && item.quantity >= 1
           ? String(item.quantity)
@@ -176,9 +174,8 @@ function mapAiItems(draft: AiOrderDraft): DraftItem[] {
 
       return {
         key: crypto.randomUUID(),
-        itemType,
         name: (item.name?.trim() || url || item.description?.trim() || '').slice(0, 500),
-        description: itemType === 'Product' ? null : item.description?.trim() || null,
+        description: item.description?.trim() || null,
         sourceUrl: url || null,
         skipPreviewExtraction: false,
         quantity,
@@ -331,12 +328,11 @@ export function CreateOrderPage() {
     },
   })
 
-  const addItem = (itemType: 'Product' | 'Service') => {
+  const addItem = () => {
     setItems((prev) => [
       ...prev,
       {
         key: crypto.randomUUID(),
-        itemType,
         name: '',
         description: '',
         quantity: '1',
@@ -679,7 +675,7 @@ export function CreateOrderPage() {
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-semibold">{t('form.items')}</h2>
-              <Button type="button" variant="outline" onClick={() => addItem('Product')}>
+              <Button type="button" variant="outline" onClick={addItem}>
                 <Plus />
                 {t('form.addProduct')}
               </Button>
@@ -694,9 +690,6 @@ export function CreateOrderPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary">
-                      {item.itemType === 'Product' ? t('form.product') : t('form.service')}
-                    </Badge>
                     {isUncertain(uncertainPaths, `items[${index}]`) ? (
                       <Badge variant="outline">{t('form.ai.uncertainBadge')}</Badge>
                     ) : null}
@@ -725,8 +718,7 @@ export function CreateOrderPage() {
                     )
                   }
                 />
-                {item.itemType === 'Product' ? (
-                  <div className="space-y-1.5">
+                <div className="space-y-1.5">
                     <Label htmlFor={`source-url-${item.key}`}>{t('form.sourceUrl')}</Label>
                     <Input
                       id={`source-url-${item.key}`}
@@ -746,25 +738,24 @@ export function CreateOrderPage() {
                       }
                     />
                   </div>
-                ) : (
+                <div className="space-y-1.5">
+                  <Label>{t('form.itemDescription')}</Label>
                   <Textarea
                     className={uncertainClass(
                       isUncertain(uncertainPaths, `items[${index}].description`),
                     )}
                     rows={2}
-                    placeholder={t('form.itemDescription')}
                     value={item.description ?? ''}
                     onChange={(e) =>
                       setItems((prev) =>
                         prev.map((it, i) =>
-                          i === index ? { ...it, description: e.target.value } : it,
+                          i === index ? { ...it, description: e.target.value || null } : it,
                         ),
                       )
                     }
                   />
-                )}
-                {item.itemType === 'Product' ? (
-                  <div className="space-y-2">
+                </div>
+                <div className="space-y-2">
                     <Label>{t('form.productImage')}</Label>
                     <div className="flex flex-wrap items-center gap-3">
                       {item.manualPreviewUrl ? (
@@ -831,8 +822,7 @@ export function CreateOrderPage() {
                       ) : null}
                     </div>
                     <p className="text-xs text-muted-foreground">{t('form.productImageHint')}</p>
-                  </div>
-                ) : null}
+                </div>
                 <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-2">
                   <Input
                     type="number"
@@ -881,8 +871,7 @@ export function CreateOrderPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {item.itemType === 'Product' ? (
-                  <Input
+                <Input
                     type="number"
                     min={1}
                     className={uncertainClass(
@@ -897,15 +886,11 @@ export function CreateOrderPage() {
                         ),
                       )
                     }
-                  />
-                ) : null}
+                />
                 {isFiniteMoney(item.unitPrice) ? (
                   <p className="text-sm text-muted-foreground">
                     {formatMoney(
-                      item.unitPrice *
-                        (item.itemType === 'Product'
-                          ? Math.max(1, Number(item.quantity) || 1)
-                          : 1),
+                      item.unitPrice * Math.max(1, Number(item.quantity) || 1),
                       item.currencyCode ?? 'RUB',
                       i18n.language === 'ru' ? 'ru-RU' : 'en-US',
                     )}
@@ -942,12 +927,11 @@ export function CreateOrderPage() {
               setError(null)
               const validDraftItems = items.filter((i) => i.name.trim())
               const validItems = validDraftItems
-                .map(({ itemType, name, description, quantity, unitPrice, currencyCode, sourceUrl, manualImage }) => {
+                .map(({ name, description, quantity, unitPrice, currencyCode, sourceUrl, manualImage }) => {
                   const parsedQuantity = Number(quantity)
                   return {
-                    itemType,
                     name: name.trim(),
-                    description: itemType === 'Product' ? null : description?.trim() || null,
+                    description: description?.trim() || null,
                     quantity:
                       Number.isFinite(parsedQuantity) && parsedQuantity >= 1
                         ? parsedQuantity

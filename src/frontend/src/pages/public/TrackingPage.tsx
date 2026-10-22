@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getPublicOrder } from '@/features/tracking/api/trackingApi'
-import { TrackingItemCard, TrackingItemsCard } from '@/features/tracking/ui/TrackingItemCard'
+import { TrackingItemsCard } from '@/features/tracking/ui/TrackingItemCard'
 import type { OrderStatus } from '@/features/orders/types'
 import { OrderStatusBadge } from '@/features/orders/ui/OrderStatusBadge'
 import { ApiError } from '@/shared/api/client'
@@ -52,9 +52,6 @@ export function TrackingPage() {
   })
 
   useTrackingRealtime(trackingCode)
-
-  const products = data?.items.filter((i) => i.type === 'Product') ?? []
-  const services = data?.items.filter((i) => i.type === 'Service') ?? []
 
   return (
     <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-8">
@@ -182,23 +179,7 @@ export function TrackingPage() {
             </Card>
           ) : null}
 
-          {products.length > 0 ? (
-            <section>
-              <TrackingItemsCard items={products} />
-            </section>
-          ) : null}
-
-          {services.length > 0 ? (
-            <section className="space-y-3">
-              <h2 className="text-lg font-semibold">{t('services')}</h2>
-              {services.map((item, index) => (
-                <TrackingItemCard
-                  key={`${item.name}-${index}`}
-                  item={item}
-                />
-              ))}
-            </section>
-          ) : null}
+          {data.items.length > 0 ? <TrackingItemsCard items={data.items} /> : null}
         </>
       ) : null}
     </div>

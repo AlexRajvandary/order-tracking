@@ -10,13 +10,11 @@
   "active": "Активен",
   "inactive": "Неактивен",
   "final": "Финальный",
-  "allTypes": "Все типы",
   "scheduled": "Запланирован",
   "cancelPublish": "Отменить публикацию",
   "cancelPublishConfirm": "Отменить запланированную публикацию этого статуса?",
   "columns": {
     "name": "Название",
-    "itemType": "Тип",
     "color": "Цвет",
     "final": "Финальный",
     "status": "Состояние",
@@ -26,14 +24,12 @@
     "createTitle": "Новый статус",
     "editTitle": "Редактирование статуса",
     "name": "Название",
-    "itemType": "Тип позиции",
     "color": "Цвет",
     "defaultCountry": "Страна по умолчанию",
     "defaultLocation": "Полный адрес по умолчанию",
     "publishAfterDays": "Публиковать через N дней после создания заявки",
     "isActive": "Активен",
-    "isFinal": "Финальный статус",
-    "anyType": "Для всех"
+    "isFinal": "Финальный статус"
   },
   "country": {
     "placeholder": "Выберите страну",

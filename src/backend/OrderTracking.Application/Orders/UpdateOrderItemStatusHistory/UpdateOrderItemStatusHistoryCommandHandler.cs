@@ -138,7 +138,6 @@ public sealed class UpdateOrderItemStatusHistoryCommandHandler
             h.Id,
             h.OrderItemId,
             h.OrderItem.Name,
-            h.OrderItem.ItemType.ToString(),
             h.StatusDefinitionId,
             h.StatusText,
             h.StatusDefinition?.Color,

@@ -21,7 +21,6 @@ public sealed record OrderListItemDto(
 
 public sealed record OrderItemDto(
     Guid Id,
-    string ItemType,
     string Name,
     string? Description,
     int Quantity,
@@ -67,7 +66,6 @@ public sealed record OrderDetailsDto(
     Guid? ConvertedToSalesOrderId = null);
 
 public sealed record CreateOrderItemDto(
-    OrderItemType ItemType,
     string Name,
     string? Description,
     int Quantity = 1,

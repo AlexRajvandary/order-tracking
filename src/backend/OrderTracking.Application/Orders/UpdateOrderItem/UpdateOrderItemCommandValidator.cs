@@ -9,7 +9,6 @@ public sealed class UpdateOrderItemCommandValidator : AbstractValidator<UpdateOr
     {
         RuleFor(x => x.OrderId).NotEmpty();
         RuleFor(x => x.ItemId).NotEmpty();
-        RuleFor(x => x.ItemType).IsInEnum();
         RuleFor(x => x.Name).NotEmpty().MaximumLength(500);
         RuleFor(x => x.Description).MaximumLength(4000);
         RuleFor(x => x.SourceUrl).MaximumLength(2000);

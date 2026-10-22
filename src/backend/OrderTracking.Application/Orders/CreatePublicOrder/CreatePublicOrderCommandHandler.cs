@@ -46,7 +46,7 @@ public sealed class CreatePublicOrderCommandHandler
         {
             var requestItem = pair.First;
             var product = pair.Second;
-            return new CreateOrderItemDto(OrderItemType.Product, product.Name, WithSelectedOptions(
+            return new CreateOrderItemDto(product.Name, WithSelectedOptions(
                     product.Description, requestItem.SelectedColor, requestItem.SelectedSize),
                 requestItem.Quantity, product.Price, product.CurrencyCode, product.SourceUrl,
                 product.Source, product.ProductId, product.ExternalId, product.ImageUrl,

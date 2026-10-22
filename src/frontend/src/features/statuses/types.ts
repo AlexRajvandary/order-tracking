@@ -1,7 +1,6 @@
 export type StatusDefinition = {
   id: string
   name: string
-  itemType: string | null
   color: string | null
   defaultCountry: string | null
   defaultLocation: string | null
@@ -25,7 +24,6 @@ export type StatusHistoryEntry = {
   id: string
   orderItemId: string
   orderItemName: string
-  orderItemType: string
   statusDefinitionId: string | null
   statusText: string
   statusColor: string | null
@@ -42,7 +40,6 @@ export type StatusHistoryEntry = {
 
 export type UpsertStatusRequest = {
   name: string
-  itemType?: 'Product' | 'Service' | null
   color?: string | null
   defaultCountry?: string | null
   defaultLocation?: string | null

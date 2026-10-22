@@ -137,7 +137,6 @@ public sealed class SalesOrdersController(
                 {
                     Id = Guid.NewGuid(),
                     OrderId = workspace.Id,
-                    ItemType = item.ItemType,
                     Name = item.Name,
                     Description = item.Description,
                     SourceUrl = item.SourceUrl,

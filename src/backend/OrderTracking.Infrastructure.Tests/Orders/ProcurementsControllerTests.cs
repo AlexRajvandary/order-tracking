@@ -213,7 +213,6 @@ public sealed class ProcurementsControllerTests
                 Id = Guid.NewGuid(),
                 OrderId = order.Id,
                 Name = $"Item {index + 1}",
-                ItemType = OrderItemType.Product,
                 SortOrder = index,
                 CreatedAt = DateTimeOffset.UtcNow,
             });

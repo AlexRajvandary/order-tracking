@@ -1,12 +1,10 @@
 using OrderTracking.Domain.Common;
-using OrderTracking.Domain.Enums;
 
 namespace OrderTracking.Domain.Entities;
 
 public class StatusDefinition : AuditableEntity
 {
     public string Name { get; set; } = string.Empty;
-    public OrderItemType? ItemType { get; set; }
     public string? Color { get; set; }
     public string? DefaultCountry { get; set; }
     public string? DefaultLocation { get; set; }

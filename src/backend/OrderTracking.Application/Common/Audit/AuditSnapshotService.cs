@@ -54,8 +54,8 @@ public sealed class AuditSnapshotService : IAuditSnapshotService
     private static bool LooksLikeOrderItem(object target)
     {
         var type = target.GetType();
-        return type.GetProperty("ItemType") is not null
-               && type.GetProperty("Name") is not null
+        return type.GetProperty("Name") is not null
+               && type.GetProperty("Quantity") is not null
                && type.GetProperty("TrackingCode") is null
                && type.GetProperty("Status") is null;
     }
@@ -111,7 +111,6 @@ public sealed class AuditSnapshotService : IAuditSnapshotService
         return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
         {
             ["name"] = item.Name,
-            ["itemType"] = item.ItemType,
             ["description"] = item.Description,
             ["quantity"] = item.Quantity.ToString(),
             ["unitPrice"] = item.UnitPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture),
@@ -173,7 +172,6 @@ public sealed class AuditSnapshotService : IAuditSnapshotService
         return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
         {
             ["name"] = status.Name,
-            ["itemType"] = status.ItemType,
             ["color"] = status.Color,
             ["isActive"] = status.IsActive ? "true" : "false",
             ["isFinal"] = status.IsFinal ? "true" : "false",
